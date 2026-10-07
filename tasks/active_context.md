@@ -81,4 +81,4 @@
 - Celular: Início (filme + barras de story), Agenda da semana, Nova tarefa em folha de baixo.
 - Datas corrigidas: Qua 7 / Qui 8 out; semana 5–11.
 - Ajustes 07/10 (noite): sala refeita em world.ts (assoalho em tábuas, parede alta com janelas/quadros/relógio, sombras, contorno 1px, estante e plantas encostadas na parede, cadeira do chefe vinho); balão do filme agora é pixel art no canvas (ícones 9x8 em v4_parts.py, some ao andar); pílulas do calendário ocupam a célula com reticências; chat da equipe no painel lateral + botão de chat no celular.
-- Pendente: barra lateral preta ou branca; depois F0+F1 no app.
+- Decidido 07/10: barra lateral PRETA. Próximo: F0+F1 no app.
