@@ -790,3 +790,31 @@ input:focus, textarea:focus { border-color: #2383e2; box-shadow: 0 0 0 2px rgba(
   .pop { width: min(360px, calc(100vw - 24px)); }
   .toast { right: 12px; bottom: 76px; }
 }
+
+/* ---------- escritório: controles do mapa, faixa de pessoas, mesa ---------- */
+.game-ctrl { display: flex; align-items: center; gap: 2px; padding: 3px; background: #fff; border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 2px 8px rgba(15, 15, 15, .12); }
+.game-ctrl button { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 9px; border: 0; border-radius: 6px; background: none; box-shadow: none; color: var(--text); font-weight: 500; font-size: 13px; cursor: pointer; }
+.game-ctrl button.sq { width: 28px; padding: 0; justify-content: center; color: var(--muted); }
+.game-ctrl button:hover { background: var(--hover); color: var(--text); }
+.game-ctrl .sep { width: 1px; height: 18px; background: var(--line); margin: 0 3px; }
+.game-help { animation: help-out .6s ease 9s forwards; }
+@keyframes help-out { to { opacity: 0; visibility: hidden; } }
+.who-strip { display: flex; gap: 2px; padding: 8px 10px; border-bottom: 1px solid var(--line); overflow-x: auto; flex: none; }
+.who-strip button { position: relative; display: grid; justify-items: center; gap: 2px; width: 52px; padding: 5px 2px; border: 0; border-radius: 8px; background: none; cursor: pointer; flex: none; }
+.who-strip button:hover { background: var(--hover); }
+.who-strip button.on { background: rgba(35, 131, 226, .1); }
+.who-strip button.on small { color: #1f6fc5; font-weight: 600; }
+.who-strip small { font-size: 11px; color: var(--muted); max-width: 48px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.who-strip .dot { position: absolute; top: 4px; right: 9px; width: 8px; height: 8px; border-radius: 50%; border: 2px solid #fff; }
+.who-strip .dot.on { background: #2fa96b; }
+.who-strip .dot.off { background: #c4c4c0; }
+.side .pane { padding-bottom: 80px; }
+.board-head { align-items: center; gap: 10px; }
+.board-head h2 { font-size: 16px; margin: 0; }
+.board .sec h3 { font-size: 11px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.card .acts { align-items: center; }
+.card .acts .icon-btn { width: 26px; height: 26px; }
+.card .check svg { stroke-width: 3; }
+.chip .ic { flex: none; }
+.board .qadd { justify-content: flex-start; height: 32px; padding: 0 8px; border: 0; border-radius: 6px; background: none; color: var(--muted); font-size: 13px; cursor: pointer; }
+.board .qadd:hover { background: var(--hover); color: var(--text); }

@@ -35,6 +35,9 @@ export default function Office() {
   if (!me) return null
 
   const chief = isChief(me)
+  // painel do escritório: eu primeiro, depois quem está na sala, depois quem está fora
+  const people = Object.values(s.profiles).filter(p => p.avatar).sort((a, b) =>
+    Number(b.id === me.id) - Number(a.id === me.id) || Number(s.online.has(b.id)) - Number(s.online.has(a.id)) || a.name.localeCompare(b.name))
   const office = s.view === 'escritorio'
   const page: Page = office ? 'escritorio' : s.drawer ? s.tab : 'quadro'
   // minha mesa = filtro "Só minhas"; aprovação = coluna do quadro; avisos = sino; chat = botão flutuante
@@ -94,14 +97,19 @@ export default function Office() {
           {office && <>
             <Game />
             <aside className="side">
-              <nav className="tabs">
-                {(['mesa', 'equipe'] as Tab[]).map(t => (
-                  <button key={t} className={s.tab === t ? 'on' : ''} onClick={() => setUi({ tab: t, ...(t === 'mesa' && s.tab === 'mesa' ? { viewing: me.id } : {}) })}>
-                    {t === 'mesa' ? 'Mesa' : 'Equipe'}
-                  </button>
-                ))}
+              <nav className="who-strip" aria-label="Ver a mesa de">
+                {people.map(p => {
+                  const here = p.id === me.id || s.online.has(p.id)
+                  return (
+                    <button key={p.id} className={(s.viewing ?? me.id) === p.id ? 'on' : ''} onClick={() => setUi({ viewing: p.id })} title={`${p.id === me.id ? 'Minha mesa' : p.name} · ${here ? 'no escritório' : 'fora'}`}>
+                      <MiniAvatar avatar={p.avatar} photo={p.photo} size={30} dim={!here} />
+                      <i className={'dot ' + (here ? 'on' : 'off')} />
+                      <small>{p.id === me.id ? 'Eu' : p.name.split(' ')[0]}</small>
+                    </button>
+                  )
+                })}
               </nav>
-              <div className="pane">{pane(s.tab === 'equipe' ? 'equipe' : 'mesa')}</div>
+              <div className="pane"><Board /></div>
             </aside>
           </>}
           {page !== 'quadro' && page !== 'escritorio' && <div className="doc">{pane(page)}</div>}

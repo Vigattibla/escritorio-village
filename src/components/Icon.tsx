@@ -18,6 +18,15 @@ const P = {
   menu: <path d="M4 6h16M4 12h16M4 18h16" />,
   cols: <><rect width="18" height="18" x="3" y="3" rx="2" /><path d="M9 3v18M15 3v18" /></>,
   rows: <><rect width="18" height="18" x="3" y="3" rx="2" /><path d="M3 9h18M3 15h18" /></>,
+  play: <path d="M6 3 20 12 6 21Z" />,
+  pause: <><rect x="14" y="4" width="4" height="16" rx="1" /><rect x="6" y="4" width="4" height="16" rx="1" /></>,
+  trash: <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />,
+  clock: <><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></>,
+  clip: <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48" />,
+  send: <><path d="m22 2-7 20-4-9-9-4Z" /><path d="M22 2 11 13" /></>,
+  minus: <path d="M5 12h14" />,
+  locate: <><path d="M2 12h3M19 12h3M12 2v3M12 19v3" /><circle cx="12" cy="12" r="7" /><circle cx="12" cy="12" r="3" /></>,
+  tick: <path d="M20 6 9 17l-5-5" />,
 }
 export type IconName = keyof typeof P
 

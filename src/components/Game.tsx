@@ -6,6 +6,7 @@ import { addMark, boardMarks, takeErrands, type Errand } from '../office/errands
 import { blocked, BOARD_SPOT, BOSS_DESK, deskAtTile, deskOf, drawBoardMarks, drawCarry, drawDesk, DESKS, findPath, MAX_DESKS, MH, MW, pathToSeat, renderBackground, SHELF_SPOT, T } from '../office/world'
 import { bubbles, getState, positions, setUi } from '../store'
 import type { Dir, Pos, Profile, Task } from '../types'
+import Icon from './Icon'
 
 const SPEED = 72
 const ACT_MS = { write: 2600, fetch: 1400, store: 1400 }
@@ -380,11 +381,12 @@ export default function Game() {
         </div>
       )}
       <div className="game-ctrl">
-        <button onClick={() => goSeat.current()} title="Andar até a sua mesa">🪑 Minha mesa</button>
-        <button onClick={() => setZoom(z => Math.max(ZMIN, z - 1))} aria-label="Afastar">−</button>
-        <button onClick={() => setZoom(z => Math.min(ZMAX, z + 1))} aria-label="Aproximar">+</button>
+        <button onClick={() => goSeat.current()} title="Andar até a sua mesa"><Icon n="locate" size={15} />Ir para minha mesa</button>
+        <span className="sep" />
+        <button className="sq" onClick={() => setZoom(z => Math.max(ZMIN, z - 1))} aria-label="Afastar" title="Afastar"><Icon n="minus" size={15} /></button>
+        <button className="sq" onClick={() => setZoom(z => Math.min(ZMAX, z + 1))} aria-label="Aproximar" title="Aproximar"><Icon n="plus" size={15} /></button>
       </div>
-      <div className="game-help">WASD/setas ou clique para andar · clique numa mesa para abrir</div>
+      <div className="game-help">Clique no chão para andar (ou WASD/setas) · clique numa pessoa ou mesa para ver as tarefas</div>
     </div>
   )
 }
