@@ -178,6 +178,12 @@ legend { font-size: 12px; font-weight: 700; color: var(--navy); padding: 0 4px; 
 .dot.on { background: var(--green); }
 .doing { font-size: 13px; margin-top: 4px; }
 .rank-title { margin-top: 10px; }
+.accounts { border: 1px solid #e3e6ef; border-radius: 12px; background: #fafbff; padding: 10px 12px; }
+.accounts summary { cursor: pointer; font-weight: 700; color: var(--navy); }
+.accounts form { display: grid; gap: 8px; margin-top: 12px; }
+.accounts h3 { margin: 0; font-size: 14px; }
+.accounts .ok { margin-top: 10px; user-select: all; }
+.accounts .muted { margin-top: 6px; }
 .rank { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
 .rank li { display: flex; gap: 10px; align-items: center; padding: 7px 10px; border-radius: 9px; background: #f6f7fb; font-size: 14px; }
 .rank li.me { background: #fff4d6; }

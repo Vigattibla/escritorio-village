@@ -104,15 +104,20 @@ export interface Handlers {
 export interface Backend {
   readonly mode: 'demo' | 'supabase'
   currentUserId(): Promise<string | null>
-  /** null = conta criada, mas precisa confirmar o e-mail */
-  signUp(email: string, password: string, name: string): Promise<string | null>
-  signIn(email: string, password: string): Promise<string>
+  /** só no demo (no servidor quem cria conta é o Chefe). null = precisa confirmar o e-mail */
+  signUp(login: string, password: string, name: string): Promise<string | null>
+  /** login = usuário ou e-mail */
+  signIn(login: string, password: string): Promise<string>
   signOut(): Promise<void>
   accountName(): Promise<string>
   loadAll(): Promise<Snapshot>
   /** devolve o perfil como ficou salvo (o cargo é decidido no servidor) */
   upsertProfile(p: Profile): Promise<Profile>
   setRank(target: string, rank: number): Promise<void>
+  /** só o Chefe: cria a conta já com perfil e cargo */
+  createAccount(user: string, password: string, name: string, rank: number): Promise<Profile>
+  /** só o Chefe */
+  setPassword(target: string, password: string): Promise<void>
   uploadPhoto(userId: string, blob: Blob): Promise<string>
   upsertTask(t: Task): Promise<void>
   deleteTask(id: string): Promise<void>

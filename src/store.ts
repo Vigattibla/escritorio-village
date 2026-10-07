@@ -264,6 +264,13 @@ export async function setRank(target: string, rank: number) {
   set({ profiles: { ...state.profiles, [target]: { ...p, rank } } })
 }
 
+export async function createAccount(user: string, pass: string, name: string, rank: number) {
+  const p = await backend.createAccount(user, pass, name, rank)
+  set({ profiles: { ...state.profiles, [p.id]: p } })
+}
+
+export const setPassword = (target: string, pass: string) => backend.setPassword(target, pass)
+
 export async function renameTask(id: string, title: string) {
   const t = state.tasks[id]
   if (!t || !title.trim() || t.title === title.trim()) return

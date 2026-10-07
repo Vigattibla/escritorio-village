@@ -212,3 +212,48 @@ create policy "anexo: envia quem participa" on storage.objects for insert to aut
     where t.id::text = (storage.foldername(name))[1] and public.can_edit_task(t.owner_id, t.created_by, t.collaborators)));
 create policy "anexo: apaga quem enviou ou chefe" on storage.objects for delete to authenticated
   using (bucket_id = 'anexos' and (owner_id = auth.uid()::text or public.rank_of(auth.uid()) = 4));
+
+-- ===== v4: contas criadas pelo Chefe, login por usuário (pode rodar de novo sem problema) =====
+-- Usuário "maria" vira o e-mail interno maria@escritorio.village (ninguém recebe e-mail).
+-- Depois de rodar: Authentication → Sign In / Providers → desligar "Allow new users to sign up".
+create extension if not exists pgcrypto with schema extensions;
+
+create or replace function public.admin_create_user(p_user text, p_pass text, p_name text, p_rank smallint)
+returns uuid language plpgsql security definer set search_path = public, extensions, auth as $$
+declare uid uuid := gen_random_uuid(); mail text;
+begin
+  if auth.uid() is null or public.rank_of(auth.uid()) <> 4 then raise exception 'Só o Chefe cria contas.'; end if;
+  p_user := lower(trim(p_user));
+  if p_user !~ '^[a-z0-9._-]{2,30}$' then raise exception 'Usuário inválido: use letras, números, ponto ou traço.'; end if;
+  if length(coalesce(p_pass, '')) < 6 then raise exception 'A senha precisa de pelo menos 6 caracteres.'; end if;
+  if p_rank is null or p_rank < 1 or p_rank > 4 then raise exception 'Cargo inválido.'; end if;
+  mail := p_user || '@escritorio.village';
+  if exists (select 1 from auth.users where email = mail) then raise exception 'Esse usuário já existe.'; end if;
+  insert into auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
+    raw_app_meta_data, raw_user_meta_data, created_at, updated_at,
+    confirmation_token, recovery_token, email_change, email_change_token_new, email_change_token_current,
+    phone_change, phone_change_token, reauthentication_token)
+  values ('00000000-0000-0000-0000-000000000000', uid, 'authenticated', 'authenticated', mail,
+    crypt(p_pass, gen_salt('bf')), now(),
+    '{"provider":"email","providers":["email"]}', jsonb_build_object('name', left(trim(p_name), 40), 'user', p_user),
+    now(), now(), '', '', '', '', '', '', '', '');
+  insert into auth.identities (id, user_id, provider_id, identity_data, provider, last_sign_in_at, created_at, updated_at)
+  values (gen_random_uuid(), uid, uid::text, jsonb_build_object('sub', uid::text, 'email', mail, 'email_verified', true),
+    'email', now(), now(), now());
+  -- perfil já nasce com nome e cargo; mesa (-1) e personagem a pessoa monta no primeiro acesso
+  insert into public.profiles (id, name, rank, desk) values (uid, coalesce(nullif(left(trim(p_name), 40), ''), p_user), p_rank, -1);
+  return uid;
+end $$;
+revoke execute on function public.admin_create_user(text, text, text, smallint) from public, anon;
+grant execute on function public.admin_create_user(text, text, text, smallint) to authenticated;
+
+create or replace function public.admin_set_password(target uuid, p_pass text) returns void
+language plpgsql security definer set search_path = public, extensions, auth as $$
+begin
+  if auth.uid() is null or public.rank_of(auth.uid()) <> 4 then raise exception 'Só o Chefe troca senhas.'; end if;
+  if length(coalesce(p_pass, '')) < 6 then raise exception 'A senha precisa de pelo menos 6 caracteres.'; end if;
+  update auth.users set encrypted_password = crypt(p_pass, gen_salt('bf')), updated_at = now() where id = target;
+  if not found then raise exception 'Conta não encontrada.'; end if;
+end $$;
+revoke execute on function public.admin_set_password(uuid, text) from public, anon;
+grant execute on function public.admin_set_password(uuid, text) to authenticated;

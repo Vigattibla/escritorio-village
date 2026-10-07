@@ -1,3 +1,4 @@
+import { toEmail, validUser } from './login'
 import type { Avatar, Backend, Handlers, Message, Pos, Profile, Snapshot, Task, TaskNote } from '../types'
 
 // Modo demonstração: tudo no localStorage deste navegador. Abas diferentes = pessoas diferentes
@@ -36,10 +37,10 @@ export class DemoBackend implements Backend {
 
   async currentUserId() { return sessionStorage.getItem(K.session) }
 
-  async signUp(email: string, password: string, name: string) {
+  async signUp(login: string, password: string, name: string) {
     const accs = read<Account[]>(K.acc, [])
-    email = email.trim().toLowerCase()
-    if (accs.some(a => a.email === email)) throw new Error('Esse e-mail já tem conta. Use "Entrar".')
+    const email = toEmail(login)
+    if (accs.some(a => a.email === email)) throw new Error('Esse usuário já existe. Use "Entrar".')
     if (password.length < 6) throw new Error('A senha precisa de pelo menos 6 caracteres.')
     const id = crypto.randomUUID()
     accs.push({ id, email, hash: await sha(password), name: name.trim() })
@@ -48,9 +49,9 @@ export class DemoBackend implements Backend {
     return id
   }
 
-  async signIn(email: string, password: string) {
-    const acc = read<Account[]>(K.acc, []).find(a => a.email === email.trim().toLowerCase())
-    if (!acc || acc.hash !== (await sha(password))) throw new Error('E-mail ou senha incorretos.')
+  async signIn(login: string, password: string) {
+    const acc = read<Account[]>(K.acc, []).find(a => a.email === toEmail(login))
+    if (!acc || acc.hash !== (await sha(password))) throw new Error('Usuário ou senha incorretos.')
     sessionStorage.setItem(K.session, acc.id)
     return acc.id
   }
@@ -90,6 +91,35 @@ export class DemoBackend implements Backend {
     if (!t || t.id === sessionStorage.getItem(K.session) || (t.rank ?? 1) >= mine || rank < 1 || rank > mine)
       throw new Error('Sem permissão para mudar esse cargo.')
     await this.upsertProfileRaw({ ...t, rank })
+  }
+
+  private chief() {
+    if (read<Record<string, Profile>>(K.prof, {})[sessionStorage.getItem(K.session) ?? '']?.rank !== 4) throw new Error('Só o Chefe mexe nas contas.')
+  }
+
+  async createAccount(user: string, password: string, name: string, rank: number) {
+    this.chief()
+    if (!validUser(user)) throw new Error('Usuário inválido: use letras, números, ponto ou traço.')
+    if (password.length < 6) throw new Error('A senha precisa de pelo menos 6 caracteres.')
+    const accs = read<Account[]>(K.acc, [])
+    const email = toEmail(user)
+    if (accs.some(a => a.email === email)) throw new Error('Esse usuário já existe.')
+    const id = crypto.randomUUID()
+    accs.push({ id, email, hash: await sha(password), name: name.trim() })
+    write(K.acc, accs)
+    const p: Profile = { id, name: name.trim() || user, role: '', avatar: null, photo: null, xp: 0, desk: -1, rank, created_at: new Date().toISOString() }
+    await this.upsertProfileRaw(p)
+    return p
+  }
+
+  async setPassword(target: string, password: string) {
+    this.chief()
+    if (password.length < 6) throw new Error('A senha precisa de pelo menos 6 caracteres.')
+    const accs = read<Account[]>(K.acc, [])
+    const acc = accs.find(a => a.id === target)
+    if (!acc) throw new Error('Conta não encontrada.')
+    acc.hash = await sha(password)
+    write(K.acc, accs)
   }
 
   private async upsertProfileRaw(p: Profile) {

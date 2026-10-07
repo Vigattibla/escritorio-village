@@ -1,9 +1,10 @@
 import { createClient, type RealtimeChannel, type SupabaseClient } from '@supabase/supabase-js'
+import { toEmail } from './login'
 import type { Backend, Handlers, Message, Pos, Profile, Snapshot, Task, TaskNote } from '../types'
 
 function pt(e: { message: string }): Error {
   const m = e.message
-  if (/invalid login/i.test(m)) return new Error('E-mail ou senha incorretos.')
+  if (/invalid login/i.test(m)) return new Error('Usuário ou senha incorretos.')
   if (/already registered/i.test(m)) return new Error('Esse e-mail já tem conta. Use "Entrar".')
   if (/password/i.test(m) && /6/.test(m)) return new Error('A senha precisa de pelo menos 6 caracteres.')
   if (/row-level security/i.test(m)) return new Error('Sem permissão para isso.')
@@ -26,14 +27,14 @@ export class SupabaseBackend implements Backend {
     return data.session?.user.id ?? null
   }
 
-  async signUp(email: string, password: string, name: string) {
-    const { data, error } = await this.sb.auth.signUp({ email, password, options: { data: { name }, emailRedirectTo: location.origin + location.pathname } })
+  async signUp(login: string, password: string, name: string) {
+    const { data, error } = await this.sb.auth.signUp({ email: toEmail(login), password, options: { data: { name }, emailRedirectTo: location.origin + location.pathname } })
     if (error) throw pt(error)
     return data.session ? data.user!.id : null
   }
 
-  async signIn(email: string, password: string) {
-    const { data, error } = await this.sb.auth.signInWithPassword({ email, password })
+  async signIn(login: string, password: string) {
+    const { data, error } = await this.sb.auth.signInWithPassword({ email: toEmail(login), password })
     if (error) throw pt(error)
     return data.user.id
   }
@@ -68,6 +69,19 @@ export class SupabaseBackend implements Backend {
 
   async setRank(target: string, rank: number) {
     const { error } = await this.sb.rpc('set_rank', { target, new_rank: rank })
+    if (error) throw pt(error)
+  }
+
+  async createAccount(user: string, password: string, name: string, rank: number) {
+    const { data, error } = await this.sb.rpc('admin_create_user', { p_user: user, p_pass: password, p_name: name, p_rank: rank })
+    if (error) throw pt(error)
+    const p = await this.sb.from('profiles').select('*').eq('id', data as string).single()
+    if (p.error) throw pt(p.error)
+    return p.data as Profile
+  }
+
+  async setPassword(target: string, password: string) {
+    const { error } = await this.sb.rpc('admin_set_password', { target, p_pass: password })
     if (error) throw pt(error)
   }
 

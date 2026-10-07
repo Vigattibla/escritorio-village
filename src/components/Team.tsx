@@ -1,6 +1,7 @@
 import { DAILY_GOAL, doneToday, level, levelTitle } from '../game/xp'
-import { RANKS, rankName, ranksFor } from '../game/ranks'
+import { RANKS, isChief, rankName, ranksFor } from '../game/ranks'
 import { dmChannel, run, setRank, setUi, useStore } from '../store'
+import Accounts from './Accounts'
 import MiniAvatar from './MiniAvatar'
 
 export default function Team() {
@@ -17,6 +18,7 @@ export default function Team() {
   return (
     <div className="team">
       <h2>Equipe <span className="count">{people.filter(p => online.has(p.id) || p.id === meId).length} no escritório</span></h2>
+      {isChief(profiles[meId]) && <Accounts />}
       {people.map(p => {
         const here = online.has(p.id) || p.id === meId
         const doing = tasks.filter(t => t.owner_id === p.id && t.status === 'doing').sort((a, b) => b.position - a.position)[0]
