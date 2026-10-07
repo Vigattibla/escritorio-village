@@ -17,6 +17,7 @@ export const OUTFITS: { id: Outfit; label: string }[] = [
   { id: 'moletom', label: 'Moletom' },
   { id: 'social', label: 'Social' },
   { id: 'vestido', label: 'Vestido' },
+  { id: 'terno', label: 'Terno' },
 ]
 
 export const DEFAULT_AVATAR: Avatar = {
@@ -112,6 +113,21 @@ const BODY: Record<Outfit, string[]> = {
     '.ossCccc',
     ...CAMISETA.slice(7),
   ],
+  // corpo mais redondo (barriga até a borda), paletó aberto em V, camisa branca e gravata
+  terno: [
+    '.....oos',
+    '...oocwT',
+    '.oocccwt',
+    'oCccccwt',
+    'oCccccct',
+    'oCcccccc',
+    'oCcccccc',
+    'ossCcccc',
+    '.ooCCCCC',
+    '...opppo',
+    '..ohhhho',
+    '..oooooo',
+  ],
   vestido: [
     ...CAMISETA.slice(0, 7),
     '..oCcccc',
@@ -150,7 +166,7 @@ export function bodySprite(av: Avatar, dir: Dir, frame: 0 | 1 | 2, withHead: boo
   const back = dir === 'up'
   const pal: Record<string, string> = {
     o: OUT, s: av.skin, S: shade(av.skin), c: av.top, C: shade(av.top), p: av.bottom, P: shade(av.bottom),
-    h: av.shoes, w: '#ffffff', t: '#c8403a', a: '#f4f4f4', r: av.hairColor, R: shade(av.hairColor, 0.72),
+    h: av.shoes, w: '#ffffff', t: '#c8403a', T: '#8f2b26', a: '#f4f4f4', r: av.hairColor, R: shade(av.hairColor, 0.72),
     e: OUT, b: '#f4a3a0', m: '#8a3b3b',
   }
   const px = (x: number, y: number, ch: string) => {
@@ -162,8 +178,8 @@ export function bodySprite(av: Avatar, dir: Dir, frame: 0 | 1 | 2, withHead: boo
     for (let c = 0; c < 16; c++) {
       let ch = cell(half, c)
       if (ch === '.') continue
-      if (back && 'wta'.includes(ch)) ch = 'c'
-      const lift = r >= 8 && ((frame === 1 && c < 8) || (frame === 2 && c >= 8)) ? 1 : 0
+      if (back && 'wtTa'.includes(ch)) ch = 'c'
+      const lift = r >= (av.outfit === 'terno' ? 9 : 8) && ((frame === 1 && c < 8) || (frame === 2 && c >= 8)) ? 1 : 0
       px(c, BODY_Y + r - lift, ch)
     }
   })

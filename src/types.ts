@@ -1,5 +1,5 @@
 export type Dir = 'down' | 'up' | 'left' | 'right'
-export type Outfit = 'camiseta' | 'moletom' | 'social' | 'vestido'
+export type Outfit = 'camiseta' | 'moletom' | 'social' | 'vestido' | 'terno'
 export type HairStyle = 'curto' | 'longo' | 'coque' | 'cacheado' | 'raspado'
 
 export interface Avatar {
