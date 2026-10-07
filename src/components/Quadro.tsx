@@ -3,9 +3,10 @@ import { canAssign, rankName, rankOf } from '../game/ranks'
 import { dayKey } from '../game/xp'
 import {
   acceptRequest, addTask, canUseAI, approverOf, canApprove, canCreateProject, canEditProject, canEditTask, canMove, canReassign, declineRequest, involved,
-  placeTask, reassign, run, setStatus, setUi, teamOf, useStore,
+  placeTask, reassign, run, setStatus, setUi, teamOf, toApprove, useStore,
 } from '../store'
 import type { Profile, Project, Task, TaskStatus } from '../types'
+import Icon from './Icon'
 import MiniAvatar from './MiniAvatar'
 
 type Group = 'etapa' | 'raias' | 'pessoa'
@@ -55,6 +56,8 @@ export default function Quadro() {
   const project = useStore(s => s.project)
   const notes = useStore(s => s.notes)
   const online = useStore(s => s.online)
+  const qApprove = useStore(s => s.qApprove)
+  const apprN = useStore(s => toApprove(s).length)
   const [group, setGroup] = useState<Group>(() => load('ev:q:group', 'etapa'))
   const [mine, setMine] = useState<boolean>(() => load('ev:q:mine', false))
   const [who, setWho] = useState<string[]>([])
@@ -98,7 +101,7 @@ export default function Quadro() {
   const week = addDays(7)
   const since = addDays(-DONE_DAYS)
   const term = q.trim().toLowerCase()
-  const filtered = mine || who.length > 0 || !!due || !!term
+  const filtered = mine || qApprove || who.length > 0 || !!due || !!term
   const projList = Object.values(projects).filter(p => !p.archived || p.id === project).sort((a, b) => a.name.localeCompare(b.name))
 
   const shown = Object.values(tasksMap).filter(t => {
@@ -106,6 +109,7 @@ export default function Quadro() {
     if (t.status === 'done' && (!t.done_at || dayKey(t.done_at) < since)) return false
     if (project === NONE ? !!t.project_id : project && t.project_id !== project) return false
     if (mine && !involved(t, meId)) return false
+    if (qApprove && !(t.status === 'review' && canApprove(t))) return false
     if (who.length && !who.some(id => t.owner_id === id || t.collaborators.includes(id))) return false
     if (term && !`${t.title} ${t.notes}`.toLowerCase().includes(term)) return false
     if (due === 'none') return !t.due
@@ -125,7 +129,7 @@ export default function Quadro() {
 
   const lists: List[] = group === 'etapa'
     ? STAGES.map(s => ({
-        key: s.id, title: s.label, hint: s.hint, status: s.id, canAdd: s.id !== 'done' && s.id !== 'review',
+        key: s.id, title: s.label, hint: s.hint, status: s.id, canAdd: s.id === 'todo' || s.id === 'doing',
         head: <span className="qst-ic">{s.icon}</span>,
         cards: shown.filter(t => t.status === s.id).sort(sortFor(s.id)),
       }))
@@ -186,7 +190,7 @@ export default function Quadro() {
     })())
   }
   const toggleWho = (id: string) => setWho(w => (w.includes(id) ? w.filter(x => x !== id) : [...w, id]))
-  const clear = () => { setMine(false); setWho([]); setDue(''); setQ('') }
+  const clear = () => { setMine(false); setWho([]); setDue(''); setQ(''); setUi({ qApprove: false }) }
 
   /** área que recebe cartões (coluna inteira ou célula da raia) */
   const zone = (l: List, cls: string, header?: ReactNode) => {
@@ -219,7 +223,7 @@ export default function Quadro() {
         </div>
         {l.canAdd && (adding === l.key
           ? <Composer list={l} meId={meId} profiles={profiles} people={everyone} project={proj?.id ?? null} onClose={() => setAdding(null)} />
-          : <button className="qadd" onClick={() => setAdding(l.key)}>+ {group === 'raias' ? 'Adicionar' : l.status === 'inbox' ? 'Pedir a alguém' : 'Adicionar cartão'}</button>)}
+          : <button className="qadd" onClick={() => setAdding(l.key)}><Icon n="plus" size={15} />Nova tarefa</button>)}
       </section>
     )
   }
@@ -227,43 +231,59 @@ export default function Quadro() {
   return (
     <div className="quadro">
       <div className="qbar">
-        <div className="qseg" role="tablist" aria-label="Agrupar por">
-          <button className={group === 'etapa' ? 'on' : ''} onClick={() => setGroup('etapa')} title="Colunas por etapa">Etapas</button>
-          <button className={group === 'raias' ? 'on' : ''} onClick={() => setGroup('raias')} title="Uma linha por pessoa, separada por etapa">Raias</button>
-          <button className={group === 'pessoa' ? 'on' : ''} onClick={() => setGroup('pessoa')} title="Uma coluna por pessoa">Pessoas</button>
+        <div className="qviews" role="tablist" aria-label="Visão">
+          <button className={group === 'etapa' ? 'on' : ''} onClick={() => setGroup('etapa')} title="Colunas por etapa"><Icon n="cols" />Etapas</button>
+          <button className={group === 'raias' ? 'on' : ''} onClick={() => setGroup('raias')} title="Uma linha por pessoa, separada por etapa"><Icon n="rows" />Raias</button>
+          <button className={group === 'pessoa' ? 'on' : ''} onClick={() => setGroup('pessoa')} title="Uma coluna por pessoa"><Icon n="users" />Pessoas</button>
         </div>
-        <select
-          className={'qchip qproj-sel' + (project ? ' on' : '')} value={project} aria-label="Projeto"
-          onChange={e => e.target.value === '+' ? setUi({ projectEdit: 'new' }) : setUi({ project: e.target.value })}
-        >
-          <option value="">🗂 Todos os projetos</option>
-          {projList.map(p => <option key={p.id} value={p.id}>● {p.name}{p.archived ? ' (arquivado)' : ''}</option>)}
-          <option value={NONE}>Sem projeto</option>
-          {canCreateProject() && <option value="+">＋ Novo projeto…</option>}
-        </select>
-        <input
-          ref={search} className="qsearch" type="search" placeholder="Buscar cartões   /" value={q}
-          onChange={e => setQ(e.target.value)} onKeyDown={e => { if (e.key === 'Escape') { setQ(''); e.currentTarget.blur() } }}
-        />
+        <span className="grow" />
+        <label className="qsearch">
+          <Icon n="search" size={15} />
+          <input
+            ref={search} type="search" placeholder="Buscar" value={q} aria-label="Buscar cartões (atalho /)"
+            onChange={e => setQ(e.target.value)} onKeyDown={e => { if (e.key === 'Escape') { setQ(''); e.currentTarget.blur() } }}
+          />
+        </label>
+        {canUseAI() && <button className="btn ghost sm" onClick={() => setUi({ aiOpen: true })} title="O Claude propõe quem faz o quê"><Icon n="sparkles" />Distribuir com IA</button>}
+        <button className="btn primary sm" onClick={() => setAdding(defAdd)} title="Nova tarefa (atalho N)"><Icon n="plus" />Nova tarefa</button>
+      </div>
+      <div className="qfilters">
+        <label className={'qchip' + (project ? ' on' : '')}>
+          <Icon n="folder" size={14} />
+          <select
+            value={project} aria-label="Projeto"
+            onChange={e => e.target.value === '+' ? setUi({ projectEdit: 'new' }) : setUi({ project: e.target.value })}
+          >
+            <option value="">Todos os projetos</option>
+            {projList.map(p => <option key={p.id} value={p.id}>{p.name}{p.archived ? ' (arquivado)' : ''}</option>)}
+            <option value={NONE}>Sem projeto</option>
+            {canCreateProject() && <option value="+">＋ Novo projeto…</option>}
+          </select>
+        </label>
+        <button className={'qchip' + (mine ? ' on' : '')} onClick={() => setMine(v => !v)} title="Só as que tenho ou participo (atalho Q)"><Icon n="user" size={14} />Minhas</button>
+        <label className={'qchip' + (due ? ' on' : '')}>
+          <Icon n="calendar" size={14} />
+          <select value={due} onChange={e => setDue(e.target.value as Due)} aria-label="Prazo">
+            <option value="">Qualquer prazo</option>
+            <option value="late">Atrasadas</option>
+            <option value="today">Vencem hoje</option>
+            <option value="week">Até 7 dias</option>
+            <option value="none">Sem prazo</option>
+          </select>
+        </label>
+        {(apprN > 0 || qApprove) && (
+          <button className={'qchip appr' + (qApprove ? ' on' : '')} onClick={() => setUi({ qApprove: !qApprove })} title="Tarefas esperando a sua aprovação">
+            <Icon n="check" size={14} />Para eu aprovar<i>{apprN}</i>
+          </button>
+        )}
         <div className="qwho" aria-label="Filtrar por pessoa">
           {people.map(p => (
             <button key={p.id} className={who.includes(p.id) ? 'on' : ''} onClick={() => toggleWho(p.id)} title={`Só de ${p.name}`}>
-              <MiniAvatar avatar={p.avatar} photo={p.photo} size={26} />
+              <MiniAvatar avatar={p.avatar} photo={p.photo} size={22} />
             </button>
           ))}
         </div>
-        <button className={'qchip' + (mine ? ' on' : '')} onClick={() => setMine(v => !v)} title="Só as que tenho ou participo (atalho Q)">Só minhas</button>
-        <select className={'qchip' + (due ? ' on' : '')} value={due} onChange={e => setDue(e.target.value as Due)} aria-label="Prazo">
-          <option value="">Prazo: todos</option>
-          <option value="late">Atrasadas</option>
-          <option value="today">Vencem hoje</option>
-          <option value="week">Até 7 dias</option>
-          <option value="none">Sem prazo</option>
-        </select>
-        {filtered && <button className="qclear" onClick={clear}>Limpar filtros</button>}
-        <span className="grow" />
-        {canUseAI() && <button className="btn ghost sm" onClick={() => setUi({ aiOpen: true })} title="O Claude propõe quem faz o quê">✨ Distribuir com IA</button>}
-        <button className="btn primary sm" onClick={() => setAdding(defAdd)} title="Atalho N">+ Nova tarefa</button>
+        {filtered && <button className="qclear" onClick={clear}><Icon n="x" size={14} />Limpar</button>}
       </div>
 
       {proj && <ProjectBar p={proj} profiles={profiles} tasks={Object.values(tasksMap).filter(t => t.project_id === proj.id)} />}
@@ -432,25 +452,32 @@ function Composer({ list, meId, profiles, people, project, onClose }: {
   }
 
   return (
-    <form className="composer" onSubmit={e => { e.preventDefault(); submit() }} onKeyDown={e => e.key === 'Escape' && onClose()}>
+    <form className="composer tcard" onSubmit={e => { e.preventDefault(); submit() }} onKeyDown={e => e.key === 'Escape' && onClose()}>
       <textarea
-        ref={ref} rows={2} maxLength={200} placeholder="O que precisa ser feito?" value={title}
+        ref={ref} rows={2} maxLength={200} placeholder="Digite um título…" value={title}
         onChange={e => setTitle(e.target.value)}
         onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit() } }}
       />
       <div className="composer-opts">
         {!list.owner && (
-          <select value={owner} onChange={e => setOwner(e.target.value)} aria-label="Responsável" required>
-            {ask && <option value="">Pedir para…</option>}
-            {people.filter(p => !ask || p.id !== meId).map(p => <option key={p.id} value={p.id}>{p.id === meId ? 'Eu' : p.name}</option>)}
-          </select>
+          <label className="pill" title="Quem faz">
+            <Icon n="user" size={14} />
+            <select value={owner} onChange={e => setOwner(e.target.value)} aria-label="Responsável" required>
+              {ask && <option value="">Pedir para…</option>}
+              {people.filter(p => !ask || p.id !== meId).map(p => <option key={p.id} value={p.id}>{p.id === meId ? 'Eu' : p.name}</option>)}
+            </select>
+          </label>
         )}
-        <input type="date" value={due} min={dayKey(new Date())} onChange={e => setDue(e.target.value)} aria-label="Prazo" title="Prazo" />
+        <label className="pill" title="Prazo">
+          <Icon n="calendar" size={14} />
+          <input type="date" value={due} min={dayKey(new Date())} onChange={e => setDue(e.target.value)} aria-label="Prazo" />
+        </label>
       </div>
       {asRequest && <small className="muted">Vai como pedido: {first(profiles[owner])} precisa aceitar.</small>}
+      {!asRequest && !!owner && owner !== meId && <small className="muted">Vai direto para {first(profiles[owner])}.</small>}
       <div className="row gap">
         <button className="btn primary sm" disabled={!title.trim() || !owner}>Adicionar</button>
-        <button type="button" className="btn ghost sm" onClick={onClose} aria-label="Fechar">✕</button>
+        <button type="button" className="icon-btn" onClick={onClose} aria-label="Fechar"><Icon n="x" /></button>
         <small className="muted grow right">Enter adiciona · Esc fecha</small>
       </div>
     </form>

@@ -47,3 +47,10 @@
 - Mascote (Vila) fora: `Mascot.tsx` mantido, sem uso. Avisos viraram toast no canto + página Avisos.
 - Etapa 2 pendente: escritório reage sozinho (tarefa nova → vai ao quadro e escreve; arquivo → estante; muita demanda → mesa com pilha de folhas), e cada um ainda anda com o próprio boneco.
 - Migrações (3596e08) também só local; aguardando "sobe".
+
+## 07/10 (13) — etapa 2 + varredura UI (local, aguardando "sobe")
+- Etapa 2 (eeaae5c): `office/errands.ts` observa o quadro → boneco vai ao quadro e escreve (tarefa nova), pega na estante (anexo), guarda na estante (concluída); mesa enche de folhas conforme demanda aberta. Andar com o próprio boneco cancela o trabalho. Testado no ?demo.
+- Varredura UI: menu = Quadro · Escritório · Equipe (+ Visão geral p/ chefe). Saíram Minha mesa, Aprovação, Avisos, Chat e o logo V.
+- Avisos = sino no topo (popover, contador de não vistos `ev:seen`). Chat = botão flutuante embaixo à direita (dock).
+- Aprovação = coluna "Em revisão" + filtro "Para eu aprovar" no quadro (`qApprove`); `setUi({tab:'aprovar'|'chat'|'avisos'})` antigo é convertido.
+- Adicionar estilo Trello/Notion: "+ Nova tarefa" só em A fazer/Fazendo; cartão inline com pílulas Quem faz / Prazo. Ícones Lucide em `components/Icon.tsx`.

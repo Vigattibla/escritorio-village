@@ -47,13 +47,19 @@ export interface State {
   projectEdit: string | null
   /** caixa da IA do Gerente aberta */
   aiOpen: boolean
+  /** chat flutuante (botão no canto) aberto */
+  chatOpen: boolean
+  /** sino de avisos aberto */
+  bellOpen: boolean
+  /** quadro filtrado só no que espera minha aprovação */
+  qApprove: boolean
 }
 
 
 const initial: State = {
   phase: 'loading', meId: null, accountName: '', error: '', profiles: {}, tasks: {}, messages: [], notes: [], projects: {}, online: new Set(),
   tab: 'mesa', viewing: null, channel: 'geral', reads: {}, requestTo: null, desk: null, deskView: 'pasta', task: null, editing: false, notices: [], pipOpen: false, view: 'quadro' as View, drawer: false,
-  project: '', projectEdit: null, aiOpen: false,
+  project: '', projectEdit: null, aiOpen: false, chatOpen: false, bellOpen: false, qApprove: false,
 }
 
 let state = initial
@@ -131,7 +137,7 @@ export function teamOf(pid: string) {
 /** Tarefas esperando a minha aprovação. */
 export const toApprove = (s: State) => Object.values(s.tasks).filter(t => t.status === 'review' && canApprove(t, s.meId))
 /** O chat está na tela? */
-const chatShown = () => state.tab === 'chat' && (state.view === 'escritorio' || state.drawer)
+const chatShown = () => state.chatOpen
 
 export function unread(s: State, ch: string) {
   const since = s.reads[ch] ?? ''
@@ -290,8 +296,11 @@ export async function signOut() {
   set({ ...initial, phase: 'auth' })
 }
 
-export function setUi(p: Partial<Pick<State, 'tab' | 'viewing' | 'channel' | 'requestTo' | 'editing' | 'pipOpen' | 'error' | 'desk' | 'deskView' | 'task' | 'view' | 'drawer' | 'project' | 'projectEdit' | 'aiOpen'>>) {
-  // no quadro, ir para uma aba abre o painel lateral
+export function setUi(p: Partial<Pick<State, 'tab' | 'viewing' | 'channel' | 'requestTo' | 'editing' | 'pipOpen' | 'error' | 'desk' | 'deskView' | 'task' | 'view' | 'drawer' | 'project' | 'projectEdit' | 'aiOpen' | 'chatOpen' | 'bellOpen' | 'qApprove'>>) {
+  // chat, avisos e aprovação não são mais páginas: viram painel flutuante, sino e filtro do quadro
+  if (p.tab === 'chat') { const { tab: _, ...rest } = p; p = { ...rest, chatOpen: true } }
+  else if (p.tab === 'avisos') { const { tab: _, ...rest } = p; p = { ...rest, bellOpen: true } }
+  else if (p.tab === 'aprovar') { const { tab: _, ...rest } = p; p = { ...rest, view: 'quadro', drawer: false, qApprove: true } }
   set(p.tab && p.drawer === undefined && (p.view ?? state.view) === 'quadro' ? { ...p, drawer: true } : p)
   if (chatShown()) markRead(state.channel)
 }

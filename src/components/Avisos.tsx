@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { setUi, useStore, type Notice } from '../store'
+import Icon from './Icon'
 import MiniAvatar from './MiniAvatar'
 
 const SHOW_MS = 6000
@@ -7,7 +8,9 @@ const ago = (t: number) => {
   const m = Math.round((Date.now() - t) / 60000)
   return m < 1 ? 'agora' : m < 60 ? `há ${m} min` : `há ${Math.round(m / 60)} h`
 }
-const go = (n: Notice) => { window.focus(); if (n.go) setUi(n.go) }
+const go = (n: Notice) => { window.focus(); setUi({ ...n.go, bellOpen: false }) }
+const SEEN = 'ev:seen'
+const readSeen = () => { try { return Number(localStorage.getItem(SEEN)) || 0 } catch { return 0 } }
 
 /** Último aviso no canto, some sozinho. */
 export function Toast() {
@@ -29,15 +32,38 @@ export function Toast() {
   )
 }
 
+/** Sino com contador; abre a lista de avisos num balão. */
+export function Bell() {
+  const open = useStore(s => s.bellOpen)
+  const notices = useStore(s => s.notices)
+  const [seen, setSeen] = useState(readSeen)
+  const n = notices.filter(x => x.at > seen).length
+  useEffect(() => {
+    if (!open) return
+    const t = Date.now()
+    setSeen(t)
+    try { localStorage.setItem(SEEN, String(t)) } catch { /* sem storage */ }
+  }, [open, notices.length])
+  return (
+    <div className="bell">
+      <button className={'icon-btn' + (open ? ' on' : '')} onClick={() => setUi({ bellOpen: !open })} title="Avisos" aria-label={`Avisos${n ? ` (${n} novos)` : ''}`}>
+        <Icon n="bell" size={18} />{n > 0 && <i className="dot-n">{n > 9 ? '9+' : n}</i>}
+      </button>
+      {open && <><div className="pop-bg" onClick={() => setUi({ bellOpen: false })} /><div className="pop"><Avisos /></div></>}
+    </div>
+  )
+}
+
 export default function Avisos() {
   const notices = useStore(s => s.notices)
   const profiles = useStore(s => s.profiles)
   const [perm, setPerm] = useState(() => ('Notification' in window ? Notification.permission : 'denied'))
   return (
-    <div className="page-pad">
-      <header className="page-head">
-        <h1>Avisos</h1>
+    <div className="avisos">
+      <header className="pop-head">
+        <b className="grow">Avisos</b>
         {perm === 'default' && <button className="btn ghost sm" onClick={() => Notification.requestPermission().then(setPerm)}>Ativar notificações</button>}
+        <button className="icon-btn" onClick={() => setUi({ bellOpen: false })} aria-label="Fechar"><Icon n="x" /></button>
       </header>
       <ul className="inbox">
         {notices.map(n => {
