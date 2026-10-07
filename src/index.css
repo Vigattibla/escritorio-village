@@ -578,7 +578,7 @@ legend { font-size: 12px; font-weight: 700; color: var(--navy); padding: 0 4px; 
 .critlist li.fixed { background: #eef4fe; }
 .critlist .icon { margin-left: auto; }
 h3.mt { margin-top: 14px; }
-.aprov { display: grid; gap: 18px; padding: 4px 2px; }
+.aprov { display: grid; gap: 18px; padding: 16px; }
 .aprov h3 { margin: 0 0 8px; }
 .apcard { border: 1px solid #efc6df; border-left: 4px solid #c2559b; border-radius: 10px; padding: 10px; display: grid; gap: 8px; margin-bottom: 10px; background: #fff; }
 .apcard header { display: flex; align-items: center; gap: 8px; cursor: pointer; }
