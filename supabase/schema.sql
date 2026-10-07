@@ -327,3 +327,55 @@ begin
   update auth.users set encrypted_password = crypt(p_pass, gen_salt('bf')), updated_at = now() where id = target;
   if not found then raise exception 'Conta não encontrada.'; end if;
 end $$;
+
+-- ===== v6: primeiro acesso cria o adm (pode rodar de novo sem problema) =====
+-- Sistema vazio (nenhum perfil): a tela de login vira "crie a conta do adm". Depois disso, só o adm cria contas.
+create or replace function public.create_login(p_user text, p_pass text, p_name text, p_rank smallint)
+returns uuid language plpgsql security definer set search_path = public, extensions, auth as $$
+declare uid uuid := gen_random_uuid(); mail text;
+begin
+  p_user := lower(trim(p_user));
+  if p_user !~ '^[a-z0-9._-]{2,30}$' then raise exception 'Usuário inválido: use letras, números, ponto ou traço.'; end if;
+  if length(coalesce(p_pass, '')) < 6 then raise exception 'A senha precisa de pelo menos 6 caracteres.'; end if;
+  if p_rank is null or p_rank < 1 or p_rank > 4 then raise exception 'Cargo inválido.'; end if;
+  mail := p_user || '@escritorio.village';
+  if exists (select 1 from auth.users where email = mail) then raise exception 'Esse usuário já existe.'; end if;
+  insert into auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
+    raw_app_meta_data, raw_user_meta_data, created_at, updated_at,
+    confirmation_token, recovery_token, email_change, email_change_token_new, email_change_token_current,
+    phone_change, phone_change_token, reauthentication_token)
+  values ('00000000-0000-0000-0000-000000000000', uid, 'authenticated', 'authenticated', mail,
+    crypt(p_pass, gen_salt('bf')), now(),
+    '{"provider":"email","providers":["email"]}', jsonb_build_object('name', left(trim(p_name), 40), 'user', p_user),
+    now(), now(), '', '', '', '', '', '', '', '');
+  insert into auth.identities (id, user_id, provider_id, identity_data, provider, last_sign_in_at, created_at, updated_at)
+  values (gen_random_uuid(), uid, uid::text, jsonb_build_object('sub', uid::text, 'email', mail, 'email_verified', true),
+    'email', now(), now(), now());
+  insert into public.profiles (id, name, rank, desk) values (uid, coalesce(nullif(left(trim(p_name), 40), ''), p_user), p_rank, -1);
+  return uid;
+end $$;
+revoke execute on function public.create_login(text, text, text, smallint) from public, anon, authenticated;
+
+create or replace function public.admin_create_user(p_user text, p_pass text, p_name text, p_rank smallint)
+returns uuid language plpgsql security definer set search_path = public as $$
+begin
+  if not public.is_admin(auth.uid()) then raise exception 'Só o adm cria contas.'; end if;
+  return public.create_login(p_user, p_pass, p_name, p_rank);
+end $$;
+
+create or replace function public.needs_setup() returns boolean
+language sql stable security definer set search_path = public as $$
+  select not exists (select 1 from public.profiles)
+$$;
+grant execute on function public.needs_setup() to anon, authenticated;
+
+create or replace function public.setup_admin(p_user text, p_pass text, p_name text) returns void
+language plpgsql security definer set search_path = public as $$
+declare uid uuid;
+begin
+  perform pg_advisory_xact_lock(424242);
+  if exists (select 1 from public.profiles) then raise exception 'O escritório já tem adm. Peça sua conta a ele.'; end if;
+  uid := public.create_login(p_user, p_pass, p_name, 1::smallint);
+  update public.profiles set is_admin = true where id = uid;
+end $$;
+grant execute on function public.setup_admin(text, text, text) to anon, authenticated;

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { mascotSprite } from '../chibi/mascot'
 import { backend } from '../data'
 import { enter, useStore } from '../store'
@@ -12,6 +12,8 @@ export default function Auth() {
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState(startErr)
   const [info, setInfo] = useState('')
+  const [setup, setSetup] = useState(false)
+  useEffect(() => { backend.needsSetup().then(v => { setSetup(v); if (v) setMode('up') }) }, [])
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -37,7 +39,8 @@ export default function Auth() {
             <p className="muted">O escritório virtual da equipe: tarefas, pedidos e conversa num lugar só.</p>
           </div>
         </div>
-        {backend.mode === 'demo' && (
+        {setup && <p className="ok"><b>Primeiro acesso.</b> Crie a conta do adm: escolha seu usuário e senha. Depois você cria as contas da equipe.</p>}
+        {backend.mode === 'demo' && !setup && (
           <div className="seg">
             <button className={mode === 'up' ? 'on' : ''} onClick={() => setMode('up')}>Criar conta</button>
             <button className={mode === 'in' ? 'on' : ''} onClick={() => setMode('in')}>Entrar</button>
@@ -51,7 +54,7 @@ export default function Auth() {
           {info && <p className="ok">{info}</p>}
           <button className="btn primary big" disabled={busy}>{busy ? (mode === 'up' ? 'Criando sua conta…' : 'Entrando…') : mode === 'up' ? 'Criar conta e montar meu personagem' : 'Entrar no escritório'}</button>
         </form>
-        {backend.mode === 'supabase' && <p className="muted small center">Ainda não tem acesso? Peça ao adm para criar sua conta.</p>}
+        {backend.mode === 'supabase' && !setup && <p className="muted small center">Ainda não tem acesso? Peça ao adm para criar sua conta.</p>}
         {backend.mode === 'demo' && (
           <p className="demo-note">
             <b>Modo demonstração.</b> Os dados ficam só neste navegador. Abra outra aba para entrar como outra pessoa e ver tudo em tempo real.

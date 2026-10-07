@@ -1,5 +1,5 @@
 import { createClient, type RealtimeChannel, type SupabaseClient } from '@supabase/supabase-js'
-import { toEmail } from './login'
+import { slugUser, toEmail } from './login'
 import type { Backend, Handlers, Message, Pos, Profile, Snapshot, Task, TaskNote } from '../types'
 
 function pt(e: { message: string }): Error {
@@ -27,10 +27,16 @@ export class SupabaseBackend implements Backend {
     return data.session?.user.id ?? null
   }
 
+  async needsSetup() {
+    const { data, error } = await this.sb.rpc('needs_setup')
+    return !error && data === true
+  }
+
   async signUp(login: string, password: string, name: string) {
-    const { data, error } = await this.sb.auth.signUp({ email: toEmail(login), password, options: { data: { name }, emailRedirectTo: location.origin + location.pathname } })
+    const user = slugUser(login)
+    const { error } = await this.sb.rpc('setup_admin', { p_user: user, p_pass: password, p_name: name })
     if (error) throw pt(error)
-    return data.session ? data.user!.id : null
+    return this.signIn(user, password)
   }
 
   async signIn(login: string, password: string) {

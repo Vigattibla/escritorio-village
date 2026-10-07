@@ -37,6 +37,8 @@ export class DemoBackend implements Backend {
 
   async currentUserId() { return sessionStorage.getItem(K.session) }
 
+  async needsSetup() { return read<Account[]>(K.acc, []).length === 0 }
+
   async signUp(login: string, password: string, name: string) {
     const accs = read<Account[]>(K.acc, [])
     const email = toEmail(login)

@@ -106,7 +106,9 @@ export interface Handlers {
 export interface Backend {
   readonly mode: 'demo' | 'supabase'
   currentUserId(): Promise<string | null>
-  /** só no demo (no servidor quem cria conta é o Chefe). null = precisa confirmar o e-mail */
+  /** sistema vazio: ninguém tem conta ainda, a primeira vira adm */
+  needsSetup(): Promise<boolean>
+  /** demo: cadastro livre. Servidor: só no primeiro acesso (cria o adm). null = precisa confirmar o e-mail */
   signUp(login: string, password: string, name: string): Promise<string | null>
   /** login = usuário ou e-mail */
   signIn(login: string, password: string): Promise<string>
