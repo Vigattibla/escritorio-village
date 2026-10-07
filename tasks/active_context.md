@@ -17,3 +17,5 @@
 ## Conhecido
 - Atribuição de mesa pode colidir se duas pessoas entrarem no mesmo instante.
 - Notificações do sistema dependem de permissão do navegador; PiP só em Chrome/Edge.
+- 07/10 (3): sem cadastro por e-mail. Login = usuário (vira usuario@escritorio.village) ou e-mail antigo. Chefe cria contas/troca senhas na aba Equipe (Accounts.tsx, RPC admin_create_user/admin_set_password, SQL v4 no fim do schema.sql). Testado no demo. Commit a54d2b3 local.
+- PENDENTE: rodar SQL v4 (carregado no SQL Editor, Humano clica Run); push; desligar 'Allow new users to sign up' no Supabase.
