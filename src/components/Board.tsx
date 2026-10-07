@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { canAssign, rankName } from '../game/ranks'
-import { dayKey, DAILY_GOAL, doneToday, level, levelTitle, taskXp } from '../game/xp'
+import { dayKey } from '../game/xp'
 import { addTask, approverOf, removeTask, run, setStatus, setUi, useStore } from '../store'
 import type { Task, TaskStatus } from '../types'
 import MiniAvatar from './MiniAvatar'
@@ -44,7 +44,6 @@ export default function Board({ ownerId, bare = false }: { ownerId?: string; bar
     tasks
       .filter(t => t.status === st && (st !== 'done' || (t.done_at && dayKey(t.done_at) === today)))
       .sort((a, b) => (st === 'todo' ? a.position - b.position : b.position - a.position))
-  const doneCount = doneToday(all, owner.id)
   const totalDone = tasks.filter(t => t.status === 'done' && t.owner_id === owner.id).length
 
   const submit = (e: React.FormEvent) => {
@@ -62,12 +61,8 @@ export default function Board({ ownerId, bare = false }: { ownerId?: string; bar
         <div className="grow">
           <h2>{mine ? 'Minha mesa' : `Mesa de ${owner.name}`}</h2>
           <div className="muted">
-            {owner.role || rankName(owner)} · Nv {level(owner.xp)} {levelTitle(owner.xp)}
+            {owner.role || rankName(owner)}
             {!mine && <> · <span className={online.has(owner.id) ? 'on' : 'off'}>{online.has(owner.id) ? 'no escritório' : 'fora'}</span></>}
-          </div>
-          <div className="goal" title="Meta do dia">
-            <div className="goal-bar"><i style={{ width: `${Math.min(100, (doneCount / DAILY_GOAL) * 100)}%` }} /></div>
-            <span>{doneCount}/{DAILY_GOAL} hoje</span>
           </div>
         </div>
         <div className="col">
@@ -129,7 +124,7 @@ function Card({ t, meId, boardOwner, onDrag }: { t: Task; meId: string; boardOwn
         className={'check' + (done ? ' on' : '')}
         disabled={!mine || t.status === 'review'}
         onClick={() => run(setStatus(t.id, done ? 'todo' : 'done'))}
-        title={t.status === 'review' ? 'Esperando aprovação' : done ? 'Desfazer' : approverOf(t) ? 'Enviar para aprovação' : `Concluir (+${taskXp(t)} XP)`}
+        title={t.status === 'review' ? 'Esperando aprovação' : done ? 'Desfazer' : approverOf(t) ? 'Enviar para aprovação' : 'Concluir'}
       >{done ? '✓' : t.status === 'review' ? '⏳' : ''}</button>
       <div className="grow open" onClick={open} title="Abrir detalhes">
         <div className="title">{t.title}</div>

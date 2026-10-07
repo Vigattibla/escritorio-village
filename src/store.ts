@@ -1,12 +1,12 @@
 import { useSyncExternalStore } from 'react'
 import { backend } from './data'
 import { canAssign, isChief, rankName, rankOf } from './game/ranks'
-import { dayKey, level, levelTitle, taskXp } from './game/xp'
+import { dayKey, taskXp } from './game/xp'
 import { MAX_DESKS } from './office/world'
 import type { AccountEdit, AiContext, AiItem, AiProposal, AiStage, Attachment, Avatar, Message, Pos, Profile, Project, Review, Task, TaskNote, TaskStatus } from './types'
 
 export type Phase = 'loading' | 'auth' | 'creator' | 'office'
-export type Tab = 'mesa' | 'aprovar' | 'equipe' | 'chat' | 'geral'
+export type Tab = 'mesa' | 'aprovar' | 'avisos' | 'equipe' | 'chat' | 'geral'
 export type DeskView = 'pasta' | 'pc'
 /** quadro = trabalho do dia a dia (estilo Trello); escritório = visualização em pixel */
 export type View = 'quadro' | 'escritorio'
@@ -49,13 +49,10 @@ export interface State {
   aiOpen: boolean
 }
 
-function savedView(): View {
-  try { return localStorage.getItem('ev:view') === 'escritorio' ? 'escritorio' : 'quadro' } catch { return 'quadro' }
-}
 
 const initial: State = {
   phase: 'loading', meId: null, accountName: '', error: '', profiles: {}, tasks: {}, messages: [], notes: [], projects: {}, online: new Set(),
-  tab: 'mesa', viewing: null, channel: 'geral', reads: {}, requestTo: null, desk: null, deskView: 'pasta', task: null, editing: false, notices: [], pipOpen: false, view: savedView(), drawer: false,
+  tab: 'mesa', viewing: null, channel: 'geral', reads: {}, requestTo: null, desk: null, deskView: 'pasta', task: null, editing: false, notices: [], pipOpen: false, view: 'quadro' as View, drawer: false,
   project: '', projectEdit: null, aiOpen: false,
 }
 
@@ -295,7 +292,6 @@ export async function signOut() {
 export function setUi(p: Partial<Pick<State, 'tab' | 'viewing' | 'channel' | 'requestTo' | 'editing' | 'pipOpen' | 'error' | 'desk' | 'deskView' | 'task' | 'view' | 'drawer' | 'project' | 'projectEdit' | 'aiOpen'>>) {
   // no quadro, ir para uma aba abre o painel lateral
   set(p.tab && p.drawer === undefined && (p.view ?? state.view) === 'quadro' ? { ...p, drawer: true } : p)
-  if (p.view) try { localStorage.setItem('ev:view', p.view) } catch { /* sem armazenamento */ }
   if (chatShown()) markRead(state.channel)
 }
 
@@ -384,7 +380,6 @@ export async function setStatus(id: string, status: TaskStatus, position = Date.
   const p = { ...my, xp }
   set({ profiles: { ...state.profiles, [my.id]: p } })
   set({ profiles: { ...state.profiles, [my.id]: await backend.upsertProfile(p) } })
-  if (level(xp) > level(my.xp)) notify(`Subiu para o nível ${level(xp)} — ${levelTitle(xp)}! 🎉`, { go: { tab: 'mesa' } })
 }
 
 /** Passa a tarefa para outra pessoa (mantém a etapa). */

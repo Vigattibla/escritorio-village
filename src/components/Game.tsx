@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react'
 import { drawAvatar, onPhotoLoad, SPRITE_H } from '../chibi/sprite'
 import { backend } from '../data'
 import { managerOf } from '../game/ranks'
-import { level } from '../game/xp'
 import { blocked, BOSS_DESK, deskAtTile, deskOf, drawDesk, DESKS, findPath, MAX_DESKS, MH, MW, pathToSeat, renderBackground, T } from '../office/world'
 import { bubbles, getState, positions, setUi } from '../store'
 import type { Dir, Pos, Profile, Task } from '../types'
@@ -243,8 +242,7 @@ export default function Game() {
         const label = `${p.name}`
         ctx.font = '600 12px "Pixelify Sans", Inter, sans-serif'
         const lw = ctx.measureText(label).width
-        const badge = `${level(p.xp)}`
-        const bw = 16, pad = 6, total = lw + bw + pad * 2 + 10
+        const pad = 6, total = lw + pad * 2 + 10
         const lx = Math.round(sx - total / 2), ly = Math.round(sy - 18)
         ctx.fillStyle = id === meId ? 'rgba(11,35,93,.92)' : 'rgba(20,24,40,.78)'
         roundRect(ctx, lx, ly, total, 17, 8.5); ctx.fill()
@@ -253,13 +251,6 @@ export default function Game() {
         ctx.fillStyle = '#fff'
         ctx.textBaseline = 'middle'
         ctx.fillText(label, lx + pad + 10, ly + 9)
-        ctx.fillStyle = '#FBC222'
-        roundRect(ctx, lx + pad + 10 + lw + 4, ly + 3, bw - 2, 11, 3); ctx.fill()
-        ctx.fillStyle = '#0B235D'
-        ctx.font = '700 9px "Pixelify Sans", Inter, sans-serif'
-        ctx.textAlign = 'center'
-        ctx.fillText(badge, lx + pad + 10 + lw + 4 + (bw - 2) / 2, ly + 9)
-        ctx.textAlign = 'left'
         if (away) {
           ctx.font = '700 11px "Pixelify Sans", sans-serif'
           ctx.fillStyle = '#c8cde0'

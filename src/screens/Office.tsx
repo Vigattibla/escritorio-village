@@ -1,10 +1,11 @@
+import { useEffect, useState } from 'react'
 import Board from '../components/Board'
 import Chat from '../components/Chat'
 import Game from '../components/Game'
-import Mascot from '../components/Mascot'
 import MiniAvatar from '../components/MiniAvatar'
 import DeskView from '../components/DeskView'
 import Aprovacoes from '../components/Aprovacoes'
+import Avisos, { Toast } from '../components/Avisos'
 import Overview from '../components/Overview'
 import ProjectModal from '../components/ProjectModal'
 import Distribuir from '../components/Distribuir'
@@ -14,89 +15,110 @@ import RequestModal from '../components/RequestModal'
 import Team from '../components/Team'
 import Creator from './Creator'
 import { backend } from '../data'
-import { isChief } from '../game/ranks'
-import { DAILY_GOAL, doneToday, level, levelProgress, levelTitle, streak } from '../game/xp'
+import { isChief, rankName } from '../game/ranks'
 import { setUi, signOut, toApprove, unread, useStore, type Tab } from '../store'
+
+type Page = 'quadro' | 'escritorio' | Tab
 
 export default function Office() {
   const s = useStore(x => x)
   const me = s.profiles[s.meId!]
-  if (!me) return null
+  const [navOpen, setNavOpen] = useState(false)
   const tasks = Object.values(s.tasks)
-  const st = streak(tasks, me.id)
-  const today = doneToday(tasks, me.id)
-  const pend = tasks.filter(t => t.owner_id === me.id && t.status === 'inbox').length
+  const pend = tasks.filter(t => t.owner_id === me?.id && t.status === 'inbox').length
   const chans = new Set(s.messages.map(m => m.channel))
   const msgs = [...chans].reduce((n, ch) => n + unread(s, ch), 0)
-  const tabs: { id: Tab; label: string; n: number }[] = [
-    { id: 'mesa', label: 'Mesa', n: pend },
-    { id: 'aprovar', label: 'Aprovação', n: toApprove(s).length },
-    { id: 'equipe', label: 'Equipe', n: 0 },
-    { id: 'chat', label: 'Chat', n: msgs },
-  ]
+  useEffect(() => {
+    const n = pend + msgs
+    document.title = n ? `(${n}) Escritório Village` : 'Escritório Village'
+  }, [pend, msgs])
+  if (!me) return null
+
   const chief = isChief(me)
-  if (chief) tabs.push({ id: 'geral', label: '👑 Geral', n: tasks.filter(t => t.status === 'inbox').length })
-  const quadro = s.view === 'quadro'
-  const panel = !quadro || s.drawer
-  const open = (tab: Tab) => setUi(quadro && s.drawer && s.tab === tab ? { drawer: false } : { tab, drawer: true })
+  const office = s.view === 'escritorio'
+  const page: Page = office ? 'escritorio' : s.drawer ? s.tab : 'quadro'
+  const items: { id: Page; label: string; ic: string; n?: number }[] = [
+    { id: 'quadro', label: 'Quadro', ic: '▦' },
+    { id: 'mesa', label: 'Minha mesa', ic: '▤', n: pend },
+    { id: 'aprovar', label: 'Aprovação', ic: '✓', n: toApprove(s).length },
+    { id: 'avisos', label: 'Avisos', ic: '◔' },
+    { id: 'chat', label: 'Chat', ic: '◫', n: msgs },
+    { id: 'equipe', label: 'Equipe', ic: '◍' },
+  ]
+  if (chief) items.push({ id: 'geral', label: 'Visão geral', ic: '◈', n: tasks.filter(t => t.status === 'inbox').length })
+  const goTo = (id: Page) => {
+    setNavOpen(false)
+    if (id === 'quadro') setUi({ view: 'quadro', drawer: false })
+    else if (id === 'escritorio') setUi({ view: 'escritorio', drawer: false })
+    else setUi({ view: 'quadro', tab: id, drawer: true, ...(id === 'mesa' ? { viewing: me.id } : {}) })
+  }
+  const pane = (tab: Tab) => <>
+    {tab === 'mesa' && <Board />}
+    {tab === 'aprovar' && <Aprovacoes />}
+    {tab === 'avisos' && <Avisos />}
+    {tab === 'equipe' && <Team />}
+    {tab === 'chat' && <Chat />}
+    {tab === 'geral' && chief && <Overview />}
+  </>
+  const NavItem = ({ it }: { it: (typeof items)[number] }) => (
+    <button className={'nav-item' + (page === it.id ? ' on' : '')} onClick={() => goTo(it.id)}>
+      <span className="nav-ic">{it.ic}</span><span className="grow">{it.label}</span>
+      {!!it.n && <i className="nav-n">{it.n}</i>}
+    </button>
+  )
 
   return (
-    <div className="office">
-      <header className="top">
-        <div className="logo">Escritório <b>Village</b>{backend.mode === 'demo' && <span className="tag">demo</span>}</div>
-        <div className="viewsw" role="tablist" aria-label="Visualização">
-          <button className={quadro ? 'on' : ''} onClick={() => setUi({ view: 'quadro' })} title="Quadro de tarefas">📋 <span>Quadro</span></button>
-          <button className={quadro ? '' : 'on'} onClick={() => setUi({ view: 'escritorio', drawer: false })} title="Ver o escritório">🏢 <span>Escritório</span></button>
+    <div className={'office' + (navOpen ? ' nav-open' : '')}>
+      <aside className="nav">
+        <div className="nav-ws">
+          <span className="nav-logo">V</span>
+          <span className="grow">Escritório Village</span>
+          {backend.mode === 'demo' && <span className="tag">demo</span>}
         </div>
-        <div className="stats">
-          <div className="stat xp" title={`${me.xp} XP no total`}>
-            <span className="lv">Nv {level(me.xp)}</span>
-            <div><small>{levelTitle(me.xp)}</small><div className="bar"><i style={{ width: `${levelProgress(me.xp)}%` }} /></div></div>
-          </div>
-          <div className="stat" title="Dias seguidos concluindo tarefas">🔥 {st} {st === 1 ? 'dia' : 'dias'}</div>
-          <div className={'stat' + (today >= DAILY_GOAL ? ' win' : '')} title="Meta do dia">🎯 {today}/{DAILY_GOAL}</div>
-        </div>
-        <div className="me">
-          {quadro && tabs.filter(t => t.id !== 'mesa').map(t => (
-            <button key={t.id} className={'hbtn' + (s.drawer && s.tab === t.id ? ' on' : '')} onClick={() => open(t.id)} title={t.label}>
-              {t.id === 'equipe' ? '👥' : t.id === 'chat' ? '💬' : t.id === 'aprovar' ? '✅' : '👑'}<span>{t.id === 'geral' ? 'Geral' : t.label}</span>
-              {t.n > 0 && <i className="badge">{t.n}</i>}
-            </button>
-          ))}
-          <button className="me-btn" onClick={() => setUi({ editing: true })} title="Editar personagem">
-            <MiniAvatar avatar={me.avatar} photo={me.photo} size={30} />
-            <span>{me.name}</span>
+        <nav className="nav-list">
+          {items.map(it => <NavItem key={it.id} it={it} />)}
+          <div className="nav-sec">Espaços</div>
+          <NavItem it={{ id: 'escritorio', label: 'Escritório', ic: '⌂' }} />
+        </nav>
+        <div className="nav-me">
+          <button className="nav-item" onClick={() => setUi({ editing: true })} title="Editar personagem">
+            <MiniAvatar avatar={me.avatar} photo={me.photo} size={24} />
+            <span className="grow nav-who"><b>{me.name}</b><small>{me.role || rankName(me)}</small></span>
           </button>
-          <button className="btn ghost sm" onClick={() => signOut()}>Sair</button>
+          <button className="nav-item muted" onClick={() => signOut()}><span className="nav-ic">↩</span>Sair</button>
         </div>
-      </header>
-      {s.error && <div className="banner" onClick={() => setUi({ error: '' })}>⚠️ {s.error} <small>(clique para fechar)</small></div>}
-      <main className={'main' + (quadro ? ' q' : '')}>
-        {quadro ? <Quadro /> : <Game />}
-        {panel && <aside className={'side' + (quadro ? ' drawer' : '')}>
-          <nav className="tabs">
-            {tabs.map(t => (
-              <button key={t.id} className={s.tab === t.id ? 'on' : ''} onClick={() => setUi({ tab: t.id, ...(t.id === 'mesa' && s.tab === 'mesa' ? { viewing: me.id } : {}) })}>
-                {t.label}{t.n > 0 && <span className="badge">{t.n}</span>}
-              </button>
-            ))}
-            {quadro && <button className="close" onClick={() => setUi({ drawer: false })} aria-label="Fechar painel">✕</button>}
-          </nav>
-          <div className="pane">
-            {s.tab === 'mesa' && <Board />}
-            {s.tab === 'aprovar' && <Aprovacoes />}
-            {s.tab === 'equipe' && <Team />}
-            {s.tab === 'chat' && <Chat />}
-            {s.tab === 'geral' && chief && <Overview />}
-          </div>
-        </aside>}
-      </main>
+      </aside>
+      {navOpen && <div className="nav-bg" onClick={() => setNavOpen(false)} />}
+      <div className="page">
+        <div className="mbar">
+          <button className="icon" onClick={() => setNavOpen(true)} aria-label="Menu">☰</button>
+          <b>{items.find(i => i.id === page)?.label ?? 'Escritório'}</b>
+        </div>
+        {s.error && <div className="banner" onClick={() => setUi({ error: '' })}>{s.error} <small>(clique para fechar)</small></div>}
+        <main className="main">
+          {page === 'quadro' && <Quadro />}
+          {office && <>
+            <Game />
+            <aside className="side">
+              <nav className="tabs">
+                {(['mesa', 'equipe', 'chat'] as Tab[]).map(t => (
+                  <button key={t} className={s.tab === t ? 'on' : ''} onClick={() => setUi({ tab: t, ...(t === 'mesa' && s.tab === 'mesa' ? { viewing: me.id } : {}) })}>
+                    {t === 'mesa' ? 'Mesa' : t === 'equipe' ? 'Equipe' : 'Chat'}
+                  </button>
+                ))}
+              </nav>
+              <div className="pane">{pane(s.tab)}</div>
+            </aside>
+          </>}
+          {page !== 'quadro' && page !== 'escritorio' && <div className="doc">{pane(page)}</div>}
+        </main>
+      </div>
       {s.desk && <DeskView />}
       {s.task && <TaskDetail />}
       {s.projectEdit && <ProjectModal />}
       {s.aiOpen && <Distribuir />}
       <RequestModal />
-      <Mascot />
+      <Toast />
       {s.editing && <div className="overlay"><Creator /></div>}
     </div>
   )
