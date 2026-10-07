@@ -1,5 +1,5 @@
 import { toEmail, validUser } from './login'
-import type { AiContext, AiProposal, AiStage, Avatar, Backend, Handlers, Message, Pos, Profile, Project, Snapshot, Task, TaskNote } from '../types'
+import type { AccountEdit, AiContext, AiProposal, AiStage, Avatar, Backend, Handlers, Message, Pos, Profile, Project, Snapshot, Task, TaskNote } from '../types'
 
 // Modo demonstração: tudo no localStorage deste navegador. Abas diferentes = pessoas diferentes
 // (a sessão fica no sessionStorage), sincronizadas por BroadcastChannel.
@@ -19,6 +19,7 @@ async function sha(s: string) {
 
 type Wire =
   | { t: 'profile'; p: Profile }
+  | { t: 'profileDel'; id: string }
   | { t: 'task'; task: Task }
   | { t: 'taskDel'; id: string }
   | { t: 'msg'; m: Message }
@@ -126,6 +127,61 @@ export class DemoBackend implements Backend {
     if (!acc) throw new Error('Conta não encontrada.')
     acc.hash = await sha(password)
     write(K.acc, accs)
+  }
+
+  async accountLogins() {
+    this.chief()
+    return Object.fromEntries(read<Account[]>(K.acc, []).map(a => [a.id, a.email.split('@')[0]]))
+  }
+
+  async updateAccount(target: string, a: AccountEdit) {
+    this.chief()
+    const p = read<Record<string, Profile>>(K.prof, {})[target]
+    if (!p) throw new Error('Conta não encontrada.')
+    if (!a.name.trim()) throw new Error('O nome não pode ficar vazio.')
+    if (a.rank < 1 || a.rank > 4) throw new Error('Cargo inválido.')
+    if (target === sessionStorage.getItem(K.session) && !a.is_admin) throw new Error('Você não pode tirar o seu próprio adm.')
+    const accs = read<Account[]>(K.acc, [])
+    const acc = accs.find(x => x.id === target)
+    const user = a.user.trim().toLowerCase()
+    if (user && acc) {
+      if (!validUser(user)) throw new Error('Usuário inválido: use letras, números, ponto ou traço.')
+      if (accs.some(x => x.email === toEmail(user) && x.id !== target)) throw new Error('Esse usuário já existe.')
+      acc.email = toEmail(user)
+    }
+    if (acc) { acc.name = a.name.trim(); write(K.acc, accs) }
+    await this.upsertProfileRaw({ ...p, name: a.name.trim().slice(0, 40), role: a.role.trim().slice(0, 40), rank: a.rank, is_admin: a.is_admin })
+  }
+
+  async deleteAccount(target: string, heir: string) {
+    this.chief()
+    if (target === sessionStorage.getItem(K.session)) throw new Error('Você não pode excluir a sua própria conta.')
+    const profs = read<Record<string, Profile>>(K.prof, {})
+    if (!profs[target]) throw new Error('Conta não encontrada.')
+    if (!heir || heir === target || !profs[heir]) throw new Error('Escolha quem fica com as tarefas.')
+    const tasks = read<Record<string, Task>>(K.task, {})
+    for (const t of Object.values(tasks)) {
+      const before = JSON.stringify(t)
+      if (t.owner_id === target) t.owner_id = heir
+      if (t.created_by === target) t.created_by = heir
+      t.collaborators = t.collaborators.filter(c => c !== target && c !== t.owner_id)
+      if (JSON.stringify(t) !== before) this.post({ t: 'task', task: t })
+    }
+    write(K.task, tasks)
+    const projs = read<Record<string, Project>>(K.proj, {})
+    for (const p of Object.values(projs)) {
+      if (p.master_id !== target && p.created_by !== target) continue
+      if (p.master_id === target) p.master_id = heir
+      if (p.created_by === target) p.created_by = heir
+      this.post({ t: 'project', p })
+    }
+    write(K.proj, projs)
+    write(K.msg, read<Message[]>(K.msg, []).filter(m => m.sender_id !== target))
+    write(K.note, read<TaskNote[]>(K.note, []).filter(n => n.author_id !== target))
+    write(K.acc, read<Account[]>(K.acc, []).filter(a => a.id !== target))
+    delete profs[target]
+    write(K.prof, profs)
+    this.post({ t: 'profileDel', id: target })
   }
 
   private async upsertProfileRaw(p: Profile) {
@@ -242,6 +298,7 @@ export class DemoBackend implements Backend {
       const w = e.data
       switch (w.t) {
         case 'profile': h.profile(w.p); break
+        case 'profileDel': h.profileDeleted(w.id); break
         case 'task': h.task(w.task); break
         case 'taskDel': h.taskDeleted(w.id); break
         case 'msg': h.message(w.m); break

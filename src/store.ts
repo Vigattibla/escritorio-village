@@ -3,7 +3,7 @@ import { backend } from './data'
 import { canAssign, isChief, rankName, rankOf } from './game/ranks'
 import { dayKey, level, levelTitle, taskXp } from './game/xp'
 import { MAX_DESKS } from './office/world'
-import type { AiContext, AiItem, AiProposal, AiStage, Attachment, Avatar, Message, Pos, Profile, Project, Review, Task, TaskNote, TaskStatus } from './types'
+import type { AccountEdit, AiContext, AiItem, AiProposal, AiStage, Attachment, Avatar, Message, Pos, Profile, Project, Review, Task, TaskNote, TaskStatus } from './types'
 
 export type Phase = 'loading' | 'auth' | 'creator' | 'office'
 export type Tab = 'mesa' | 'aprovar' | 'equipe' | 'chat' | 'geral'
@@ -157,6 +157,13 @@ function onProfile(p: Profile) {
   if (isNew && p.id !== state.meId) notify(`${p.name} entrou no time! 👋`, { from: p.id, go: { tab: 'equipe' } })
 }
 
+function onProfileDeleted(id: string) {
+  if (!state.profiles[id]) return
+  const profiles = { ...state.profiles }
+  delete profiles[id]
+  set({ profiles, messages: state.messages.filter(m => m.sender_id !== id), notes: state.notes.filter(n => n.author_id !== id) })
+}
+
 function onTask(raw: Task) {
   const t = norm(raw)
   const prev = state.tasks[t.id]
@@ -267,7 +274,7 @@ export async function enter(uid: string) {
   })
   disconnect?.()
   disconnect = backend.connect(uid, {
-    profile: onProfile, task: onTask, taskDeleted: onTaskDeleted, message: onMessage, note: onNote, noteDeleted: onNoteDeleted,
+    profile: onProfile, profileDeleted: onProfileDeleted, task: onTask, taskDeleted: onTaskDeleted, message: onMessage, note: onNote, noteDeleted: onNoteDeleted,
     project: onProject, projectDeleted: onProjectDeleted,
     pos: (id, p) => positions.set(id, p),
     online: ids => {
@@ -500,6 +507,31 @@ export async function createAccount(user: string, pass: string, name: string, ra
 }
 
 export const setPassword = (target: string, pass: string) => backend.setPassword(target, pass)
+export const accountLogins = () => backend.accountLogins()
+
+export async function updateAccount(target: string, a: AccountEdit) {
+  const p = state.profiles[target]
+  if (!p) return
+  await backend.updateAccount(target, a)
+  set({ profiles: { ...state.profiles, [target]: { ...p, name: a.name.trim().slice(0, 40), role: a.role.trim().slice(0, 40), rank: a.rank, is_admin: a.is_admin } } })
+}
+
+/** tarefas e projetos da pessoa passam para o herdeiro; mensagens e notas dela somem */
+export async function deleteAccount(target: string, heir: string) {
+  await backend.deleteAccount(target, heir)
+  const tasks = { ...state.tasks }
+  for (const t of Object.values(tasks)) {
+    if (t.owner_id !== target && t.created_by !== target && !t.collaborators.includes(target)) continue
+    const owner = t.owner_id === target ? heir : t.owner_id
+    tasks[t.id] = { ...t, owner_id: owner, created_by: t.created_by === target ? heir : t.created_by,
+      collaborators: t.collaborators.filter(c => c !== target && c !== owner) }
+  }
+  const projects = { ...state.projects }
+  for (const p of Object.values(projects)) if (p.master_id === target || p.created_by === target)
+    projects[p.id] = { ...p, master_id: p.master_id === target ? heir : p.master_id, created_by: p.created_by === target ? heir : p.created_by }
+  set({ tasks, projects })
+  onProfileDeleted(target)
+}
 
 export async function renameTask(id: string, title: string) {
   const t = state.tasks[id]

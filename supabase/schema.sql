@@ -512,3 +512,101 @@ drop policy if exists "todos veem a ponte" on public.ai_bridge;
 drop policy if exists "minha ponte" on public.ai_bridge;
 create policy "minha ponte" on public.ai_bridge for all to authenticated
   using (id = auth.uid()::text) with check (id = auth.uid()::text);
+
+-- ===== v9: adm edita e exclui contas (pode rodar de novo sem problema) =====
+-- o gatilho das tarefas deixa passar só a operação interna do adm (marcada na própria transação)
+create or replace function public.guard_task() returns trigger
+language plpgsql security definer set search_path = public as $$
+declare me uuid := auth.uid(); r smallint; appr uuid; judge boolean;
+begin
+  if me is null or current_setting('ev.admin_op', true) = '1' then return new; end if;
+  r := public.rank_of(me);
+  appr := public.approver_of(old.project_id, old.owner_id);
+  judge := appr is not null and (me = appr or r = 4);
+  if new.created_by is distinct from old.created_by then raise exception 'O autor da tarefa não muda.'; end if;
+  if new.owner_id is distinct from old.owner_id
+     and not (r = 4 or (r > public.rank_of(old.owner_id) and r > public.rank_of(new.owner_id))) then
+    raise exception 'Só o chefe muda a tarefa de pasta.';
+  end if;
+  if new.reviews is distinct from old.reviews and not judge then
+    raise exception 'Só o mestre do projeto (ou o Chefe) aprova ou reprova.';
+  end if;
+  if old.status = 'review' then
+    if new.project_id is distinct from old.project_id and not judge then
+      raise exception 'Essa entrega está em aprovação: não dá pra trocar o projeto agora.';
+    end if;
+    if new.status is distinct from old.status and not (judge or (me = old.owner_id and new.status <> 'done')) then
+      raise exception 'Essa entrega está esperando a aprovação do mestre do projeto.';
+    end if;
+  elsif new.status is distinct from old.status then
+    if not (me = old.owner_id or r = 4 or r > public.rank_of(old.owner_id)) then
+      raise exception 'Só o dono da tarefa muda o andamento.';
+    end if;
+    if new.status = 'done' and public.approver_of(new.project_id, new.owner_id) is not null
+       and not (me = public.approver_of(new.project_id, new.owner_id) or r = 4) then
+      raise exception 'Essa tarefa precisa passar pela aprovação do mestre do projeto.';
+    end if;
+  end if;
+  return new;
+end $$;
+
+-- usuário de login de cada um (só o adm vê)
+create or replace function public.admin_logins() returns table (id uuid, login text)
+language plpgsql stable security definer set search_path = public, auth as $$
+begin
+  if not public.is_admin(auth.uid()) then raise exception 'Só o adm vê os usuários.'; end if;
+  return query select u.id, split_part(u.email, '@', 1)::text from auth.users u;
+end $$;
+revoke execute on function public.admin_logins() from public, anon;
+grant execute on function public.admin_logins() to authenticated;
+
+-- nome, função, cargo, adm e usuário de login (vazio = mantém)
+create or replace function public.admin_update_user(target uuid, p_name text, p_role text, p_rank smallint, p_admin boolean, p_user text)
+returns void language plpgsql security definer set search_path = public, auth as $$
+declare mail text;
+begin
+  if not public.is_admin(auth.uid()) then raise exception 'Só o adm mexe nas contas.'; end if;
+  if not exists (select 1 from public.profiles where id = target) then raise exception 'Conta não encontrada.'; end if;
+  if p_rank is null or p_rank < 1 or p_rank > 4 then raise exception 'Cargo inválido.'; end if;
+  if nullif(trim(p_name), '') is null then raise exception 'O nome não pode ficar vazio.'; end if;
+  if target = auth.uid() and not p_admin then raise exception 'Você não pode tirar o seu próprio adm.'; end if;
+  update public.profiles set name = left(trim(p_name), 40), role = left(trim(coalesce(p_role, '')), 40),
+    rank = p_rank, is_admin = p_admin where id = target;
+  update auth.users set raw_user_meta_data = coalesce(raw_user_meta_data, '{}') || jsonb_build_object('name', left(trim(p_name), 40)),
+    updated_at = now() where id = target;
+  p_user := lower(trim(coalesce(p_user, '')));
+  if p_user <> '' then
+    if p_user !~ '^[a-z0-9._-]{2,30}$' then raise exception 'Usuário inválido: use letras, números, ponto ou traço.'; end if;
+    mail := p_user || '@escritorio.village';
+    if exists (select 1 from auth.users where email = mail and id <> target) then raise exception 'Esse usuário já existe.'; end if;
+    update auth.users set email = mail, raw_user_meta_data = raw_user_meta_data || jsonb_build_object('user', p_user)
+      where id = target and email is distinct from mail;
+    update auth.identities set identity_data = identity_data || jsonb_build_object('email', mail)
+      where user_id = target and provider = 'email';
+  end if;
+end $$;
+revoke execute on function public.admin_update_user(uuid, text, text, smallint, boolean, text) from public, anon;
+grant execute on function public.admin_update_user(uuid, text, text, smallint, boolean, text) to authenticated;
+
+-- exclui a conta: tarefas e projetos dela passam para o herdeiro; mensagens, notas e pedidos de IA somem
+create or replace function public.admin_delete_user(target uuid, heir uuid)
+returns void language plpgsql security definer set search_path = public, auth as $$
+begin
+  if not public.is_admin(auth.uid()) then raise exception 'Só o adm exclui contas.'; end if;
+  if target = auth.uid() then raise exception 'Você não pode excluir a sua própria conta.'; end if;
+  if heir is null or heir = target or not exists (select 1 from public.profiles where id = heir) then
+    raise exception 'Escolha quem fica com as tarefas.';
+  end if;
+  if not exists (select 1 from public.profiles where id = target) then raise exception 'Conta não encontrada.'; end if;
+  perform set_config('ev.admin_op', '1', true);
+  update public.tasks set owner_id = heir where owner_id = target;
+  update public.tasks set created_by = heir where created_by = target;
+  update public.tasks set collaborators = array_remove(collaborators, target) where target = any(collaborators);
+  update public.tasks set collaborators = array_remove(collaborators, owner_id) where owner_id = any(collaborators);
+  update public.projects set master_id = heir where master_id = target;
+  update public.projects set created_by = heir where created_by = target;
+  perform set_config('ev.admin_op', '', true);
+  delete from auth.users where id = target;
+end $$;
+revoke execute on function public.admin_delete_user(uuid, uuid) from public, anon;
+grant execute on function public.admin_delete_user(uuid, uuid) to authenticated;

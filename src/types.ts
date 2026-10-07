@@ -142,8 +142,11 @@ export interface Snapshot {
   projects: Project[]
 }
 
+export interface AccountEdit { name: string; role: string; rank: number; is_admin: boolean; user: string }
+
 export interface Handlers {
   profile(p: Profile): void
+  profileDeleted(id: string): void
   task(t: Task): void
   taskDeleted(id: string): void
   message(m: Message): void
@@ -174,6 +177,12 @@ export interface Backend {
   createAccount(user: string, password: string, name: string, rank: number): Promise<Profile>
   /** só o adm */
   setPassword(target: string, password: string): Promise<void>
+  /** só o adm: id → usuário de login */
+  accountLogins(): Promise<Record<string, string>>
+  /** só o adm: user vazio = mantém o login */
+  updateAccount(target: string, a: AccountEdit): Promise<void>
+  /** só o adm: tarefas e projetos vão para o herdeiro */
+  deleteAccount(target: string, heir: string): Promise<void>
   uploadPhoto(userId: string, blob: Blob): Promise<string>
   upsertTask(t: Task): Promise<void>
   deleteTask(id: string): Promise<void>

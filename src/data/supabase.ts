@@ -1,6 +1,6 @@
 import { createClient, type RealtimeChannel, type SupabaseClient } from '@supabase/supabase-js'
 import { slugUser, toEmail } from './login'
-import type { AiContext, AiProposal, AiStage, Backend, Handlers, Message, Pos, Profile, Project, Snapshot, Task, TaskNote } from '../types'
+import type { AccountEdit, AiContext, AiProposal, AiStage, Backend, Handlers, Message, Pos, Profile, Project, Snapshot, Task, TaskNote } from '../types'
 
 function pt(e: { message: string }): Error {
   const m = e.message
@@ -91,6 +91,22 @@ export class SupabaseBackend implements Backend {
 
   async setPassword(target: string, password: string) {
     const { error } = await this.sb.rpc('admin_set_password', { target, p_pass: password })
+    if (error) throw pt(error)
+  }
+
+  async accountLogins() {
+    const { data, error } = await this.sb.rpc('admin_logins')
+    if (error) throw pt(error)
+    return Object.fromEntries((data as { id: string; login: string }[]).map(r => [r.id, r.login]))
+  }
+
+  async updateAccount(target: string, a: AccountEdit) {
+    const { error } = await this.sb.rpc('admin_update_user', { target, p_name: a.name, p_role: a.role, p_rank: a.rank, p_admin: a.is_admin, p_user: a.user })
+    if (error) throw pt(error)
+  }
+
+  async deleteAccount(target: string, heir: string) {
+    const { error } = await this.sb.rpc('admin_delete_user', { target, heir })
     if (error) throw pt(error)
   }
 
@@ -192,7 +208,8 @@ export class SupabaseBackend implements Backend {
     const db = this.sb
       .channel('db')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, pl => {
-        if (pl.eventType !== 'DELETE') h.profile(pl.new as Profile)
+        if (pl.eventType === 'DELETE') h.profileDeleted((pl.old as { id: string }).id)
+        else h.profile(pl.new as Profile)
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, pl => {
         if (pl.eventType === 'DELETE') h.taskDeleted((pl.old as { id: string }).id)

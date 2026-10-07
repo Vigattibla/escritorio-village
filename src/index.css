@@ -182,8 +182,13 @@ legend { font-size: 12px; font-weight: 700; color: var(--navy); padding: 0 4px; 
 .accounts summary { cursor: pointer; font-weight: 700; color: var(--navy); }
 .accounts form { display: grid; gap: 8px; margin-top: 12px; }
 .accounts h3 { margin: 0; font-size: 14px; }
+.accounts .row { flex-wrap: wrap; }
+.accounts label.grow { min-width: 150px; }
 .accounts .ok { margin-top: 10px; user-select: all; }
 .accounts .muted { margin-top: 6px; }
+.acc-check { display: flex; align-items: center; gap: 6px; align-self: end; padding-bottom: 8px; font-size: 13px; }
+.acc-kill { display: grid; gap: 8px; padding: 10px 12px; border-radius: 10px; background: #fdf0ee; border: 1px solid #f3c9c3; color: #7d2219; }
+.acc-kill small { font-size: 12px; }
 .rank { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
 .rank li { display: flex; gap: 10px; align-items: center; padding: 7px 10px; border-radius: 9px; background: #f6f7fb; font-size: 14px; }
 .rank li.me { background: #fff4d6; }
@@ -325,6 +330,7 @@ legend { font-size: 12px; font-weight: 700; color: var(--navy); padding: 0 4px; 
 .link { cursor: pointer; }
 .link:hover { text-decoration: underline; text-decoration-color: var(--yellow); }
 .btn.danger { background: var(--red); color: #fff; }
+.btn.danger-ghost { background: transparent; color: var(--red); border: 1px solid currentColor; }
 .row.wrap { flex-wrap: wrap; }
 .task-modal { position: relative; width: 100%; max-width: 640px; max-height: calc(100vh - 32px); display: flex; flex-direction: column; background: #fff; border-radius: 16px; overflow: hidden; box-shadow: 0 20px 60px rgba(0, 0, 0, .3); animation: pop .2s ease-out; }
 .task-top { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
