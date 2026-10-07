@@ -40,3 +40,10 @@
 - Contas da equipe (adm) → "Editar conta": nome, função, usuário de login, nova senha, cargo, adm. "Excluir conta…" com confirmação e herdeiro (tarefas/projetos vão pra ele; mensagens/notas/pedidos de IA somem).
 - SQL v9: admin_logins, admin_update_user, admin_delete_user; guard_task deixa passar a operação interna (set_config ev.admin_op local à transação). Adm não tira o próprio adm nem se exclui.
 - Realtime: DELETE de profiles → profileDeleted. Testado na demo; publicado. Pendente: usuário rodar SQL v8+v9 no Supabase.
+
+## 07/10 (12) — redesign etapa 1 (commit 52a125d, local)
+- Visual estilo Notion: menu lateral (Quadro, Minha mesa, Aprovação, Avisos, Chat, Equipe, Visão geral p/ chefe; Escritório em "Espaços"). Abre sempre no Quadro.
+- Saíram da tela: nível/XP, sequência, meta do dia, ranking, selo de nível no mapa, aviso "subiu de nível" (o XP continua sendo contado no banco).
+- Mascote (Vila) fora: `Mascot.tsx` mantido, sem uso. Avisos viraram toast no canto + página Avisos.
+- Etapa 2 pendente: escritório reage sozinho (tarefa nova → vai ao quadro e escreve; arquivo → estante; muita demanda → mesa com pilha de folhas), e cada um ainda anda com o próprio boneco.
+- Migrações (3596e08) também só local; aguardando "sobe".
