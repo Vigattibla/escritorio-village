@@ -63,6 +63,7 @@ function set(patch: Partial<State>) {
   subs.forEach(f => f())
 }
 export const getState = () => state
+export const subscribe = (f: () => void) => { subs.add(f); return () => { subs.delete(f) } }
 export function useStore<T>(sel: (s: State) => T): T {
   return useSyncExternalStore(cb => { subs.add(cb); return () => subs.delete(cb) }, () => sel(state))
 }

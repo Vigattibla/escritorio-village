@@ -11,6 +11,10 @@ export const DESKS = MAX_DESKS + 1
 export type Cell = '#' | 'f' | 'w' | 'B' | '.' | ',' | '_' | '|' | '-' | 'P' | 'T' | 'S' | 'K' | 'R' | 'D'
 const SOLID = new Set<Cell>(['#', 'f', 'w', 'B', '|', '-', 'P', 'T', 'S', 'K', 'R'])
 
+/** Onde o boneco para para escrever no quadro / mexer na estante (tile) */
+export const BOARD_SPOT = { tx: 14, ty: 2 }
+export const SHELF_SPOT = { tx: 6, ty: 3 }
+
 export function deskOf(i: number) {
   if (i === BOSS_DESK) return { tx: 7, ty: 17, w: 3, seat: { x: 8 * T + 8, y: 17 * T + 8 } }
   const col = i % 4
@@ -267,8 +271,39 @@ export function renderBackground(): HTMLCanvasElement {
 }
 
 const NOTE_COLORS = ['#FBC222', '#7ed6a5', '#f59ab5', '#8ecbf5']
+const PILE = 7
 
-export function drawDesk(c: C2D, i: number, info: { notes: number; inbox: boolean; busy: boolean; owned: boolean; t: number }) {
+/** Pilha de folhas crescendo para cima a partir de (x, y) */
+function pile(c: C2D, x: number, y: number, n: number, sticky: boolean) {
+  for (let k = 0; k < n; k++) {
+    const dx = (k * 5) % 3 - 1, yy = y - k * 2
+    rect(c, OUT, x + dx, yy, 8, 2)
+    rect(c, k % 3 === 2 ? '#e9ebf0' : '#fbfbf8', x + dx + 1, yy, 6, 1)
+  }
+  if (sticky && n) rect(c, NOTE_COLORS[0], x + 2, y - (n - 1) * 2, 3, 1)
+}
+
+/** Riscos no quadro branco; o último pode estar sendo escrito (0..1, -1 = ninguém escrevendo) */
+export function drawBoardMarks(c: C2D, marks: string[], writing: number) {
+  if (!marks.length && writing < 0) return
+  const x0 = 13 * T + 1, y0 = T + 2
+  rect(c, '#fbfbf8', x0, y0, 3 * T - 2, 8)
+  const all = (writing >= 0 ? [...marks, '#2b3556'] : marks).slice(-8)
+  all.forEach((col, i) => {
+    const full = 18 - ((i * 7) % 3) * 4
+    const len = writing >= 0 && i === all.length - 1 ? Math.max(1, Math.round(full * writing)) : full
+    rect(c, col, x0 + 2 + (i % 2) * 24, y0 + 1 + Math.floor(i / 2) * 2, len, 1)
+  })
+}
+
+/** Pasta que o boneco carrega na mão */
+export function drawCarry(c: C2D, x: number, y: number) {
+  rect(c, OUT, x, y, 7, 5)
+  rect(c, '#e2b25a', x + 1, y + 1, 5, 3)
+  rect(c, '#fbfbf8', x + 2, y, 3, 1)
+}
+
+export function drawDesk(c: C2D, i: number, info: { pile: number; inbox: boolean; busy: boolean; owned: boolean; t: number }) {
   const { tx, ty, w: wt } = deskOf(i)
   const x = tx * T, y = ty * T, w = wt * T, m = x + w / 2
   const boss = i === BOSS_DESK
@@ -297,13 +332,14 @@ export function drawDesk(c: C2D, i: number, info: { notes: number; inbox: boolea
   rect(c, '#9aa3b5', m - 7, y + 7, 14, 1)
   // pedido esperando: luz vermelha piscando no notebook
   if (info.inbox && Math.sin(info.t / 220) > 0) { rect(c, OUT, m + 4, y - 3, 4, 4); rect(c, '#e5483a', m + 5, y - 2, 2, 2) }
-  // caneca
-  rect(c, '#ffffff', x + 3, y + 4, 3, 4)
-  rect(c, '#ffffff', x + 6, y + 5, 1, 2)
-  // pasta de tarefas (folhas aparecendo = tarefas a fazer)
-  const fx = x + w - 8 - (boss ? 4 : 0)
-  for (let n = 0; n < Math.min(info.notes, 3); n++) rect(c, NOTE_COLORS[n], fx + 1 + n, y + 2 - n, 5, 2)
-  rect(c, OUT, fx, y + 3, 8, 6)
-  rect(c, '#e2b25a', fx + 1, y + 4, 6, 4)
-  rect(c, '#c8963f', fx + 1, y + 4, 2, 1)
+  // folhas: quanto mais demanda aberta, mais a mesa enche (direita → esquerda → chão)
+  const n = info.pile, off = boss ? 10 : 0
+  if (n > PILE) pile(c, x + 1 + off, y + 7, Math.min(n - PILE, PILE), false)
+  else { rect(c, '#ffffff', x + 3 + off, y + 4, 3, 4); rect(c, '#ffffff', x + 6 + off, y + 5, 1, 2) }
+  pile(c, x + w - 9 - (boss ? 4 : 0), y + 7, Math.min(n, PILE), info.inbox)
+  for (let k = 0; k < Math.min(n - 2 * PILE, 6); k++) {
+    const fx = x + 1 + ((k * 11) % (w - 8)), fy = y + 17 + (k % 2) * 3
+    rect(c, OUT, fx, fy, 7, 3)
+    rect(c, '#fbfbf8', fx + 1, fy + 1, 5, 1)
+  }
 }

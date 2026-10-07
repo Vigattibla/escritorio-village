@@ -2,11 +2,18 @@ import { useEffect, useRef, useState } from 'react'
 import { drawAvatar, onPhotoLoad, SPRITE_H } from '../chibi/sprite'
 import { backend } from '../data'
 import { managerOf } from '../game/ranks'
-import { blocked, BOSS_DESK, deskAtTile, deskOf, drawDesk, DESKS, findPath, MAX_DESKS, MH, MW, pathToSeat, renderBackground, T } from '../office/world'
+import { addMark, boardMarks, takeErrands, type Errand } from '../office/errands'
+import { blocked, BOARD_SPOT, BOSS_DESK, deskAtTile, deskOf, drawBoardMarks, drawCarry, drawDesk, DESKS, findPath, MAX_DESKS, MH, MW, pathToSeat, renderBackground, SHELF_SPOT, T } from '../office/world'
 import { bubbles, getState, positions, setUi } from '../store'
 import type { Dir, Pos, Profile, Task } from '../types'
 
 const SPEED = 72
+const ACT_MS = { write: 2600, fetch: 1400, store: 1400 }
+const ACT_TEXT = { write: 'Anotando no quadro', fetch: 'Pegando arquivo', store: 'Guardando arquivo' }
+const OPEN = new Set(['inbox', 'todo', 'doing', 'review'])
+
+/** Ida ao quadro/estante e volta para a mesa */
+interface Job { e: Errand; phase: 'go' | 'act' | 'back'; path: { x: number; y: number }[]; until: number; carry: boolean }
 const ZMIN = 2, ZMAX = 5
 const typing = () => { const el = document.activeElement; return !!el && /INPUT|TEXTAREA|SELECT/.test(el.tagName) }
 
@@ -22,6 +29,17 @@ function seatOf(p: Profile) {
 }
 const frameOf = (s: { moving: boolean; anim: number }): 0 | 1 | 2 => (s.moving ? ([1, 0, 2, 0] as const)[Math.floor(s.anim * 8) % 4] : 0)
 const doingOf = (tasks: Task[], id: string) => tasks.filter(t => t.owner_id === id && t.status === 'doing').sort((a, b) => b.position - a.position)[0]
+const dirTo = (dx: number, dy: number): Dir => (Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 'left' : 'right') : dy < 0 ? 'up' : 'down')
+
+/** Anda pelo caminho; devolve true se andou neste quadro */
+function walk(o: Shown, path: { x: number; y: number }[], dt: number) {
+  if (!path.length) return false
+  const target = path[0], dx = target.x - o.x, dy = target.y - o.y, dist = Math.hypot(dx, dy), d = SPEED * dt
+  if (dist <= d) { o.x = target.x; o.y = target.y; path.shift() }
+  else { o.x += (dx / dist) * d; o.y += (dy / dist) * d }
+  if (dist > 0.5) o.dir = dirTo(dx, dy)
+  return true
+}
 
 export default function Game() {
   const wrap = useRef<HTMLDivElement>(null)
@@ -40,6 +58,8 @@ export default function Game() {
     const meId = getState().meId!
     const keys = new Set<string>()
     const shown = new Map<string, Shown>()
+    const jobs = new Map<string, Job>()
+    const waiting = new Map<string, Errand[]>()
     let path: { x: number; y: number }[] = []
     let cam = { x: 0, y: 0 }
     let W = 0, H = 0, dpr = 1
@@ -79,7 +99,7 @@ export default function Game() {
       const k = e.key.toLowerCase()
       if (!['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(k)) return
       e.preventDefault()
-      if (e.type === 'keydown') { keys.add(k); path = [] } else keys.delete(k)
+      if (e.type === 'keydown') { keys.add(k); path = []; jobs.delete(meId) } else keys.delete(k)
     }
     const onBlur = () => keys.clear()
     const onClick = (e: MouseEvent) => {
@@ -95,7 +115,7 @@ export default function Game() {
         return
       }
       const p = findPath(meS.x, meS.y, tx, ty)
-      if (p) path = p
+      if (p) { path = p; jobs.delete(meId) }
     }
     const onMove = (e: MouseEvent) => {
       const w = toWorld(e.clientX, e.clientY)
@@ -120,7 +140,49 @@ export default function Game() {
     const offPhotos: (() => void)[] = []
     const watched = new Set<string>()
 
+    /** Avança a tarefa automática de alguém (ida → ação → volta). Devolve true se andou. */
+    const runJob = (id: string, o: Shown, p: Profile, dt: number, now: number) => {
+      let j = jobs.get(id)
+      if (!j) {
+        const e = waiting.get(id)?.shift()
+        if (!e) return false
+        const spot = e.kind === 'write' ? BOARD_SPOT : SHELF_SPOT
+        const route = findPath(o.x, o.y, spot.tx, spot.ty)
+        if (!route) return false
+        j = { e, phase: 'go', path: route, until: 0, carry: e.kind === 'store' }
+        jobs.set(id, j)
+      }
+      if (j.phase === 'act') {
+        o.dir = 'up'
+        if (now < j.until) return false
+        if (j.e.kind === 'write') addMark()
+        j.carry = j.e.kind === 'fetch'
+        j.path = pathToSeat(o.x, o.y, deskIdx(p)) ?? []
+        j.phase = 'back'
+      }
+      if (walk(o, j.path, dt)) return true
+      if (j.phase === 'go') {
+        j.phase = 'act'; j.until = now + ACT_MS[j.e.kind]; o.dir = 'up'
+        const label = j.e.label.length > 24 ? j.e.label.slice(0, 23) + '…' : j.e.label
+        bubbles.set(id, { text: `${ACT_TEXT[j.e.kind]}: ${label}`, until: Date.now() + ACT_MS[j.e.kind] + 800 })
+      } else { jobs.delete(id); o.dir = 'down' }
+      return false
+    }
+    const writing = (now: number) => {
+      for (const j of jobs.values()) if (j.phase === 'act' && j.e.kind === 'write') return 1 - (j.until - now) / ACT_MS.write
+      return -1
+    }
+
     const step = (dt: number) => {
+      // tarefas automáticas novas: eu faço as minhas; quem está fora é simulado aqui (quem está online faz no PC dele)
+      {
+        const s = getState()
+        for (const e of takeErrands()) {
+          if (!s.profiles[e.who]?.avatar || (e.who !== meId && s.online.has(e.who))) continue
+          waiting.set(e.who, [...(waiting.get(e.who) ?? []), e].slice(-4))
+        }
+      }
+      const tnow = performance.now()
       // movimento local
       let vx = 0, vy = 0
       if (keys.has('a') || keys.has('arrowleft')) vx--
@@ -134,16 +196,12 @@ export default function Game() {
         const free = (x: number, y: number) => !blocked(x - 4, y) && !blocked(x + 4, y) && !blocked(x - 4, y - 3) && !blocked(x + 4, y - 3)
         if (free(nx, meS.y)) meS.x = nx
         if (free(meS.x, ny)) meS.y = ny
-        meS.dir = Math.abs(vx) > Math.abs(vy) ? (vx < 0 ? 'left' : 'right') : vy < 0 ? 'up' : 'down'
+        meS.dir = dirTo(vx, vy)
         moving = true
       } else if (path.length) {
-        const target = path[0], dx = target.x - meS.x, dy = target.y - meS.y, dist = Math.hypot(dx, dy), d = SPEED * dt
-        if (dist <= d) { meS.x = target.x; meS.y = target.y; path.shift() }
-        else { meS.x += (dx / dist) * d; meS.y += (dy / dist) * d }
-        if (dist > 0.5) meS.dir = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 'left' : 'right') : dy < 0 ? 'up' : 'down'
-        moving = true
+        moving = walk(meS, path, dt)
         if (!path.length) meS.dir = 'down'
-      }
+      } else moving = runJob(meId, meS, myProfile(), dt, tnow)
       meS.moving = moving
       meS.anim = moving ? meS.anim + dt : 0
 
@@ -164,6 +222,11 @@ export default function Game() {
         const tgt = (online && positions.get(p.id)) || { ...seatOf(p), dir: 'down' as Dir, moving: false }
         let o = shown.get(p.id)
         if (!o) { o = { x: tgt.x, y: tgt.y, dir: tgt.dir, moving: false, anim: 0 }; shown.set(p.id, o) }
+        if (!online && (jobs.has(p.id) || waiting.get(p.id)?.length)) {
+          o.moving = runJob(p.id, o, p, dt, tnow)
+          o.anim = o.moving ? o.anim + dt : 0
+          continue
+        }
         const k = Math.min(1, dt * 12)
         if (Math.hypot(tgt.x - o.x, tgt.y - o.y) > 200) { o.x = tgt.x; o.y = tgt.y }
         o.x += (tgt.x - o.x) * k; o.y += (tgt.y - o.y) * k
@@ -188,6 +251,7 @@ export default function Game() {
       ctx.setTransform(dpr * z, 0, 0, dpr * z, -cam.x * dpr * z, -cam.y * dpr * z)
       ctx.imageSmoothingEnabled = false
       ctx.drawImage(bg, 0, 0)
+      drawBoardMarks(ctx, boardMarks, writing(performance.now()))
 
       const tasks = Object.values(s.tasks)
       const byDesk = new Map<number, Profile>()
@@ -195,22 +259,24 @@ export default function Game() {
       const items: { key: number; draw: () => void }[] = []
       for (let i = 0; i < DESKS; i++) {
         const owner = byDesk.get(i)
-        const notes = owner ? tasks.filter(x => x.owner_id === owner.id && x.status === 'todo').length : 0
+        const pile = owner ? tasks.filter(x => x.owner_id === owner.id && OPEN.has(x.status)).length : 0
         const inbox = owner ? tasks.some(x => x.owner_id === owner.id && x.status === 'inbox') : false
         const busy = !!owner && s.online.has(owner.id) && !!doingOf(tasks, owner.id)
-        items.push({ key: deskOf(i).ty * T + 15, draw: () => drawDesk(ctx, i, { notes, inbox, busy, owned: !!owner, t }) })
+        items.push({ key: deskOf(i).ty * T + 15, draw: () => drawDesk(ctx, i, { pile, inbox, busy, owned: !!owner, t }) })
       }
       for (const [id, o] of shown) {
         const p = s.profiles[id]
         if (!p?.avatar) continue
         if (p.photo && !watched.has(p.photo)) { watched.add(p.photo); offPhotos.push(onPhotoLoad(p.photo, () => {})) }
-        const away = id !== meId && !s.online.has(id)
+        const job = jobs.get(id)
+        const away = id !== meId && !s.online.has(id) && !job
         items.push({
           key: o.y, draw: () => {
             ctx.globalAlpha = away ? 0.55 : 1
             ctx.fillStyle = 'rgba(0,0,0,.18)'
             ctx.beginPath(); ctx.ellipse(o.x, o.y, 6, 2, 0, 0, Math.PI * 2); ctx.fill()
             drawAvatar(ctx, p.avatar!, p.photo, Math.round(o.x - 8), Math.round(o.y - SPRITE_H + 1), o.dir, frameOf(o))
+            if (job?.carry && o.dir !== 'up') drawCarry(ctx, Math.round(o.x + (o.dir === 'left' ? -9 : 2)), Math.round(o.y - 11))
             ctx.globalAlpha = 1
           },
         })
@@ -238,7 +304,7 @@ export default function Game() {
         if (!p?.avatar) continue
         const sx = (o.x - cam.x) * z, sy = (o.y - SPRITE_H - cam.y) * z
         if (sx < -100 || sx > W + 100 || sy < -60 || sy > H + 60) continue
-        const away = id !== meId && !s.online.has(id)
+        const away = id !== meId && !s.online.has(id) && !jobs.has(id)
         const label = `${p.name}`
         ctx.font = '600 12px "Pixelify Sans", Inter, sans-serif'
         const lw = ctx.measureText(label).width
