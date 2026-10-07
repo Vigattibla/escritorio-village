@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { isChief, rankName } from '../game/ranks'
 import {
-  acceptRequest, addNote, attachFiles, canEditTask, declineRequest, fileUrl, removeAttachment, removeNote, removeTask, run,
+  acceptRequest, addNote, attachFiles, canEditTask, canMove, canReassign, declineRequest, reassign, fileUrl, removeAttachment, removeNote, removeTask, run,
   setStatus, setUi, updateTask, useStore,
 } from '../store'
 import type { Attachment, Task } from '../types'
@@ -86,6 +86,8 @@ export default function TaskDetail() {
   const me = profiles[meId]
   const edit = canEditTask(t)
   const own = t.owner_id === meId
+  const move = canMove(t)
+  const targets = Object.values(profiles).filter(p => canReassign(t, p.id)).sort((a, b) => a.name.localeCompare(b.name))
   const chief = isChief(me)
   const canDelete = own || chief || (t.created_by === meId && t.status !== 'done')
   const name = (uid: string) => profiles[uid]?.name ?? 'Alguém'
@@ -160,6 +162,12 @@ export default function TaskDetail() {
             <h3>Pessoas</h3>
             <div className="people">
               {person(t.owner_id, 'responsável')}
+              {targets.length > 0 && (
+                <select className="add-person" value="" onChange={e => e.target.value && run(reassign(t.id, e.target.value))} title="Trocar o responsável">
+                  <option value="">⇄ passar para…</option>
+                  {targets.map(p => <option key={p.id} value={p.id}>{p.name} · {p.role || rankName(p)}</option>)}
+                </select>
+              )}
               {t.created_by !== t.owner_id && person(t.created_by, 'pediu')}
               {t.collaborators.map(uid => person(uid, 'colabora', edit ? () => run(updateTask(t.id, { collaborators: t.collaborators.filter(x => x !== uid) })) : undefined))}
               {edit && free.length > 0 && (
@@ -229,10 +237,10 @@ export default function TaskDetail() {
             <button className="btn primary sm" onClick={() => run(acceptRequest(t.id))}>Aceitar</button>
             <button className="btn ghost sm" onClick={() => run(declineRequest(t.id))}>Recusar</button>
           </>}
-          {own && t.status === 'todo' && <button className="btn primary sm" onClick={() => run(setStatus(t.id, 'doing'))}>▶ Começar</button>}
-          {own && t.status === 'doing' && <button className="btn ghost sm" onClick={() => run(setStatus(t.id, 'todo'))}>⏸ Pausar</button>}
-          {own && (t.status === 'todo' || t.status === 'doing') && <button className="btn primary sm" onClick={() => run(setStatus(t.id, 'done'))}>✓ Concluir</button>}
-          {own && t.status === 'done' && <button className="btn ghost sm" onClick={() => run(setStatus(t.id, 'todo'))}>Reabrir</button>}
+          {move && t.status === 'todo' && <button className="btn primary sm" onClick={() => run(setStatus(t.id, 'doing'))}>▶ Começar</button>}
+          {move && t.status === 'doing' && <button className="btn ghost sm" onClick={() => run(setStatus(t.id, 'todo'))}>⏸ Pausar</button>}
+          {move && (t.status === 'todo' || t.status === 'doing') && <button className="btn primary sm" onClick={() => run(setStatus(t.id, 'done'))}>✓ Concluir</button>}
+          {move && t.status === 'done' && <button className="btn ghost sm" onClick={() => run(setStatus(t.id, 'todo'))}>Reabrir</button>}
           <span className="grow" />
           {canDelete && (sure
             ? <button className="btn danger sm" onClick={() => run(removeTask(t.id))} onBlur={() => setSure(false)}>Confirmar exclusão</button>

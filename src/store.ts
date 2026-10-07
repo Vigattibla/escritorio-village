@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react'
 import { backend } from './data'
-import { canAssign, isChief } from './game/ranks'
+import { canAssign, isChief, rankOf } from './game/ranks'
 import { level, levelTitle, taskXp } from './game/xp'
 import { MAX_DESKS } from './office/world'
 import type { Attachment, Avatar, Message, Pos, Profile, Task, TaskNote, TaskStatus } from './types'
@@ -8,6 +8,8 @@ import type { Attachment, Avatar, Message, Pos, Profile, Task, TaskNote, TaskSta
 export type Phase = 'loading' | 'auth' | 'creator' | 'office'
 export type Tab = 'mesa' | 'equipe' | 'chat' | 'geral'
 export type DeskView = 'pasta' | 'pc'
+/** quadro = trabalho do dia a dia (estilo Trello); escritório = visualização em pixel */
+export type View = 'quadro' | 'escritorio'
 export interface Go { tab?: Tab; viewing?: string; channel?: string; desk?: string; deskView?: DeskView; task?: string }
 export interface Notice { id: string; text: string; at: number; from?: string; go?: Go }
 
@@ -35,11 +37,18 @@ export interface State {
   editing: boolean
   notices: Notice[]
   pipOpen: boolean
+  view: View
+  /** no quadro, painel lateral (equipe/chat/geral) aberto */
+  drawer: boolean
+}
+
+function savedView(): View {
+  try { return localStorage.getItem('ev:view') === 'escritorio' ? 'escritorio' : 'quadro' } catch { return 'quadro' }
 }
 
 const initial: State = {
   phase: 'loading', meId: null, accountName: '', error: '', profiles: {}, tasks: {}, messages: [], notes: [], online: new Set(),
-  tab: 'mesa', viewing: null, channel: 'geral', reads: {}, requestTo: null, desk: null, deskView: 'pasta', task: null, editing: false, notices: [], pipOpen: false,
+  tab: 'mesa', viewing: null, channel: 'geral', reads: {}, requestTo: null, desk: null, deskView: 'pasta', task: null, editing: false, notices: [], pipOpen: false, view: savedView(), drawer: false,
 }
 
 let state = initial
@@ -72,6 +81,21 @@ export function canEditTask(t: Task, uid = state.meId) {
   const my = state.profiles[uid]
   return involved(t, uid) || isChief(my) || canAssign(my, state.profiles[t.owner_id])
 }
+/** Muda a etapa: responsável, Chefe ou cargo acima do responsável (igual ao guard_task). */
+export function canMove(t: Task, uid = state.meId) {
+  if (!uid) return false
+  const my = state.profiles[uid]
+  return t.owner_id === uid || isChief(my) || canAssign(my, state.profiles[t.owner_id])
+}
+/** Passa para outra pessoa: Chefe, ou cargo acima de quem tem e de quem recebe. */
+export function canReassign(t: Task, to: string, uid = state.meId) {
+  const my = uid ? state.profiles[uid] : undefined
+  if (!my || to === t.owner_id) return false
+  const r = rankOf(my)
+  return r === 4 || (r > rankOf(state.profiles[t.owner_id]) && r > rankOf(state.profiles[to]))
+}
+/** O chat está na tela? */
+const chatShown = () => state.tab === 'chat' && (state.view === 'escritorio' || state.drawer)
 
 export function unread(s: State, ch: string) {
   const since = s.reads[ch] ?? ''
@@ -113,6 +137,7 @@ function onTask(raw: Task) {
     else if (t.status === 'declined') notify(`${who} recusou seu pedido: “${t.title}”`, { from: t.owner_id, go })
     else if (prev?.status === 'inbox' && t.status === 'todo') notify(`${who} aceitou seu pedido: “${t.title}”`, { from: t.owner_id, go })
   }
+  if (prev && prev.owner_id !== my && t.owner_id === my) notify(`Uma tarefa passou para você: “${t.title}”`, { go: { task: t.id } })
 }
 
 function onTaskDeleted(id: string) {
@@ -140,7 +165,7 @@ function onMessage(m: Message) {
   set({ messages: [...state.messages, m].slice(-600) })
   if (m.sender_id === my) return
   bubbles.set(m.sender_id, { text: m.body, until: Date.now() + 6000 })
-  const viewing = state.tab === 'chat' && state.channel === m.channel && !document.hidden
+  const viewing = chatShown() && state.channel === m.channel && !document.hidden
   if (viewing) return markRead(m.channel)
   const where = m.channel === 'geral' ? ' (Geral)' : ''
   notify(`${nameOf(m.sender_id)}${where}: ${m.body.slice(0, 90)}`, { from: m.sender_id, go: { tab: 'chat', channel: m.channel } })
@@ -195,9 +220,11 @@ export async function signOut() {
   set({ ...initial, phase: 'auth' })
 }
 
-export function setUi(p: Partial<Pick<State, 'tab' | 'viewing' | 'channel' | 'requestTo' | 'editing' | 'pipOpen' | 'error' | 'desk' | 'deskView' | 'task'>>) {
-  set(p)
-  if (state.tab === 'chat') markRead(state.channel)
+export function setUi(p: Partial<Pick<State, 'tab' | 'viewing' | 'channel' | 'requestTo' | 'editing' | 'pipOpen' | 'error' | 'desk' | 'deskView' | 'task' | 'view' | 'drawer'>>) {
+  // no quadro, ir para uma aba abre o painel lateral
+  set(p.tab && p.drawer === undefined && (p.view ?? state.view) === 'quadro' ? { ...p, drawer: true } : p)
+  if (p.view) try { localStorage.setItem('ev:view', p.view) } catch { /* sem armazenamento */ }
+  if (chatShown()) markRead(state.channel)
 }
 
 export function markRead(ch: string) {
@@ -224,27 +251,46 @@ export async function saveProfile(d: { name: string; role: string; avatar: Avata
   set({ profiles: { ...state.profiles, [uid]: saved }, phase: 'office', editing: false })
 }
 
+/** Mostra na hora; se o servidor recusar, volta como estava. */
 async function putTask(t: Task) {
+  const prev = state.tasks[t.id]
   set({ tasks: { ...state.tasks, [t.id]: t } })
-  await backend.upsertTask(t)
+  try {
+    await backend.upsertTask(t)
+  } catch (e) {
+    if (state.tasks[t.id] === t) {
+      const tasks = { ...state.tasks }
+      if (prev) tasks[t.id] = prev
+      else delete tasks[t.id]
+      set({ tasks })
+    }
+    throw e
+  }
 }
 
-/** Na própria pasta ou de quem tem cargo menor: entra direto. Senão vira pedido no computador da pessoa. */
-export async function addTask(owner: string, title: string, due: string | null = null, notes = '') {
+/**
+ * Na própria pasta ou de quem tem cargo menor: entra direto (na etapa pedida).
+ * Senão (ou se `status` = 'inbox') vira pedido para a pessoa aceitar.
+ */
+export async function addTask(owner: string, title: string, due: string | null = null, notes = '', status: TaskStatus = 'todo') {
   const direct = canAssign(me(), state.profiles[owner])
   const t: Task = {
-    id: crypto.randomUUID(), owner_id: owner, created_by: state.meId!, title: title.trim(), notes, status: direct ? 'todo' : 'inbox',
-    start: null, due, collaborators: [], attachments: [], position: Date.now(), created_at: new Date().toISOString(), done_at: null,
+    id: crypto.randomUUID(), owner_id: owner, created_by: state.meId!, title: title.trim(), notes, status: direct && status !== 'inbox' ? status : 'inbox',
+    start: null, due, collaborators: [], attachments: [], position: Date.now(), created_at: new Date().toISOString(),
+    done_at: direct && status === 'done' ? new Date().toISOString() : null,
   }
   await putTask(t)
+  return t
 }
 
-export async function setStatus(id: string, status: TaskStatus) {
+export async function setStatus(id: string, status: TaskStatus, position = Date.now()) {
   const t = state.tasks[id]
   const my = me()
-  if (!t || !my || t.owner_id !== my.id || t.status === status) return
+  if (!t || !my || t.status === status) return
+  if (!canMove(t)) throw new Error('Só quem é responsável (ou um cargo acima) muda a etapa dessa tarefa.')
   const wasDone = t.status === 'done'
-  await putTask({ ...t, status, position: Date.now(), done_at: status === 'done' ? new Date().toISOString() : null })
+  await putTask({ ...t, status, position, done_at: status === 'done' ? new Date().toISOString() : null })
+  if (t.owner_id !== my.id) return // XP é de quem faz
   const delta = status === 'done' ? taskXp(t) : wasDone ? -taskXp(t) : 0
   if (!delta) return
   const xp = Math.max(0, my.xp + delta)
@@ -252,6 +298,21 @@ export async function setStatus(id: string, status: TaskStatus) {
   set({ profiles: { ...state.profiles, [my.id]: p } })
   set({ profiles: { ...state.profiles, [my.id]: await backend.upsertProfile(p) } })
   if (level(xp) > level(my.xp)) notify(`Subiu para o nível ${level(xp)} — ${levelTitle(xp)}! 🎉`, { go: { tab: 'mesa' } })
+}
+
+/** Passa a tarefa para outra pessoa (mantém a etapa). */
+export async function reassign(id: string, to: string, position = Date.now()) {
+  const t = state.tasks[id]
+  if (!t || t.owner_id === to) return
+  if (!canReassign(t, to)) throw new Error(`Você não pode passar tarefas de ${nameOf(t.owner_id)} para ${nameOf(to)}. Peça a um cargo acima.`)
+  await putTask({ ...t, owner_id: to, collaborators: t.collaborators.filter(x => x !== to), position })
+}
+
+/** Só muda a ordem dentro da lista. */
+export async function placeTask(id: string, position: number) {
+  const t = state.tasks[id]
+  if (!t || t.position === position || !canEditTask(t)) return
+  await putTask({ ...t, position })
 }
 
 export const acceptRequest = (id: string) => setStatus(id, 'todo')
