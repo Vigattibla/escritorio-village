@@ -1,0 +1,411 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Escritório Village v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet" />
+<style>
+:root {
+  --navy: #0B235D; --navy-2: #1B3A86; --navy-soft: #E8ECF6;
+  --yellow: #FBC222; --yellow-soft: #FFF4D1;
+  --bg: #F3F5FA; --card: #fff; --line: #E4E8F1;
+  --text: #121A33; --muted: #6B7390;
+  /* pastel só em etiquetas */
+  --t-blue: #E6EEFF; --t-blue-i: #2F5BD3;
+  --t-green: #E3F6EA; --t-green-i: #1E9152;
+  --t-red: #FDE8E6; --t-red-i: #C8372A;
+  --t-amber: #FFF1DB; --t-amber-i: #B86E00;
+  --t-lilac: #EFE9FD; --t-lilac-i: #6B46D6;
+  --t-pink: #FCE7F1; --t-pink-i: #C2387B;
+  --t-gray: #EEF0F4; --t-gray-i: #5E6680;
+  --r-lg: 22px; --r-md: 16px; --r-sm: 10px;
+  --sh: 0 1px 2px rgba(11,35,93,.06), 0 4px 14px rgba(11,35,93,.06);
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: #D9DEEA; font-family: Inter, system-ui, sans-serif; color: var(--text); -webkit-font-smoothing: antialiased; padding: 32px; }
+h1, h2, h3 { font-family: Poppins, Inter, sans-serif; margin: 0; }
+.ic { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.frame { max-width: 1440px; margin: 0 auto 40px; background: var(--bg); border-radius: 28px; overflow: hidden; display: grid; grid-template-columns: 84px 1fr; min-height: 900px; box-shadow: 0 30px 80px rgba(11,35,93,.18); }
+.label { max-width: 1440px; margin: 0 auto 12px; font: 600 13px Inter; color: #4A5373; letter-spacing: .06em; text-transform: uppercase; }
+
+/* menu */
+.rail { background: var(--navy); display: flex; flex-direction: column; align-items: center; padding: 22px 0; gap: 8px; }
+.logo { width: 44px; height: 44px; border-radius: 14px; background: var(--yellow); color: var(--navy); display: grid; place-items: center; font: 700 20px Poppins; margin-bottom: 18px; }
+.rail a { position: relative; width: 52px; height: 52px; border-radius: 16px; display: grid; place-items: center; color: #AEB9D9; }
+.rail a:hover { background: rgba(255,255,255,.08); color: #fff; }
+.rail a.on { background: var(--yellow); color: var(--navy); }
+.rail a .ic { width: 22px; height: 22px; }
+.rail a i { position: absolute; top: 6px; right: 6px; min-width: 18px; height: 18px; border-radius: 9px; background: #FF5A36; color: #fff; font: 700 10px/18px Inter; font-style: normal; text-align: center; padding: 0 4px; border: 2px solid var(--navy); }
+.rail .tip { font: 500 10px Inter; color: #AEB9D9; margin-top: -4px; margin-bottom: 4px; }
+.rail .on + .tip { color: #fff; }
+.rail .sp { flex: 1; }
+.me { width: 40px; height: 40px; border-radius: 50%; background: #FFD6A8; border: 2px solid var(--yellow); display: grid; place-items: center; font: 700 14px Poppins; color: var(--navy); }
+
+/* página */
+.page { padding: 28px 32px 40px; display: grid; grid-template-columns: 1fr 320px; gap: 28px; align-content: start; }
+.top { grid-column: 1 / -1; display: flex; align-items: center; gap: 14px; }
+.search { display: flex; align-items: center; gap: 10px; background: #fff; border-radius: 999px; padding: 10px 16px; width: 340px; color: var(--muted); font-size: 14px; box-shadow: var(--sh); }
+.search kbd { margin-left: auto; font: 600 11px Inter; background: var(--bg); border-radius: 6px; padding: 2px 6px; }
+.grow { flex: 1; }
+.iconbtn { position: relative; width: 44px; height: 44px; border-radius: 14px; background: #fff; display: grid; place-items: center; color: var(--navy); box-shadow: var(--sh); border: 0; }
+.iconbtn i { position: absolute; top: -4px; right: -4px; width: 18px; height: 18px; border-radius: 50%; background: #FF5A36; color: #fff; font: 700 10px/18px Inter; font-style: normal; text-align: center; border: 2px solid var(--bg); }
+.btn { display: inline-flex; align-items: center; gap: 8px; border: 0; border-radius: 999px; padding: 11px 18px; font: 600 14px Inter; cursor: pointer; }
+.btn.primary { background: var(--navy); color: #fff; }
+.btn.accent { background: var(--yellow); color: var(--navy); }
+.btn.soft { background: #fff; color: var(--navy); box-shadow: var(--sh); }
+
+.head { display: flex; align-items: flex-end; gap: 24px; }
+.head h1 { font-size: 32px; font-weight: 700; color: var(--navy); letter-spacing: -.01em; }
+.head .sub { color: var(--muted); font-size: 14px; margin-top: 6px; display: flex; gap: 8px; align-items: center; }
+.stats { display: flex; gap: 0; margin-left: auto; }
+.stat { padding: 0 22px; border-left: 1px solid var(--line); }
+.stat:first-child { border-left: 0; }
+.stat small { display: block; color: var(--muted); font-size: 12px; margin-bottom: 4px; }
+.stat b { font: 600 28px Poppins; color: var(--navy); }
+.stat b span { font-size: 14px; color: var(--muted); font-weight: 500; }
+
+.tabs { display: flex; align-items: center; gap: 6px; margin: 22px 0 18px; }
+.tabs .seg { display: flex; background: #fff; border-radius: 999px; padding: 5px; box-shadow: var(--sh); gap: 2px; }
+.tabs .seg button { display: flex; align-items: center; gap: 8px; border: 0; background: none; border-radius: 999px; padding: 9px 16px; font: 500 14px Inter; color: var(--muted); }
+.tabs .seg button.on { background: var(--navy); color: #fff; }
+.chip { white-space: nowrap; display: inline-flex; align-items: center; gap: 7px; background: #fff; border: 1px solid var(--line); border-radius: 999px; padding: 8px 13px; font: 500 13px Inter; color: #39425F; }
+.chip.on { background: var(--yellow-soft); border-color: var(--yellow); color: var(--navy); }
+.chip .n { background: var(--yellow); color: var(--navy); border-radius: 999px; font: 700 11px Inter; padding: 1px 7px; }
+.faces { display: flex; }
+.faces span { width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--bg); margin-left: -8px; display: grid; place-items: center; font: 700 11px Poppins; color: var(--navy); }
+.faces span:first-child { margin-left: 0; }
+
+/* colunas */
+.cols { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; align-items: start; }
+.col { background: rgba(255,255,255,.55); border-radius: var(--r-lg); padding: 10px; }
+.col-h { display: flex; align-items: center; gap: 8px; padding: 8px 8px 12px; font: 600 14px Poppins; color: var(--navy); }
+.col-h .dot { width: 10px; height: 10px; border-radius: 50%; }
+.col-h .cnt { font: 600 12px Inter; color: var(--muted); background: #fff; border-radius: 999px; padding: 2px 8px; }
+.col-h .more { margin-left: auto; color: var(--muted); }
+.card { background: var(--card); border-radius: var(--r-md); padding: 14px; box-shadow: var(--sh); margin-bottom: 10px; }
+.card.hot { background: var(--yellow); }
+.card.hot .note, .card.hot .meta { color: #5A4A10; }
+.card.dark { background: var(--navy); color: #fff; }
+.card.dark .note, .card.dark .meta { color: #B7C2E3; }
+.tags { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+.tag { display: inline-flex; align-items: center; gap: 5px; border-radius: 8px; padding: 4px 8px; font: 600 12px Inter; }
+.tag .ic { width: 14px; height: 14px; stroke-width: 2; }
+.tag.blue { background: var(--t-blue); color: var(--t-blue-i); }
+.tag.green { background: var(--t-green); color: var(--t-green-i); }
+.tag.red { background: var(--t-red); color: var(--t-red-i); }
+.tag.amber { background: var(--t-amber); color: var(--t-amber-i); }
+.tag.lilac { background: var(--t-lilac); color: var(--t-lilac-i); }
+.tag.pink { background: var(--t-pink); color: var(--t-pink-i); }
+.tag.gray { background: var(--t-gray); color: var(--t-gray-i); }
+.card.hot .tag, .card.dark .tag { background: rgba(255,255,255,.7); }
+.card h4 { margin: 0; font: 600 15px Inter; line-height: 1.35; }
+.note { font-size: 13px; color: var(--muted); margin-top: 5px; line-height: 1.45; }
+.prog { margin-top: 12px; }
+.prog .row { display: flex; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+.prog .row b { margin-left: auto; color: var(--text); font-weight: 600; }
+.card.dark .prog .row b { color: #fff; }
+.bar { height: 6px; background: var(--navy-soft); border-radius: 999px; overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--navy); border-radius: 999px; }
+.card.dark .bar { background: rgba(255,255,255,.15); } .card.dark .bar i { background: var(--yellow); }
+.card.hot .bar { background: rgba(11,35,93,.15); }
+.meta { display: flex; align-items: center; gap: 6px; margin-top: 12px; font-size: 12px; color: var(--muted); }
+.meta .faces span { width: 26px; height: 26px; border-color: #fff; }
+.card.dark .meta .faces span { border-color: var(--navy); }
+.cnt-pill { display: inline-flex; align-items: center; gap: 4px; border: 1px solid var(--line); border-radius: 8px; padding: 3px 7px; }
+.card.dark .cnt-pill, .card.hot .cnt-pill { border-color: rgba(255,255,255,.25); }
+.cnt-pill .ic { width: 13px; height: 13px; }
+.due { display: inline-flex; align-items: center; gap: 4px; }
+.due.late { color: var(--t-red-i); font-weight: 600; }
+.add { display: flex; align-items: center; gap: 8px; width: 100%; border: 1.5px dashed #C9D0E2; background: none; border-radius: var(--r-md); padding: 11px 14px; color: var(--muted); font: 500 13px Inter; }
+
+/* coluna direita */
+.side { display: flex; flex-direction: column; gap: 16px; }
+.panel { background: #fff; border-radius: var(--r-lg); padding: 20px; box-shadow: var(--sh); }
+.eyebrow { font: 700 11px Inter; letter-spacing: .1em; text-transform: uppercase; color: var(--navy-2); }
+.day h2 { font-size: 24px; color: var(--navy); margin: 4px 0 16px; }
+.li { display: flex; gap: 12px; padding: 10px 0; }
+.li + .li { border-top: 1px solid var(--line); }
+.li .tile { width: 36px; height: 36px; border-radius: 12px; display: grid; place-items: center; flex: none; }
+.li b { display: block; font-size: 14px; font-weight: 600; }
+.li small { color: var(--muted); font-size: 12.5px; }
+.goal { background: var(--navy); color: #fff; }
+.goal .eyebrow { color: var(--yellow); }
+.goal h3 { font-size: 18px; margin: 6px 0 4px; }
+.goal .big { font: 600 34px Poppins; margin-top: 12px; }
+.goal .big span { font-size: 15px; color: #B7C2E3; font-weight: 500; }
+.goal .bar { background: rgba(255,255,255,.15); height: 10px; margin: 10px 0 16px; }
+.goal .bar i { background: var(--yellow); }
+.reward { display: flex; align-items: center; gap: 12px; background: rgba(255,255,255,.08); border-radius: 14px; padding: 12px; }
+.reward .tile { width: 40px; height: 40px; border-radius: 12px; background: var(--yellow); color: var(--navy); display: grid; place-items: center; }
+.reward small { display: block; color: #B7C2E3; font-size: 12px; }
+.reward b { font-size: 14px; }
+
+/* folha de componentes */
+.sheet { max-width: 1440px; margin: 0 auto 40px; background: var(--bg); border-radius: 28px; padding: 36px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; box-shadow: 0 30px 80px rgba(11,35,93,.18); }
+.sheet .panel h3 { font-size: 15px; color: var(--navy); margin-bottom: 14px; }
+.wrap { display: flex; flex-wrap: wrap; gap: 8px; }
+.tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+.tiles div { text-align: center; font-size: 11.5px; color: var(--muted); }
+.tiles span { position: relative; width: 56px; height: 56px; margin: 0 auto 6px; border-radius: 18px; display: grid; place-items: center; }
+.tiles span .ic { width: 24px; height: 24px; stroke-width: 1.9; }
+.tiles span i { position: absolute; top: -6px; right: -6px; min-width: 20px; height: 20px; border-radius: 10px; background: #FF5A36; color: #fff; font: 700 11px/20px Inter; font-style: normal; border: 3px solid #fff; }
+.cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; text-align: center; font-size: 13px; }
+.cal b { font: 600 11px Inter; color: var(--muted); padding-bottom: 4px; }
+.cal span { height: 34px; display: grid; place-items: center; border-radius: 10px; position: relative; }
+.cal span.t { background: var(--navy); color: #fff; font-weight: 600; }
+.cal span.r1 { background: var(--yellow-soft); }
+.cal span::after { content: ''; position: absolute; bottom: 4px; width: 5px; height: 5px; border-radius: 50%; background: var(--c, transparent); }
+.post { display: flex; gap: 10px; align-items: center; border-radius: 12px; padding: 10px; background: var(--bg); margin-top: 8px; font-size: 13px; }
+.post .bar-l { width: 4px; align-self: stretch; border-radius: 4px; }
+.post small { display: block; color: var(--muted); font-size: 12px; }
+.cele { text-align: center; padding: 26px 20px; }
+.cele .trophy { width: 84px; height: 84px; margin: 0 auto 14px; border-radius: 28px; background: var(--yellow); display: grid; place-items: center; color: var(--navy); position: relative; }
+.cele .trophy .ic { width: 42px; height: 42px; stroke-width: 1.6; }
+.cele h2 { font-size: 22px; color: var(--navy); }
+.cele p { color: var(--muted); font-size: 14px; margin: 6px 0 16px; }
+.node-demo { position: relative; height: 210px; }
+.node { position: absolute; display: flex; align-items: center; gap: 10px; background: #fff; border-radius: 999px; padding: 7px 16px 7px 7px; font: 500 14px Inter; box-shadow: var(--sh); }
+.node em { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font: 600 13px Inter; font-style: normal; background: var(--bg); }
+.node.main em { background: var(--yellow); color: var(--navy); }
+.node-demo svg.lines { position: absolute; inset: 0; width: 100%; height: 100%; }
+.sticky { display: inline-block; width: 120px; min-height: 92px; padding: 12px; border-radius: 6px 6px 18px 6px; font-size: 13px; box-shadow: var(--sh); vertical-align: top; margin: 0 6px 6px 0; }
+</style>
+</head>
+<body>
+
+<div class="label">1 · Quadro (tela principal)</div>
+<div class="frame">
+  <nav class="rail">
+    <div style="height:10px"></div>
+    <a class="on" title="Quadro"><svg class="ic" data-i="kanban"></svg></a><div class="tip">Quadro</div>
+    <a title="Calendário"><svg class="ic" data-i="calendar"></svg><i>2</i></a><div class="tip">Agenda</div>
+    <a title="Metas"><svg class="ic" data-i="target"></svg></a><div class="tip">Metas</div>
+    <a title="Mural"><svg class="ic" data-i="sticky"></svg></a><div class="tip">Mural</div>
+    <a title="Escritório"><svg class="ic" data-i="building"></svg></a><div class="tip">Escritório</div>
+    <a title="Equipe"><svg class="ic" data-i="users"></svg></a><div class="tip">Equipe</div>
+    <div class="sp"></div>
+    <a title="Ajustes"><svg class="ic" data-i="settings"></svg></a>
+    <div class="me">G</div>
+  </nav>
+
+  <div class="page">
+    <div class="top">
+      <label class="search"><svg class="ic" data-i="search"></svg>Buscar tarefa, post, pessoa…<kbd>/</kbd></label>
+      <div class="grow"></div>
+      <button class="btn soft"><svg class="ic" data-i="sparkles"></svg>Distribuir com IA</button>
+      <button class="iconbtn" title="Lembretes"><svg class="ic" data-i="bell"></svg><i>3</i></button>
+      <button class="btn accent"><svg class="ic" data-i="plus"></svg>Nova tarefa</button>
+    </div>
+
+    <div>
+      <div class="head">
+        <div>
+          <h1>Quadro da equipe</h1>
+          <div class="sub"><svg class="ic" data-i="folder"></svg>Todos os projetos · Semana 6–12 out</div>
+        </div>
+        <div class="stats">
+          <div class="stat"><small>Tarefas da semana</small><b>38</b></div>
+          <div class="stat"><small>Para aprovar</small><b>4</b></div>
+          <div class="stat"><small>Meta de outubro</small><b>70<span>%</span></b></div>
+        </div>
+      </div>
+
+      <div class="tabs">
+        <div class="seg">
+          <button class="on"><svg class="ic" data-i="kanban"></svg>Etapas</button>
+          <button><svg class="ic" data-i="users"></svg>Pessoas</button>
+          <button><svg class="ic" data-i="list"></svg>Lista</button>
+          <button><svg class="ic" data-i="calendar"></svg>Calendário</button>
+        </div>
+        <div class="grow"></div>
+        <span class="chip on"><svg class="ic" data-i="check"></svg>Para eu aprovar <span class="n">4</span></span>
+        <span class="chip"><svg class="ic" data-i="user"></svg>Minhas</span>
+        <span class="chip"><svg class="ic" data-i="clock"></svg>Prazo</span>
+        <div class="faces">
+          <span style="background:#FFD6A8">G</span><span style="background:#C9E4FF">A</span><span style="background:#D8F2DF">M</span><span style="background:#F1DDFF">L</span>
+        </div>
+      </div>
+
+      <div class="cols" id="cols"></div>
+    </div>
+
+    <aside class="side">
+      <div class="panel day">
+        <div class="eyebrow">Seu dia</div>
+        <h2>Terça, 7 de outubro</h2>
+        <div class="li"><div class="tile" style="background:var(--navy);color:#fff"><svg class="ic" data-i="check"></svg></div><div><b>3 tarefas vencem hoje</b><small>1 com prioridade alta</small></div></div>
+        <div class="li"><div class="tile" style="background:var(--t-pink);color:var(--t-pink-i)"><svg class="ic" data-i="instagram"></svg></div><div><b>2 posts agendados</b><small>Próximo: Reels Semana das Crianças, 16h</small></div></div>
+        <div class="li"><div class="tile" style="background:var(--t-amber);color:var(--t-amber-i)"><svg class="ic" data-i="bell"></svg></div><div><b>Lembrete às 14h</b><small>Conferir pedidos do bar</small></div></div>
+        <button class="btn soft" style="width:100%;justify-content:center;margin-top:12px;box-shadow:none;background:var(--navy-soft)"><svg class="ic" data-i="bell"></svg>Criar lembrete</button>
+      </div>
+
+      <div class="panel goal">
+        <div class="eyebrow">Meta da equipe · outubro</div>
+        <h3>Publicar 40 posts</h3>
+        <div class="big">28 <span>de 40</span></div>
+        <div class="bar"><i style="width:70%"></i></div>
+        <div class="reward"><div class="tile"><svg class="ic" data-i="gift"></svg></div><div><small>Recompensa ao bater</small><b>Almoço da equipe no restaurante</b></div></div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<div class="label">2 · Peças: etiquetas, ícones, agenda, mural, comemoração</div>
+<div class="sheet">
+  <div class="panel">
+    <h3>Status</h3>
+    <div class="wrap">
+      <span class="tag gray"><svg class="ic" data-i="inbox"></svg>Pedido</span>
+      <span class="tag blue"><svg class="ic" data-i="circle-dash"></svg>A fazer</span>
+      <span class="tag amber"><svg class="ic" data-i="loader"></svg>Fazendo</span>
+      <span class="tag lilac"><svg class="ic" data-i="eye"></svg>Em revisão</span>
+      <span class="tag green"><svg class="ic" data-i="check"></svg>Feito</span>
+      <span class="tag red"><svg class="ic" data-i="alert"></svg>Atrasada</span>
+    </div>
+    <h3 style="margin-top:20px">Prioridade</h3>
+    <div class="wrap">
+      <span class="tag red"><svg class="ic" data-i="flag"></svg>Alta</span>
+      <span class="tag amber"><svg class="ic" data-i="flag"></svg>Média</span>
+      <span class="tag gray"><svg class="ic" data-i="flag"></svg>Baixa</span>
+    </div>
+    <h3 style="margin-top:20px">Canal (agenda editorial)</h3>
+    <div class="wrap">
+      <span class="tag pink"><svg class="ic" data-i="instagram"></svg>Feed</span>
+      <span class="tag lilac"><svg class="ic" data-i="video"></svg>Reels</span>
+      <span class="tag amber"><svg class="ic" data-i="circle-dash"></svg>Stories</span>
+      <span class="tag blue"><svg class="ic" data-i="facebook"></svg>Facebook</span>
+      <span class="tag green"><svg class="ic" data-i="globe"></svg>Site</span>
+      <span class="tag gray"><svg class="ic" data-i="printer"></svg>Impresso</span>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h3>Ícones de área</h3>
+    <div class="tiles">
+      <div><span style="background:var(--navy);color:var(--yellow)"><svg class="ic" data-i="kanban"></svg></span>Quadro</div>
+      <div><span style="background:var(--yellow);color:var(--navy)"><svg class="ic" data-i="calendar"></svg><i>2</i></span>Agenda</div>
+      <div><span style="background:var(--t-green);color:var(--t-green-i)"><svg class="ic" data-i="target"></svg></span>Metas</div>
+      <div><span style="background:var(--t-lilac);color:var(--t-lilac-i)"><svg class="ic" data-i="sticky"></svg></span>Mural</div>
+      <div><span style="background:var(--t-blue);color:var(--t-blue-i)"><svg class="ic" data-i="building"></svg></span>Escritório</div>
+      <div><span style="background:var(--t-pink);color:var(--t-pink-i)"><svg class="ic" data-i="users"></svg></span>Equipe</div>
+      <div><span style="background:var(--t-amber);color:var(--t-amber-i)"><svg class="ic" data-i="bell"></svg><i>3</i></span>Lembretes</div>
+      <div><span style="background:var(--t-gray);color:var(--t-gray-i)"><svg class="ic" data-i="gift"></svg></span>Recompensas</div>
+    </div>
+    <h3 style="margin-top:22px">Botões</h3>
+    <div class="wrap">
+      <button class="btn primary"><svg class="ic" data-i="plus"></svg>Criar</button>
+      <button class="btn accent"><svg class="ic" data-i="check"></svg>Aprovar</button>
+      <button class="btn soft">Cancelar</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h3>Agenda editorial · outubro</h3>
+    <div class="cal">
+      <b>D</b><b>S</b><b>T</b><b>Q</b><b>Q</b><b>S</b><b>S</b>
+      <span></span><span></span><span></span><span>1</span><span style="--c:var(--t-pink-i)">2</span><span>3</span><span style="--c:var(--t-lilac-i)">4</span>
+      <span>5</span><span style="--c:var(--t-blue-i)">6</span><span class="t">7</span><span style="--c:var(--t-pink-i)">8</span><span>9</span><span class="r1" style="--c:var(--t-lilac-i)">10</span><span class="r1">11</span>
+      <span class="r1" style="--c:var(--yellow)">12</span><span>13</span><span style="--c:var(--t-pink-i)">14</span><span>15</span><span style="--c:var(--t-green-i)">16</span><span>17</span><span>18</span>
+    </div>
+    <div class="post"><i class="bar-l" style="background:var(--t-pink-i)"></i><div class="grow"><b>Reels · Semana das Crianças</b><small>Qua 8 · 16h · Ana</small></div><span class="tag lilac"><svg class="ic" data-i="eye"></svg>Revisão</span></div>
+    <div class="post"><i class="bar-l" style="background:var(--yellow)"></i><div class="grow"><b>Dia das Crianças (evento)</b><small>Dom 12 · dia todo · equipe</small></div><span class="tag green"><svg class="ic" data-i="check"></svg>Aprovado</span></div>
+  </div>
+
+  <div class="panel">
+    <h3>Mural · sequência</h3>
+    <div class="node-demo">
+      <svg class="lines" viewBox="0 0 400 210" preserveAspectRatio="none"><path d="M200 48 V92 M120 112 H160 M240 112 H280 M200 132 V160 L140 186 M200 160 L260 186" stroke="#0B235D" stroke-width="1.6" stroke-dasharray="2 5" fill="none" stroke-linecap="round"/></svg>
+      <div class="node main" style="left:122px;top:14px"><em><svg class="ic" data-i="sparkles"></svg></em>Campanha Natal</div>
+      <div class="node" style="left:0;top:94px"><em>1</em>Briefing</div>
+      <div class="node" style="left:148px;top:94px"><em>2</em>Arte</div>
+      <div class="node" style="left:282px;top:94px"><em>3</em>Post</div>
+      <div class="node" style="left:58px;top:168px"><em>A</em>Feed</div>
+      <div class="node" style="left:236px;top:168px"><em>B</em>Stories</div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h3>Mural · notas da reunião</h3>
+    <div class="sticky" style="background:#FFF1B8">Trocar fornecedor de toalhas<br><small style="color:#8a7420">— Marcos</small></div><div class="sticky" style="background:#DCE7FF">Pacote Réveillon até sexta<br><small style="color:#3c5aa8">— Gustavo</small></div><div class="sticky" style="background:#E3F6EA">Fotos novas da piscina ✓<br><small style="color:#2b7a4b">— Ana</small></div>
+  </div>
+
+  <div class="panel cele">
+    <div class="trophy"><svg class="ic" data-i="trophy"></svg></div>
+    <h2>Meta batida!</h2>
+    <p>A equipe publicou 40 posts em outubro.<br>Recompensa liberada: almoço da equipe.</p>
+    <button class="btn accent"><svg class="ic" data-i="gift"></svg>Ver recompensa</button>
+  </div>
+</div>
+
+<script>
+const I = {
+  kanban: '<rect width="18" height="18" x="3" y="3" rx="4"/><path d="M8 7v7M12 7v4M16 7v9"/>',
+  calendar: '<rect width="18" height="18" x="3" y="4" rx="3"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+  target: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>',
+  sticky: '<path d="M16 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h9l7-7V5a2 2 0 0 0-2-2z"/><path d="M14 21v-5a2 2 0 0 1 2-2h5"/>',
+  building: '<rect width="16" height="20" x="4" y="2" rx="2"/><path d="M9 22v-4h6v4M8 6h.01M16 6h.01M12 6h.01M12 10h.01M12 14h.01M16 10h.01M16 14h.01M8 10h.01M8 14h.01"/>',
+  users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',
+  user: '<circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 0 0-16 0"/>',
+  settings: '<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',
+  search: '<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>',
+  sparkles: '<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/>',
+  bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
+  plus: '<path d="M5 12h14M12 5v14"/>',
+  folder: '<path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>',
+  list: '<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
+  check: '<path d="M20 6 9 17l-5-5"/>',
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  instagram: '<rect width="18" height="18" x="3" y="3" rx="5"/><circle cx="12" cy="12" r="4"/><path d="M17.5 6.5h.01"/>',
+  facebook: '<path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/>',
+  video: '<rect width="20" height="16" x="2" y="4" rx="3"/><path d="m10 9 5 3-5 3z"/>',
+  globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
+  printer: '<path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14" rx="1"/>',
+  gift: '<rect width="18" height="5" x="3" y="8" rx="1"/><path d="M12 8v13M19 13v6a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-6M7.5 8a2.5 2.5 0 0 1 0-5C10 3 12 8 12 8s2-5 4.5-5a2.5 2.5 0 0 1 0 5"/>',
+  trophy: '<path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6M18 9h1.5a2.5 2.5 0 0 0 0-5H18M4 22h16M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22M18 2H6v7a6 6 0 0 0 12 0z"/>',
+  flag: '<path d="M4 22V4M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1"/>',
+  clip: '<path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/>',
+  chat: '<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>',
+  inbox: '<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>',
+  'circle-dash': '<path d="M10.1 2.18a10 10 0 0 1 3.8 0M17.6 3.71a10 10 0 0 1 2.7 2.7M21.82 10.1a10 10 0 0 1 0 3.8M20.29 17.6a10 10 0 0 1-2.7 2.7M13.9 21.82a10 10 0 0 1-3.8 0M6.4 20.29a10 10 0 0 1-2.7-2.7M2.18 13.9a10 10 0 0 1 0-3.8M3.71 6.4a10 10 0 0 1 2.7-2.7"/>',
+  loader: '<path d="M21 12a9 9 0 1 1-6.22-8.56"/>',
+  eye: '<path d="M2.06 12.35a1 1 0 0 1 0-.7 10.75 10.75 0 0 1 19.88 0 1 1 0 0 1 0 .7 10.75 10.75 0 0 1-19.88 0"/><circle cx="12" cy="12" r="3"/>',
+  alert: '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4M12 17h.01"/>',
+  more: '<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>',
+  bellsm: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/>',
+}
+const svg = (n) => `<svg class="ic" viewBox="0 0 24 24">${I[n]}</svg>`
+const F = { G: '#FFD6A8', A: '#C9E4FF', M: '#D8F2DF', L: '#F1DDFF', R: '#FFE0E6' }
+const tag = ([c, i, t]) => `<span class="tag ${c}">${svg(i)}${t}</span>`
+const card = (k) => `<div class="card ${k.cls || ''}">
+  <div class="tags">${k.tags.map(tag).join('')}</div>
+  <h4>${k.t}</h4>${k.n ? `<div class="note">${k.n}</div>` : ''}
+  ${k.p != null ? `<div class="prog"><div class="row">${k.ck ? `Checklist ${k.ck}` : 'Progresso'}<b>${k.p}%</b></div><div class="bar"><i style="width:${k.p}%"></i></div></div>` : ''}
+  <div class="meta"><div class="faces">${k.who.split('').map(w => `<span style="background:${F[w]}">${w}</span>`).join('')}</div><div class="grow"></div>
+  ${k.d ? `<span class="due ${k.late ? 'late' : ''}">${svg('clock')}${k.d}</span>` : ''}
+  ${k.f ? `<span class="cnt-pill">${svg('clip')}${k.f}</span>` : ''}${k.c ? `<span class="cnt-pill">${svg('chat')}${k.c}</span>` : ''}</div></div>`
+const C = [
+  { t: 'A fazer', dot: '#2F5BD3', cards: [
+    { tags: [['red', 'flag', 'Alta'], ['pink', 'instagram', 'Feed']], t: 'Arte do pacote Réveillon', n: 'Usar as fotos novas da piscina.', p: 0, ck: '0/4', who: 'A', d: 'Hoje', f: 2, c: 1 },
+    { tags: [['amber', 'flag', 'Média'], ['gray', 'folder', 'Restaurante']], t: 'Atualizar cardápio do feriado', who: 'M', d: '10 out', c: 3 },
+  ], add: true },
+  { t: 'Fazendo', dot: '#E0A100', cards: [
+    { cls: 'hot', tags: [['red', 'alert', 'Vence hoje']], t: 'Reels · Semana das Crianças', n: 'Corte de 30 s com a turma do Bê.', p: 60, ck: '3/5', who: 'AG', d: '16h', f: 3, c: 5 },
+    { tags: [['blue', 'globe', 'Site']], t: 'Página do pacote Casa de Campo', p: 40, who: 'L', d: '11 out', c: 1 },
+  ], add: true },
+  { t: 'Em revisão', dot: '#6B46D6', cards: [
+    { cls: 'dark', tags: [['lilac', 'eye', 'Você aprova']], t: 'Folder A4 · Day Use', n: 'Ana enviou a versão 2.', p: 100, who: 'A', f: 1, c: 2 },
+    { tags: [['lilac', 'video', 'Reels']], t: 'Vídeo da recepção', who: 'R', d: 'Ontem', late: true, c: 4 },
+  ] },
+  { t: 'Feito', dot: '#1E9152', cards: [
+    { tags: [['green', 'check', 'Aprovado']], t: 'Fotos novas da piscina', who: 'M', f: 18 },
+    { tags: [['green', 'check', 'Aprovado'], ['gray', 'printer', 'Impresso']], t: 'Voucher presente Life Style', who: 'G' },
+  ] },
+]
+document.getElementById('cols').innerHTML = C.map(c => `<div class="col"><div class="col-h"><span class="dot" style="background:${c.dot}"></span>${c.t}<span class="cnt">${c.cards.length}</span><span class="more">${svg('more')}</span></div>
+  ${c.cards.map(card).join('')}${c.add ? `<button class="add">${svg('plus')}Nova tarefa</button>` : ''}</div>`).join('')
+document.querySelectorAll('svg[data-i]').forEach(s => { s.setAttribute('viewBox', '0 0 24 24'); s.innerHTML = I[s.dataset.i] || '' })
+</script>
+</body>
+</html>

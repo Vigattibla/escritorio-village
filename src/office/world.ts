@@ -110,135 +110,104 @@ function rect(c: C2D, color: string, x: number, y: number, w: number, h: number)
   c.fillStyle = color
   c.fillRect(x, y, w, h)
 }
-
-function wood(c: C2D, x: number, y: number) {
-  rect(c, '#e6c7a1', x, y, T, T)
-  for (let r = 0; r < 4; r++) {
-    rect(c, '#d8b48a', x, y + r * 4 + 3, T, 1)
-    rect(c, '#d8b48a', x + ((x / T + r) % 2 ? 4 : 11), y + r * 4, 1, 3)
+function disc(c: C2D, cx: number, cy: number, r: number, color: string) {
+  for (let dy = -r; dy <= r; dy++) {
+    const h = Math.round(Math.sqrt((r + 0.4) ** 2 - dy * dy))
+    rect(c, color, cx - h, cy + dy, 2 * h + 1, 1)
   }
 }
-function carpet(c: C2D, x: number, y: number) {
-  rect(c, '#6d86bf', x, y, T, T)
-  for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) if ((i + j) % 2 === 0) rect(c, '#7891c9', x + i * 4 + 1, y + j * 4 + 1, 1, 1)
+/** Caixa com contorno de 1px */
+function box(c: C2D, color: string, x: number, y: number, w: number, h: number) {
+  rect(c, OUT, x - 1, y - 1, w + 2, h + 2)
+  rect(c, color, x, y, w, h)
+}
+
+const PLANK = ['#dcb68b', '#d5ad81', '#e1bd93']
+const WALL = '#3b302c', WALL_HI = '#5a4840'
+const PAPER = '#f1e6d2', PAPER_2 = '#e9dbc3'
+const WAIN = '#a8774c', WAIN_D = '#8e6240', WAIN_HI = '#bd8c5f', BASE = '#5e3f2a'
+const SHADOW = 'rgba(70,40,20,.2)'
+const BOOKS = ['#d9694a', '#e0b04a', '#7a8b3a', '#5b6e8f', '#f1e6d2', '#8a6bc8', '#c0643b']
+
+/** Piso de tábuas corridas na horizontal, emenda desencontrada e tom variando por tábua */
+function wood(c: C2D, x: number, y: number) {
+  for (let r = 0; r < 4; r++) {
+    const R = y / 4 + r, o = (R * 13) % 40, py = y + r * 4
+    let px = x
+    while (px < x + T) {
+      const seg = Math.floor((px + o) / 40), end = Math.min(x + T, (seg + 1) * 40 - o)
+      rect(c, PLANK[(seg * 7 + R * 5) % 3], px, py, end - px, 3)
+      rect(c, '#c49a6c', px, py + 3, end - px, 1)
+      if ((px + o) % 40 === 0) rect(c, '#b48a5f', px, py, 1, 3)
+      px = end
+    }
+  }
 }
 function tiles(c: C2D, x: number, y: number) {
-  rect(c, '#efe9dc', x, y, T, T)
-  rect(c, '#e2dac7', x, y, 8, 8)
-  rect(c, '#e2dac7', x + 8, y + 8, 8, 8)
+  rect(c, '#efe6d6', x, y, T, T)
+  rect(c, '#e5d9c4', x, y, 8, 8)
+  rect(c, '#e5d9c4', x + 8, y + 8, 8, 8)
+  rect(c, '#d9cbb3', x, y, T, 1)
+  rect(c, '#d9cbb3', x, y, 1, T)
+}
+/** Parede alta: a linha 0 é a metade de cima (papel de parede), a linha 1 tem lambri e rodapé */
+function upperWall(c: C2D, x: number, y: number) {
+  rect(c, WALL, x, y, T, 4)
+  rect(c, WALL_HI, x, y + 4, T, 1)
+  rect(c, PAPER, x, y + 5, T, 11)
+  for (let i = 2; i < T; i += 4) rect(c, PAPER_2, x + i, y + 5, 1, 11)
 }
 function wallFace(c: C2D, x: number, y: number) {
-  rect(c, '#3d4a75', x, y, T, 11)
-  rect(c, '#44527f', x + 3, y, 1, 11)
-  rect(c, '#44527f', x + 11, y, 1, 11)
-  rect(c, '#f0e8db', x, y + 11, T, 4)
-  rect(c, '#c9b9a0', x, y + 15, T, 1)
+  rect(c, PAPER, x, y, T, 7)
+  for (let i = 2; i < T; i += 4) rect(c, PAPER_2, x + i, y, 1, 7)
+  rect(c, '#d9bf98', x, y + 7, T, 1)
+  rect(c, WAIN, x, y + 8, T, 6)
+  rect(c, WAIN_HI, x, y + 8, T, 1)
+  rect(c, WAIN_D, x + 7, y + 9, 1, 5)
+  rect(c, WAIN_D, x + 15, y + 9, 1, 5)
+  rect(c, BASE, x, y + 14, T, 2)
 }
-function floorFor(c: C2D, x: number, y: number, tx: number, ty: number) {
-  const left = cellAt(tx - 1, ty)
-  if (tx >= 20 && ty >= 11) tiles(c, x, y)
-  else if (tx >= 20 && ty <= 9) carpet(c, x, y)
-  else if (left === ',' ) carpet(c, x, y)
-  else wood(c, x, y)
+
+function plant(c: C2D, x: number, y: number) {
+  const blobs = [[x + 3, y - 6, 10, 13], [x + 1, y - 2, 14, 7], [x + 5, y - 9, 6, 4]]
+  for (const [bx, by, bw, bh] of blobs) rect(c, OUT, bx - 1, by - 1, bw + 2, bh + 2)
+  for (const [bx, by, bw, bh] of blobs) rect(c, '#2f7a4f', bx, by, bw, bh)
+  rect(c, '#3f9a62', x + 4, y - 7, 8, 10); rect(c, '#3f9a62', x + 2, y - 1, 5, 4); rect(c, '#3f9a62', x + 10, y - 2, 4, 4)
+  rect(c, '#6cc08a', x + 6, y - 7, 3, 2); rect(c, '#6cc08a', x + 4, y - 4, 2, 2); rect(c, '#6cc08a', x + 11, y - 1, 2, 1)
+  rect(c, OUT, x + 2, y + 6, 12, 4)
+  rect(c, '#d97b4f', x + 3, y + 7, 10, 2)
+  rect(c, OUT, x + 3, y + 9, 10, 7)
+  rect(c, '#c0643b', x + 4, y + 9, 8, 6)
+  rect(c, '#a8532f', x + 4, y + 13, 8, 2)
 }
+
+function frame(c: C2D, x: number, y: number, w: number, h: number) {
+  box(c, '#8a5a36', x, y, w, h)
+  rect(c, '#a8774c', x, y, w, 1)
+  rect(c, PAPER, x + 1, y + 1, w - 2, h - 2)
+}
+
+const WINDOWS = [3, 8, 22, 26]
 
 export function renderBackground(): HTMLCanvasElement {
   const cv = document.createElement('canvas')
   cv.width = MW * T
   cv.height = MH * T
   const c = cv.getContext('2d')!
-  for (let ty = 0; ty < MH; ty++) {
-    for (let tx = 0; tx < MW; tx++) {
-      const x = tx * T, y = ty * T
-      const cell = grid[ty][tx]
-      const same = (dx: number, dy: number) => cellAt(tx + dx, ty + dy) === cell
-      switch (cell) {
-        case '#':
-          rect(c, '#2b3556', x, y, T, T)
-          if (ty === MH - 1 || tx === 0 || tx === MW - 1) rect(c, '#36426a', x, y, T, 2)
-          break
-        case 'f': wallFace(c, x, y); break
-        case 'w':
-          wallFace(c, x, y)
-          rect(c, '#f5efe6', x + 1, y + 1, 14, 9)
-          rect(c, '#a8dcf5', x + 2, y + 2, 12, 7)
-          rect(c, '#d6f0fb', x + 3, y + 3, 2, 5)
-          rect(c, '#f5efe6', x + 7, y + 2, 1, 7)
-          break
-        case 'B':
-          wallFace(c, x, y)
-          rect(c, '#9aa3b5', x, y + 1, T, 10)
-          rect(c, '#fbfbf8', same(-1, 0) ? x : x + 1, y + 2, (same(-1, 0) ? 0 : -1) + (same(1, 0) ? 16 : 15), 8)
-          if (tx === 13) { rect(c, '#e05a47', x + 3, y + 4, 7, 1); rect(c, '#e05a47', x + 3, y + 6, 4, 1) }
-          if (tx === 14) { rect(c, '#4a90d9', x + 2, y + 4, 9, 1); rect(c, '#3fa66b', x + 2, y + 6, 6, 1); rect(c, '#3fa66b', x + 2, y + 8, 3, 1) }
-          if (tx === 15) { rect(c, '#FBC222', x + 2, y + 3, 5, 5); rect(c, '#f59ab5', x + 8, y + 5, 4, 4) }
-          break
-        case '.': wood(c, x, y); break
-        case ',': carpet(c, x, y); break
-        case '_': tiles(c, x, y); break
-        case '|':
-          floorFor(c, x, y, tx, ty)
-          rect(c, '#55628f', x + 6, y, 4, T)
-          rect(c, '#3d4a75', x + 9, y, 1, T)
-          break
-        case '-':
-          tiles(c, x, y)
-          rect(c, '#55628f', x, y, T, 4)
-          rect(c, '#3d4a75', x, y + 4, T, 8)
-          rect(c, '#f0e8db', x, y + 12, T, 4)
-          break
-        case 'P':
-          floorFor(c, x, y, tx, ty)
-          rect(c, '#2f8a56', x + 3, y + 1, 10, 9)
-          rect(c, '#3fa66b', x + 4, y + 0, 8, 8)
-          rect(c, '#5cc283', x + 5, y + 1, 3, 3)
-          rect(c, '#2f8a56', x + 1, y + 4, 3, 4)
-          rect(c, '#2f8a56', x + 12, y + 4, 3, 4)
-          rect(c, '#c0643b', x + 4, y + 10, 8, 6)
-          rect(c, '#d97b4f', x + 3, y + 9, 10, 2)
-          break
-        case 'T':
-          carpet(c, x, y)
-          rect(c, '#bf8a5c', x, y, T, T)
-          if (!same(0, -1)) rect(c, '#d6a273', x, y, T, 2)
-          if (!same(0, 1)) rect(c, '#87583a', x, y + 12, T, 4)
-          if (!same(-1, 0)) rect(c, OUT, x, y, 1, T)
-          if (!same(1, 0)) rect(c, OUT, x + 15, y, 1, T)
-          if (!same(0, -1)) rect(c, OUT, x, y, T, 1)
-          if (!same(0, 1)) rect(c, OUT, x, y + 15, T, 1)
-          break
-        case 'S':
-          tiles(c, x, y)
-          rect(c, '#c9604a', x, y + 1, T, 7)
-          rect(c, '#ee9a80', x, y + 8, T, 6)
-          rect(c, '#c9604a', x, y + 14, T, 2)
-          if (!same(-1, 0)) rect(c, '#b4513d', x, y + 3, 3, 13)
-          if (!same(1, 0)) rect(c, '#b4513d', x + 13, y + 3, 3, 13)
-          rect(c, '#d97d65', x + 15, y + 8, 1, 6)
-          break
-        case 'K':
-          tiles(c, x, y)
-          rect(c, '#8d96a8', x, y + 6, T, 10)
-          rect(c, '#d9dde5', x, y + 2, T, 5)
-          rect(c, '#bfc5d1', x, y + 6, T, 1)
-          if (tx === 25) { rect(c, '#2d2d33', x + 4, y - 4, 8, 9); rect(c, '#e05a47', x + 9, y - 2, 1, 1); rect(c, '#555', x + 6, y + 2, 4, 2) }
-          if (tx === 26) { rect(c, '#fff', x + 3, y + 1, 3, 4); rect(c, '#fff', x + 8, y + 1, 3, 4); rect(c, '#FBC222', x + 8, y + 1, 3, 1) }
-          break
-        case 'R':
-          wood(c, x, y)
-          rect(c, '#8a5a36', x, y - 4, T, 18)
-          rect(c, '#6e4529', x, y + 4, T, 1)
-          rect(c, '#6e4529', x, y + 13, T, 1)
-          ;['#e05a47', '#4a90d9', '#FBC222', '#3fa66b', '#8e5bd6', '#f4f4f4'].forEach((col, i) => {
-            rect(c, col, x + 1 + i * 2 + (tx % 2), y - 2 + (i % 2), 2, 6 - (i % 2))
-            rect(c, col, x + 2 + i * 2, y + 6 + ((i + 1) % 2), 2, 7 - ((i + 1) % 2))
-          })
-          break
-        case 'D': wood(c, x, y); break
-      }
-    }
+  // 1) piso
+  for (let ty = 1; ty < MH - 1; ty++) for (let tx = 1; tx < MW - 1; tx++) {
+    if (tx >= 20 && ty >= 10) tiles(c, tx * T, ty * T)
+    else wood(c, tx * T, ty * T)
   }
-  // tapete do Gerente (vinho com friso dourado)
+  // 2) tapetes: reunião (oliva) e Gerente (vinho com friso dourado)
+  {
+    const x0 = 20 * T + 10, y0 = 2 * T + 14, w = 8 * T - 4, h = 7 * T - 8
+    rect(c, '#7f8655', x0, y0, w, h)
+    rect(c, '#9aa06a', x0 + 2, y0 + 2, w - 4, h - 4)
+    rect(c, '#c9b98a', x0 + 4, y0 + 4, w - 8, 1); rect(c, '#c9b98a', x0 + 4, y0 + h - 5, w - 8, 1)
+    rect(c, '#c9b98a', x0 + 4, y0 + 4, 1, h - 8); rect(c, '#c9b98a', x0 + w - 5, y0 + 4, 1, h - 8)
+    for (let yy = y0 + 8; yy < y0 + h - 8; yy += 6) for (let xx = x0 + 8 + ((yy - y0) % 12 ? 3 : 0); xx < x0 + w - 8; xx += 6) rect(c, '#a8ae79', xx, yy, 1, 1)
+  }
   {
     const x0 = 6 * T + 6, y0 = 15 * T + 10, w = 4 * T + 4, h = 3 * T + 2
     rect(c, '#5a1f2c', x0, y0, w, h)
@@ -246,26 +215,171 @@ export function renderBackground(): HTMLCanvasElement {
     rect(c, '#FBC222', x0 + 4, y0 + 4, w - 8, 1); rect(c, '#FBC222', x0 + 4, y0 + h - 5, w - 8, 1)
     rect(c, '#FBC222', x0 + 4, y0 + 4, 1, h - 8); rect(c, '#FBC222', x0 + w - 5, y0 + 4, 1, h - 8)
   }
-  // cadeiras das mesas (ficam atrás do personagem)
+  // 3) luz das janelas e sombras no chão
+  for (const wx of WINDOWS) {
+    c.fillStyle = 'rgba(255,248,225,.22)'
+    for (let k = 0; k < 22; k++) c.fillRect(wx * T + 3 + Math.floor(k / 2), 2 * T + k, 26, 1)
+  }
+  rect(c, SHADOW, T, 2 * T, (MW - 2) * T, 3)
+  rect(c, SHADOW, T, 2 * T, 3, (MH - 3) * T)
+  for (let x = 19; x <= 28; x++) if (![23, 24].includes(x)) rect(c, SHADOW, x * T, 11 * T, T, 3)
+  for (let i = 0; i < DESKS; i++) { const d = deskOf(i); rect(c, SHADOW, d.tx * T, (d.ty + 1) * T, d.w * T, 3) }
+  rect(c, SHADOW, 22 * T + 2, 8 * T, 5 * T, 3)
+  rect(c, SHADOW, 21 * T + 1, 18 * T, 4 * T, 2)
+  rect(c, SHADOW, 25 * T, 12 * T, 3 * T, 3)
+  for (let ty = 0; ty < MH; ty++) for (let tx = 0; tx < MW; tx++) if (grid[ty][tx] === 'P') rect(c, SHADOW, tx * T + 2, ty * T + 15, 13, 3)
+  // 4) paredes e móveis
+  for (let ty = 0; ty < MH; ty++) {
+    for (let tx = 0; tx < MW; tx++) {
+      const x = tx * T, y = ty * T
+      switch (grid[ty][tx]) {
+        case '#':
+          if (ty === 0 && tx > 0 && tx < MW - 1) { upperWall(c, x, y); break }
+          rect(c, WALL, x, y, T, T)
+          if (tx === 0) rect(c, WALL_HI, x + T - 2, y, 2, T)
+          if (tx === MW - 1) rect(c, WALL_HI, x, y, 2, T)
+          if (ty === MH - 1 && tx > 0 && tx < MW - 1) rect(c, WALL_HI, x, y, T, 2)
+          break
+        case 'f': case 'w': case 'B': wallFace(c, x, y); break
+        case '|':
+          rect(c, OUT, x + 5, y, 6, T)
+          rect(c, '#6e5446', x + 6, y, 4, T)
+          rect(c, '#8a6c5a', x + 6, y, 1, T)
+          if (cellAt(tx, ty - 1) !== '|') rect(c, '#9c7d69', x + 6, y, 4, 2)
+          rect(c, 'rgba(70,40,20,.16)', x + 11, y, 3, T)
+          break
+        case '-':
+          rect(c, WALL, x, y, T, 3)
+          rect(c, WALL_HI, x, y + 3, T, 1)
+          rect(c, PAPER, x, y + 4, T, 5)
+          rect(c, WAIN, x, y + 9, T, 5)
+          rect(c, WAIN_HI, x, y + 9, T, 1)
+          rect(c, BASE, x, y + 14, T, 2)
+          break
+        case 'P': plant(c, x, y); break
+        case 'T':
+          if (tx === 22 && ty === 4) {
+            const w = 5 * T, h = 4 * T
+            box(c, '#c08b5c', x, y, w, h - 4)
+            rect(c, '#d6a273', x, y, w, 2)
+            for (let k = 10; k < h - 6; k += 9) rect(c, '#b47f52', x + 4, y + k, w - 8, 1)
+            rect(c, OUT, x - 1, y + h - 5, w + 2, 5)
+            rect(c, '#87583a', x, y + h - 5, w, 4)
+            // papéis, notebook e canecas
+            box(c, '#fbfbf8', x + 10, y + 12, 9, 11); rect(c, '#c9b98a', x + 12, y + 15, 5, 1); rect(c, '#c9b98a', x + 12, y + 18, 4, 1)
+            box(c, '#c9ced8', x + 34, y + 20, 14, 9); rect(c, '#9aa3b5', x + 35, y + 27, 12, 1)
+            box(c, '#fbfbf8', x + 60, y + 14, 4, 4); rect(c, '#6e4529', x + 61, y + 15, 2, 2)
+            box(c, '#FBC222', x + 22, y + 38, 4, 4)
+            box(c, '#fbfbf8', x + 58, y + 34, 10, 8); rect(c, '#d9694a', x + 58, y + 34, 10, 2)
+          }
+          break
+        case 'S':
+          if (tx === 21) {
+            const w = 4 * T
+            box(c, '#b4513d', x, y, w, 15)
+            rect(c, '#c9604a', x + 3, y + 1, w - 6, 5)
+            for (let k = 0; k < 3; k++) { rect(c, '#e08a6e', x + 4 + k * 19, y + 7, 18, 6); rect(c, '#ec9f84', x + 4 + k * 19, y + 7, 18, 1) }
+            rect(c, '#9c4433', x, y + 13, w, 2)
+            box(c, '#FBC222', x + 6, y + 3, 6, 5); box(c, '#f1e6d2', x + w - 12, y + 3, 6, 5)
+          }
+          break
+        case 'K':
+          if (tx === 25) {
+            const w = 3 * T
+            box(c, '#a8774c', x, y + 3, w, 13)
+            rect(c, '#ece5d8', x - 1, y, w + 2, 5); rect(c, OUT, x - 1, y - 1, w + 2, 1); rect(c, '#d9cbb3', x - 1, y + 4, w + 2, 1)
+            for (let k = 1; k < 3; k++) rect(c, WAIN_D, x + k * T, y + 5, 1, 11)
+            for (let k = 0; k < 3; k++) rect(c, '#e0c38c', x + k * T + 7, y + 8, 2, 1)
+            // cafeteira, xícaras e fruteira
+            box(c, '#2d2d33', x + 4, y - 7, 8, 9); rect(c, '#e05a47', x + 9, y - 5, 1, 1); rect(c, '#555', x + 6, y - 1, 4, 2)
+            box(c, '#fbfbf8', x + T + 3, y - 2, 3, 3); box(c, '#fbfbf8', x + T + 8, y - 2, 3, 3); rect(c, '#FBC222', x + T + 8, y - 2, 3, 1)
+            box(c, '#f1e6d2', x + 2 * T + 2, y - 1, 11, 3); rect(c, '#e0b04a', x + 2 * T + 3, y - 3, 3, 2); rect(c, '#d9694a', x + 2 * T + 7, y - 3, 3, 2)
+          }
+          break
+        case 'R':
+          if (tx === 5) {
+            // estante encostada na parede, subindo sobre o lambri
+            const w = 3 * T, y0 = y - 13
+            box(c, '#8a5a36', x, y0, w, 29)
+            rect(c, '#a8774c', x, y0, w, 2)
+            for (let s = 0; s < 3; s++) {
+              const sy = y0 + 3 + s * 8
+              rect(c, '#5e3f2a', x + 2, sy, w - 4, 6)
+              let bx = x + 3
+              for (let k = 0; bx < x + w - 5; k++) {
+                const bw = 2 + ((k + s) % 3 === 0 ? 1 : 0), bh = 5 - ((k * 3 + s) % 2)
+                if ((k + s * 2) % 7 === 5) { bx += 3; continue }
+                rect(c, BOOKS[(k * 3 + s * 2) % BOOKS.length], bx, sy + 6 - bh, bw, bh)
+                bx += bw + 1
+              }
+            }
+            rect(c, OUT, x, y + 15, w, 1)
+            // vasinho e troféu em cima
+            box(c, '#c0643b', x + 5, y0 - 4, 4, 3); rect(c, '#3f9a62', x + 4, y0 - 8, 6, 4)
+            box(c, '#FBC222', x + w - 10, y0 - 5, 4, 4); rect(c, '#e0b04a', x + w - 9, y0 - 2, 2, 1)
+          }
+          break
+      }
+    }
+  }
+  // 5) parede: janelas, quadro e decoração
+  for (const wx of WINDOWS) {
+    const x0 = wx * T + 2, y0 = 6, w = 2 * T - 4, h = 17
+    box(c, '#f7f1e6', x0, y0, w, h)
+    rect(c, '#bfe3f2', x0 + 2, y0 + 2, w - 4, h - 4)
+    rect(c, '#a6d6ec', x0 + 2, y0 + 9, w - 4, h - 11)
+    rect(c, '#e3f4fb', x0 + 4, y0 + 4, 2, 2); rect(c, '#e3f4fb', x0 + 6, y0 + 3, 2, 1); rect(c, '#e3f4fb', x0 + 17, y0 + 4, 2, 1)
+    rect(c, '#f7f1e6', x0 + w / 2 - 1, y0, 2, h)
+    rect(c, '#f7f1e6', x0, y0 + 8, w, 1)
+    rect(c, OUT, x0 - 2, y0 + h + 1, w + 4, 3); rect(c, '#efe3cf', x0 - 1, y0 + h + 1, w + 2, 2)
+  }
+  {
+    const x0 = 13 * T, y0 = 7, w = 3 * T, h = 21
+    box(c, '#c8ccd3', x0, y0, w, h)
+    rect(c, '#fbfbf8', x0 + 1, y0 + 1, w - 2, h - 2)
+    rect(c, '#e05a47', x0 + 4, y0 + 4, 12, 1); rect(c, '#5b6e8f', x0 + 20, y0 + 4, 10, 1); rect(c, '#7a8b3a', x0 + 20, y0 + 7, 6, 1)
+    box(c, '#FBC222', x0 + w - 13, y0 + 2, 5, 5); box(c, '#f59ab5', x0 + w - 7, y0 + 3, 4, 4)
+    rect(c, OUT, x0 + 4, y0 + h + 1, w - 8, 2); rect(c, '#9aa1ad', x0 + 5, y0 + h + 1, w - 10, 1)
+    rect(c, '#e05a47', x0 + 8, y0 + h, 3, 1); rect(c, '#5b6e8f', x0 + 13, y0 + h, 3, 1)
+  }
+  // quadros: paisagem, cartaz amarelo, foto da piscina, relógio, calendário, arte e TV da reunião
+  frame(c, T + 5, 9, 22, 13)
+  rect(c, '#f3c98b', T + 6, 10, 20, 6); disc(c, T + 20, 13, 2, '#fbe3a0'); rect(c, '#8a9a5b', T + 6, 16, 20, 5); rect(c, '#7a8b3a', T + 6, 18, 9, 3)
+  frame(c, 10 * T + 4, 8, 11, 15)
+  rect(c, '#FBC222', 10 * T + 5, 9, 9, 13); disc(c, 10 * T + 9, 14, 2, '#fbfbf8'); rect(c, '#3b302c', 10 * T + 6, 19, 7, 1)
+  frame(c, 11 * T + 6, 10, 19, 12)
+  rect(c, '#7cc4d8', 11 * T + 7, 15, 17, 6); rect(c, '#e3f4fb', 11 * T + 9, 17, 4, 1); rect(c, '#8a9a5b', 11 * T + 7, 11, 17, 4)
+  disc(c, 17 * T + 12, 13, 6, OUT); disc(c, 17 * T + 12, 13, 5, '#fbfbf8')
+  rect(c, OUT, 17 * T + 12, 9, 1, 5); rect(c, OUT, 17 * T + 12, 13, 3, 1); rect(c, '#e05a47', 17 * T + 12, 13, 1, 1)
+  box(c, '#fbfbf8', 16 * T + 2, 10, 8, 10); rect(c, '#d9694a', 16 * T + 2, 10, 8, 3)
+  for (let k = 0; k < 6; k++) rect(c, '#c9b98a', 16 * T + 3 + (k % 3) * 2, 14 + Math.floor(k / 3) * 3, 1, 1)
+  frame(c, 20 * T + 5, 8, 18, 15)
+  disc(c, 20 * T + 11, 14, 4, '#d9694a'); rect(c, '#f4a259', 20 * T + 14, 15, 7, 6); rect(c, '#5b6e8f', 20 * T + 7, 19, 6, 2)
+  box(c, '#2b2a33', 24 * T + 1, 7, 30, 17)
+  rect(c, '#3a3944', 24 * T + 2, 8, 28, 15)
+  for (const [k, hgt, col] of [[0, 5, '#7a8b3a'], [1, 9, '#e0b04a'], [2, 7, '#7a8b3a'], [3, 11, '#FBC222']] as const) rect(c, col, 24 * T + 7 + k * 5, 21 - hgt, 3, hgt)
+  rect(c, OUT, 24 * T + 14, 25, 4, 2)
+  // 6) cadeiras das mesas (ficam atrás do personagem)
   for (let i = 0; i < DESKS; i++) {
     const { seat } = deskOf(i)
     if (i === BOSS_DESK) {
-      // cadeira executiva: encosto alto de couro azul
+      // cadeira executiva: encosto alto de couro vinho
       rect(c, OUT, seat.x - 9, seat.y - 31, 18, 20)
-      rect(c, '#0B235D', seat.x - 8, seat.y - 30, 16, 18)
-      rect(c, '#1d3a85', seat.x - 6, seat.y - 28, 12, 3)
-      rect(c, '#07163d', seat.x - 1, seat.y - 24, 2, 10)
+      rect(c, '#7a2e3a', seat.x - 8, seat.y - 30, 16, 18)
+      rect(c, '#93404a', seat.x - 6, seat.y - 28, 12, 3)
+      rect(c, '#5a1f2c', seat.x - 1, seat.y - 24, 2, 10)
       rect(c, '#FBC222', seat.x - 2, seat.y - 30, 4, 1)
       rect(c, OUT, seat.x - 11, seat.y - 18, 3, 7); rect(c, OUT, seat.x + 8, seat.y - 18, 3, 7)
       continue
     }
-    rect(c, '#3d4457', seat.x - 6, seat.y - 22, 12, 10)
-    rect(c, '#525a70', seat.x - 5, seat.y - 21, 10, 2)
+    rect(c, OUT, seat.x - 7, seat.y - 23, 14, 12)
+    rect(c, '#4a4048', seat.x - 6, seat.y - 22, 12, 10)
+    rect(c, '#605560', seat.x - 5, seat.y - 21, 10, 2)
   }
   // cadeiras da sala de reunião
   for (let x = 22; x <= 26; x++) {
-    rect(c, '#3d4457', x * T + 4, 3 * T + 6, 8, 8)
-    rect(c, '#3d4457', x * T + 4, 8 * T + 2, 8, 8)
+    box(c, '#4a4048', x * T + 4, 3 * T + 6, 8, 8); rect(c, '#605560', x * T + 4, 3 * T + 6, 8, 2)
+    box(c, '#4a4048', x * T + 4, 8 * T + 2, 8, 8); rect(c, '#605560', x * T + 4, 8 * T + 2, 8, 2)
   }
   return cv
 }
@@ -316,7 +430,7 @@ export function drawDesk(c: C2D, i: number, info: { pile: number; inbox: boolean
   if (boss) {
     // plaquinha na frente da mesa + luminária
     rect(c, OUT, m - 9, y + 10, 18, 5)
-    rect(c, '#0B235D', m - 8, y + 11, 16, 3)
+    rect(c, '#3b2a20', m - 8, y + 11, 16, 3)
     rect(c, '#FBC222', m - 6, y + 12, 12, 1)
     rect(c, OUT, x + 6, y - 4, 1, 8); rect(c, '#FBC222', x + 4, y - 5, 5, 2)
   }

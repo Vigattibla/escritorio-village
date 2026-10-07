@@ -55,3 +55,30 @@
 - Aprovação = coluna "Em revisão" + filtro "Para eu aprovar" no quadro (`qApprove`); `setUi({tab:'aprovar'|'chat'|'avisos'})` antigo é convertido.
 - Adicionar estilo Trello/Notion: "+ Nova tarefa" só em A fazer/Fazendo; cartão inline com pílulas Quem faz / Prazo. Ícones Lucide em `components/Icon.tsx`.
 - Escritório (14): painel lateral sem abas Mesa/Equipe → faixa de pessoas (eu, na sala, fora) e a mesa de quem está selecionado; mesa com ícones e "+ Nova tarefa" inline em A fazer; controles do mapa numa barra branca (Ir para minha mesa · − +); dica do mapa some após 9s.
+
+## 07/10 (15) — redesign v2 (plano aprovado)
+- Pedido: visual mais moderno; calendário editorial; metas + recompensas; lembretes; jeito melhor de dar tarefa; etiquetas/ícones/cores novos; mural colaborativo (notas + nós: mapa mental ou sequência); telas de conta/gerência; sala, mesas, personagens e animações refeitos.
+- Decisões: cor = MARCA DOMINANTE (navy #0B235D + amarelo #FBC222 fortes; pastel só em etiquetas). Recompensas = selos + comemoração (sem XP/nível) E prêmio real cadastrado pelo gerente ligado a meta. Calendário = posts de rede social (canal, formato, status, aprovação) + prazos/eventos da equipe, com filtro.
+- Ordem: F0 sistema visual (mockup p/ aprovar) → F1 tarefas (cartão: prioridade, progresso/checklist, avatares, contadores; dar tarefa com lembrete) → F2 calendário + lembretes → F3 metas/recompensas → F4 mural → F5 conta/gerência → F6 escritório.
+- Tabelas novas (F2–F4) via supabase/migrations.
+
+## 07/10 (16) — F0 v3 (design/mockup-v3.html, aguardando aprovação)
+- Barra lateral NÃO azul: preta (#141519) ou branca — usuário escolhe. Azul #0B235D só em cartões de marca (meta, "você aprova").
+- Paleta: neutros quentes (#F6F5F1 fundo, #E9E7E1 linhas), amarelo #FBC222 único destaque; pastel só em etiquetas.
+- Ícones de área: Phosphor (duotone; fill no ativo). Status (Lucide) mantidos — aprovados.
+- Início: faixa "Escritório agora" com cada pessoa animada (digitando, puxando arquivo, aprovando, pegando papel, fora).
+- Mural vira adesivos: gerente escolhe adesivo, pessoa e posição na tela dela; pessoa fecha/guarda.
+- Agenda = aba própria (mês/semana/lista, filtros posts/prazos/eventos + canais, detalhe com aprovar e lembrete).
+- Sequência vira Fluxos: nós com responsável e prazo; "Enviar N tarefas" cria uma tarefa por nó.
+- Meta animada: anel + contador + marcos + recompensa no fim.
+- Gerador: scratchpad build_v3.py (v2 base + v3_tpl + ph.json).
+
+## Mockup v4 (2026-10-07) — aprovado, ajustes no ar
+- `design/mockup-v4.html` (build: scratchpad build_v4.py + v4_parts.py, inline office-kit.js).
+- Sem azul-marinho e sem verde: paleta quente + oliva (#5C6E22) para feito/aprovado; pulso âmbar.
+- Escritório em filme: bonecos pixel reais andando no mapa, câmera em você primeiro e depois em cada um, deslize suave com fade (cena 6,5 s, transição 1,4 s); abas de pessoas clicáveis.
+- Rostos pixelados no lugar das iniciais; abas com indicador que desliza; entrada escalonada; barras crescem.
+- Celular: Início (filme + barras de story), Agenda da semana, Nova tarefa em folha de baixo.
+- Datas corrigidas: Qua 7 / Qui 8 out; semana 5–11.
+- Ajustes 07/10 (noite): sala refeita em world.ts (assoalho em tábuas, parede alta com janelas/quadros/relógio, sombras, contorno 1px, estante e plantas encostadas na parede, cadeira do chefe vinho); balão do filme agora é pixel art no canvas (ícones 9x8 em v4_parts.py, some ao andar); pílulas do calendário ocupam a célula com reticências; chat da equipe no painel lateral + botão de chat no celular.
+- Pendente: barra lateral preta ou branca; depois F0+F1 no app.
