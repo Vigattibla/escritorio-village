@@ -4,7 +4,9 @@ import Game from '../components/Game'
 import Mascot from '../components/Mascot'
 import MiniAvatar from '../components/MiniAvatar'
 import DeskView from '../components/DeskView'
+import Aprovacoes from '../components/Aprovacoes'
 import Overview from '../components/Overview'
+import ProjectModal from '../components/ProjectModal'
 import Quadro from '../components/Quadro'
 import TaskDetail from '../components/TaskDetail'
 import RequestModal from '../components/RequestModal'
@@ -13,7 +15,7 @@ import Creator from './Creator'
 import { backend } from '../data'
 import { isChief } from '../game/ranks'
 import { DAILY_GOAL, doneToday, level, levelProgress, levelTitle, streak } from '../game/xp'
-import { setUi, signOut, unread, useStore, type Tab } from '../store'
+import { setUi, signOut, toApprove, unread, useStore, type Tab } from '../store'
 
 export default function Office() {
   const s = useStore(x => x)
@@ -27,6 +29,7 @@ export default function Office() {
   const msgs = [...chans].reduce((n, ch) => n + unread(s, ch), 0)
   const tabs: { id: Tab; label: string; n: number }[] = [
     { id: 'mesa', label: 'Mesa', n: pend },
+    { id: 'aprovar', label: 'Aprovação', n: toApprove(s).length },
     { id: 'equipe', label: 'Equipe', n: 0 },
     { id: 'chat', label: 'Chat', n: msgs },
   ]
@@ -55,7 +58,7 @@ export default function Office() {
         <div className="me">
           {quadro && tabs.filter(t => t.id !== 'mesa').map(t => (
             <button key={t.id} className={'hbtn' + (s.drawer && s.tab === t.id ? ' on' : '')} onClick={() => open(t.id)} title={t.label}>
-              {t.id === 'equipe' ? '👥' : t.id === 'chat' ? '💬' : '👑'}<span>{t.id === 'geral' ? 'Geral' : t.label}</span>
+              {t.id === 'equipe' ? '👥' : t.id === 'chat' ? '💬' : t.id === 'aprovar' ? '✅' : '👑'}<span>{t.id === 'geral' ? 'Geral' : t.label}</span>
               {t.n > 0 && <i className="badge">{t.n}</i>}
             </button>
           ))}
@@ -80,6 +83,7 @@ export default function Office() {
           </nav>
           <div className="pane">
             {s.tab === 'mesa' && <Board />}
+            {s.tab === 'aprovar' && <Aprovacoes />}
             {s.tab === 'equipe' && <Team />}
             {s.tab === 'chat' && <Chat />}
             {s.tab === 'geral' && chief && <Overview />}
@@ -88,6 +92,7 @@ export default function Office() {
       </main>
       {s.desk && <DeskView />}
       {s.task && <TaskDetail />}
+      {s.projectEdit && <ProjectModal />}
       <RequestModal />
       <Mascot />
       {s.editing && <div className="overlay"><Creator /></div>}

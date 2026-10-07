@@ -1,13 +1,14 @@
 import { useState } from 'react'
 import { canAssign, rankName } from '../game/ranks'
 import { dayKey, DAILY_GOAL, doneToday, level, levelTitle, taskXp } from '../game/xp'
-import { addTask, removeTask, run, setStatus, setUi, useStore } from '../store'
+import { addTask, approverOf, removeTask, run, setStatus, setUi, useStore } from '../store'
 import type { Task, TaskStatus } from '../types'
 import MiniAvatar from './MiniAvatar'
 
 const SECTIONS: { id: TaskStatus; label: string }[] = [
   { id: 'doing', label: 'Fazendo agora' },
   { id: 'todo', label: 'A fazer' },
+  { id: 'review', label: 'Em aprovação' },
   { id: 'done', label: 'Feito hoje' },
 ]
 
@@ -86,6 +87,7 @@ export default function Board({ ownerId, bare = false }: { ownerId?: string; bar
 
       {SECTIONS.map(sec => {
         const items = list(sec.id)
+        if (sec.id === 'review' && !items.length) return null
         return (
           <section
             key={sec.id}
@@ -125,10 +127,10 @@ function Card({ t, meId, boardOwner, onDrag }: { t: Task; meId: string; boardOwn
     <div className={'card' + (done ? ' done' : '') + (req ? ' req' : '') + (helping ? ' help' : '')} draggable={mine} onDragStart={() => onDrag(t.id)} onDragEnd={() => onDrag(null)}>
       <button
         className={'check' + (done ? ' on' : '')}
-        disabled={!mine}
+        disabled={!mine || t.status === 'review'}
         onClick={() => run(setStatus(t.id, done ? 'todo' : 'done'))}
-        title={done ? 'Desfazer' : `Concluir (+${taskXp(t)} XP)`}
-      >{done ? '✓' : ''}</button>
+        title={t.status === 'review' ? 'Esperando aprovação' : done ? 'Desfazer' : approverOf(t) ? 'Enviar para aprovação' : `Concluir (+${taskXp(t)} XP)`}
+      >{done ? '✓' : t.status === 'review' ? '⏳' : ''}</button>
       <div className="grow open" onClick={open} title="Abrir detalhes">
         <div className="title">{t.title}</div>
         {t.notes && <div className="desc">{t.notes}</div>}

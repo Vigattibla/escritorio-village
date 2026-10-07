@@ -2,6 +2,9 @@ export const T = 16
 export const MW = 30
 export const MH = 20
 export const MAX_DESKS = 12
+/** Mesa do Gerente (fila de baixo, centralizada) — fora do sorteio de mesas */
+export const BOSS_DESK = MAX_DESKS
+export const DESKS = MAX_DESKS + 1
 
 // '#' parede  'f' face da parede  'w' janela  'B' quadro  '.' piso  ',' carpete  '_' piso copa
 // '|' '-' divisórias  'P' planta  'T' mesa  'S' sofá  'K' balcão  'R' estante  'D' mesa de trabalho
@@ -9,11 +12,12 @@ export type Cell = '#' | 'f' | 'w' | 'B' | '.' | ',' | '_' | '|' | '-' | 'P' | '
 const SOLID = new Set<Cell>(['#', 'f', 'w', 'B', '|', '-', 'P', 'T', 'S', 'K', 'R'])
 
 export function deskOf(i: number) {
+  if (i === BOSS_DESK) return { tx: 7, ty: 17, w: 3, seat: { x: 8 * T + 8, y: 17 * T + 8 } }
   const col = i % 4
   const row = Math.floor(i / 4)
   const tx = 2 + col * 4
   const ty = 4 + row * 5
-  return { tx, ty, seat: { x: (tx + 1) * T, y: ty * T + 8 } }
+  return { tx, ty, w: 2, seat: { x: (tx + 1) * T, y: ty * T + 8 } }
 }
 
 function build(): Cell[][] {
@@ -33,7 +37,7 @@ function build(): Cell[][] {
   for (let x = 25; x <= 27; x++) set(x, 11, 'K')
   for (const x of [5, 6, 7]) set(x, 2, 'R')
   for (const [x, y] of [[1, 2], [18, 2], [1, 18], [18, 18], [28, 2], [20, 9], [28, 18], [20, 11]]) set(x, y, 'P')
-  for (let i = 0; i < MAX_DESKS; i++) { const d = deskOf(i); set(d.tx, d.ty, 'D'); set(d.tx + 1, d.ty, 'D') }
+  for (let i = 0; i < DESKS; i++) { const d = deskOf(i); for (let k = 0; k < d.w; k++) set(d.tx + k, d.ty, 'D') }
   return g
 }
 
@@ -53,9 +57,9 @@ export function blocked(x: number, y: number) {
 }
 
 export function deskAtTile(tx: number, ty: number): number | null {
-  for (let i = 0; i < MAX_DESKS; i++) {
+  for (let i = 0; i < DESKS; i++) {
     const d = deskOf(i)
-    if ((tx === d.tx || tx === d.tx + 1) && (ty === d.ty || ty === d.ty - 1)) return i
+    if (tx >= d.tx && tx < d.tx + d.w && (ty === d.ty || ty === d.ty - 1)) return i
   }
   return null
 }
@@ -91,7 +95,7 @@ export function pathToSeat(px: number, py: number, desk: number) {
   const d = deskOf(desk)
   const p = findPath(px, py, d.tx, d.ty - 1)
   if (!p) return null
-  return [...p, { x: (d.tx + 1) * T, y: (d.ty - 0.5) * T }, d.seat]
+  return [...p, { x: d.seat.x, y: (d.ty - 0.5) * T }, d.seat]
 }
 
 // ---------- arte ----------
@@ -230,9 +234,27 @@ export function renderBackground(): HTMLCanvasElement {
       }
     }
   }
+  // tapete do Gerente (vinho com friso dourado)
+  {
+    const x0 = 6 * T + 6, y0 = 15 * T + 10, w = 4 * T + 4, h = 3 * T + 2
+    rect(c, '#5a1f2c', x0, y0, w, h)
+    rect(c, '#7a2e3a', x0 + 2, y0 + 2, w - 4, h - 4)
+    rect(c, '#FBC222', x0 + 4, y0 + 4, w - 8, 1); rect(c, '#FBC222', x0 + 4, y0 + h - 5, w - 8, 1)
+    rect(c, '#FBC222', x0 + 4, y0 + 4, 1, h - 8); rect(c, '#FBC222', x0 + w - 5, y0 + 4, 1, h - 8)
+  }
   // cadeiras das mesas (ficam atrás do personagem)
-  for (let i = 0; i < MAX_DESKS; i++) {
+  for (let i = 0; i < DESKS; i++) {
     const { seat } = deskOf(i)
+    if (i === BOSS_DESK) {
+      // cadeira executiva: encosto alto de couro azul
+      rect(c, OUT, seat.x - 9, seat.y - 31, 18, 20)
+      rect(c, '#0B235D', seat.x - 8, seat.y - 30, 16, 18)
+      rect(c, '#1d3a85', seat.x - 6, seat.y - 28, 12, 3)
+      rect(c, '#07163d', seat.x - 1, seat.y - 24, 2, 10)
+      rect(c, '#FBC222', seat.x - 2, seat.y - 30, 4, 1)
+      rect(c, OUT, seat.x - 11, seat.y - 18, 3, 7); rect(c, OUT, seat.x + 8, seat.y - 18, 3, 7)
+      continue
+    }
     rect(c, '#3d4457', seat.x - 6, seat.y - 22, 12, 10)
     rect(c, '#525a70', seat.x - 5, seat.y - 21, 10, 2)
   }
@@ -247,32 +269,41 @@ export function renderBackground(): HTMLCanvasElement {
 const NOTE_COLORS = ['#FBC222', '#7ed6a5', '#f59ab5', '#8ecbf5']
 
 export function drawDesk(c: C2D, i: number, info: { notes: number; inbox: boolean; busy: boolean; owned: boolean; t: number }) {
-  const { tx, ty } = deskOf(i)
-  const x = tx * T, y = ty * T
-  rect(c, OUT, x - 1, y + 1, 34, 15)
-  rect(c, '#b07a4f', x, y + 2, 32, 8)
-  rect(c, '#c99566', x, y + 2, 32, 1)
-  rect(c, '#8a5a36', x, y + 10, 32, 5)
+  const { tx, ty, w: wt } = deskOf(i)
+  const x = tx * T, y = ty * T, w = wt * T, m = x + w / 2
+  const boss = i === BOSS_DESK
+  rect(c, OUT, x - 1, y + 1, w + 2, 15)
+  rect(c, boss ? '#6b3f22' : '#b07a4f', x, y + 2, w, 8)
+  rect(c, boss ? '#8a5530' : '#c99566', x, y + 2, w, 1)
+  rect(c, boss ? '#4a2a16' : '#8a5a36', x, y + 10, w, 5)
   rect(c, '#6e4529', x + 1, y + 15, 2, 1)
-  rect(c, '#6e4529', x + 29, y + 15, 2, 1)
+  rect(c, '#6e4529', x + w - 3, y + 15, 2, 1)
+  if (boss) {
+    // plaquinha na frente da mesa + luminária
+    rect(c, OUT, m - 9, y + 10, 18, 5)
+    rect(c, '#0B235D', m - 8, y + 11, 16, 3)
+    rect(c, '#FBC222', m - 6, y + 12, 12, 1)
+    rect(c, OUT, x + 6, y - 4, 1, 8); rect(c, '#FBC222', x + 4, y - 5, 5, 2)
+  }
   if (!info.owned) {
-    rect(c, '#9aa3b5', x + 12, y + 4, 8, 4)
+    rect(c, '#9aa3b5', m - 4, y + 4, 8, 4)
     return
   }
   // notebook (tampa virada pra câmera)
-  rect(c, OUT, x + 9, y - 1, 14, 8)
-  rect(c, '#c9ced8', x + 10, y, 12, 6)
+  rect(c, OUT, m - 7, y - 1, 14, 8)
+  rect(c, '#c9ced8', m - 6, y, 12, 6)
   const glow = info.busy ? (Math.sin(info.t / 300) > -0.3 ? '#FBC222' : '#ffd965') : '#9aa3b5'
-  rect(c, glow, x + 15, y + 2, 2, 2)
-  rect(c, '#9aa3b5', x + 9, y + 7, 14, 1)
+  rect(c, glow, m - 1, y + 2, 2, 2)
+  rect(c, '#9aa3b5', m - 7, y + 7, 14, 1)
   // pedido esperando: luz vermelha piscando no notebook
-  if (info.inbox && Math.sin(info.t / 220) > 0) { rect(c, OUT, x + 20, y - 3, 4, 4); rect(c, '#e5483a', x + 21, y - 2, 2, 2) }
+  if (info.inbox && Math.sin(info.t / 220) > 0) { rect(c, OUT, m + 4, y - 3, 4, 4); rect(c, '#e5483a', m + 5, y - 2, 2, 2) }
   // caneca
   rect(c, '#ffffff', x + 3, y + 4, 3, 4)
   rect(c, '#ffffff', x + 6, y + 5, 1, 2)
   // pasta de tarefas (folhas aparecendo = tarefas a fazer)
-  for (let n = 0; n < Math.min(info.notes, 3); n++) rect(c, NOTE_COLORS[n], x + 25 + n, y + 2 - n, 5, 2)
-  rect(c, OUT, x + 24, y + 3, 8, 6)
-  rect(c, '#e2b25a', x + 25, y + 4, 6, 4)
-  rect(c, '#c8963f', x + 25, y + 4, 2, 1)
+  const fx = x + w - 8 - (boss ? 4 : 0)
+  for (let n = 0; n < Math.min(info.notes, 3); n++) rect(c, NOTE_COLORS[n], fx + 1 + n, y + 2 - n, 5, 2)
+  rect(c, OUT, fx, y + 3, 8, 6)
+  rect(c, '#e2b25a', fx + 1, y + 4, 6, 4)
+  rect(c, '#c8963f', fx + 1, y + 4, 2, 1)
 }

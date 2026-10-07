@@ -8,6 +8,9 @@ export const rankOf = (p: Profile | undefined) => Math.min(MAX_RANK, Math.max(1,
 /** Chefe vê a visão geral e mexe em qualquer tarefa */
 export const isChief = (p: Profile | undefined) => rankOf(p) === MAX_RANK
 export const rankName = (p: Profile | undefined) => RANKS[rankOf(p)]
+/** Quem senta na mesa do Gerente: o primeiro com cargo Gerência (ordem alfabética) */
+export const managerOf = (profiles: Record<string, Profile>) =>
+  Object.values(profiles).filter(p => p.avatar && rankOf(p) === 3).sort((a, b) => a.name.localeCompare(b.name))[0]
 
 /** Pode colocar tarefa direto na pasta de `owner` (sem precisar de aceite)? */
 export const canAssign = (me: Profile | undefined, owner: Profile | undefined) =>

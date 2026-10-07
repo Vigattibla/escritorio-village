@@ -3,10 +3,10 @@ import { backend } from './data'
 import { canAssign, isChief, rankOf } from './game/ranks'
 import { level, levelTitle, taskXp } from './game/xp'
 import { MAX_DESKS } from './office/world'
-import type { Attachment, Avatar, Message, Pos, Profile, Task, TaskNote, TaskStatus } from './types'
+import type { Attachment, Avatar, Message, Pos, Profile, Project, Review, Task, TaskNote, TaskStatus } from './types'
 
 export type Phase = 'loading' | 'auth' | 'creator' | 'office'
-export type Tab = 'mesa' | 'equipe' | 'chat' | 'geral'
+export type Tab = 'mesa' | 'aprovar' | 'equipe' | 'chat' | 'geral'
 export type DeskView = 'pasta' | 'pc'
 /** quadro = trabalho do dia a dia (estilo Trello); escritório = visualização em pixel */
 export type View = 'quadro' | 'escritorio'
@@ -23,6 +23,7 @@ export interface State {
   messages: Message[]
   /** fio de comentários de todas as tarefas */
   notes: TaskNote[]
+  projects: Record<string, Project>
   online: Set<string>
   tab: Tab
   viewing: string | null
@@ -40,6 +41,10 @@ export interface State {
   view: View
   /** no quadro, painel lateral (equipe/chat/geral) aberto */
   drawer: boolean
+  /** projeto aberto no quadro ('' = todos) */
+  project: string
+  /** editor de projeto: id, 'new' ou null */
+  projectEdit: string | null
 }
 
 function savedView(): View {
@@ -47,8 +52,9 @@ function savedView(): View {
 }
 
 const initial: State = {
-  phase: 'loading', meId: null, accountName: '', error: '', profiles: {}, tasks: {}, messages: [], notes: [], online: new Set(),
+  phase: 'loading', meId: null, accountName: '', error: '', profiles: {}, tasks: {}, messages: [], notes: [], projects: {}, online: new Set(),
   tab: 'mesa', viewing: null, channel: 'geral', reads: {}, requestTo: null, desk: null, deskView: 'pasta', task: null, editing: false, notices: [], pipOpen: false, view: savedView(), drawer: false,
+  project: '', projectEdit: null,
 }
 
 let state = initial
@@ -73,7 +79,10 @@ export const me = () => (state.meId ? state.profiles[state.meId] : undefined)
 export const nameOf = (id: string) => state.profiles[id]?.name ?? 'Alguém'
 
 /** linhas antigas (antes do SQL v3) não têm os campos novos */
-const norm = (t: Task): Task => ({ ...t, start: t.start ?? null, collaborators: t.collaborators ?? [], attachments: t.attachments ?? [] })
+const norm = (t: Task): Task => ({
+  ...t, start: t.start ?? null, collaborators: t.collaborators ?? [], attachments: t.attachments ?? [],
+  project_id: t.project_id ?? null, criteria: t.criteria ?? [], reviews: t.reviews ?? [],
+})
 export const involved = (t: Task, uid: string) => t.owner_id === uid || t.created_by === uid || t.collaborators.includes(uid)
 /** Mexe nos detalhes: dono, autor, colaborador, cargo acima do dono ou Chefe. */
 export function canEditTask(t: Task, uid = state.meId) {
@@ -94,6 +103,33 @@ export function canReassign(t: Task, to: string, uid = state.meId) {
   const r = rankOf(my)
   return r === 4 || (r > rankOf(state.profiles[t.owner_id]) && r > rankOf(state.profiles[to]))
 }
+/** Quem aprova a entrega: o mestre do projeto (se não for ele mesmo quem faz). Sem projeto, não passa por aprovação. */
+export function approverOf(t: Task): string | null {
+  const p = t.project_id ? state.projects[t.project_id] : undefined
+  return p && p.master_id !== t.owner_id ? p.master_id : null
+}
+/** Aprova ou reprova: o mestre do projeto ou a Chefe. */
+export function canApprove(t: Task, uid = state.meId) {
+  return !!uid && !!approverOf(t) && (approverOf(t) === uid || isChief(state.profiles[uid]))
+}
+/** Critérios que valem para a tarefa: os do projeto + os dela. */
+export const criteriaOf = (t: Task) => [...(t.project_id ? state.projects[t.project_id]?.criteria ?? [] : []), ...t.criteria]
+/** Cria projeto: Coordenação para cima, ou o adm. */
+export const canCreateProject = (uid = state.meId) => { const p = uid ? state.profiles[uid] : undefined; return !!p && (rankOf(p) >= 2 || !!p.is_admin) }
+/** Edita o projeto: mestre, quem criou ou a Chefe. */
+export function canEditProject(p: Project, uid = state.meId) {
+  return !!uid && (p.master_id === uid || p.created_by === uid || isChief(state.profiles[uid]))
+}
+/** Quem está no projeto: mestre + todo mundo com tarefa nele. */
+export function teamOf(pid: string) {
+  const ids = new Set<string>()
+  const p = state.projects[pid]
+  if (p) ids.add(p.master_id)
+  for (const t of Object.values(state.tasks)) if (t.project_id === pid) { ids.add(t.owner_id); t.collaborators.forEach(c => ids.add(c)) }
+  return ids
+}
+/** Tarefas esperando a minha aprovação. */
+export const toApprove = (s: State) => Object.values(s.tasks).filter(t => t.status === 'review' && canApprove(t, s.meId))
 /** O chat está na tela? */
 const chatShown = () => state.tab === 'chat' && (state.view === 'escritorio' || state.drawer)
 
@@ -138,6 +174,31 @@ function onTask(raw: Task) {
     else if (prev?.status === 'inbox' && t.status === 'todo') notify(`${who} aceitou seu pedido: “${t.title}”`, { from: t.owner_id, go })
   }
   if (prev && prev.owner_id !== my && t.owner_id === my) notify(`Uma tarefa passou para você: “${t.title}”`, { go: { task: t.id } })
+  if (prev && prev.status !== 'review' && t.status === 'review' && approverOf(t) === my && t.owner_id !== my)
+    notify(`${nameOf(t.owner_id)} enviou para aprovação: “${t.title}” 📥`, { from: t.owner_id, go: { tab: 'aprovar' } })
+  // decisão nova: avisa o time do projeto (menos quem decidiu)
+  const r = t.reviews.at(-1)
+  if (prev && r && t.reviews.length > prev.reviews.length && r.by !== my && t.project_id && (teamOf(t.project_id).has(my) || involved(t, my))) {
+    const proj = state.projects[t.project_id]?.name ?? 'projeto'
+    const dono = t.owner_id === my ? 'Sua entrega' : `A entrega de ${nameOf(t.owner_id)}`
+    notify(r.ok ? `✅ ${dono} foi aprovada por ${nameOf(r.by)}: “${t.title}” (${proj})`
+      : `❌ ${dono} foi reprovada por ${nameOf(r.by)}: “${t.title}” (${proj}) — ${r.reason.slice(0, 90)}`, { from: r.by, go: { task: t.id } })
+  }
+}
+
+function onProject(p: Project) {
+  const prev = state.projects[p.id]
+  set({ projects: { ...state.projects, [p.id]: { ...p, criteria: p.criteria ?? [] } } })
+  const my = state.meId
+  if (my && p.master_id === my && prev?.master_id !== my && p.created_by !== my)
+    notify(`Você é o mestre do projeto “${p.name}” 🎯`, { from: p.created_by, go: { tab: 'aprovar' } })
+}
+
+function onProjectDeleted(id: string) {
+  if (!state.projects[id]) return
+  const projects = { ...state.projects }
+  delete projects[id]
+  set({ projects, project: state.project === id ? '' : state.project })
 }
 
 function onTaskDeleted(id: string) {
@@ -197,6 +258,7 @@ export async function enter(uid: string) {
     profiles: Object.fromEntries(snap.profiles.map(p => [p.id, p])),
     tasks: Object.fromEntries(snap.tasks.map(t => [t.id, norm(t)])),
     notes: snap.notes,
+    projects: Object.fromEntries((snap.projects ?? []).map(p => [p.id, { ...p, criteria: p.criteria ?? [] }])),
     messages: snap.messages.filter(m => isMyChannel(m.channel, uid)),
     phase: mine?.avatar ? 'office' : 'creator',
     viewing: uid,
@@ -204,6 +266,7 @@ export async function enter(uid: string) {
   disconnect?.()
   disconnect = backend.connect(uid, {
     profile: onProfile, task: onTask, taskDeleted: onTaskDeleted, message: onMessage, note: onNote, noteDeleted: onNoteDeleted,
+    project: onProject, projectDeleted: onProjectDeleted,
     pos: (id, p) => positions.set(id, p),
     online: ids => {
       const next = new Set(ids)
@@ -220,7 +283,7 @@ export async function signOut() {
   set({ ...initial, phase: 'auth' })
 }
 
-export function setUi(p: Partial<Pick<State, 'tab' | 'viewing' | 'channel' | 'requestTo' | 'editing' | 'pipOpen' | 'error' | 'desk' | 'deskView' | 'task' | 'view' | 'drawer'>>) {
+export function setUi(p: Partial<Pick<State, 'tab' | 'viewing' | 'channel' | 'requestTo' | 'editing' | 'pipOpen' | 'error' | 'desk' | 'deskView' | 'task' | 'view' | 'drawer' | 'project' | 'projectEdit'>>) {
   // no quadro, ir para uma aba abre o painel lateral
   set(p.tab && p.drawer === undefined && (p.view ?? state.view) === 'quadro' ? { ...p, drawer: true } : p)
   if (p.view) try { localStorage.setItem('ev:view', p.view) } catch { /* sem armazenamento */ }
@@ -272,26 +335,41 @@ async function putTask(t: Task) {
  * Na própria pasta ou de quem tem cargo menor: entra direto (na etapa pedida).
  * Senão (ou se `status` = 'inbox') vira pedido para a pessoa aceitar.
  */
-export async function addTask(owner: string, title: string, due: string | null = null, notes = '', status: TaskStatus = 'todo') {
+export async function addTask(owner: string, title: string, due: string | null = null, notes = '', status: TaskStatus = 'todo', project: string | null = null) {
   const direct = canAssign(me(), state.profiles[owner])
+  if (status === 'review' || status === 'done') status = 'todo' // entrega passa pela etapa certa
   const t: Task = {
     id: crypto.randomUUID(), owner_id: owner, created_by: state.meId!, title: title.trim(), notes, status: direct && status !== 'inbox' ? status : 'inbox',
     start: null, due, collaborators: [], attachments: [], position: Date.now(), created_at: new Date().toISOString(),
-    done_at: direct && status === 'done' ? new Date().toISOString() : null,
+    done_at: null, project_id: project || null, criteria: [], reviews: [],
   }
   await putTask(t)
   return t
 }
 
+/** XP conta ao entregar (aprovação ou feito). Reenvio depois de reprovar não paga de novo. */
+const paid = (s: TaskStatus) => s === 'done' || s === 'review'
+
 export async function setStatus(id: string, status: TaskStatus, position = Date.now()) {
   const t = state.tasks[id]
   const my = me()
-  if (!t || !my || t.status === status) return
-  if (!canMove(t)) throw new Error('Só quem é responsável (ou um cargo acima) muda a etapa dessa tarefa.')
-  const wasDone = t.status === 'done'
-  await putTask({ ...t, status, position, done_at: status === 'done' ? new Date().toISOString() : null })
+  if (!t || !my) return
+  // quem não aprova, ao concluir, manda para aprovação
+  if (status === 'done' && approverOf(t) && !canApprove(t)) status = 'review'
+  if (t.status === status) return
+  if (t.status === 'review') {
+    // dono pode retirar; aprovador só aprova por aqui (reprovar pede justificativa)
+    const withdraw = t.owner_id === my.id && status !== 'done'
+    if (!withdraw && !(status === 'done' && canApprove(t)))
+      throw new Error(canApprove(t) ? 'Para devolver, use Reprovar e explique o porquê.' : `Essa entrega está esperando a aprovação de ${nameOf(approverOf(t) ?? '')}.`)
+  } else if (!canMove(t)) throw new Error('Só quem é responsável (ou um cargo acima) muda a etapa dessa tarefa.')
+  const review: Review[] = t.status === 'review' && status === 'done' && canApprove(t) && t.owner_id !== my.id
+    ? [{ by: my.id, at: new Date().toISOString(), ok: true, reason: '', failed: [] }] : []
+  await putTask({ ...t, status, position, done_at: status === 'done' ? new Date().toISOString() : null, reviews: [...t.reviews, ...review] })
   if (t.owner_id !== my.id) return // XP é de quem faz
-  const delta = status === 'done' ? taskXp(t) : wasDone ? -taskXp(t) : 0
+  const redo = t.reviews.at(-1)?.ok === false
+  const delta = paid(status) && !paid(t.status) ? (redo ? 0 : taskXp(t))
+    : !paid(status) && paid(t.status) && !(redo && t.status === 'review') ? -taskXp(t) : 0
   if (!delta) return
   const xp = Math.max(0, my.xp + delta)
   const p = { ...my, xp }
@@ -313,6 +391,58 @@ export async function placeTask(id: string, position: number) {
   const t = state.tasks[id]
   if (!t || t.position === position || !canEditTask(t)) return
   await putTask({ ...t, position })
+}
+
+/** Aprovador decide. Reprovar exige justificativa e volta a tarefa para "Fazendo". */
+export async function review(id: string, ok: boolean, reason = '', failed: string[] = []) {
+  const t = state.tasks[id]
+  const my = me()
+  if (!t || !my) return
+  if (!canApprove(t)) throw new Error('Só o mestre do projeto (ou a Chefe) aprova essa entrega.')
+  reason = reason.trim()
+  if (!ok && reason.length < 3) throw new Error('Explique por que está reprovando.')
+  const r: Review = { by: my.id, at: new Date().toISOString(), ok, reason: reason.slice(0, 1000), failed }
+  await putTask({
+    ...t, status: ok ? 'done' : 'doing', position: Date.now(), done_at: ok ? r.at : null, reviews: [...t.reviews, r],
+  })
+}
+
+/** Coloca a tarefa num projeto (ou tira). */
+export async function setProject(id: string, project: string | null) {
+  const t = state.tasks[id]
+  if (!t || t.project_id === project || !canEditTask(t)) return
+  await putTask({ ...t, project_id: project })
+}
+
+export async function setCriteria(id: string, criteria: string[]) {
+  const t = state.tasks[id]
+  const c = criteria.map(x => x.trim()).filter(Boolean)
+  if (!t || JSON.stringify(c) === JSON.stringify(t.criteria)) return
+  await putTask({ ...t, criteria: c })
+}
+
+export async function saveProject(d: { id?: string; name: string; master_id: string; criteria: string[]; color: string; archived?: boolean }) {
+  const prev = d.id ? state.projects[d.id] : undefined
+  if (prev ? !canEditProject(prev) : !canCreateProject()) throw new Error('Sem permissão para mexer nesse projeto.')
+  if (!d.name.trim()) throw new Error('Dê um nome ao projeto.')
+  const p: Project = {
+    id: prev?.id ?? crypto.randomUUID(), created_by: prev?.created_by ?? state.meId!, created_at: prev?.created_at ?? new Date().toISOString(),
+    name: d.name.trim().slice(0, 80), master_id: d.master_id, color: d.color, archived: d.archived ?? prev?.archived ?? false,
+    criteria: d.criteria.map(x => x.trim()).filter(Boolean).slice(0, 20),
+  }
+  const before = state.projects
+  set({ projects: { ...state.projects, [p.id]: p } })
+  try { await backend.upsertProject(p) } catch (e) { set({ projects: before }); throw e }
+  return p
+}
+
+export async function removeProject(id: string) {
+  const p = state.projects[id]
+  if (!p) return
+  if (!(p.created_by === state.meId || isChief(me()))) throw new Error('Só quem criou o projeto (ou a Chefe) apaga.')
+  onProjectDeleted(id)
+  set({ tasks: Object.fromEntries(Object.entries(state.tasks).map(([k, t]) => [k, t.project_id === id ? { ...t, project_id: null } : t])) })
+  await backend.deleteProject(id)
 }
 
 export const acceptRequest = (id: string) => setStatus(id, 'todo')

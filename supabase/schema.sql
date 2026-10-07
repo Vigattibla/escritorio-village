@@ -379,3 +379,89 @@ begin
   update public.profiles set is_admin = true where id = uid;
 end $$;
 grant execute on function public.setup_admin(text, text, text) to anon, authenticated;
+
+-- ===== v7: projetos com mestre, aprovação e critérios (pode rodar de novo sem problema) =====
+create table if not exists public.projects (
+  id uuid primary key default gen_random_uuid(),
+  name text not null check (length(name) between 1 and 80),
+  master_id uuid not null references public.profiles(id) on delete cascade,
+  criteria jsonb not null default '[]',
+  color text not null default '#0B235D',
+  archived boolean not null default false,
+  created_by uuid not null references public.profiles(id) on delete cascade,
+  created_at timestamptz not null default now()
+);
+alter table public.projects enable row level security;
+drop policy if exists "projetos visíveis à equipe" on public.projects;
+drop policy if exists "coordenação cria projeto" on public.projects;
+drop policy if exists "mestre edita projeto" on public.projects;
+drop policy if exists "criador apaga projeto" on public.projects;
+create policy "projetos visíveis à equipe" on public.projects for select to authenticated using (true);
+create policy "coordenação cria projeto" on public.projects for insert to authenticated with check (
+  created_by = auth.uid() and (public.rank_of(auth.uid()) >= 2 or public.is_admin(auth.uid())));
+create policy "mestre edita projeto" on public.projects for update to authenticated
+  using (master_id = auth.uid() or created_by = auth.uid() or public.rank_of(auth.uid()) = 4)
+  with check (true);
+create policy "criador apaga projeto" on public.projects for delete to authenticated
+  using (created_by = auth.uid() or public.rank_of(auth.uid()) = 4);
+do $$ begin
+  alter publication supabase_realtime add table public.projects;
+exception when duplicate_object then null; end $$;
+
+alter table public.tasks add column if not exists project_id uuid references public.projects(id) on delete set null;
+alter table public.tasks add column if not exists criteria jsonb not null default '[]';
+alter table public.tasks add column if not exists reviews jsonb not null default '[]';
+create index if not exists tasks_project_idx on public.tasks(project_id);
+alter table public.tasks drop constraint if exists tasks_status_check;
+alter table public.tasks add constraint tasks_status_check
+  check (status in ('inbox', 'todo', 'doing', 'review', 'done', 'declined'));
+
+-- quem aprova: o mestre do projeto, se não for o próprio dono da tarefa
+create or replace function public.approver_of(project uuid, owner uuid) returns uuid
+language sql stable security definer set search_path = public as $$
+  select master_id from public.projects where id = project and master_id <> owner
+$$;
+
+-- regras de antes + aprovação: só o mestre (ou o Chefe) conclui/reprova o que está em aprovação
+create or replace function public.guard_task() returns trigger
+language plpgsql security definer set search_path = public as $$
+declare me uuid := auth.uid(); r smallint; appr uuid; judge boolean;
+begin
+  if me is null then return new; end if;
+  r := public.rank_of(me);
+  appr := public.approver_of(old.project_id, old.owner_id);
+  judge := appr is not null and (me = appr or r = 4);
+  if new.created_by is distinct from old.created_by then raise exception 'O autor da tarefa não muda.'; end if;
+  if new.owner_id is distinct from old.owner_id
+     and not (r = 4 or (r > public.rank_of(old.owner_id) and r > public.rank_of(new.owner_id))) then
+    raise exception 'Só o chefe muda a tarefa de pasta.';
+  end if;
+  if new.reviews is distinct from old.reviews and not judge then
+    raise exception 'Só o mestre do projeto (ou o Chefe) aprova ou reprova.';
+  end if;
+  if old.status = 'review' then
+    if new.project_id is distinct from old.project_id and not judge then
+      raise exception 'Essa entrega está em aprovação: não dá pra trocar o projeto agora.';
+    end if;
+    if new.status is distinct from old.status and not (judge or (me = old.owner_id and new.status <> 'done')) then
+      raise exception 'Essa entrega está esperando a aprovação do mestre do projeto.';
+    end if;
+  elsif new.status is distinct from old.status then
+    if not (me = old.owner_id or r = 4 or r > public.rank_of(old.owner_id)) then
+      raise exception 'Só o dono da tarefa muda o andamento.';
+    end if;
+    if new.status = 'done' and public.approver_of(new.project_id, new.owner_id) is not null
+       and not (me = public.approver_of(new.project_id, new.owner_id) or r = 4) then
+      raise exception 'Essa tarefa precisa passar pela aprovação do mestre do projeto.';
+    end if;
+  end if;
+  return new;
+end $$;
+drop trigger if exists guard_task on public.tasks;
+create trigger guard_task before update on public.tasks for each row execute function public.guard_task();
+
+-- o mestre do projeto também mexe nas tarefas do projeto (o gatilho acima limita o quê)
+drop policy if exists "quem participa edita" on public.tasks;
+create policy "quem participa edita" on public.tasks for update to authenticated
+  using (public.can_edit_task(owner_id, created_by, collaborators)
+    or public.approver_of(project_id, owner_id) = auth.uid()) with check (true);

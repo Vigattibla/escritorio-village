@@ -85,7 +85,7 @@ function Scene({ view, inbox, todo }: { view: View; inbox: number; todo: number 
   )
 }
 
-const STATUS: Record<Task['status'], string> = { inbox: 'aguardando', todo: 'na pasta', doing: 'fazendo', done: 'feito ✅', declined: 'recusado' }
+const STATUS: Record<Task['status'], string> = { inbox: 'aguardando', todo: 'na pasta', doing: 'fazendo', review: 'aguardando aprovação', done: 'feito ✅', declined: 'recusado' }
 const recent = (t: Task) => t.status !== 'done' || (!!t.done_at && Date.now() - new Date(t.done_at).getTime() < 3 * 864e5)
 const dueTxt = (d: string | null) => (d ? ' · 📅 ' + new Date(d + 'T12:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : '')
 

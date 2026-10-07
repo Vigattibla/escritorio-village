@@ -29,8 +29,33 @@ export interface Profile {
   created_at: string
 }
 
-/** inbox = pedido esperando aceite (fica no computador); declined = recusado */
-export type TaskStatus = 'inbox' | 'todo' | 'doing' | 'done' | 'declined'
+/** inbox = pedido esperando aceite (fica no computador); review = esperando o mestre do projeto aprovar; declined = recusado */
+export type TaskStatus = 'inbox' | 'todo' | 'doing' | 'review' | 'done' | 'declined'
+
+/** Projeto: agrupa tarefas de várias pessoas; o mestre aprova ou reprova as entregas. */
+export interface Project {
+  id: string
+  name: string
+  /** mestre (dono) do projeto: aprova as entregas */
+  master_id: string
+  /** critérios de aprovação que valem para todas as tarefas do projeto */
+  criteria: string[]
+  color: string
+  archived: boolean
+  created_by: string
+  created_at: string
+}
+
+/** Uma decisão do aprovador (fica o histórico na tarefa). */
+export interface Review {
+  by: string
+  at: string
+  ok: boolean
+  /** justificativa (obrigatória ao reprovar) */
+  reason: string
+  /** critérios que não passaram */
+  failed: string[]
+}
 
 export interface Task {
   id: string
@@ -48,6 +73,10 @@ export interface Task {
   position: number
   created_at: string
   done_at: string | null
+  project_id: string | null
+  /** critérios extras só desta tarefa (somam com os do projeto) */
+  criteria: string[]
+  reviews: Review[]
 }
 
 export interface Attachment {
@@ -90,6 +119,7 @@ export interface Snapshot {
   tasks: Task[]
   messages: Message[]
   notes: TaskNote[]
+  projects: Project[]
 }
 
 export interface Handlers {
@@ -99,6 +129,8 @@ export interface Handlers {
   message(m: Message): void
   note(n: TaskNote): void
   noteDeleted(id: string): void
+  project(p: Project): void
+  projectDeleted(id: string): void
   pos(id: string, p: Pos): void
   online(ids: string[]): void
 }
@@ -133,6 +165,8 @@ export interface Backend {
   deleteFile(path: string): Promise<void>
   addNote(n: TaskNote): Promise<void>
   deleteNote(id: string): Promise<void>
+  upsertProject(p: Project): Promise<void>
+  deleteProject(id: string): Promise<void>
   connect(userId: string, h: Handlers): () => void
   sendPos(userId: string, p: Pos): void
 }

@@ -1,11 +1,11 @@
 import { toEmail, validUser } from './login'
-import type { Avatar, Backend, Handlers, Message, Pos, Profile, Snapshot, Task, TaskNote } from '../types'
+import type { Avatar, Backend, Handlers, Message, Pos, Profile, Project, Snapshot, Task, TaskNote } from '../types'
 
 // Modo demonstração: tudo no localStorage deste navegador. Abas diferentes = pessoas diferentes
 // (a sessão fica no sessionStorage), sincronizadas por BroadcastChannel.
 
 interface Account { id: string; email: string; hash: string; name: string }
-const K = { acc: 'ev:accounts', prof: 'ev:profiles', task: 'ev:tasks', msg: 'ev:messages', note: 'ev:notes', file: 'ev:file:', seeded: 'ev:seeded', session: 'ev:session' }
+const K = { acc: 'ev:accounts', prof: 'ev:profiles', task: 'ev:tasks', msg: 'ev:messages', note: 'ev:notes', proj: 'ev:projects', file: 'ev:file:', seeded: 'ev:seeded', session: 'ev:session' }
 
 function read<T>(k: string, fb: T): T {
   try { const v = localStorage.getItem(k); return v ? (JSON.parse(v) as T) : fb } catch { return fb }
@@ -24,6 +24,8 @@ type Wire =
   | { t: 'msg'; m: Message }
   | { t: 'note'; n: TaskNote }
   | { t: 'noteDel'; id: string }
+  | { t: 'project'; p: Project }
+  | { t: 'projectDel'; id: string }
   | { t: 'pos'; id: string; p: Pos }
   | { t: 'hello'; id: string; p: Pos | null }
   | { t: 'bye'; id: string }
@@ -72,6 +74,7 @@ export class DemoBackend implements Backend {
       tasks: Object.values(read<Record<string, Task>>(K.task, {})),
       messages: read<Message[]>(K.msg, []),
       notes: read<TaskNote[]>(K.note, []),
+      projects: Object.values(read<Record<string, Project>>(K.proj, {})),
     }
   }
 
@@ -193,6 +196,24 @@ export class DemoBackend implements Backend {
     this.post({ t: 'noteDel', id })
   }
 
+  async upsertProject(p: Project) {
+    const all = read<Record<string, Project>>(K.proj, {})
+    all[p.id] = p
+    write(K.proj, all)
+    this.post({ t: 'project', p })
+  }
+
+  async deleteProject(id: string) {
+    const all = read<Record<string, Project>>(K.proj, {})
+    delete all[id]
+    write(K.proj, all)
+    // como no servidor (on delete set null): as tarefas ficam, só saem do projeto
+    const tasks = read<Record<string, Task>>(K.task, {})
+    for (const t of Object.values(tasks)) if (t.project_id === id) { t.project_id = null; this.post({ t: 'task', task: t }) }
+    write(K.task, tasks)
+    this.post({ t: 'projectDel', id })
+  }
+
   connect(userId: string, h: Handlers) {
     const seen = new Map<string, number>()
     const emit = () => {
@@ -208,6 +229,8 @@ export class DemoBackend implements Backend {
         case 'msg': h.message(w.m); break
         case 'note': h.note(w.n); break
         case 'noteDel': h.noteDeleted(w.id); break
+        case 'project': h.project(w.p); break
+        case 'projectDel': h.projectDeleted(w.id); break
         case 'pos': seen.set(w.id, Date.now()); h.pos(w.id, w.p); break
         case 'hello': {
           const novo = !seen.has(w.id)
@@ -254,16 +277,21 @@ function seed() {
     { id: 'demo-bruno', name: 'Bruno', role: 'Marketing', avatar: av({ skin: '#8d5a3b', hair: 'cacheado', outfit: 'moletom', top: '#3fa66b', bottom: '#1f1f24', shoes: '#f4f4f4' }), photo: null, xp: 410, desk: 2, rank: 2, created_at: iso(8000) },
     { id: 'demo-carla', name: 'Carla', role: 'Eventos', avatar: av({ skin: '#ffe3cc', hair: 'coque', hairColor: '#d9a441', outfit: 'social', top: '#0B235D', bottom: '#2c3e66' }), photo: null, xp: 130, desk: 5, rank: 3, created_at: iso(7000) },
   ]
-  const task = (owner: string, title: string, status: Task['status'], minAgo: number, by = owner): Task => ({
+  const proj: Project = {
+    id: crypto.randomUUID(), name: 'Semana das Crianças', master_id: 'demo-carla', color: '#e8a33d', archived: false, created_by: 'demo-carla', created_at: iso(9500),
+    criteria: ['Segue a identidade da campanha', 'Revisado (texto sem erro)', 'Aprovado com o cliente interno'],
+  }
+  const task = (owner: string, title: string, status: Task['status'], minAgo: number, by = owner, project_id: string | null = null): Task => ({
     id: crypto.randomUUID(), owner_id: owner, created_by: by, title, notes: '', status, start: null, due: null, collaborators: [], attachments: [], position: minAgo,
-    created_at: iso(minAgo), done_at: status === 'done' ? iso(Math.max(1, minAgo - 30)) : null,
+    created_at: iso(minAgo), done_at: status === 'done' ? iso(Math.max(1, minAgo - 30)) : null, project_id, criteria: [], reviews: [],
   })
   const tasks = [
     { ...task('demo-ana', 'Confirmar reservas do fim de semana', 'doing', 120), notes: 'Ligar para quem ainda não pagou o sinal. Conferir chalés 3 e 7.', collaborators: ['demo-carla'] },
     task('demo-ana', 'Responder e-mails das agências', 'todo', 100),
     task('demo-ana', 'Imprimir check-ins de sexta', 'todo', 90, 'demo-carla'),
     task('demo-bruno', 'Foto da recepção pro site', 'inbox', 70, 'demo-ana'),
-    task('demo-bruno', 'Arte do feed: Semana das Crianças', 'doing', 200),
+    task('demo-bruno', 'Arte do feed: Semana das Crianças', 'review', 200, 'demo-carla', proj.id),
+    task('demo-ana', 'Inscrições das oficinas na recepção', 'doing', 110, 'demo-carla', proj.id),
     task('demo-bruno', 'Agendar stories da piscina', 'todo', 150),
     task('demo-bruno', 'Selecionar fotos do chalé', 'done', 300),
     task('demo-carla', 'Checklist do evento de sábado', 'todo', 80),
@@ -281,5 +309,6 @@ function seed() {
   write(K.task, Object.fromEntries(tasks.map(t => [t.id, t])))
   write(K.msg, msgs)
   write(K.note, notes)
+  write(K.proj, { [proj.id]: proj })
   localStorage.setItem(K.seeded, '1')
 }

@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { drawAvatar, onPhotoLoad, SPRITE_H } from '../chibi/sprite'
 import { backend } from '../data'
+import { managerOf } from '../game/ranks'
 import { level } from '../game/xp'
-import { blocked, deskAtTile, deskOf, drawDesk, findPath, MAX_DESKS, MH, MW, pathToSeat, renderBackground, T } from '../office/world'
+import { blocked, BOSS_DESK, deskAtTile, deskOf, drawDesk, DESKS, findPath, MAX_DESKS, MH, MW, pathToSeat, renderBackground, T } from '../office/world'
 import { bubbles, getState, positions, setUi } from '../store'
 import type { Dir, Pos, Profile, Task } from '../types'
 
@@ -13,8 +14,11 @@ const typing = () => { const el = document.activeElement; return !!el && /INPUT|
 interface Shown { x: number; y: number; dir: Dir; moving: boolean; anim: number }
 interface Hover { id: string; sx: number; sy: number }
 
+/** Mesa de alguém: o Gerente vai para a mesa dele, o resto usa a sorteada */
+const deskIdx = (p: Profile) =>
+  managerOf(getState().profiles)?.id === p.id ? BOSS_DESK : p.desk >= 0 && p.desk < MAX_DESKS ? p.desk : 0
 function seatOf(p: Profile) {
-  const s = deskOf(p.desk >= 0 && p.desk < MAX_DESKS ? p.desk : 0).seat
+  const s = deskOf(deskIdx(p)).seat
   return { x: s.x, y: s.y }
 }
 const frameOf = (s: { moving: boolean; anim: number }): 0 | 1 | 2 => (s.moving ? ([1, 0, 2, 0] as const)[Math.floor(s.anim * 8) % 4] : 0)
@@ -47,7 +51,7 @@ export default function Game() {
     const start = saved && !blocked(saved.x, saved.y) ? saved : { ...seatOf(myProfile()), dir: 'down' as Dir, moving: false }
     const meS: Shown = { x: start.x, y: start.y, dir: start.dir, moving: false, anim: 0 }
     shown.set(meId, meS)
-    goSeat.current = () => { const p = pathToSeat(meS.x, meS.y, myProfile().desk); if (p) path = p }
+    goSeat.current = () => { const p = pathToSeat(meS.x, meS.y, deskIdx(myProfile())); if (p) path = p }
 
     const resize = () => {
       dpr = window.devicePixelRatio || 1
@@ -86,7 +90,7 @@ export default function Game() {
       const tx = Math.floor(w.x / T), ty = Math.floor(w.y / T)
       const desk = deskAtTile(tx, ty)
       if (desk !== null) {
-        const owner = Object.values(getState().profiles).find(p => p.desk === desk)
+        const owner = Object.values(getState().profiles).find(p => p.avatar && deskIdx(p) === desk)
         if (owner) setUi({ desk: owner.id, deskView: 'pasta', viewing: owner.id })
         if (owner?.id === meId) goSeat.current()
         return
@@ -188,9 +192,9 @@ export default function Game() {
 
       const tasks = Object.values(s.tasks)
       const byDesk = new Map<number, Profile>()
-      for (const p of Object.values(s.profiles)) if (p.avatar && p.desk >= 0 && p.desk < MAX_DESKS && !byDesk.has(p.desk)) byDesk.set(p.desk, p)
+      for (const p of Object.values(s.profiles)) if (p.avatar && !byDesk.has(deskIdx(p))) byDesk.set(deskIdx(p), p)
       const items: { key: number; draw: () => void }[] = []
-      for (let i = 0; i < MAX_DESKS; i++) {
+      for (let i = 0; i < DESKS; i++) {
         const owner = byDesk.get(i)
         const notes = owner ? tasks.filter(x => x.owner_id === owner.id && x.status === 'todo').length : 0
         const inbox = owner ? tasks.some(x => x.owner_id === owner.id && x.status === 'inbox') : false
@@ -217,6 +221,19 @@ export default function Game() {
       // rótulos em espaço de tela (texto nítido)
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
       const now = Date.now()
+      {
+        // placa da mesa do Gerente
+        const d = deskOf(BOSS_DESK)
+        const bx = (d.seat.x - cam.x) * z, by = ((d.ty + 1) * T + 2 - cam.y) * z
+        ctx.font = '700 10px "Pixelify Sans", Inter, sans-serif'
+        const bw = ctx.measureText('GERENTE').width + 14
+        ctx.fillStyle = 'rgba(11,35,93,.92)'
+        roundRect(ctx, Math.round(bx - bw / 2), Math.round(by), bw, 15, 7.5); ctx.fill()
+        ctx.fillStyle = '#FBC222'
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+        ctx.fillText('GERENTE', Math.round(bx), Math.round(by) + 8)
+        ctx.textAlign = 'left'
+      }
       for (const [id, o] of shown) {
         const p = s.profiles[id]
         if (!p?.avatar) continue

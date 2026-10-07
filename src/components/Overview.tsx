@@ -7,8 +7,8 @@ import MiniAvatar from './MiniAvatar'
 
 type Filter = 'abertas' | 'doing' | 'todo' | 'late' | 'inbox' | 'done'
 const LABEL: Record<Filter, string> = { abertas: 'Tudo em aberto', doing: 'Fazendo agora', todo: 'A fazer', late: 'Atrasadas', inbox: 'Pedidos esperando', done: 'Feitas hoje' }
-const ST: Record<Task['status'], string> = { inbox: 'aguardando', todo: 'a fazer', doing: 'fazendo', done: 'feita', declined: 'recusada' }
-const OPEN = new Set<Task['status']>(['inbox', 'todo', 'doing'])
+const ST: Record<Task['status'], string> = { inbox: 'aguardando', todo: 'a fazer', doing: 'fazendo', review: 'em aprovação', done: 'feita', declined: 'recusada' }
+const OPEN = new Set<Task['status']>(['inbox', 'todo', 'doing', 'review'])
 
 /** Só o Chefe vê: o que o time inteiro está fazendo. */
 export default function Overview() {

@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import { isChief, rankName } from '../game/ranks'
 import {
-  acceptRequest, addNote, attachFiles, canEditTask, canMove, canReassign, declineRequest, reassign, fileUrl, removeAttachment, removeNote, removeTask, run,
-  setStatus, setUi, updateTask, useStore,
+  acceptRequest, addNote, approverOf, attachFiles, canApprove, canEditTask, canMove, canReassign, declineRequest, reassign, fileUrl, removeAttachment, removeNote, removeTask, run,
+  setCriteria, setProject, setStatus, setUi, updateTask, useStore,
 } from '../store'
 import type { Attachment, Task } from '../types'
 import MiniAvatar from './MiniAvatar'
+import { ReviewBox, ReviewHistory } from './Revisao'
 
-const STATUS: Record<Task['status'], string> = { inbox: 'pedido aguardando', todo: 'a fazer', doing: 'fazendo', done: 'feita ✅', declined: 'recusada' }
+const STATUS: Record<Task['status'], string> = { inbox: 'pedido aguardando', todo: 'a fazer', doing: 'fazendo', review: 'em aprovação ⏳', done: 'feita ✅', declined: 'recusada' }
 const size = (n: number) => (n < 1048576 ? `${Math.max(1, Math.round(n / 1024))} KB` : `${(n / 1048576).toFixed(1).replace('.', ',')} MB`)
 const when = (iso: string) => new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
 const isImg = (a: Attachment) => a.type.startsWith('image/')
@@ -65,6 +66,8 @@ export default function TaskDetail() {
   const profiles = useStore(s => s.profiles)
   const meId = useStore(s => s.meId)!
   const allNotes = useStore(s => s.notes)
+  const projects = useStore(s => s.projects)
+  const [crit, setCrit] = useState('')
   const [zoom, setZoom] = useState<string | null>(null)
   const [sending, setSending] = useState(0)
   const [note, setNote] = useState('')
@@ -91,6 +94,12 @@ export default function TaskDetail() {
   const chief = isChief(me)
   const canDelete = own || chief || (t.created_by === meId && t.status !== 'done')
   const name = (uid: string) => profiles[uid]?.name ?? 'Alguém'
+  const proj = t.project_id ? projects[t.project_id] : undefined
+  const appr = approverOf(t)
+  const approve = canApprove(t)
+  const toReview = !!appr && !approve
+  const last = t.reviews.at(-1)
+  const addCrit = () => { if (crit.trim()) { run(setCriteria(t.id, [...t.criteria, crit])); setCrit('') } }
   const free = Object.values(profiles).filter(p => p.id !== t.owner_id && !t.collaborators.includes(p.id)).sort((a, b) => a.name.localeCompare(b.name))
 
   const upload = (files: File[]) => {
@@ -125,6 +134,16 @@ export default function TaskDetail() {
           <button className="btn ghost sm" onClick={close} aria-label="Fechar">✕</button>
         </header>
 
+        {last && !last.ok && t.status !== 'done' && t.status !== 'review' && (
+          <div className="rvbanner">
+            <b>↺ Reprovada por {name(last.by)}:</b> {last.reason}
+            {last.failed.length > 0 && <div className="rvfail">{last.failed.map(c => <span key={c}>✕ {c}</span>)}</div>}
+          </div>
+        )}
+        {t.status === 'review' && (approve
+          ? <div className="rvpanel"><h3>Sua aprovação</h3><ReviewBox t={t} /></div>
+          : <div className="rvbanner wait">⏳ Esperando a aprovação de <b>{appr ? name(appr) : 'alguém'}</b>.</div>)}
+
         <div className="task-body">
           <input
             key={'t' + t.title}
@@ -156,6 +175,37 @@ export default function TaskDetail() {
             <label className="grow">Prazo
               <input type="date" value={t.due ?? ''} disabled={!edit} min={t.start ?? undefined} onChange={e => run(updateTask(t.id, { due: e.target.value || null }))} />
             </label>
+          </div>
+
+          <div className="field">
+            <h3>Projeto e critérios</h3>
+            <div className="row gap wrap">
+              <select
+                className="add-person" value={t.project_id ?? ''} disabled={!edit || t.status === 'review'}
+                onChange={e => run(setProject(t.id, e.target.value || null))}
+                style={proj ? { borderColor: proj.color } : undefined}
+              >
+                <option value="">Sem projeto (sem aprovação)</option>
+                {Object.values(projects).filter(p => !p.archived || p.id === t.project_id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+              {proj && <span className="muted small">Mestre: <b>{name(proj.master_id)}</b>{appr ? ' · aprova a entrega' : ' · você é o mestre'}</span>}
+            </div>
+            <ul className="critlist">
+              {proj?.criteria.map((c, i) => <li key={'p' + i} className="fixed" title="Critério do projeto">📏 {c}</li>)}
+              {t.criteria.map((c, i) => (
+                <li key={'t' + i}>☐ {c}
+                  {edit && <button className="icon" onClick={() => run(setCriteria(t.id, t.criteria.filter((_, j) => j !== i)))} title="Tirar critério">✕</button>}
+                </li>
+              ))}
+              {!proj?.criteria.length && !t.criteria.length && <li className="muted">Nenhum critério.</li>}
+            </ul>
+            {edit && (
+              <div className="row gap">
+                <input className="grow" value={crit} maxLength={140} placeholder="+ critério só desta tarefa (Enter)" onChange={e => setCrit(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addCrit() } }} />
+              </div>
+            )}
+            {t.reviews.length > 0 && <><h3 className="mt">Histórico de aprovação</h3><ReviewHistory t={t} /></>}
           </div>
 
           <div className="field">
@@ -239,7 +289,8 @@ export default function TaskDetail() {
           </>}
           {move && t.status === 'todo' && <button className="btn primary sm" onClick={() => run(setStatus(t.id, 'doing'))}>▶ Começar</button>}
           {move && t.status === 'doing' && <button className="btn ghost sm" onClick={() => run(setStatus(t.id, 'todo'))}>⏸ Pausar</button>}
-          {move && (t.status === 'todo' || t.status === 'doing') && <button className="btn primary sm" onClick={() => run(setStatus(t.id, 'done'))}>✓ Concluir</button>}
+          {move && (t.status === 'todo' || t.status === 'doing') && <button className="btn primary sm" onClick={() => run(setStatus(t.id, 'done'))}>{toReview ? '↑ Enviar para aprovação' : '✓ Concluir'}</button>}
+          {own && t.status === 'review' && <button className="btn ghost sm" onClick={() => run(setStatus(t.id, 'doing'))}>↩ Retirar da aprovação</button>}
           {move && t.status === 'done' && <button className="btn ghost sm" onClick={() => run(setStatus(t.id, 'todo'))}>Reabrir</button>}
           <span className="grow" />
           {canDelete && (sure
