@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { canAssign, rankName } from '../game/ranks'
 import { dayKey, DAILY_GOAL, doneToday, level, levelTitle, taskXp } from '../game/xp'
-import { addTask, removeTask, renameTask, run, setStatus, setUi, useStore } from '../store'
+import { addTask, removeTask, run, setStatus, setUi, useStore } from '../store'
 import type { Task, TaskStatus } from '../types'
 import MiniAvatar from './MiniAvatar'
 
@@ -37,13 +37,14 @@ export default function Board({ ownerId, bare = false }: { ownerId?: string; bar
 
   const all = Object.values(tasksMap)
   const today = dayKey(new Date())
-  const tasks = all.filter(t => t.owner_id === owner.id)
+  // na pasta entram as próprias e as que a pessoa ajuda
+  const tasks = all.filter(t => t.owner_id === owner.id || t.collaborators.includes(owner.id))
   const list = (st: TaskStatus) =>
     tasks
       .filter(t => t.status === st && (st !== 'done' || (t.done_at && dayKey(t.done_at) === today)))
       .sort((a, b) => (st === 'todo' ? a.position - b.position : b.position - a.position))
   const doneCount = doneToday(all, owner.id)
-  const totalDone = tasks.filter(t => t.status === 'done').length
+  const totalDone = tasks.filter(t => t.status === 'done' && t.owner_id === owner.id).length
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -89,7 +90,7 @@ export default function Board({ ownerId, bare = false }: { ownerId?: string; bar
           <section
             key={sec.id}
             className={'sec ' + sec.id + (over === sec.id ? ' over' : '')}
-            onDragOver={e => { if (mine && drag) { e.preventDefault(); setOver(sec.id) } }}
+            onDragOver={e => { if (drag) { e.preventDefault(); setOver(sec.id) } }}
             onDragLeave={() => setOver(null)}
             onDrop={() => { if (drag) run(setStatus(drag, sec.id)); setDrag(null); setOver(null) }}
           >
@@ -100,7 +101,7 @@ export default function Board({ ownerId, bare = false }: { ownerId?: string; bar
                   sec.id === 'todo' ? (mine ? 'Tudo em dia. Adicione o que vem a seguir.' : 'Sem tarefas pendentes.') : 'Nenhuma concluída hoje ainda.'}
               </p>
             )}
-            {items.map(t => <Card key={t.id} t={t} mine={mine} meId={meId} onDrag={setDrag} />)}
+            {items.map(t => <Card key={t.id} t={t} meId={meId} boardOwner={owner.id} onDrag={setDrag} />)}
           </section>
         )
       })}
@@ -109,34 +110,35 @@ export default function Board({ ownerId, bare = false }: { ownerId?: string; bar
   )
 }
 
-function Card({ t, mine, meId, onDrag }: { t: Task; mine: boolean; meId: string; onDrag: (id: string | null) => void }) {
+function Card({ t, meId, boardOwner, onDrag }: { t: Task; meId: string; boardOwner: string; onDrag: (id: string | null) => void }) {
   const profiles = useStore(s => s.profiles)
-  const [edit, setEdit] = useState(false)
-  const [val, setVal] = useState(t.title)
+  const nNotes = useStore(s => s.notes.filter(n => n.task_id === t.id).length)
+  const mine = t.owner_id === meId
   const done = t.status === 'done'
   const req = t.created_by !== t.owner_id
   const boss = req && canAssign(profiles[t.created_by], profiles[t.owner_id])
+  const helping = t.owner_id !== boardOwner
   const canDelete = mine || (t.created_by === meId && !done)
-  const save = () => { setEdit(false); run(renameTask(t.id, val)) }
+  const open = () => setUi({ task: t.id })
 
   return (
-    <div className={'card' + (done ? ' done' : '') + (req ? ' req' : '')} draggable={mine && !edit} onDragStart={() => onDrag(t.id)} onDragEnd={() => onDrag(null)}>
+    <div className={'card' + (done ? ' done' : '') + (req ? ' req' : '') + (helping ? ' help' : '')} draggable={mine} onDragStart={() => onDrag(t.id)} onDragEnd={() => onDrag(null)}>
       <button
         className={'check' + (done ? ' on' : '')}
         disabled={!mine}
         onClick={() => run(setStatus(t.id, done ? 'todo' : 'done'))}
         title={done ? 'Desfazer' : `Concluir (+${taskXp(t)} XP)`}
       >{done ? '✓' : ''}</button>
-      <div className="grow">
-        {edit ? (
-          <input autoFocus value={val} onChange={e => setVal(e.target.value)} onBlur={save} onKeyDown={e => { if (e.key === 'Enter') save(); if (e.key === 'Escape') { setVal(t.title); setEdit(false) } }} />
-        ) : (
-          <div className="title" onDoubleClick={() => mine && !done && setEdit(true)}>{t.title}</div>
-        )}
+      <div className="grow open" onClick={open} title="Abrir detalhes">
+        <div className="title">{t.title}</div>
+        {t.notes && <div className="desc">{t.notes}</div>}
         <div className="meta">
-          {req && <span className="chip req">{boss ? '🗂' : '📌'} {t.created_by === meId ? (boss ? 'você passou' : 'seu pedido') : `${boss ? 'passada' : 'pedido'} por ${profiles[t.created_by]?.name ?? 'alguém'}`}</span>}
+          {helping && <span className="chip help">🤝 com {profiles[t.owner_id]?.name ?? 'alguém'}</span>}
+          {req && !helping && <span className="chip req">{boss ? '🗂' : '📌'} {t.created_by === meId ? (boss ? 'você passou' : 'seu pedido') : `${boss ? 'passada' : 'pedido'} por ${profiles[t.created_by]?.name ?? 'alguém'}`}</span>}
           {dueChip(t.due, done)}
-          {t.notes && <span className="chip note" title={t.notes}>📝 nota</span>}
+          {t.collaborators.length > 0 && !helping && <span className="chip" title={t.collaborators.map(id => profiles[id]?.name).join(', ')}>🤝 {t.collaborators.length}</span>}
+          {t.attachments.length > 0 && <span className="chip">📎 {t.attachments.length}</span>}
+          {nNotes > 0 && <span className="chip">💬 {nNotes}</span>}
         </div>
       </div>
       <div className="acts">

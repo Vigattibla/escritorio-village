@@ -4,10 +4,13 @@ import Game from '../components/Game'
 import Mascot from '../components/Mascot'
 import MiniAvatar from '../components/MiniAvatar'
 import DeskView from '../components/DeskView'
+import Overview from '../components/Overview'
+import TaskDetail from '../components/TaskDetail'
 import RequestModal from '../components/RequestModal'
 import Team from '../components/Team'
 import Creator from './Creator'
 import { backend } from '../data'
+import { isChief } from '../game/ranks'
 import { DAILY_GOAL, doneToday, level, levelProgress, levelTitle, streak } from '../game/xp'
 import { setUi, signOut, unread, useStore, type Tab } from '../store'
 
@@ -26,6 +29,8 @@ export default function Office() {
     { id: 'equipe', label: 'Equipe', n: 0 },
     { id: 'chat', label: 'Chat', n: msgs },
   ]
+  const chief = isChief(me)
+  if (chief) tabs.push({ id: 'geral', label: '👑 Geral', n: tasks.filter(t => t.status === 'inbox').length })
 
   return (
     <div className="office">
@@ -62,10 +67,12 @@ export default function Office() {
             {s.tab === 'mesa' && <Board />}
             {s.tab === 'equipe' && <Team />}
             {s.tab === 'chat' && <Chat />}
+            {s.tab === 'geral' && chief && <Overview />}
           </div>
         </aside>
       </main>
       {s.desk && <DeskView />}
+      {s.task && <TaskDetail />}
       <RequestModal />
       <Mascot />
       {s.editing && <div className="overlay"><Creator /></div>}

@@ -1,10 +1,12 @@
 import type { Profile } from '../types'
 
 // Mesmas regras do supabase/schema.sql (rank_of / set_rank / política de tarefas).
-export const RANKS = ['', 'Equipe', 'Coordenação', 'Gerência', 'Diretoria'] as const
+export const RANKS = ['', 'Equipe', 'Coordenação', 'Gerência', 'Chefe'] as const
 export const MAX_RANK = 4
 
 export const rankOf = (p: Profile | undefined) => Math.min(MAX_RANK, Math.max(1, p?.rank ?? 1))
+/** Chefe vê a visão geral e mexe em qualquer tarefa */
+export const isChief = (p: Profile | undefined) => rankOf(p) === MAX_RANK
 export const rankName = (p: Profile | undefined) => RANKS[rankOf(p)]
 
 /** Pode colocar tarefa direto na pasta de `owner` (sem precisar de aceite)? */

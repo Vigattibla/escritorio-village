@@ -22,7 +22,7 @@ export interface Profile {
   photo: string | null
   xp: number
   desk: number
-  /** 1 Equipe · 2 Coordenação · 3 Gerência · 4 Diretoria — só muda por setRank */
+  /** 1 Equipe · 2 Coordenação · 3 Gerência · 4 Chefe — só muda por setRank */
   rank: number
   created_at: string
 }
@@ -35,12 +35,37 @@ export interface Task {
   owner_id: string
   created_by: string
   title: string
+  /** descrição / legenda */
   notes: string
   status: TaskStatus
+  start: string | null
   due: string | null
+  /** quem ajuda (a tarefa aparece na pasta dessas pessoas também) */
+  collaborators: string[]
+  attachments: Attachment[]
   position: number
   created_at: string
   done_at: string | null
+}
+
+export interface Attachment {
+  id: string
+  name: string
+  /** caminho no storage (demo: chave local) */
+  path: string
+  type: string
+  size: number
+  by: string
+  at: string
+}
+
+/** comentário no fio da tarefa */
+export interface TaskNote {
+  id: string
+  task_id: string
+  author_id: string
+  body: string
+  created_at: string
 }
 
 export interface Message {
@@ -62,6 +87,7 @@ export interface Snapshot {
   profiles: Profile[]
   tasks: Task[]
   messages: Message[]
+  notes: TaskNote[]
 }
 
 export interface Handlers {
@@ -69,6 +95,8 @@ export interface Handlers {
   task(t: Task): void
   taskDeleted(id: string): void
   message(m: Message): void
+  note(n: TaskNote): void
+  noteDeleted(id: string): void
   pos(id: string, p: Pos): void
   online(ids: string[]): void
 }
@@ -89,6 +117,13 @@ export interface Backend {
   upsertTask(t: Task): Promise<void>
   deleteTask(id: string): Promise<void>
   sendMessage(m: Message): Promise<void>
+  /** devolve o caminho do arquivo guardado */
+  uploadFile(taskId: string, file: File): Promise<string>
+  /** link para abrir (ou baixar, com o nome dado) */
+  fileUrl(path: string, download?: string): Promise<string>
+  deleteFile(path: string): Promise<void>
+  addNote(n: TaskNote): Promise<void>
+  deleteNote(id: string): Promise<void>
   connect(userId: string, h: Handlers): () => void
   sendPos(userId: string, p: Pos): void
 }

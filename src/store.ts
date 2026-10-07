@@ -1,14 +1,14 @@
 import { useSyncExternalStore } from 'react'
 import { backend } from './data'
-import { canAssign } from './game/ranks'
+import { canAssign, isChief } from './game/ranks'
 import { level, levelTitle, taskXp } from './game/xp'
 import { MAX_DESKS } from './office/world'
-import type { Avatar, Message, Pos, Profile, Task, TaskStatus } from './types'
+import type { Attachment, Avatar, Message, Pos, Profile, Task, TaskNote, TaskStatus } from './types'
 
 export type Phase = 'loading' | 'auth' | 'creator' | 'office'
-export type Tab = 'mesa' | 'equipe' | 'chat'
+export type Tab = 'mesa' | 'equipe' | 'chat' | 'geral'
 export type DeskView = 'pasta' | 'pc'
-export interface Go { tab?: Tab; viewing?: string; channel?: string; desk?: string; deskView?: DeskView }
+export interface Go { tab?: Tab; viewing?: string; channel?: string; desk?: string; deskView?: DeskView; task?: string }
 export interface Notice { id: string; text: string; at: number; from?: string; go?: Go }
 
 export interface State {
@@ -19,6 +19,8 @@ export interface State {
   profiles: Record<string, Profile>
   tasks: Record<string, Task>
   messages: Message[]
+  /** fio de comentários de todas as tarefas */
+  notes: TaskNote[]
   online: Set<string>
   tab: Tab
   viewing: string | null
@@ -28,14 +30,16 @@ export interface State {
   /** mesa aberta em tela cheia (id do dono) */
   desk: string | null
   deskView: DeskView
+  /** tarefa aberta nos detalhes */
+  task: string | null
   editing: boolean
   notices: Notice[]
   pipOpen: boolean
 }
 
 const initial: State = {
-  phase: 'loading', meId: null, accountName: '', error: '', profiles: {}, tasks: {}, messages: [], online: new Set(),
-  tab: 'mesa', viewing: null, channel: 'geral', reads: {}, requestTo: null, desk: null, deskView: 'pasta', editing: false, notices: [], pipOpen: false,
+  phase: 'loading', meId: null, accountName: '', error: '', profiles: {}, tasks: {}, messages: [], notes: [], online: new Set(),
+  tab: 'mesa', viewing: null, channel: 'geral', reads: {}, requestTo: null, desk: null, deskView: 'pasta', task: null, editing: false, notices: [], pipOpen: false,
 }
 
 let state = initial
@@ -59,6 +63,16 @@ export const dmPeer = (ch: string, me: string) => ch.split(':').slice(1).find(id
 export const me = () => (state.meId ? state.profiles[state.meId] : undefined)
 export const nameOf = (id: string) => state.profiles[id]?.name ?? 'Alguém'
 
+/** linhas antigas (antes do SQL v3) não têm os campos novos */
+const norm = (t: Task): Task => ({ ...t, start: t.start ?? null, collaborators: t.collaborators ?? [], attachments: t.attachments ?? [] })
+export const involved = (t: Task, uid: string) => t.owner_id === uid || t.created_by === uid || t.collaborators.includes(uid)
+/** Mexe nos detalhes: dono, autor, colaborador, cargo acima do dono ou Chefe. */
+export function canEditTask(t: Task, uid = state.meId) {
+  if (!uid) return false
+  const my = state.profiles[uid]
+  return involved(t, uid) || isChief(my) || canAssign(my, state.profiles[t.owner_id])
+}
+
 export function unread(s: State, ch: string) {
   const since = s.reads[ch] ?? ''
   return s.messages.filter(m => m.channel === ch && m.sender_id !== s.meId && m.created_at > since).length
@@ -81,7 +95,8 @@ function onProfile(p: Profile) {
   if (isNew && p.id !== state.meId) notify(`${p.name} entrou no time! 👋`, { from: p.id, go: { tab: 'equipe' } })
 }
 
-function onTask(t: Task) {
+function onTask(raw: Task) {
+  const t = norm(raw)
   const prev = state.tasks[t.id]
   set({ tasks: { ...state.tasks, [t.id]: t } })
   const my = state.meId
@@ -90,6 +105,8 @@ function onTask(t: Task) {
     if (t.status === 'inbox') notify(`${nameOf(t.created_by)} te pediu: “${t.title}”`, { from: t.created_by, go: { desk: my, deskView: 'pc' } })
     else notify(`${nameOf(t.created_by)} colocou na sua pasta: “${t.title}”`, { from: t.created_by, go: { desk: my, deskView: 'pasta' } })
   }
+  if (t.collaborators.includes(my) && !prev?.collaborators.includes(my) && t.owner_id !== my)
+    notify(`${nameOf(t.owner_id)} te chamou para colaborar: “${t.title}” 🤝`, { from: t.owner_id, go: { task: t.id } })
   if (t.created_by === my && t.owner_id !== my && t.status !== prev?.status) {
     const who = nameOf(t.owner_id), go: Go = { desk: my, deskView: 'pc' }
     if (t.status === 'done') notify(`${who} concluiu seu pedido: “${t.title}” ✅`, { from: t.owner_id, go })
@@ -103,6 +120,18 @@ function onTaskDeleted(id: string) {
   const tasks = { ...state.tasks }
   delete tasks[id]
   set({ tasks })
+}
+
+function onNote(n: TaskNote) {
+  if (state.notes.some(x => x.id === n.id)) return
+  set({ notes: [...state.notes, n] })
+  const t = state.tasks[n.task_id], my = state.meId
+  if (!t || !my || n.author_id === my || !involved(t, my) || state.task === t.id) return
+  notify(`${nameOf(n.author_id)} comentou em “${t.title}”: ${n.body.slice(0, 80)}`, { from: n.author_id, go: { task: t.id } })
+}
+
+function onNoteDeleted(id: string) {
+  if (state.notes.some(n => n.id === id)) set({ notes: state.notes.filter(n => n.id !== id) })
 }
 
 function onMessage(m: Message) {
@@ -141,14 +170,15 @@ export async function enter(uid: string) {
   set({
     meId: uid, accountName, error: '', reads,
     profiles: Object.fromEntries(snap.profiles.map(p => [p.id, p])),
-    tasks: Object.fromEntries(snap.tasks.map(t => [t.id, t])),
+    tasks: Object.fromEntries(snap.tasks.map(t => [t.id, norm(t)])),
+    notes: snap.notes,
     messages: snap.messages.filter(m => isMyChannel(m.channel, uid)),
     phase: mine?.avatar ? 'office' : 'creator',
     viewing: uid,
   })
   disconnect?.()
   disconnect = backend.connect(uid, {
-    profile: onProfile, task: onTask, taskDeleted: onTaskDeleted, message: onMessage,
+    profile: onProfile, task: onTask, taskDeleted: onTaskDeleted, message: onMessage, note: onNote, noteDeleted: onNoteDeleted,
     pos: (id, p) => positions.set(id, p),
     online: ids => {
       const next = new Set(ids)
@@ -165,7 +195,7 @@ export async function signOut() {
   set({ ...initial, phase: 'auth' })
 }
 
-export function setUi(p: Partial<Pick<State, 'tab' | 'viewing' | 'channel' | 'requestTo' | 'editing' | 'pipOpen' | 'error' | 'desk' | 'deskView'>>) {
+export function setUi(p: Partial<Pick<State, 'tab' | 'viewing' | 'channel' | 'requestTo' | 'editing' | 'pipOpen' | 'error' | 'desk' | 'deskView' | 'task'>>) {
   set(p)
   if (state.tab === 'chat') markRead(state.channel)
 }
@@ -204,7 +234,7 @@ export async function addTask(owner: string, title: string, due: string | null =
   const direct = canAssign(me(), state.profiles[owner])
   const t: Task = {
     id: crypto.randomUUID(), owner_id: owner, created_by: state.meId!, title: title.trim(), notes, status: direct ? 'todo' : 'inbox',
-    due, position: Date.now(), created_at: new Date().toISOString(), done_at: null,
+    start: null, due, collaborators: [], attachments: [], position: Date.now(), created_at: new Date().toISOString(), done_at: null,
   }
   await putTask(t)
 }
@@ -241,9 +271,55 @@ export async function renameTask(id: string, title: string) {
 }
 
 export async function removeTask(id: string) {
-  if (!state.tasks[id]) return
+  const t = state.tasks[id]
+  if (!t) return
+  if (state.task === id) set({ task: null })
   onTaskDeleted(id)
   await backend.deleteTask(id)
+  await Promise.allSettled(t.attachments.map(a => backend.deleteFile(a.path)))
+}
+
+type Details = Partial<Pick<Task, 'title' | 'notes' | 'start' | 'due' | 'collaborators'>>
+export async function updateTask(id: string, patch: Details) {
+  const t = state.tasks[id]
+  if (!t) return
+  if (patch.title !== undefined && !(patch.title = patch.title.trim())) return
+  if ((Object.keys(patch) as (keyof Details)[]).every(k => JSON.stringify(t[k]) === JSON.stringify(patch[k]))) return
+  await putTask({ ...t, ...patch })
+}
+
+/** Sobe os arquivos e anexa à tarefa (relê a tarefa no fim pra não perder anexo de outra pessoa). */
+export async function attachFiles(id: string, files: File[]) {
+  const added: Attachment[] = []
+  for (const f of files) {
+    const path = await backend.uploadFile(id, f)
+    added.push({ id: crypto.randomUUID(), name: f.name, path, type: f.type, size: f.size, by: state.meId!, at: new Date().toISOString() })
+  }
+  const t = state.tasks[id]
+  if (t && added.length) await putTask({ ...t, attachments: [...t.attachments, ...added] })
+}
+
+export async function removeAttachment(id: string, attId: string) {
+  const t = state.tasks[id]
+  const a = t?.attachments.find(x => x.id === attId)
+  if (!t || !a) return
+  await putTask({ ...t, attachments: t.attachments.filter(x => x.id !== attId) })
+  await backend.deleteFile(a.path).catch(() => { /* arquivo de outra pessoa: some só da lista */ })
+}
+
+export const fileUrl = (a: Attachment, download = false) => backend.fileUrl(a.path, download ? a.name : undefined)
+
+export async function addNote(taskId: string, body: string) {
+  const text = body.trim()
+  if (!text || !state.meId) return
+  const n: TaskNote = { id: crypto.randomUUID(), task_id: taskId, author_id: state.meId, body: text.slice(0, 2000), created_at: new Date().toISOString() }
+  set({ notes: [...state.notes, n] })
+  try { await backend.addNote(n) } catch (e) { onNoteDeleted(n.id); throw e }
+}
+
+export async function removeNote(id: string) {
+  onNoteDeleted(id)
+  await backend.deleteNote(id)
 }
 
 export async function send(channel: string, body: string) {

@@ -1,10 +1,10 @@
-import type { Avatar, Backend, Handlers, Message, Pos, Profile, Snapshot, Task } from '../types'
+import type { Avatar, Backend, Handlers, Message, Pos, Profile, Snapshot, Task, TaskNote } from '../types'
 
 // Modo demonstração: tudo no localStorage deste navegador. Abas diferentes = pessoas diferentes
 // (a sessão fica no sessionStorage), sincronizadas por BroadcastChannel.
 
 interface Account { id: string; email: string; hash: string; name: string }
-const K = { acc: 'ev:accounts', prof: 'ev:profiles', task: 'ev:tasks', msg: 'ev:messages', seeded: 'ev:seeded', session: 'ev:session' }
+const K = { acc: 'ev:accounts', prof: 'ev:profiles', task: 'ev:tasks', msg: 'ev:messages', note: 'ev:notes', file: 'ev:file:', seeded: 'ev:seeded', session: 'ev:session' }
 
 function read<T>(k: string, fb: T): T {
   try { const v = localStorage.getItem(k); return v ? (JSON.parse(v) as T) : fb } catch { return fb }
@@ -21,6 +21,8 @@ type Wire =
   | { t: 'task'; task: Task }
   | { t: 'taskDel'; id: string }
   | { t: 'msg'; m: Message }
+  | { t: 'note'; n: TaskNote }
+  | { t: 'noteDel'; id: string }
   | { t: 'pos'; id: string; p: Pos }
   | { t: 'hello'; id: string; p: Pos | null }
   | { t: 'bye'; id: string }
@@ -66,12 +68,13 @@ export class DemoBackend implements Backend {
       profiles: Object.values(read<Record<string, Profile>>(K.prof, {})),
       tasks: Object.values(read<Record<string, Task>>(K.task, {})),
       messages: read<Message[]>(K.msg, []),
+      notes: read<TaskNote[]>(K.note, []),
     }
   }
 
   async upsertProfile(p: Profile) {
     const all = read<Record<string, Profile>>(K.prof, {})
-    // como no servidor: cargo não vem do cliente; o primeiro sem diretoria vira diretoria
+    // como no servidor: cargo não vem do cliente; o primeiro sem chefe vira chefe
     const boss = Object.values(all).some(x => x.rank === 4 && x.id !== p.id)
     p = { ...p, rank: all[p.id]?.rank ?? (boss ? 1 : 4) }
     all[p.id] = p
@@ -126,6 +129,37 @@ export class DemoBackend implements Backend {
     this.post({ t: 'msg', m })
   }
 
+  async uploadFile(_taskId: string, file: File) {
+    if (file.size > 1.5 * 1024 * 1024) throw new Error('No modo demo os arquivos vão até 1,5 MB (no site real, 20 MB).')
+    const data = await new Promise<string>((res, rej) => {
+      const fr = new FileReader()
+      fr.onload = () => res(fr.result as string)
+      fr.onerror = () => rej(new Error('Não consegui ler o arquivo.'))
+      fr.readAsDataURL(file)
+    })
+    const path = crypto.randomUUID()
+    try { localStorage.setItem(K.file + path, data) } catch { throw new Error('Sem espaço no navegador para esse arquivo (modo demo).') }
+    return path
+  }
+
+  async fileUrl(path: string) {
+    const d = localStorage.getItem(K.file + path)
+    if (!d) throw new Error('Arquivo não encontrado.')
+    return d
+  }
+
+  async deleteFile(path: string) { localStorage.removeItem(K.file + path) }
+
+  async addNote(n: TaskNote) {
+    write(K.note, [...read<TaskNote[]>(K.note, []), n].slice(-2000))
+    this.post({ t: 'note', n })
+  }
+
+  async deleteNote(id: string) {
+    write(K.note, read<TaskNote[]>(K.note, []).filter(n => n.id !== id))
+    this.post({ t: 'noteDel', id })
+  }
+
   connect(userId: string, h: Handlers) {
     const seen = new Map<string, number>()
     const emit = () => {
@@ -139,6 +173,8 @@ export class DemoBackend implements Backend {
         case 'task': h.task(w.task); break
         case 'taskDel': h.taskDeleted(w.id); break
         case 'msg': h.message(w.m); break
+        case 'note': h.note(w.n); break
+        case 'noteDel': h.noteDeleted(w.id); break
         case 'pos': seen.set(w.id, Date.now()); h.pos(w.id, w.p); break
         case 'hello': {
           const novo = !seen.has(w.id)
@@ -174,6 +210,7 @@ export class DemoBackend implements Backend {
 // ---- equipe de exemplo ----
 function seed() {
   const now = new Date()
+  const dayAhead = (d: number) => new Date(now.getTime() + d * 864e5).toISOString().slice(0, 10)
   const iso = (minAgo: number) => new Date(now.getTime() - minAgo * 60000).toISOString()
   const av = (a: Partial<Avatar>): Avatar => ({
     skin: '#f6c9a3', hair: 'curto', hairColor: '#2b1d16', outfit: 'camiseta', top: '#0B235D', bottom: '#2c3e66',
@@ -185,11 +222,11 @@ function seed() {
     { id: 'demo-carla', name: 'Carla', role: 'Eventos', avatar: av({ skin: '#ffe3cc', hair: 'coque', hairColor: '#d9a441', outfit: 'social', top: '#0B235D', bottom: '#2c3e66' }), photo: null, xp: 130, desk: 5, rank: 3, created_at: iso(7000) },
   ]
   const task = (owner: string, title: string, status: Task['status'], minAgo: number, by = owner): Task => ({
-    id: crypto.randomUUID(), owner_id: owner, created_by: by, title, notes: '', status, due: null, position: minAgo,
+    id: crypto.randomUUID(), owner_id: owner, created_by: by, title, notes: '', status, start: null, due: null, collaborators: [], attachments: [], position: minAgo,
     created_at: iso(minAgo), done_at: status === 'done' ? iso(Math.max(1, minAgo - 30)) : null,
   })
   const tasks = [
-    task('demo-ana', 'Confirmar reservas do fim de semana', 'doing', 120),
+    { ...task('demo-ana', 'Confirmar reservas do fim de semana', 'doing', 120), notes: 'Ligar para quem ainda não pagou o sinal. Conferir chalés 3 e 7.', collaborators: ['demo-carla'] },
     task('demo-ana', 'Responder e-mails das agências', 'todo', 100),
     task('demo-ana', 'Imprimir check-ins de sexta', 'todo', 90, 'demo-carla'),
     task('demo-bruno', 'Foto da recepção pro site', 'inbox', 70, 'demo-ana'),
@@ -197,7 +234,10 @@ function seed() {
     task('demo-bruno', 'Agendar stories da piscina', 'todo', 150),
     task('demo-bruno', 'Selecionar fotos do chalé', 'done', 300),
     task('demo-carla', 'Checklist do evento de sábado', 'todo', 80),
-    task('demo-carla', 'Orçamento da decoração', 'doing', 60),
+    { ...task('demo-carla', 'Orçamento da decoração', 'doing', 60), notes: 'Três orçamentos: flores, balões e iluminação.', collaborators: ['demo-bruno'], due: dayAhead(2) },
+  ]
+  const notes: TaskNote[] = [
+    { id: crypto.randomUUID(), task_id: tasks[0].id, author_id: 'demo-carla', body: 'O chalé 7 confirmou por WhatsApp agora há pouco.', created_at: iso(50) },
   ]
   const msgs: Message[] = [
     { id: crypto.randomUUID(), channel: 'geral', sender_id: 'demo-ana', body: 'Bom dia, time! ☀️', created_at: iso(180) },
@@ -207,5 +247,6 @@ function seed() {
   write(K.prof, Object.fromEntries(people.map(p => [p.id, p])))
   write(K.task, Object.fromEntries(tasks.map(t => [t.id, t])))
   write(K.msg, msgs)
+  write(K.note, notes)
   localStorage.setItem(K.seeded, '1')
 }

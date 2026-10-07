@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { canAssign, rankName } from '../game/ranks'
-import { acceptRequest, addTask, declineRequest, removeTask, run, setUi, useStore, type DeskView as View } from '../store'
+import { acceptRequest, addTask, declineRequest, getState, removeTask, run, setUi, useStore, type DeskView as View } from '../store'
 import type { Task } from '../types'
 import Board from './Board'
 import MiniAvatar from './MiniAvatar'
@@ -126,8 +126,9 @@ function Computer({ ownerId }: { ownerId: string }) {
                 <MiniAvatar avatar={profiles[t.created_by]?.avatar ?? null} photo={profiles[t.created_by]?.photo ?? null} size={34} />
                 <div className="grow">
                   <div className="muted small">{name(t.created_by)} pediu{dueTxt(t.due)}</div>
-                  <b>{t.title}</b>
+                  <b className="link" onClick={() => setUi({ task: t.id })}>{t.title}</b>
                   {t.notes && <p className="small">{t.notes}</p>}
+                  {t.attachments.length > 0 && <span className="chip">📎 {t.attachments.length}</span>}
                 </div>
                 <div className="col">
                   <button className="btn primary sm" onClick={() => run(acceptRequest(t.id))}>Aceitar</button>
@@ -158,7 +159,7 @@ function Computer({ ownerId }: { ownerId: string }) {
             <div key={t.id} className={'mail sent ' + t.status}>
               <div className="grow">
                 {mine && <div className="muted small">para {name(t.owner_id)}{dueTxt(t.due)}</div>}
-                <b>{t.title}</b>
+                <b className="link" onClick={() => setUi({ task: t.id })}>{t.title}</b>
               </div>
               <span className={'chip st ' + t.status}>{STATUS[t.status]}</span>
               {(t.status === 'inbox' || t.status === 'declined') && (
@@ -182,7 +183,7 @@ export default function DeskView() {
   const owner = profiles[id]
   const close = () => setUi({ desk: null })
   useEffect(() => {
-    const k = (e: KeyboardEvent) => { if (e.key === 'Escape') close() }
+    const k = (e: KeyboardEvent) => { if (e.key === 'Escape' && !getState().task) close() }
     window.addEventListener('keydown', k)
     return () => window.removeEventListener('keydown', k)
   }, [])
