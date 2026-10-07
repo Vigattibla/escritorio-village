@@ -1,5 +1,5 @@
 import { toEmail, validUser } from './login'
-import type { Avatar, Backend, Handlers, Message, Pos, Profile, Project, Snapshot, Task, TaskNote } from '../types'
+import type { AiContext, AiProposal, AiStage, Avatar, Backend, Handlers, Message, Pos, Profile, Project, Snapshot, Task, TaskNote } from '../types'
 
 // Modo demonstração: tudo no localStorage deste navegador. Abas diferentes = pessoas diferentes
 // (a sessão fica no sessionStorage), sincronizadas por BroadcastChannel.
@@ -202,6 +202,24 @@ export class DemoBackend implements Backend {
     write(K.proj, all)
     this.post({ t: 'project', p })
   }
+
+  async askAI(prompt: string, ctx: AiContext, onStage: (s: AiStage) => void, signal: AbortSignal): Promise<AiProposal> {
+    // demo não tem Claude: quebra o texto em itens e dá para quem tem menos coisa aberta
+    const wait = (ms: number) => new Promise(r => setTimeout(r, ms))
+    onStage('pending'); await wait(700); onStage('working'); await wait(1500)
+    if (signal.aborted) throw new Error('Cancelado.')
+    const parts = prompt.split(/\n|;/).map(s => s.replace(/^[\s•*\-\d.)]+/, '').trim()).filter(s => s.length > 2)
+    const pool = ctx.people.filter(p => p.id !== ctx.me.id && p.rank < ctx.me.rank)
+    const load = new Map(pool.map(p => [p.id, p.open]))
+    const items = parts.slice(0, 12).map(title => {
+      const p = [...pool].sort((a, b) => load.get(a.id)! - load.get(b.id)!)[0] ?? ctx.people[0]
+      load.set(p.id, (load.get(p.id) ?? 0) + 1)
+      return { title: title.slice(0, 140), owner_id: p.id, due: null, project_id: null, notes: '', why: `${p.name} tem menos tarefas abertas (demo, sem Claude).` }
+    })
+    return { summary: `Modo demo: ${items.length} tarefa(s) para quem está mais livre.`, items }
+  }
+
+  async aiOnline() { return true }
 
   async deleteProject(id: string) {
     const all = read<Record<string, Project>>(K.proj, {})

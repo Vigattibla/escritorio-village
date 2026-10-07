@@ -7,6 +7,7 @@ import DeskView from '../components/DeskView'
 import Aprovacoes from '../components/Aprovacoes'
 import Overview from '../components/Overview'
 import ProjectModal from '../components/ProjectModal'
+import Distribuir from '../components/Distribuir'
 import Quadro from '../components/Quadro'
 import TaskDetail from '../components/TaskDetail'
 import RequestModal from '../components/RequestModal'
@@ -93,6 +94,7 @@ export default function Office() {
       {s.desk && <DeskView />}
       {s.task && <TaskDetail />}
       {s.projectEdit && <ProjectModal />}
+      {s.aiOpen && <Distribuir />}
       <RequestModal />
       <Mascot />
       {s.editing && <div className="overlay"><Creator /></div>}

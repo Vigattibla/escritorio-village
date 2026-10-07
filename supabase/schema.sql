@@ -465,3 +465,43 @@ drop policy if exists "quem participa edita" on public.tasks;
 create policy "quem participa edita" on public.tasks for update to authenticated
   using (public.can_edit_task(owner_id, created_by, collaborators)
     or public.approver_of(project_id, owner_id) = auth.uid()) with check (true);
+
+-- ===== v8: IA do Gerente — o app grava o pedido, a ponte no PC roda o Claude e devolve (pode rodar de novo) =====
+create table if not exists public.ai_requests (
+  id uuid primary key default gen_random_uuid(),
+  asked_by uuid not null references public.profiles(id) on delete cascade,
+  prompt text not null check (length(prompt) between 3 and 4000),
+  context jsonb not null default '{}' check (pg_column_size(context) < 200000),
+  status text not null default 'pending' check (status in ('pending', 'working', 'done', 'error')),
+  result jsonb,
+  error text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists ai_requests_pending_idx on public.ai_requests(created_at) where status = 'pending';
+alter table public.ai_requests enable row level security;
+
+-- quantos pedidos a pessoa tem na fila agora (evita metralhar o PC)
+create or replace function public.ai_busy(uid uuid) returns int
+language sql stable security definer set search_path = public as $$
+  select count(*)::int from public.ai_requests where asked_by = uid and status in ('pending', 'working')
+$$;
+
+drop policy if exists "vejo meus pedidos de IA" on public.ai_requests;
+drop policy if exists "gerência pede à IA" on public.ai_requests;
+create policy "vejo meus pedidos de IA" on public.ai_requests for select to authenticated using (asked_by = auth.uid());
+create policy "gerência pede à IA" on public.ai_requests for insert to authenticated with check (
+  asked_by = auth.uid() and status = 'pending' and result is null and error is null
+  and (public.rank_of(auth.uid()) >= 3 or public.is_admin(auth.uid()))
+  and public.ai_busy(auth.uid()) < 2);
+-- sem update/delete para o app: só a ponte (service_role) mexe
+
+-- batimento da ponte: o app mostra "IA online" se ela deu sinal há pouco
+create table if not exists public.ai_bridge (
+  id text primary key,
+  seen_at timestamptz not null default now(),
+  model text
+);
+alter table public.ai_bridge enable row level security;
+drop policy if exists "todos veem a ponte" on public.ai_bridge;
+create policy "todos veem a ponte" on public.ai_bridge for select to authenticated using (true);

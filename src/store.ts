@@ -1,9 +1,9 @@
 import { useSyncExternalStore } from 'react'
 import { backend } from './data'
-import { canAssign, isChief, rankOf } from './game/ranks'
-import { level, levelTitle, taskXp } from './game/xp'
+import { canAssign, isChief, rankName, rankOf } from './game/ranks'
+import { dayKey, level, levelTitle, taskXp } from './game/xp'
 import { MAX_DESKS } from './office/world'
-import type { Attachment, Avatar, Message, Pos, Profile, Project, Review, Task, TaskNote, TaskStatus } from './types'
+import type { AiContext, AiItem, AiProposal, AiStage, Attachment, Avatar, Message, Pos, Profile, Project, Review, Task, TaskNote, TaskStatus } from './types'
 
 export type Phase = 'loading' | 'auth' | 'creator' | 'office'
 export type Tab = 'mesa' | 'aprovar' | 'equipe' | 'chat' | 'geral'
@@ -45,6 +45,8 @@ export interface State {
   project: string
   /** editor de projeto: id, 'new' ou null */
   projectEdit: string | null
+  /** caixa da IA do Gerente aberta */
+  aiOpen: boolean
 }
 
 function savedView(): View {
@@ -54,7 +56,7 @@ function savedView(): View {
 const initial: State = {
   phase: 'loading', meId: null, accountName: '', error: '', profiles: {}, tasks: {}, messages: [], notes: [], projects: {}, online: new Set(),
   tab: 'mesa', viewing: null, channel: 'geral', reads: {}, requestTo: null, desk: null, deskView: 'pasta', task: null, editing: false, notices: [], pipOpen: false, view: savedView(), drawer: false,
-  project: '', projectEdit: null,
+  project: '', projectEdit: null, aiOpen: false,
 }
 
 let state = initial
@@ -283,7 +285,7 @@ export async function signOut() {
   set({ ...initial, phase: 'auth' })
 }
 
-export function setUi(p: Partial<Pick<State, 'tab' | 'viewing' | 'channel' | 'requestTo' | 'editing' | 'pipOpen' | 'error' | 'desk' | 'deskView' | 'task' | 'view' | 'drawer' | 'project' | 'projectEdit'>>) {
+export function setUi(p: Partial<Pick<State, 'tab' | 'viewing' | 'channel' | 'requestTo' | 'editing' | 'pipOpen' | 'error' | 'desk' | 'deskView' | 'task' | 'view' | 'drawer' | 'project' | 'projectEdit' | 'aiOpen'>>) {
   // no quadro, ir para uma aba abre o painel lateral
   set(p.tab && p.drawer === undefined && (p.view ?? state.view) === 'quadro' ? { ...p, drawer: true } : p)
   if (p.view) try { localStorage.setItem('ev:view', p.view) } catch { /* sem armazenamento */ }
@@ -405,6 +407,43 @@ export async function review(id: string, ok: boolean, reason = '', failed: strin
   await putTask({
     ...t, status: ok ? 'done' : 'doing', position: Date.now(), done_at: ok ? r.at : null, reviews: [...t.reviews, r],
   })
+}
+
+// ---------- IA do Gerente ----------
+/** Gerência, Chefe ou adm */
+export const canUseAI = (uid = state.meId) => { const p = uid ? state.profiles[uid] : undefined; return !!p && (rankOf(p) >= 3 || !!p.is_admin) }
+export const aiOnline = () => backend.aiOnline()
+function aiContext(): AiContext {
+  const my = me()!, today = dayKey(new Date())
+  const open = Object.values(state.tasks).filter(t => t.status === 'inbox' || t.status === 'todo' || t.status === 'doing' || t.status === 'review')
+  return {
+    today, me: { id: my.id, name: my.name, rank: rankOf(my) },
+    people: Object.values(state.profiles).map(p => {
+      const mine = open.filter(t => t.owner_id === p.id)
+      return { id: p.id, name: p.name, role: p.role || rankName(p), rank: rankOf(p), open: mine.length, late: mine.filter(t => t.due && t.due < today).length, online: state.online.has(p.id) }
+    }),
+    projects: Object.values(state.projects).filter(p => !p.archived).map(p => ({ id: p.id, name: p.name, master: nameOf(p.master_id) })),
+  }
+}
+/** Manda o pedido e devolve a proposta limpa (gente e projeto que existem, data válida) */
+export async function askAI(prompt: string, onStage: (s: AiStage) => void, signal: AbortSignal): Promise<AiProposal> {
+  if (!canUseAI()) throw new Error('A IA de distribuição é da Gerência.')
+  const ctx = aiContext()
+  const r = await backend.askAI(prompt.trim().slice(0, 4000), ctx, onStage, signal)
+  const people = new Set(ctx.people.map(p => p.id)), projs = new Set(ctx.projects.map(p => p.id))
+  const items = (Array.isArray(r?.items) ? r.items : []).slice(0, 20).map((i: Partial<AiItem>) => ({
+    title: String(i.title ?? '').trim().slice(0, 140),
+    owner_id: i.owner_id && people.has(i.owner_id) ? i.owner_id : '',
+    due: typeof i.due === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(i.due) ? i.due : null,
+    project_id: i.project_id && projs.has(i.project_id) ? i.project_id : null,
+    notes: String(i.notes ?? '').slice(0, 2000),
+    why: String(i.why ?? '').slice(0, 300),
+  })).filter(i => i.title)
+  return { summary: String(r?.summary ?? '').slice(0, 600), items }
+}
+/** Cria as tarefas aprovadas pelo Gerente (cada um recebe o aviso normal) */
+export async function distribute(items: AiItem[]) {
+  for (const i of items) await addTask(i.owner_id, i.title, i.due, i.notes, 'todo', i.project_id)
 }
 
 /** Coloca a tarefa num projeto (ou tira). */

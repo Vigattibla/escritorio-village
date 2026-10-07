@@ -114,6 +114,26 @@ export interface Pos {
   moving: boolean
 }
 
+/** Proposta da IA do Gerente: ele revisa e só então distribui */
+export interface AiItem {
+  title: string
+  owner_id: string
+  due: string | null
+  project_id: string | null
+  notes: string
+  /** por que essa pessoa */
+  why: string
+}
+export interface AiProposal { summary: string; items: AiItem[] }
+/** Vai junto do pedido: quem é o time e quanto cada um já tem aberto */
+export interface AiContext {
+  today: string
+  me: { id: string; name: string; rank: number }
+  people: { id: string; name: string; role: string; rank: number; open: number; late: number; online: boolean }[]
+  projects: { id: string; name: string; master: string }[]
+}
+export type AiStage = 'pending' | 'working'
+
 export interface Snapshot {
   profiles: Profile[]
   tasks: Task[]
@@ -167,6 +187,10 @@ export interface Backend {
   deleteNote(id: string): Promise<void>
   upsertProject(p: Project): Promise<void>
   deleteProject(id: string): Promise<void>
+  /** IA do Gerente: manda o pedido e espera a proposta (servidor: a ponte no PC roda o Claude) */
+  askAI(prompt: string, ctx: AiContext, onStage: (s: AiStage) => void, signal: AbortSignal): Promise<AiProposal>
+  /** a ponte do PC deu sinal de vida há pouco? */
+  aiOnline(): Promise<boolean>
   connect(userId: string, h: Handlers): () => void
   sendPos(userId: string, p: Pos): void
 }

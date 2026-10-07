@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { canAssign, rankName, rankOf } from '../game/ranks'
 import { dayKey } from '../game/xp'
 import {
-  acceptRequest, addTask, approverOf, canApprove, canCreateProject, canEditProject, canEditTask, canMove, canReassign, declineRequest, involved,
+  acceptRequest, addTask, canUseAI, approverOf, canApprove, canCreateProject, canEditProject, canEditTask, canMove, canReassign, declineRequest, involved,
   placeTask, reassign, run, setStatus, setUi, teamOf, useStore,
 } from '../store'
 import type { Profile, Project, Task, TaskStatus } from '../types'
@@ -262,6 +262,7 @@ export default function Quadro() {
         </select>
         {filtered && <button className="qclear" onClick={clear}>Limpar filtros</button>}
         <span className="grow" />
+        {canUseAI() && <button className="btn ghost sm" onClick={() => setUi({ aiOpen: true })} title="O Claude propõe quem faz o quê">✨ Distribuir com IA</button>}
         <button className="btn primary sm" onClick={() => setAdding(defAdd)} title="Atalho N">+ Nova tarefa</button>
       </div>
 

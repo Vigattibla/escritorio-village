@@ -1,6 +1,6 @@
 import { createClient, type RealtimeChannel, type SupabaseClient } from '@supabase/supabase-js'
 import { slugUser, toEmail } from './login'
-import type { Backend, Handlers, Message, Pos, Profile, Project, Snapshot, Task, TaskNote } from '../types'
+import type { AiContext, AiProposal, AiStage, Backend, Handlers, Message, Pos, Profile, Project, Snapshot, Task, TaskNote } from '../types'
 
 function pt(e: { message: string }): Error {
   const m = e.message
@@ -117,6 +117,28 @@ export class SupabaseBackend implements Backend {
   async deleteProject(id: string) {
     const { error } = await this.sb.from('projects').delete().eq('id', id)
     if (error) throw pt(error)
+  }
+
+  async askAI(prompt: string, context: AiContext, onStage: (s: AiStage) => void, signal: AbortSignal) {
+    const { data, error } = await this.sb.from('ai_requests').insert({ asked_by: context.me.id, prompt, context }).select('id').single()
+    if (error) throw pt(error)
+    const t0 = Date.now()
+    while (!signal.aborted) {
+      await new Promise(r => setTimeout(r, 2000))
+      const { data: r, error: e } = await this.sb.from('ai_requests').select('status, result, error').eq('id', data.id).single()
+      if (e) throw pt(e)
+      if (r.status === 'done') return r.result as AiProposal
+      if (r.status === 'error') throw new Error(r.error || 'A IA não conseguiu montar a proposta.')
+      onStage(r.status)
+      if (r.status === 'pending' && Date.now() - t0 > 45000) throw new Error('A ponte da IA não respondeu. O PC com o Claude está ligado?')
+      if (Date.now() - t0 > 240000) throw new Error('A IA demorou demais. Tente de novo com um pedido menor.')
+    }
+    throw new Error('Cancelado.')
+  }
+
+  async aiOnline() {
+    const { data } = await this.sb.from('ai_bridge').select('seen_at').eq('id', 'pc').maybeSingle()
+    return !!data && Date.now() - new Date(data.seen_at).getTime() < 90000
   }
 
   async deleteTask(id: string) {
