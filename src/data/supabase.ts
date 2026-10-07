@@ -130,14 +130,16 @@ export class SupabaseBackend implements Backend {
       if (r.status === 'done') return r.result as AiProposal
       if (r.status === 'error') throw new Error(r.error || 'A IA não conseguiu montar a proposta.')
       onStage(r.status)
-      if (r.status === 'pending' && Date.now() - t0 > 45000) throw new Error('A ponte da IA não respondeu. O PC com o Claude está ligado?')
+      if (r.status === 'pending' && Date.now() - t0 > 45000) throw new Error('A IA do seu PC não respondeu. Ela está ligada? (veja “Ligar a IA neste PC”)')
       if (Date.now() - t0 > 240000) throw new Error('A IA demorou demais. Tente de novo com um pedido menor.')
     }
     throw new Error('Cancelado.')
   }
 
   async aiOnline() {
-    const { data } = await this.sb.from('ai_bridge').select('seen_at').eq('id', 'pc').maybeSingle()
+    const { data: { session } } = await this.sb.auth.getSession()
+    if (!session) return false
+    const { data } = await this.sb.from('ai_bridge').select('seen_at').eq('id', session.user.id).maybeSingle()
     return !!data && Date.now() - new Date(data.seen_at).getTime() < 90000
   }
 

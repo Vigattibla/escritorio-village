@@ -9,6 +9,29 @@ const STAGE: Record<AiStage, string> = {
 }
 
 /** Gerente escreve o que precisa ser feito; a IA propõe quem faz o quê; ele ajusta e distribui. */
+/** A IA roda no PC de quem pede: Claude Code logado na conta da pessoa + a ponte, instalada com um comando. */
+function Ligar() {
+  const cmd = `irm ${new URL('ponte/instalar.ps1', location.href.split(/[?#]/)[0]).href} | iex`
+  const [copiado, setCopiado] = useState(false)
+  return (
+    <div className="ai-ligar">
+      <b>A IA do seu PC está desligada</b>
+      <p className="muted small">Se já instalou, é só ligar o PC e esperar 30 s. Primeira vez neste PC:</p>
+      <ol className="small">
+        <li>Tenha o <b>Claude Code</b> instalado e logado na sua conta Claude.</li>
+        <li>Abra o <b>PowerShell</b>, cole o comando abaixo e entre com seu usuário do Escritório.</li>
+      </ol>
+      <div className="row gap">
+        <code className="grow">{cmd}</code>
+        <button type="button" className="btn ghost sm" onClick={() => navigator.clipboard.writeText(cmd).then(() => setCopiado(true))}>
+          {copiado ? '✓ Copiado' : 'Copiar'}
+        </button>
+      </div>
+      <p className="muted small">Depois ela liga sozinha quando o Windows inicia.</p>
+    </div>
+  )
+}
+
 export default function Distribuir() {
   const profiles = useStore(s => s.profiles)
   const projects = useStore(s => s.projects)
@@ -77,7 +100,7 @@ export default function Distribuir() {
               onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) ask() }}
               placeholder={'Ex.: Semana das Crianças — arte do feed até sexta, orçamento de brinquedos, escala dos monitores no sábado…'} />
           </label>
-          {online === false && !stage && <p className="muted small">A ponte do PC não deu sinal no último minuto. Dá para tentar mesmo assim: se o PC estiver desligado, aviso em 45 s.</p>}
+          {online === false && !stage && <Ligar />}
 
           {stage ? (
             <div className="ai-wait" role="status">

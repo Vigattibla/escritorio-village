@@ -466,7 +466,7 @@ create policy "quem participa edita" on public.tasks for update to authenticated
   using (public.can_edit_task(owner_id, created_by, collaborators)
     or public.approver_of(project_id, owner_id) = auth.uid()) with check (true);
 
--- ===== v8: IA do Gerente — o app grava o pedido, a ponte no PC roda o Claude e devolve (pode rodar de novo) =====
+-- ===== v8: IA do Gerente — o app grava o pedido, a ponte no PC DA PESSOA (logada como ela) roda o Claude e devolve (pode rodar de novo) =====
 create table if not exists public.ai_requests (
   id uuid primary key default gen_random_uuid(),
   asked_by uuid not null references public.profiles(id) on delete cascade,
@@ -494,9 +494,14 @@ create policy "gerência pede à IA" on public.ai_requests for insert to authent
   asked_by = auth.uid() and status = 'pending' and result is null and error is null
   and (public.rank_of(auth.uid()) >= 3 or public.is_admin(auth.uid()))
   and public.ai_busy(auth.uid()) < 2);
--- sem update/delete para o app: só a ponte (service_role) mexe
+-- a ponte entra como a própria pessoa: atualiza e limpa só os próprios pedidos
+drop policy if exists "atualizo meus pedidos de IA" on public.ai_requests;
+drop policy if exists "apago meus pedidos de IA" on public.ai_requests;
+create policy "atualizo meus pedidos de IA" on public.ai_requests for update to authenticated
+  using (asked_by = auth.uid()) with check (asked_by = auth.uid());
+create policy "apago meus pedidos de IA" on public.ai_requests for delete to authenticated using (asked_by = auth.uid());
 
--- batimento da ponte: o app mostra "IA online" se ela deu sinal há pouco
+-- batimento da ponte (id = usuário dono da ponte): o app mostra "IA online" se a SUA ponte deu sinal há pouco
 create table if not exists public.ai_bridge (
   id text primary key,
   seen_at timestamptz not null default now(),
@@ -504,4 +509,6 @@ create table if not exists public.ai_bridge (
 );
 alter table public.ai_bridge enable row level security;
 drop policy if exists "todos veem a ponte" on public.ai_bridge;
-create policy "todos veem a ponte" on public.ai_bridge for select to authenticated using (true);
+drop policy if exists "minha ponte" on public.ai_bridge;
+create policy "minha ponte" on public.ai_bridge for all to authenticated
+  using (id = auth.uid()::text) with check (id = auth.uid()::text);
