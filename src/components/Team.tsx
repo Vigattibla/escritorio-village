@@ -1,5 +1,5 @@
 import { DAILY_GOAL, doneToday, level, levelTitle } from '../game/xp'
-import { RANKS, isChief, rankName, ranksFor } from '../game/ranks'
+import { RANKS, rankName, ranksFor } from '../game/ranks'
 import { dmChannel, run, setRank, setUi, useStore } from '../store'
 import Accounts from './Accounts'
 import MiniAvatar from './MiniAvatar'
@@ -18,7 +18,7 @@ export default function Team() {
   return (
     <div className="team">
       <h2>Equipe <span className="count">{people.filter(p => online.has(p.id) || p.id === meId).length} no escritório</span></h2>
-      {isChief(profiles[meId]) && <Accounts />}
+      {profiles[meId]?.is_admin && <Accounts />}
       {people.map(p => {
         const here = online.has(p.id) || p.id === meId
         const doing = tasks.filter(t => t.owner_id === p.id && t.status === 'doing').sort((a, b) => b.position - a.position)[0]
@@ -32,6 +32,7 @@ export default function Team() {
               <div className="row gap">
                 <b>{p.name}{p.id === meId && ' (você)'}</b>
                 <span className="lvl">Nv {level(p.xp)}</span>
+                {p.is_admin && <span className="chip" title="Cria contas e define cargos">🔑 Adm</span>}
                 <span className={'dot ' + (here ? 'on' : 'off')} title={here ? 'No escritório' : 'Fora'} />
                 {opts.length > 0
                   ? <select className="rank-sel" value={p.rank} onChange={e => run(setRank(p.id, Number(e.target.value)))} title="Mudar cargo">

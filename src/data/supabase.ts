@@ -61,7 +61,7 @@ export class SupabaseBackend implements Backend {
   }
 
   async upsertProfile(p: Profile) {
-    const { rank: _rank, ...row } = p // cargo é do servidor
+    const { rank: _rank, is_admin: _adm, ...row } = p // cargo e adm são do servidor
     const { data, error } = await this.sb.from('profiles').upsert(row).select().single()
     if (error) throw pt(error)
     return data as Profile

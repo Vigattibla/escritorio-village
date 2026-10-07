@@ -15,6 +15,7 @@ export const canAssign = (me: Profile | undefined, owner: Profile | undefined) =
 
 /** Cargos que `me` pode dar a `target` (vazio = não pode mexer). */
 export function ranksFor(me: Profile | undefined, target: Profile | undefined): number[] {
+  if (me?.is_admin && target) return [1, 2, 3, 4]
   if (!me || !target || me.id === target.id || rankOf(target) >= rankOf(me)) return []
   return [...Array(rankOf(me)).keys()].map(i => i + 1)
 }

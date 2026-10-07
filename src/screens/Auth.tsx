@@ -51,7 +51,7 @@ export default function Auth() {
           {info && <p className="ok">{info}</p>}
           <button className="btn primary big" disabled={busy}>{busy ? (mode === 'up' ? 'Criando sua conta…' : 'Entrando…') : mode === 'up' ? 'Criar conta e montar meu personagem' : 'Entrar no escritório'}</button>
         </form>
-        {backend.mode === 'supabase' && <p className="muted small center">Ainda não tem acesso? Peça ao Chefe para criar sua conta.</p>}
+        {backend.mode === 'supabase' && <p className="muted small center">Ainda não tem acesso? Peça ao adm para criar sua conta.</p>}
         {backend.mode === 'demo' && (
           <p className="demo-note">
             <b>Modo demonstração.</b> Os dados ficam só neste navegador. Abra outra aba para entrar como outra pessoa e ver tudo em tempo real.

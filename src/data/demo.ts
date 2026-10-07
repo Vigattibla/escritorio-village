@@ -75,9 +75,9 @@ export class DemoBackend implements Backend {
 
   async upsertProfile(p: Profile) {
     const all = read<Record<string, Profile>>(K.prof, {})
-    // como no servidor: cargo não vem do cliente; o primeiro sem chefe vira chefe
-    const boss = Object.values(all).some(x => x.rank === 4 && x.id !== p.id)
-    p = { ...p, rank: all[p.id]?.rank ?? (boss ? 1 : 4) }
+    // como no servidor: cargo e adm não vêm do cliente; o primeiro a entrar sem adm vira adm
+    const adm = Object.values(all).some(x => x.is_admin && x.id !== p.id)
+    p = { ...p, rank: all[p.id]?.rank ?? 1, is_admin: all[p.id]?.is_admin ?? !adm }
     all[p.id] = p
     write(K.prof, all)
     this.post({ t: 'profile', p })
@@ -86,15 +86,16 @@ export class DemoBackend implements Backend {
 
   async setRank(target: string, rank: number) {
     const all = read<Record<string, Profile>>(K.prof, {})
-    const mine = all[sessionStorage.getItem(K.session) ?? '']?.rank ?? 1
+    const me = all[sessionStorage.getItem(K.session) ?? '']
+    const mine = me?.rank ?? 1
     const t = all[target]
-    if (!t || t.id === sessionStorage.getItem(K.session) || (t.rank ?? 1) >= mine || rank < 1 || rank > mine)
+    if (!t || rank < 1 || rank > 4 || (!me?.is_admin && (t.id === me?.id || (t.rank ?? 1) >= mine || rank > mine)))
       throw new Error('Sem permissão para mudar esse cargo.')
     await this.upsertProfileRaw({ ...t, rank })
   }
 
   private chief() {
-    if (read<Record<string, Profile>>(K.prof, {})[sessionStorage.getItem(K.session) ?? '']?.rank !== 4) throw new Error('Só o Chefe mexe nas contas.')
+    if (!read<Record<string, Profile>>(K.prof, {})[sessionStorage.getItem(K.session) ?? '']?.is_admin) throw new Error('Só o adm mexe nas contas.')
   }
 
   async createAccount(user: string, password: string, name: string, rank: number) {

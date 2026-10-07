@@ -24,6 +24,8 @@ export interface Profile {
   desk: number
   /** 1 Equipe · 2 Coordenação · 3 Gerência · 4 Chefe — só muda por setRank */
   rank: number
+  /** adm: cria contas, troca senhas e define cargos (não é o mesmo que Chefe) */
+  is_admin?: boolean
   created_at: string
 }
 
@@ -114,9 +116,9 @@ export interface Backend {
   /** devolve o perfil como ficou salvo (o cargo é decidido no servidor) */
   upsertProfile(p: Profile): Promise<Profile>
   setRank(target: string, rank: number): Promise<void>
-  /** só o Chefe: cria a conta já com perfil e cargo */
+  /** só o adm: cria a conta já com perfil e cargo */
   createAccount(user: string, password: string, name: string, rank: number): Promise<Profile>
-  /** só o Chefe */
+  /** só o adm */
   setPassword(target: string, password: string): Promise<void>
   uploadPhoto(userId: string, blob: Blob): Promise<string>
   upsertTask(t: Task): Promise<void>

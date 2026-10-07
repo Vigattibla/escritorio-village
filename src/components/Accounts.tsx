@@ -3,7 +3,7 @@ import { makePassword, slugUser } from '../data/login'
 import { RANKS } from '../game/ranks'
 import { createAccount, run, setPassword, useStore } from '../store'
 
-/** Só o Chefe: cria contas (usuário + senha) e troca senhas. Ninguém se cadastra sozinho. */
+/** Só o adm: cria contas (usuário + senha) e troca senhas. Ninguém se cadastra sozinho. */
 export default function Accounts() {
   const profiles = useStore(s => s.profiles)
   const [name, setName] = useState('')
@@ -40,7 +40,7 @@ export default function Accounts() {
 
   return (
     <details className="accounts">
-      <summary>👑 Contas da equipe</summary>
+      <summary>🔑 Contas da equipe (adm)</summary>
       <form onSubmit={create}>
         <h3>Nova conta</h3>
         <label>Nome<input required value={name} onChange={e => setName(e.target.value)} maxLength={40} placeholder="Maria Souza" /></label>
