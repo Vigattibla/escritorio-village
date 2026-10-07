@@ -28,3 +28,10 @@
 - 07/10 (8): IA do Gerente. Botão '✨ Distribuir com IA' no Quadro (rank≥3 ou adm) abre Distribuir.tsx: pedido livre → proposta editável (responsável, prazo, projeto, motivo) → 'Distribuir' chama addTask para cada item. Sem API key: o app grava em `ai_requests` e a ponte no PC (`ponte/ia.mjs`, `npm run ia` ou `ponte/iniciar.ps1`) roda `claude -p --json-schema` com a assinatura e devolve `structured_output`. Batimento em `ai_bridge` (id 'pc') a cada 30 s mostra IA online/offline. Prompt do distribuidor em ponte/distribuidor.md. `node ponte/ia.mjs --teste` roda sem Supabase (sonnet ~10 s). Demo: stub sem Claude. SQL v8 no fim do schema.sql.
 - PENDENTE v8: Humano rodar o SQL v8; colar a service_role em ponte/.env.local (modelo: .env.example); deixar a ponte ligada no PC (atalho no Startup só se pedir). Sem a ponte: o app espera 45 s e avisa que o PC está desligado.
 - 07/10 (9): roupa 'terno' no avatar (corpo redondo, gravata; pernas 3 linhas, lift a partir da linha 9). Publicado 31b102b.
+
+## 07/10 (10) — IA roda no PC do gerente
+- Ponte agora roda no PC de quem usa, logada como a própria pessoa (chave pública + sessão; sem service_role em lugar nenhum).
+- Arquivos em public/ponte (publicados): instalar.ps1 (irm | iex), iniciar.ps1 (oculto, atalho na Inicialização), ia.mjs, distribuidor.md; build gera ponte/config.json.
+- Sessão em %LOCALAPPDATA%\EscritorioVillage\sessao.json; log ponte.log. Login perdido → código 2, para de religar.
+- RLS v8 alterado (update/delete dos próprios pedidos; ai_bridge por usuário). PENDENTE: usuário rodar o v8 novo.
+- App: caixa "Ligar a IA neste PC" com o comando quando offline.
