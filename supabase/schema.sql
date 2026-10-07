@@ -1,3 +1,4 @@
+-- HISTÓRICO v1–v9 (já aplicado). Mudanças novas vão em supabase/migrations/ — o GitHub aplica sozinho.
 -- Escritório Village — rodar uma vez no Supabase: SQL Editor → New query → colar → Run.
 
 create table if not exists public.profiles (
