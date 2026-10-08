@@ -1,0 +1,32 @@
+name: Backup do banco
+on:
+  schedule: [{ cron: '0 6 * * *' }] # 03h de Brasília
+  workflow_dispatch:
+permissions: { contents: read }
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: node scripts/backup.mjs backup.sql
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+      # repositório público: só sai criptografado; abre só com a chave privada que fica no PC
+      - name: Criptografar
+        run: |
+          openssl rand -out k.bin 32
+          openssl enc -aes-256-cbc -pbkdf2 -salt -in backup.sql -out backup.sql.enc -pass file:k.bin
+          openssl pkeyutl -encrypt -pubin -inkey scripts/backup-chave-publica.pem -pkeyopt rsa_padding_mode:oaep -in k.bin -out chave.bin.enc
+          rm -f backup.sql k.bin
+      - uses: actions/upload-artifact@v4
+        with:
+          name: backup-${{ github.run_number }}
+          path: |
+            backup.sql.enc
+            chave.bin.enc
+          retention-days: 90
+      # um acesso por dia: o plano grátis do Supabase pausa depois de 7 dias parado
+      - run: curl -fsS -o /dev/null "${{ vars.VITE_SUPABASE_URL }}/rest/v1/" -H "apikey: ${{ vars.VITE_SUPABASE_ANON_KEY }}" || true
