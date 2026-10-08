@@ -1066,6 +1066,7 @@ input:focus, textarea:focus { border-color: var(--yellow); box-shadow: 0 0 0 3px
 .game-where { display: inline-flex; align-items: center; gap: 6px; padding: 0 8px; font-size: 13px; font-weight: 600; color: var(--text); white-space: nowrap; }
 .game-where i, .game-door b i { width: 9px; height: 9px; border-radius: 3px; flex: none; }
 .game-door { position: absolute; transform: translateX(-50%); z-index: 5; min-width: 210px; max-width: 260px; display: grid; gap: 6px; padding: 10px 12px; background: #fff; border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 6px 20px rgba(15, 15, 15, .18); font-size: 13px; }
+.game-door.up { transform: translate(-50%, -100%); }
 .game-door b { display: flex; align-items: center; gap: 7px; padding-right: 18px; }
 .game-door .x { position: absolute; top: 6px; right: 6px; width: 22px; height: 22px; display: grid; place-items: center; border: 0; border-radius: 6px; background: none; color: var(--muted); cursor: pointer; }
 .game-door .x:hover { background: var(--hover); }

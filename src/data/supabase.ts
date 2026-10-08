@@ -102,6 +102,11 @@ export class SupabaseBackend implements Backend {
     if (error) throw pt(error)
   }
 
+  async setCurtains(dept: string, open: boolean) {
+    const { error } = await this.sb.rpc('set_curtains', { p_dept: dept, p_open: open })
+    if (error) throw pt(error)
+  }
+
   async createAccount(user: string, password: string, name: string, rank: number) {
     const { data, error } = await this.sb.rpc('admin_create_user', { p_user: user, p_pass: password, p_name: name, p_rank: rank })
     if (error) throw pt(error)

@@ -1,34 +1,28 @@
-/** O andar: corredor com as portas das salas. Ninguém é teletransportado: sai pela porta da sala e entra pela do vizinho. */
+/** O andar: 2 salas em cima, corredor, 2 salas embaixo, frente a frente; paredes de vidro pro corredor, com cortina. */
 import { MH, MW, OUT, rect as r, T, type C2D } from './base'
-import { solidGrid, type Obj, type Piso, type Sala } from './sala'
+import { kd, PISOS, solidGrid, type Sala } from './sala'
 
 export const HALL = 'andar'
 export const SLOTS = 4
-/** tile da esquerda de cada porta (2 de largura) na parede de cima do corredor */
-export const DOOR_X = [3, 10, 17, 24]
 export type DoorState = 'vazia' | 'aberta' | 'fechada'
-
-/** corredor: carpete, plantas entre as portas e um cantinho de espera no meio (não é editável) */
-export function hallSala(): Sala {
-  const piso = Array.from({ length: MH }, (_, y) => Array.from({ length: MW }, () => (y < 5 ? 'madeira' : 'carpete') as Piso))
-  const div = Array.from({ length: MH }, () => Array<boolean>(MW).fill(false))
-  let id = 1
-  const objs: Obj[] = []
-  const add = (k: string, x: number, y: number) => objs.push({ id: id++, k, x, y })
-  for (const [x, y] of [[1, 2], [7, 2], [21, 2], [28, 2], [1, 18], [28, 18], [9, 12], [20, 12]]) add('planta', x, y)
-  add('bebedouro', 14, 2)
-  add('tapete-chefe', 12, 10)
-  add('sofa', 12, 13)
-  add('sofa', 5, 17); add('sofa', 21, 17)
-  add('quadro-paisagem', 6, 0); add('relogio', 14, 0); add('cartaz', 21, 0)
-  return { piso, div, objs }
-}
 
 /** porta de saída da sala: meio da parede de baixo; se tiver móvel na frente, a porta anda pro lado */
 export function exitX(s: Sala) {
   const solid = solidGrid(s), y = MH - 2
   const free = (x: number) => x >= 1 && x < MW - 1 && !s.div[y][x] && !solid[y][x]
   for (let k = 0; k < 13; k++) {
+    const x = 14 + (k % 2 ? -(k + 1) / 2 : k / 2)
+    if (free(x) && free(x + 1)) return x
+  }
+  return 14
+}
+
+/** porta das salas de baixo: na parede de vidro de cima, onde não tem quadro na parede e a frente está livre */
+export function glassDoorX(s: Sala) {
+  const solid = solidGrid(s)
+  const wall = (x: number) => s.objs.some(o => kd(o).camada === 'parede' && o.k !== 'janela' && x >= o.x && x < o.x + kd(o).w)
+  const free = (x: number) => x >= 1 && x < MW - 1 && !wall(x) && !s.div[2][x] && !solid[2][x]
+  for (let k = 0; k < 25; k++) {
     const x = 14 + (k % 2 ? -(k + 1) / 2 : k / 2)
     if (free(x) && free(x + 1)) return x
   }
@@ -78,12 +72,56 @@ export function drawDoor(c: C2D, tx: number, st: DoorState, color: string) {
 }
 
 /** porta de saída na parede de baixo da sala (tile tx, 2 de largura) */
-export function drawExit(c: C2D, tx: number, open: boolean) {
-  const x = tx * T, y = (MH - 1) * T
+export function drawExit(c: C2D, tx: number, st: DoorState) {
+  const x = tx * T, y = (MH - 1) * T, open = st === 'aberta'
   r(c, OUT, x, y, 2 * T, T)
-  r(c, '#6b4a33', x + 1, y + 1, 2 * T - 2, T - 1)
+  r(c, st === 'vazia' ? '#a3a8b3' : '#6b4a33', x + 1, y + 1, 2 * T - 2, T - 1)
+  if (st === 'vazia') { r(c, '#c3c7cf', x + 3, y + 3, 2 * T - 6, T - 3); return }
   if (open) { r(c, '#2a2238', x + 3, y + 3, 2 * T - 6, T - 3); r(c, '#3a3150', x + 6, y + 5, 2 * T - 12, T - 5) }
   else { r(c, '#b07a4f', x + 3, y + 3, 2 * T - 6, T - 3); r(c, '#c99566', x + 3, y + 3, 2 * T - 6, 1); r(c, '#FBC222', x + 2 * T - 9, y + 8, 2, 2) }
   // capacho
   r(c, OUT, x + 4, y - 6, 2 * T - 8, 5); r(c, '#8a6a4a', x + 5, y - 5, 2 * T - 10, 3); r(c, '#a8835c', x + 7, y - 4, 2 * T - 14, 1)
+}
+
+// ---------- vidro e cortina ----------
+const FRAME = '#8794a8', FRAME_D = '#5d6b80', TINT = 'rgba(170,215,238,.42)', GLINT = 'rgba(255,255,255,.55)'
+
+/** vidro da sala de cima: faixa fina na parede de baixo (linha MH-1), de lx0 a lx1 (exclusive) */
+export function glassStrip(c: C2D, s: Sala) {
+  const y = (MH - 1) * T
+  for (let tx = 1; tx < MW - 1; tx++) PISOS[s.piso[MH - 2][tx]].draw(c, tx * T, y)
+  const x = T, w = (MW - 2) * T
+  r(c, TINT, x, y, w, 12)
+  r(c, FRAME_D, x, y, w, 1); r(c, GLINT, x, y + 1, w, 1)
+  for (let tx = 1; tx < MW - 1; tx++) {
+    if ((tx - 1) % 4 === 0 && tx > 1) { r(c, OUT, tx * T - 1, y, 1, 12); r(c, FRAME, tx * T, y, 2, 12) }
+    if (tx % 3 === 0) for (let k = 0; k < 6; k++) r(c, GLINT, tx * T + 4 + k, y + 9 - k, 1, 1)
+  }
+  r(c, OUT, x, y + 12, w, 1); r(c, '#a9b4c4', x, y + 13, w, 2); r(c, FRAME_D, x, y + 15, w, 1)
+}
+
+/** vidro da sala de baixo: a parede alta de cima (linhas 0-1) vira painéis de vidro */
+export function glassWall(c: C2D, s: Sala) {
+  for (let tx = 1; tx < MW - 1; tx++) for (const ty of [0, 1]) PISOS[s.piso[2][tx]].draw(c, tx * T, ty * T)
+  const x = T, w = (MW - 2) * T
+  r(c, OUT, x, 0, w, 1); r(c, FRAME, x, 1, w, 3); r(c, '#a9b4c4', x, 1, w, 1)
+  r(c, TINT, x, 4, w, 24)
+  for (let tx = 1; tx < MW - 1; tx++) {
+    if ((tx - 1) % 2 === 0 && tx > 1) { r(c, OUT, tx * T - 2, 4, 1, 24); r(c, FRAME, tx * T - 1, 4, 2, 24); r(c, OUT, tx * T + 1, 4, 1, 24) }
+    if (tx % 2 === 0) { for (let k = 0; k < 12; k++) r(c, GLINT, tx * T - 10 + k, 22 - k, 1, 1); for (let k = 0; k < 6; k++) r(c, GLINT, tx * T - 4 + k, 22 - k, 1, 1) }
+  }
+  r(c, OUT, x, 28, w, 1); r(c, FRAME, x, 29, w, 2); r(c, FRAME_D, x, 31, w, 1)
+}
+
+/** cortina fechada na cor da sala, deixando o vão da porta (tile dx, 2 de largura) */
+export function drawCurtain(c: C2D, top: boolean, dx: number, color: string) {
+  const y0 = top ? (MH - 1) * T + 1 : 4, h = top ? 11 : 24, dk = darker(color, 0.78), hi = darker(color, 1.15)
+  const seg = (a: number, b: number) => {
+    if (b <= a) return
+    r(c, color, a, y0, b - a, h)
+    for (let x = a + 1; x < b; x += 4) { r(c, dk, x, y0, 1, h); r(c, hi, x + 2, y0, 1, h) }
+    r(c, dk, a, y0 + h - 1, b - a, 1)
+    if (!top) { r(c, OUT, a, y0 - 1, b - a, 1); r(c, '#3a3a48', a, y0, b - a, 1) }
+  }
+  seg(T, dx * T); seg((dx + 2) * T, (MW - 1) * T)
 }

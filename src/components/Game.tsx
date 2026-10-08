@@ -2,13 +2,13 @@ import { useEffect, useRef, useState } from 'react'
 import { drawAvatar, onPhotoLoad, SPRITE_H } from '../chibi/sprite'
 import { backend } from '../data'
 import { deptOf, managerOf } from '../game/ranks'
-import { DOOR_X, drawDoor, drawExit, exitX, HALL, hallSala, inkOn, SLOTS } from '../office/andar'
+import { drawCurtain, drawDoor, drawExit, HALL, inkOn, SLOTS } from '../office/andar'
 import { addMark, boardMarks, takeErrands, type Errand } from '../office/errands'
 import { drawAnim, plateFill, PLATE_CV } from '../office/anim'
 import { drawChair } from '../office/props'
-import { drawFurniture, kd, parseSala } from '../office/sala'
-import { blocked, boardSpot, BOSS_DESK, deskAtTile, deskIds, deskOf, drawBoardMarks, drawCarry, drawDesk, findPath, furniture, hasDesk, layoutVersion, MAX_DESKS, MH, MW, pathToSeat, renderBackground, setLayout, shelfSpot, T, wallObjs } from '../office/world'
-import { bubbles, canDoor, canEnter, deptName, doorOpen, getState, goTo, knock, myDept, positions, roomOf, run, setDoor, setUi, slotDept, useStore } from '../store'
+import { drawFurniture, kd, parseSala, type Obj } from '../office/sala'
+import { blocked, boardSpot, BOSS_DESK, deskAtTile, deskIds, deskOf, doorAtTile, doorSpot, drawBoardMarks, drawCarry, drawDesk, emptySala, FH, findPath, floorVersion, furniture, FW, getRooms, hallDecor, hasDesk, HY0, HY1, MAX_DESKS, MH, MW, pathToSeat, regionOfPx, renderFloor, roomOfId, setFloor, setPassable, shelfSpot, T, wallObjs, type Room } from '../office/world'
+import { bubbles, canDoor, canEnter, curtainsOpen, deptName, doorOpen, getState, goTo, knock, myDept, positions, roomOf, run, setCurtains, setDoor, setUi, slotDept, useStore } from '../store'
 import type { Dir, Pos, Profile, Task } from '../types'
 import Icon from './Icon'
 
@@ -19,44 +19,34 @@ const OPEN = new Set(['inbox', 'todo', 'doing', 'review'])
 
 /** Ida ao quadro/estante e volta para a mesa */
 interface Job { e: Errand; phase: 'go' | 'act' | 'back'; path: { x: number; y: number }[]; until: number; carry: boolean }
-const ZMIN = 2, ZMAX = 5
+const ZMIN = 1, ZMAX = 5
 const typing = () => { const el = document.activeElement; return !!el && /INPUT|TEXTAREA|SELECT/.test(el.tagName) }
 
 interface Shown { x: number; y: number; dir: Dir; moving: boolean; anim: number }
 interface Hover { id: string; sx: number; sy: number }
 
-/** Mesa de alguém: o Gerente vai para a mesa dele, o resto usa a sorteada */
-const deskIdx = (p: Profile) => {
-  if (managerOf(getState().profiles, deptOf(p))?.id === p.id && hasDesk(BOSS_DESK)) return BOSS_DESK
-  if (p.desk >= 0 && p.desk < MAX_DESKS && hasDesk(p.desk)) return p.desk
-  return deskIds().find(i => i !== BOSS_DESK) ?? 0
+/** Mesa de alguém na sala do setor dela: o Gerente vai para a mesa dele, o resto usa a sorteada */
+const deskIdx = (p: Profile, r: Room) => {
+  if (managerOf(getState().profiles, deptOf(p))?.id === p.id && hasDesk(r, BOSS_DESK)) return BOSS_DESK
+  if (p.desk >= 0 && p.desk < MAX_DESKS && hasDesk(r, p.desk)) return p.desk
+  return deskIds(r).find(i => i !== BOSS_DESK) ?? 0
 }
-/** onde o boneco está manda no mapa: a sala salva (troca quando alguém salva) ou o corredor (portas abertas viram passagem) */
-let roomSeen: unknown = undefined
-/** tile da esquerda da porta de saída da sala atual */
-let exitAt = 14
-/** portas por onde dá pra passar no corredor */
-const hallOpen = (s = getState()) => DOOR_X.map((_, k) => { const d = slotDept(k, s); return !!d && canEnter(d.id, s) })
-export function syncRoom() {
+/** o andar todo num mapa só: monta de novo quando muda setor de slot ou alguém salva uma sala; portas que eu passo a cada quadro */
+let floorSeen: unknown[] = []
+export function syncFloor() {
   const s = getState()
-  if (s.here === HALL) {
-    const open = hallOpen(s), key = 'andar:' + open.join()
-    if (key === roomSeen) return
-    roomSeen = key
-    setLayout(hallSala(), DOOR_X.flatMap((x, k): [number, number][] => (open[k] ? [[x, 1], [x + 1, 1]] : [])))
-    return
+  const ds = Array.from({ length: SLOTS }, (_, k) => slotDept(k, s))
+  const seen = ds.flatMap(d => [d?.id, d && roomOf(s, d.id)])
+  if (seen.length !== floorSeen.length || seen.some((v, i) => v !== floorSeen[i])) {
+    floorSeen = seen
+    setFloor(ds.map(d => (d ? { id: d.id, sala: parseSala(roomOf(s, d.id)?.data) } : { id: null, sala: emptySala() })))
   }
-  const r = roomOf(s, s.here), key = r ?? 'sala:' + s.here
-  if (key === roomSeen) return
-  roomSeen = key
-  const sala = parseSala(r?.data)
-  exitAt = exitX(sala)
-  setLayout(sala, [[exitAt, MH - 1], [exitAt + 1, MH - 1]])
+  setPassable(ds.map(d => !!d && canEnter(d.id, s)))
 }
-const slotAt = (tx: number) => DOOR_X.findIndex(x => tx === x || tx === x + 1)
+/** assento de alguém no andar (null = setor sem sala no andar) */
 function seatOf(p: Profile) {
-  const s = deskOf(deskIdx(p)).seat
-  return { x: s.x, y: s.y }
+  const r = roomOfId(deptOf(p))
+  return r ? deskOf(r, deskIdx(p, r)).seat : null
 }
 const frameOf = (s: { moving: boolean; anim: number }): 0 | 1 | 2 => (s.moving ? ([1, 0, 2, 0] as const)[Math.floor(s.anim * 8) % 4] : 0)
 const doingOf = (tasks: Task[], id: string) => tasks.filter(t => t.owner_id === id && t.status === 'doing').sort((a, b) => b.position - a.position)[0]
@@ -81,7 +71,7 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
   const [zoom, setZoom] = useState(() => Number(localStorage.getItem('ev:zoom')) || 3)
   const zoomRef = useRef(zoom)
   const [hover, setHover] = useState<Hover | null>(null)
-  const [doorUi, setDoorUi] = useState<{ slot: number; x: number; y: number } | null>(null)
+  const [doorUi, setDoorUi] = useState<{ slot: number; x: number; y: number; up: boolean } | null>(null)
   const goSeat = useRef<() => void>(() => {})
   const here = useStore(s => s.here)
   useStore(s => s.rows.depts)
@@ -91,8 +81,8 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
   useEffect(() => {
     const canvas = cv.current!, box = wrap.current!
     const ctx = canvas.getContext('2d')!
-    syncRoom()
-    let bg = renderBackground(), bgVer = layoutVersion()
+    syncFloor()
+    let bg = renderFloor(), bgVer = floorVersion()
     const meId = getState().meId!
     const keys = new Set<string>()
     const shown = new Map<string, Shown>()
@@ -102,48 +92,38 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
     let cam = { x: 0, y: 0 }
     let W = 0, H = 0, dpr = 1
     let raf = 0, last = performance.now(), lastSent = 0, lastSaved = 0, sentKey = ''
-    /** sala em que o boneco está (muda ao passar por uma porta) · voltando pra própria mesa por várias portas · escurecida da troca */
-    let at = getState().here, homing = false, fade = 0, bumped = -1
+    /** onde eu estava no último quadro (sala/corredor) · porta em que já trombei */
+    let at = getState().here, bumped = -1
 
     const myProfile = () => getState().profiles[meId]
+    const myRoom = () => roomOfId(deptOf(myProfile()))
+    const hallMid = () => ({ x: FW * T / 2, y: (HY0 + 3) * T + 8 })
+    /** ponto logo depois da porta, do lado de dentro da sala */
+    const inside = (r: Room) => { const d = doorSpot(r); return { x: d.x, y: r.top ? (r.oy + MH - 2) * T + 8 : (r.oy + 2) * T + 8 } }
     const saved = (() => { try { return JSON.parse(localStorage.getItem(`ev:pos:${meId}`) ?? 'null') as Pos | null } catch { return null } })()
-    const start = saved && (saved.room ?? at) === at && !blocked(saved.x, saved.y) ? saved
-      : at === HALL ? { x: 15 * T, y: 8 * T, dir: 'down' as Dir } : { ...seatOf(myProfile()), dir: 'down' as Dir, moving: false }
-    const meS: Shown = { x: start.x, y: start.y, dir: start.dir, moving: false, anim: 0 }
-    shown.set(meId, meS)
-    /** próximo trecho até a minha mesa: na minha sala, a mesa; no corredor, a porta dela; em outra sala, a saída */
-    const route = () => {
-      const s = getState(), mine = deptOf(myProfile())
-      let p: { x: number; y: number }[] | null = null
-      if (s.here === mine) { homing = false; p = pathToSeat(meS.x, meS.y, deskIdx(myProfile())) }
-      else if (s.here === HALL) { const k = s.rows.depts[mine]?.slot ?? -1; p = k >= 0 && k < SLOTS ? findPath(meS.x, meS.y, DOOR_X[k], 1) : null }
-      else p = findPath(meS.x, meS.y, exitAt, MH - 1)
-      path = p ?? []
-      if (!p) homing = false
-    }
-    goSeat.current = () => { homing = true; jobs.delete(meId); route() }
-    /** chegou em outra sala (pela porta, ou a Chefe abriu outra sala): entra pela porta de lá */
-    const arrive = (from: string) => {
+    const start = (() => {
       const s = getState()
-      at = s.here
-      syncRoom(); bg = renderBackground(); bgVer = layoutVersion()
-      if (at === HALL) {
-        const k = s.rows.depts[from]?.slot ?? -1
-        meS.x = ((k >= 0 && k < SLOTS ? DOOR_X[k] : 14) + 1) * T; meS.y = 2 * T + 10; meS.dir = 'down'
-      } else { meS.x = (exitAt + 1) * T; meS.y = (MH - 2) * T + 8; meS.dir = 'up' }
-      for (const id of [...shown.keys()]) if (id !== meId) shown.delete(id)
+      if (s.here !== deptOf(myProfile()) && s.here !== HALL) { const r = roomOfId(s.here); if (r) return inside(r) }
+      if (saved?.f === 1 && !blocked(saved.x, saved.y)) return saved
+      return seatOf(myProfile()) ?? hallMid()
+    })()
+    const meS: Shown = { x: start.x, y: start.y, dir: 'down', moving: false, anim: 0 }
+    shown.set(meId, meS)
+    goSeat.current = () => {
+      const r = myRoom()
       jobs.delete(meId)
-      path = []
-      if (homing) route()
-      fade = performance.now(); lastSent = 0; bumped = -1
-      setDoorUi(null)
+      path = (r && pathToSeat(meS.x, meS.y, r, deskIdx(myProfile(), r))) ?? []
     }
-    const cross = (where: string) => { const from = at; goTo(where); arrive(from) }
-    /** porta do corredor fechada ou vazia: mostra o aviso em cima dela */
+    /** porta que não abre pra mim (ou de sala vazia): aviso em cima/embaixo dela */
     const doorAsk = (k: number) => {
-      const z = zoomRef.current
-      setDoorUi({ slot: k, x: ((DOOR_X[k] + 1) * T - cam.x) * z, y: (2 * T - cam.y) * z + 6 })
+      const r = getRooms()[k], z = zoomRef.current
+      if (!r) return
+      const d = doorSpot(r)
+      setDoorUi({ slot: k, x: (d.x - cam.x) * z, y: (d.y - cam.y) * z + (r.top ? 6 : -2 * T * z - 6), up: !r.top })
     }
+    /** cortina fechada: quem está fora da sala não vê dentro (vale pra todo mundo, até a Chefe) */
+    const hidden = (r: Room | undefined, s = getState()) => !!r?.id && !curtainsOpen(r.id, s) && regionOfPx(meS.x, meS.y) !== r.slot
+    const hiddenAt = (x: number, y: number) => { const k = regionOfPx(x, y); return k >= 0 && hidden(getRooms()[k]) }
 
     const resize = () => {
       dpr = window.devicePixelRatio || 1
@@ -162,6 +142,7 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
     const avatarAt = (wx: number, wy: number) => {
       let hit: string | null = null, best = -1
       for (const [id, s] of shown) {
+        if (id !== meId && hiddenAt(s.x, s.y)) continue
         if (wx >= s.x - 8 && wx <= s.x + 8 && wy >= s.y - SPRITE_H + 1 && wy <= s.y + 1 && s.y > best) { hit = id; best = s.y }
       }
       return hit
@@ -172,30 +153,33 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
       const k = e.key.toLowerCase()
       if (!['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(k)) return
       e.preventDefault()
-      if (e.type === 'keydown') { keys.add(k); path = []; homing = false; jobs.delete(meId); setDoorUi(null) } else keys.delete(k)
+      if (e.type === 'keydown') { keys.add(k); path = []; jobs.delete(meId); setDoorUi(null) } else keys.delete(k)
     }
     const onBlur = () => keys.clear()
     const onClick = (e: MouseEvent) => {
       if (cine) return setUi({ view: 'escritorio', drawer: false, viewing: focusRef.current })
-      homing = false; setDoorUi(null)
+      setDoorUi(null)
       const w = toWorld(e.clientX, e.clientY)
       const id = avatarAt(w.x, w.y)
       if (id) return setUi({ tab: 'mesa', viewing: id })
       const tx = Math.floor(w.x / T), ty = Math.floor(w.y / T)
-      const desk = deskAtTile(tx, ty)
-      if (desk !== null) {
-        const owner = Object.values(getState().profiles).find(p => p.avatar && deskIdx(p) === desk)
+      const desk = hiddenAt(w.x, w.y) ? null : deskAtTile(tx, ty)
+      if (desk) {
+        const owner = Object.values(getState().profiles).find(p => p.avatar && deptOf(p) === desk.r.id && deskIdx(p, desk.r) === desk.i)
         if (owner) setUi({ viewing: owner.id })
         if (owner?.id === meId) goSeat.current()
         return
       }
-      // porta do corredor que não abre pra mim: chega perto e mostra o aviso
-      const k = getState().here === HALL && ty <= 1 ? slotAt(tx) : -1
-      if (k >= 0 && !hallOpen()[k]) {
-        doorAsk(k)
-        const p = findPath(meS.x, meS.y, DOOR_X[k], 2)
-        if (p) { path = p; jobs.delete(meId) }
-        return
+      // porta que não abre pra mim: chega perto e mostra o aviso
+      const k = doorAtTile(tx, ty), s = getState()
+      if (k >= 0) {
+        const d = slotDept(k, s)
+        if (!d || !canEnter(d.id, s)) {
+          doorAsk(k)
+          const sp = doorSpot(getRooms()[k]), p = findPath(meS.x, meS.y, sp.tx, sp.ty)
+          if (p) { path = p; jobs.delete(meId) }
+          return
+        }
       }
       const p = findPath(meS.x, meS.y, tx, ty)
       if (p) { path = p; jobs.delete(meId) }
@@ -206,8 +190,7 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
       const id = avatarAt(w.x, w.y)
       const r = canvas.getBoundingClientRect()
       const tx = Math.floor(w.x / T), ty = Math.floor(w.y / T)
-      const door = getState().here === HALL ? ty <= 1 && slotAt(tx) >= 0 : ty === MH - 1 && (tx === exitAt || tx === exitAt + 1)
-      canvas.style.cursor = id || door || deskAtTile(tx, ty) !== null ? 'pointer' : 'default'
+      canvas.style.cursor = id || doorAtTile(tx, ty) >= 0 || (!hiddenAt(w.x, w.y) && deskAtTile(tx, ty)) ? 'pointer' : 'default'
       setHover(h => (id ? { id, sx: e.clientX - r.left, sy: e.clientY - r.top } : h ? null : h))
     }
     const onLeave = () => setHover(null)
@@ -228,13 +211,15 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
     const offPhotos: (() => void)[] = []
     const watched = new Set<string>()
 
-    /** Avança a tarefa automática de alguém (ida → ação → volta). Devolve true se andou. */
+    /** Avança a tarefa automática de alguém (ida → ação → volta), na sala do setor dela. Devolve true se andou. */
     const runJob = (id: string, o: Shown, p: Profile, dt: number, now: number) => {
+      const r = roomOfId(deptOf(p))
+      if (!r) { jobs.delete(id); waiting.delete(id); return false }
       let j = jobs.get(id)
       if (!j) {
         const e = waiting.get(id)?.shift()
         if (!e) return false
-        const spot = e.kind === 'write' ? boardSpot() : shelfSpot()
+        const spot = e.kind === 'write' ? boardSpot(r) : shelfSpot(r)
         const route = spot && findPath(o.x, o.y, spot.tx, spot.ty)
         if (!route) return false
         j = { e, phase: 'go', path: route, until: 0, carry: e.kind === 'store' }
@@ -245,7 +230,7 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
         if (now < j.until) return false
         if (j.e.kind === 'write') addMark()
         j.carry = j.e.kind === 'fetch'
-        j.path = pathToSeat(o.x, o.y, deskIdx(p)) ?? []
+        j.path = pathToSeat(o.x, o.y, r, deskIdx(p, r)) ?? []
         j.phase = 'back'
       }
       if (walk(o, j.path, dt)) return true
@@ -262,6 +247,7 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
     }
 
     const step = (dt: number) => {
+      syncFloor()
       // tarefas automáticas novas: eu faço as minhas; quem está fora é simulado aqui (quem está online faz no PC dele)
       {
         const s = getState()
@@ -271,6 +257,16 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
         }
       }
       const tnow = performance.now()
+      // a Chefe abriu outra sala por fora do mapa: aparece na porta de dentro dela
+      {
+        const s = getState()
+        if (s.here !== at) {
+          const r = s.here === HALL ? undefined : roomOfId(s.here)
+          const p = r ? inside(r) : hallMid()
+          meS.x = p.x; meS.y = p.y; meS.dir = r?.top === false ? 'down' : 'up'
+          path = []; jobs.delete(meId); at = s.here; setDoorUi(null)
+        }
+      }
       // movimento local
       let vx = 0, vy = 0
       if (keys.has('a') || keys.has('arrowleft')) vx--
@@ -286,46 +282,47 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
         if (free(meS.x, ny)) meS.y = ny
         meS.dir = dirTo(vx, vy)
         moving = true
+        // trombou numa porta fechada (ou de sala vazia): mostra o aviso uma vez
+        const k = doorAtTile(Math.floor((meS.x + vx * 9) / T), Math.floor((meS.y - 2 + vy * 9) / T)), s = getState(), d0 = k >= 0 ? slotDept(k, s) : undefined
+        if (k >= 0 && (!d0 || !canEnter(d0.id, s))) { if (bumped !== k) { bumped = k; doorAsk(k) } }
+        else bumped = -1
       } else if (path.length) {
         moving = walk(meS, path, dt)
         if (!path.length) meS.dir = 'down'
-      } else if (at === deptOf(myProfile())) moving = runJob(meId, meS, myProfile(), dt, tnow)
+      } else if (regionOfPx(meS.x, meS.y) === myRoom()?.slot) moving = runJob(meId, meS, myProfile(), dt, tnow)
       meS.moving = moving
       meS.anim = moving ? meS.anim + dt : 0
 
-      // portas: ninguém é teletransportado, passa pela porta e sai do outro lado
+      // onde estou: ninguém é teletransportado, a sala muda quando o boneco passa da porta
       {
-        const s = getState()
-        if (s.here !== at) arrive(at)
-        else if (at === HALL) {
-          const k = slotAt(Math.floor(meS.x / T)), d = k >= 0 ? slotDept(k, s) : undefined
-          if (meS.y < 2 * T - 2 && d && canEnter(d.id, s)) cross(d.id)
-          // trombou numa porta fechada (ou de sala vazia) andando pra cima
-          else if (k >= 0 && meS.y < 2 * T + 8 && (keys.has('w') || keys.has('arrowup')) && !hallOpen(s)[k]) { if (bumped !== k) { bumped = k; doorAsk(k) } }
-          else if (meS.y >= 2 * T + 8) bumped = -1
-        } else if (meS.y >= (MH - 1) * T + 3) cross(HALL)
-        else if (at !== deptOf(myProfile()) && !canEnter(at, s)) {
+        const s = getState(), k = regionOfPx(meS.x, meS.y), r = k >= 0 ? getRooms()[k] : undefined
+        if (r?.id && r.id !== deptOf(myProfile()) && !canEnter(r.id, s)) {
+          // fecharam a porta comigo dentro: volto pro corredor, na frente dela
+          const d = doorSpot(r)
+          meS.x = (d.tx + 1) * T; meS.y = (d.ty + 0.5) * T; path = []
           bubbles.set(meId, { text: 'A porta foi fechada', until: Date.now() + 3000 })
-          cross(HALL)
         }
+        const k2 = regionOfPx(meS.x, meS.y), where = (k2 >= 0 && getRooms()[k2]?.id) || HALL
+        if (where !== s.here) { at = where; goTo(where) }
       }
 
-      const now = performance.now()
-      const mine: Pos = { x: Math.round(meS.x * 10) / 10, y: Math.round(meS.y * 10) / 10, dir: meS.dir, moving, room: at }
-      const key = `${mine.x},${mine.y},${mine.dir},${moving},${at}`
+      const now = performance.now(), here = getState().here
+      const mine: Pos = { x: Math.round(meS.x * 10) / 10, y: Math.round(meS.y * 10) / 10, dir: meS.dir, moving, room: here, f: 1 }
+      const key = `${mine.x},${mine.y},${mine.dir},${moving},${here}`
       positions.set(meId, mine)
       if ((key !== sentKey && now - lastSent > 100) || now - lastSent > 2500) {
         backend.sendPos(meId, mine); lastSent = now; sentKey = key
       }
       if (now - lastSaved > 1000) { localStorage.setItem(`ev:pos:${meId}`, JSON.stringify(mine)); lastSaved = now }
 
-      // demais pessoas: só quem está no mesmo lugar que eu (online: onde o boneco dela está; fora: na sala dela)
+      // demais pessoas, no andar todo (online: onde o boneco dela está; fora: na mesa dela)
       const s = getState()
       for (const p of Object.values(s.profiles)) {
         if (p.id === meId || !p.avatar) continue
-        const online = s.online.has(p.id)
-        if (((online && positions.get(p.id)?.room) || deptOf(p)) !== at) { shown.delete(p.id); continue }
-        const tgt = (online && positions.get(p.id)) || { ...seatOf(p), dir: 'down' as Dir, moving: false }
+        const online = s.online.has(p.id), live = online ? positions.get(p.id) : undefined
+        const seat = seatOf(p)
+        const tgt = live?.f === 1 ? live : seat ? { ...seat, dir: 'down' as Dir, moving: false } : null
+        if (!tgt) { shown.delete(p.id); continue }
         let o = shown.get(p.id)
         if (!o) { o = { x: tgt.x, y: tgt.y, dir: tgt.dir, moving: false, anim: 0 }; shown.set(p.id, o) }
         if (!online && (jobs.has(p.id) || waiting.get(p.id)?.length)) {
@@ -344,11 +341,11 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
 
     const render = (t: number) => {
       const s = getState(), z = zoomRef.current
-      syncRoom()
-      if (bgVer !== layoutVersion()) { bg = renderBackground(); bgVer = layoutVersion() }
+      if (bgVer !== floorVersion()) { bg = renderFloor(); bgVer = floorVersion() }
+      const rooms = getRooms()
       const f = (cine && focusRef.current && shown.get(focusRef.current)) || meS
       const vw = W / z, vh = H / z
-      const mapW = MW * T, mapH = MH * T
+      const mapW = FW * T, mapH = FH * T
       cam = {
         x: vw >= mapW ? (mapW - vw) / 2 : Math.min(mapW - vw, Math.max(0, f.x - vw / 2)),
         y: vh >= mapH ? (mapH - vh) / 2 : Math.min(mapH - vh, Math.max(0, f.y - 12 - vh / 2)),
@@ -360,34 +357,49 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
       ctx.setTransform(dpr * z, 0, 0, dpr * z, -cam.x * dpr * z, -cam.y * dpr * z)
       ctx.imageSmoothingEnabled = false
       ctx.drawImage(bg, 0, 0)
-      for (const o of wallObjs()) drawFurniture(ctx, o, t)
-      if (at === s.sala) drawBoardMarks(ctx, boardMarks, writing(performance.now()))
-      if (at === HALL) DOOR_X.forEach((x, k) => { const d = slotDept(k, s); drawDoor(ctx, x, !d ? 'vazia' : doorOpen(d.id, s) ? 'aberta' : 'fechada', d?.color ?? '#a3a8b3') })
-      else drawExit(ctx, exitAt, doorOpen(at, s))
+      const shift = (r: Room, o: Obj): Obj => ({ ...o, x: o.x + r.ox, y: o.y + r.oy })
+      const hid = rooms.map(r => hidden(r, s))
+      for (const r of rooms) {
+        const d = r.id ? s.rows.depts[r.id] : undefined
+        if (!hid[r.slot]) for (const o of wallObjs(r)) drawFurniture(ctx, shift(r, o), t)
+        ctx.save(); ctx.translate(r.ox * T, r.oy * T)
+        if (!hid[r.slot] && r.id === s.sala) drawBoardMarks(ctx, r.sala, boardMarks, writing(performance.now()))
+        if (hid[r.slot]) { ctx.fillStyle = 'rgba(20,22,36,.88)'; ctx.fillRect(T, 2 * T, (MW - 2) * T, (MH - 3) * T) }
+        if (d && !curtainsOpen(d.id, s)) drawCurtain(ctx, r.top, r.door, d.color)
+        const st = !d ? 'vazia' : doorOpen(d.id, s) ? 'aberta' : 'fechada'
+        if (r.top) drawExit(ctx, r.door, st); else drawDoor(ctx, r.door, st, d?.color ?? '#a3a8b3')
+        ctx.restore()
+      }
 
       const tasks = Object.values(s.tasks)
-      const byDesk = new Map<number, Profile>()
-      for (const p of Object.values(s.profiles)) if (p.avatar && deptOf(p) === at && !byDesk.has(deskIdx(p))) byDesk.set(deskIdx(p), p)
       const items: { key: number; draw: () => void }[] = []
-      for (const i of deskIds()) {
-        const owner = byDesk.get(i), d = deskOf(i), gear = owner?.avatar?.gear
-        const pile = owner ? tasks.filter(x => x.owner_id === owner.id && OPEN.has(x.status)).length : 0
-        const inbox = owner ? tasks.some(x => x.owner_id === owner.id && x.status === 'inbox') : false
-        const busy = !!owner && s.online.has(owner.id) && !!doingOf(tasks, owner.id)
-        items.push({ key: d.ty * T + 15, draw: () => drawDesk(ctx, i, { pile, inbox, busy, owned: !!owner, t }, gear) })
-        // cadeira vai com a mesa; sem ninguém sentado ela fica puxada pra trás
-        const o = owner && shown.get(owner.id)
-        const seated = !!o && Math.hypot(o.x - d.seat.x, o.y - d.seat.y) < 2
-        const cy = d.seat.y - (seated ? 0 : 9)
-        items.push({ key: cy - 0.5, draw: () => drawChair(ctx, gear?.cadeira, d.seat.x, cy, i === BOSS_DESK) })
+      for (const r of rooms) {
+        if (!r.id || hid[r.slot]) continue
+        const byDesk = new Map<number, Profile>()
+        for (const p of Object.values(s.profiles)) if (p.avatar && deptOf(p) === r.id && !byDesk.has(deskIdx(p, r))) byDesk.set(deskIdx(p, r), p)
+        for (const i of deskIds(r)) {
+          const owner = byDesk.get(i), d = deskOf(r, i), gear = owner?.avatar?.gear
+          const pile = owner ? tasks.filter(x => x.owner_id === owner.id && OPEN.has(x.status)).length : 0
+          const inbox = owner ? tasks.some(x => x.owner_id === owner.id && x.status === 'inbox') : false
+          const busy = !!owner && s.online.has(owner.id) && !!doingOf(tasks, owner.id)
+          items.push({ key: d.ty * T + 15, draw: () => drawDesk(ctx, d, i === BOSS_DESK, { pile, inbox, busy, owned: !!owner, t }, gear) })
+          // cadeira vai com a mesa; sem ninguém sentado ela fica puxada pra trás
+          const o = owner && shown.get(owner.id)
+          const seated = !!o && Math.hypot(o.x - d.seat.x, o.y - d.seat.y) < 2
+          const cy = d.seat.y - (seated ? 0 : 9)
+          items.push({ key: cy - 0.5, draw: () => drawChair(ctx, gear?.cadeira, d.seat.x, cy, i === BOSS_DESK) })
+        }
+        for (const o0 of furniture(r)) {
+          const o = shift(r, o0), k = kd(o)
+          items.push({ key: k.passa ? o.y * T : (o.y + k.h) * T - 1, draw: () => drawFurniture(ctx, o, t) })
+        }
       }
-      for (const o of furniture()) {
-        const k = kd(o)
-        items.push({ key: k.passa ? o.y * T : (o.y + k.h) * T - 1, draw: () => drawFurniture(ctx, o, t) })
-      }
+      for (const o of hallDecor()) items.push({ key: (o.y + kd(o).h) * T - 1, draw: () => drawFurniture(ctx, o, t) })
+      const seen = new Set<string>()
       for (const [id, o] of shown) {
         const p = s.profiles[id]
-        if (!p?.avatar) continue
+        if (!p?.avatar || (id !== meId && hiddenAt(o.x, o.y))) continue
+        seen.add(id)
         if (p.photo && !watched.has(p.photo)) { watched.add(p.photo); offPhotos.push(onPhotoLoad(p.photo, () => {})) }
         const job = jobs.get(id)
         const away = id !== meId && !s.online.has(id) && !job
@@ -395,7 +407,7 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
           key: o.y, draw: () => {
             ctx.fillStyle = 'rgba(0,0,0,.18)'
             ctx.beginPath(); ctx.ellipse(o.x, o.y, 6, 2, 0, 0, Math.PI * 2); ctx.fill()
-            // fora da sala: boneco opaco e desbotado (transparente deixava a cadeira aparecer pela cabeça)
+            // fora do escritório: boneco opaco e desbotado (transparente deixava a cadeira aparecer pela cabeça)
             if (away) ctx.filter = 'saturate(.3) brightness(.9)'
             drawAvatar(ctx, p.avatar!, p.photo, Math.round(o.x - 8), Math.round(o.y - SPRITE_H + 1), o.dir, frameOf(o))
             if (away) ctx.filter = 'none'
@@ -409,37 +421,27 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
       // rótulos em espaço de tela (texto nítido)
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
       const now = Date.now()
-      if (hasDesk(BOSS_DESK)) {
-        // placa da mesa do Gerente
-        const d = deskOf(BOSS_DESK)
-        const bx = (d.seat.x - cam.x) * z, by = ((d.ty + 1) * T + 2 - cam.y) * z
+      /** placa: em (wx, wy) do mundo; up = acima do ponto */
+      const plate = (wx: number, wy: number, text: string, bgc: string, fg: string, up = false) => {
         ctx.font = '700 10px "Pixelify Sans", Inter, sans-serif'
-        const bw = ctx.measureText('GERENTE').width + 14
-        ctx.fillStyle = 'rgba(11,35,93,.92)'
-        roundRect(ctx, Math.round(bx - bw / 2), Math.round(by), bw, 15, 7.5); ctx.fill()
-        ctx.fillStyle = '#FBC222'
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
-        ctx.fillText('GERENTE', Math.round(bx), Math.round(by) + 8)
-        ctx.textAlign = 'left'
-      }
-      // placas das portas: nome da sala na cor dela; cinza = sala sem setor
-      const plate = (wx: number, wy: number, text: string, bgc: string, fg: string) => {
-        ctx.font = '700 10px "Pixelify Sans", Inter, sans-serif'
-        const w = ctx.measureText(text).width + 14, px = Math.round((wx - cam.x) * z - w / 2), py = Math.round((wy - cam.y) * z)
+        const w = ctx.measureText(text).width + 14, px = Math.round((wx - cam.x) * z - w / 2), py = Math.round((wy - cam.y) * z) - (up ? 17 : 0)
         ctx.fillStyle = bgc; roundRect(ctx, px, py, w, 15, 7.5); ctx.fill()
         ctx.fillStyle = fg; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
         ctx.fillText(text, px + w / 2, py + 8)
         ctx.textAlign = 'left'
       }
-      if (at === HALL) DOOR_X.forEach((x, k) => {
-        const d = slotDept(k, s)
-        if (!d) plate((x + 1) * T, 0.5, 'Sala vazia', '#8a8f98', '#fff')
-        else plate((x + 1) * T, 0.5, d.name.toUpperCase() + (doorOpen(d.id, s) ? '' : ' · FECHADA'), d.color, inkOn(d.color))
-      })
-      else plate((exitAt + 1) * T, (MH - 1) * T + 3, 'CORREDOR', 'rgba(20,24,40,.82)', '#fff')
+      for (const r of rooms) {
+        const d = r.id ? s.rows.depts[r.id] : undefined, sp = doorSpot(r)
+        // placa do Gerente, na mesa dele
+        if (d && !hid[r.slot] && hasDesk(r, BOSS_DESK)) { const b = deskOf(r, BOSS_DESK); plate(b.seat.x, (b.ty + 1) * T + 2, 'GERENTE', 'rgba(11,35,93,.92)', '#FBC222') }
+        if (d && hid[r.slot]) plate((r.ox + MW / 2) * T, (r.oy + MH / 2) * T, 'CORTINA FECHADA', 'rgba(20,24,40,.82)', '#fff')
+        // placa da porta, virada pro corredor: nome da sala na cor dela; cinza = sala sem setor
+        const text = !d ? 'Sala vazia' : d.name.toUpperCase() + (doorOpen(d.id, s) ? '' : ' · FECHADA')
+        plate(sp.x, r.top ? HY0 * T + 1 : (HY1 + 1) * T - 1, text, d?.color ?? '#8a8f98', d ? inkOn(d.color) : '#fff', !r.top)
+      }
       for (const [id, o] of shown) {
         const p = s.profiles[id]
-        if (!p?.avatar) continue
+        if (!p?.avatar || !seen.has(id)) continue
         const sx = (o.x - cam.x) * z, sy = (o.y - SPRITE_H - cam.y) * z
         if (sx < -100 || sx > W + 100 || sy < -60 || sy > H + 60) continue
         const away = id !== meId && !s.online.has(id) && !jobs.has(id)
@@ -482,9 +484,6 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
         }
       }
       ctx.textBaseline = 'alphabetic'
-      // troca de sala: escurece e clareia
-      const fa = fade ? 1 - (performance.now() - fade) / 380 : 0
-      if (fa > 0) { ctx.fillStyle = `rgba(13,16,30,${fa.toFixed(3)})`; ctx.fillRect(0, 0, W, H) } else fade = 0
     }
 
     const loop = (t: number) => {
@@ -528,13 +527,14 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
         </div>
       )}
       {doorUi && (
-        <div className="game-door" style={{ left: doorUi.x, top: doorUi.y }}>
+        <div className={'game-door' + (doorUi.up ? ' up' : '')} style={{ left: doorUi.x, top: doorUi.y }}>
           <button className="x" onClick={() => setDoorUi(null)} aria-label="Fechar"><Icon n="x" size={13} /></button>
           {dd ? <>
             <b><i style={{ background: dd.color }} />{dd.name}</b>
             <span className="muted">{doorOpen(dd.id, s) ? 'Porta aberta' : 'Porta fechada'}</span>
             {!canEnter(dd.id, s) && <button className="primary" onClick={() => run(knock(dd.id).then(() => { bubbles.set(s.meId!, { text: 'Toc, toc! Avisei quem está lá dentro.', until: Date.now() + 3500 }); setDoorUi(null) }))}>Bater na porta</button>}
             {canDoor(dd.id, s) && <button onClick={() => run(setDoor(dd.id, !doorOpen(dd.id, s)))}>{doorOpen(dd.id, s) ? 'Fechar a porta' : 'Abrir a porta'}</button>}
+            {canDoor(dd.id, s) && <button onClick={() => run(setCurtains(dd.id, !curtainsOpen(dd.id, s)))}>{curtainsOpen(dd.id, s) ? 'Fechar a cortina' : 'Abrir a cortina'}</button>}
           </> : <>
             <b><i style={{ background: '#a3a8b3' }} />Sala vazia</b>
             <span className="muted">Sem setor atribuído — não dá pra entrar.</span>
@@ -550,11 +550,12 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
         <span className="sep" />
         <button onClick={() => goSeat.current()} title={away ? 'Andar de volta até a sua sala, pelas portas' : 'Andar até a sua mesa'}><Icon n="locate" size={15} />{away ? 'Voltar pra minha sala' : 'Ir para minha mesa'}</button>
         {here !== HALL && canDoor(here, s) && <button onClick={() => run(setDoor(here, !doorOpen(here, s)))} title="Quem está fora só entra se a porta estiver aberta (ou batendo)">{doorOpen(here, s) ? 'Fechar a porta' : 'Abrir a porta'}</button>}
+        {here !== HALL && canDoor(here, s) && <button onClick={() => run(setCurtains(here, !curtainsOpen(here, s)))} title="Cortina fechada: quem está no corredor não vê o que acontece aqui dentro">{curtainsOpen(here, s) ? 'Fechar a cortina' : 'Abrir a cortina'}</button>}
         <span className="sep" />
         <button className="sq" onClick={() => setZoom(z => Math.max(ZMIN, z - 1))} aria-label="Afastar" title="Afastar"><Icon n="minus" size={15} /></button>
         <button className="sq" onClick={() => setZoom(z => Math.min(ZMAX, z + 1))} aria-label="Aproximar" title="Aproximar"><Icon n="plus" size={15} /></button>
       </div>
-      <div className="game-help">{here === HALL ? 'Ande até uma porta para entrar · porta cinza: sala sem setor' : 'Clique no chão para andar (ou WASD/setas) · saia pela porta de baixo para o corredor'}</div>
+      <div className="game-help">Clique no chão para andar (ou WASD/setas) · porta cinza: sala sem setor · cortina fechada: só quem está dentro vê</div>
       </>}
     </div>
   )

@@ -211,9 +211,9 @@ export type NameOf = (d: number) => string | null
 export const at = <V,>(g: V[][], x: number, y: number, v: V) => g.map((row, j) => j === y ? row.map((c, i) => i === x ? v : c) : row)
 export const kd = (o: Obj) => KINDS[o.k]
 
-/** posição de fábrica: 3 fileiras de 4 no meio + chefia embaixo (a porta fica no meio da parede de baixo) */
+/** posição de fábrica: 3 fileiras de 4 no meio + gerente na lateral esquerda (de lado pra porta, não de frente) */
 export function defaultDesk(i: number): Desk {
-  if (i === BOSS_DESK) return { tx: 13, ty: 16, w: 3, seat: { x: 13 * T + 24, y: 16 * T + 8 } }
+  if (i === BOSS_DESK) return { tx: 2, ty: 10, w: 3, seat: { x: 2 * T + 24, y: 10 * T + 8 } }
   const tx = 7 + (i % 4) * 4, ty = 4 + Math.floor(i / 4) * 4
   return { tx, ty, w: 2, seat: { x: tx * T + 16, y: ty * T + 8 } }
 }
@@ -225,9 +225,9 @@ export function original(): Sala {
   let id = 1
   const objs: Obj[] = []
   const add = (k: string, x: number, y: number, d?: number) => objs.push(d === undefined ? { id: id++, k, x, y } : { id: id++, k, x, y, d })
-  add('tapete-chefe', 12, 14)
+  add('tapete-chefe', 1, 8)
   for (let i = 0; i < MAX_DESKS; i++) { const d = defaultDesk(i); add('mesa', d.tx, d.ty, i) }
-  add('mesa-chefe', 13, 16, BOSS_DESK)
+  add('mesa-chefe', 2, 10, BOSS_DESK)
   for (const [x, y] of [[1, 2], [28, 2], [1, 18], [28, 18], [5, 18], [24, 18]]) add('planta', x, y)
   add('estante', 2, 2); add('arquivo', 25, 2); add('impressora', 26, 2); add('bebedouro', 27, 2)
   for (const x of [3, 8, 22, 26]) add('janela', x, 0)
@@ -345,9 +345,9 @@ export function renderStatic(piso: Piso[][], div: boolean[][]) {
 }
 
 /** fundo do jogo: estático + luz das janelas + tapetes + sombras */
-export function renderRoom(s: Sala, grid = false) {
+export function renderRoom(s: Sala, grid = false, light = true) {
   const cv = renderStatic(s.piso, s.div), c = cv.getContext('2d')!
-  for (const o of s.objs) if (o.k === 'janela') { c.fillStyle = 'rgba(255,248,225,.22)'; for (let k = 0; k < 22; k++) c.fillRect(o.x * T + 3 + Math.floor(k / 2), 2 * T + k, 26, 1) }
+  if (light) for (const o of s.objs) if (o.k === 'janela') { c.fillStyle = 'rgba(255,248,225,.22)'; for (let k = 0; k < 22; k++) c.fillRect(o.x * T + 3 + Math.floor(k / 2), 2 * T + k, 26, 1) }
   for (const o of s.objs) if (kd(o).camada === 'chao') kd(o).draw(c, o.x * T, o.y * T, 0)
   if (grid) { c.globalAlpha = 0.1; for (let x = 1; x < MW; x++) r(c, '#000', x * T, 2 * T, 0.5, (MH - 3) * T); for (let y = 2; y < MH; y++) r(c, '#000', T, y * T, (MW - 2) * T, 0.5); c.globalAlpha = 1 }
   for (const o of s.objs) { const k = kd(o); if (!k.camada && !k.passa) r(c, SHADOW, o.x * T + 1, (o.y + k.h) * T, k.w * T - 2, 3) }

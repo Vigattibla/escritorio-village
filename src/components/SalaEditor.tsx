@@ -2,8 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { drawAvatar } from '../chibi/sprite'
 import { managerOf, rankOf } from '../game/ranks'
 import { drawChair } from '../office/props'
-import { at, bbox, check, hitTest, isDesk, KINDS, kd, original, parseSala, PISOS, reach, renderRoom, solidGrid, TEMAS, type Kind, type Obj, type Piso, type Sala, type Tema } from '../office/sala'
-import { BOSS_DESK, deskOf, drawDesk, MAX_DESKS, MH, MW, T, upperWall, wallFace } from '../office/world'
+import { at, bbox, check, defaultDesk, hitTest, isDesk, KINDS, kd, original, parseSala, PISOS, reach, renderRoom, solidGrid, TEMAS, type Kind, type Obj, type Piso, type Sala, type Tema } from '../office/sala'
+import { BOSS_DESK, drawDesk, MAX_DESKS, MH, MW, T, upperWall, wallFace } from '../office/world'
 import { dropRow, me, putRow, roomOf, team, useStore } from '../store'
 import type { Profile } from '../types'
 import { Px } from './Px'
@@ -29,10 +29,10 @@ function KindThumb({ k, id }: { k: Kind; id: string }) {
   return <Px w={w} h={h} s={1} z={z} draw={(c, t) => {
     if (k.camada === 'parede') { for (let i = 0; i < k.w; i++) { upperWall(c, i * T, 0); wallFace(c, i * T, T) } k.draw(c, 0, 0, t); return }
     if (isDesk(id)) {
-      const tpl = id === 'mesa-chefe' ? BOSS_DESK : 0, d0 = deskOf(tpl)
+      const tpl = id === 'mesa-chefe' ? BOSS_DESK : 0, d0 = defaultDesk(tpl)
       c.translate(-d0.tx * T, (up - d0.ty) * T)
       drawChair(c, undefined, d0.seat.x, d0.seat.y - 9, tpl === BOSS_DESK)
-      drawDesk(c, tpl, { pile: 0, inbox: false, busy: false, owned: false, t })
+      drawDesk(c, d0, tpl === BOSS_DESK, { pile: 0, inbox: false, busy: false, owned: false, t })
       return
     }
     c.translate(0, up * T); k.draw(c, 0, 0, t)
@@ -82,12 +82,12 @@ export default function SalaEditor({ onClose }: { onClose: () => void }) {
     const k = kd(o)
     if (!isDesk(o.k)) { k.draw(c, o.x * T, k.camada === 'parede' ? 0 : o.y * T, t); return }
     // mesa + cadeira são uma peça só: a cadeira anda junto
-    const tpl = o.k === 'mesa-chefe' ? BOSS_DESK : 0, d0 = deskOf(tpl), p = person(o), gear = p?.avatar?.gear
+    const tpl = o.k === 'mesa-chefe' ? BOSS_DESK : 0, d0 = defaultDesk(tpl), p = person(o), gear = p?.avatar?.gear
     c.save(); c.translate((o.x - d0.tx) * T, (o.y - d0.ty) * T)
     const seated = withPeople && !!p
     drawChair(c, gear?.cadeira, d0.seat.x, d0.seat.y - (seated ? 0 : 9), tpl === BOSS_DESK)
     if (seated && p.avatar) drawAvatar(c, p.avatar, p.photo, d0.seat.x - 8, d0.seat.y - 26, 'down', 0)
-    drawDesk(c, tpl, { pile: 0, inbox: false, busy: false, owned: !!p, t }, gear)
+    drawDesk(c, d0, tpl === BOSS_DESK, { pile: 0, inbox: false, busy: false, owned: !!p, t }, gear)
     c.restore()
   }
 

@@ -427,6 +427,7 @@ export async function openSala(id: string) {
 /** sala no lugar `slot` do andar */
 export const slotDept = (slot: number, s: State = state) => Object.values(s.rows.depts).find(d => d.floor === 1 && d.slot === slot)
 export const doorOpen = (id: string, s: State = state) => s.rows.depts[id]?.door_open !== false
+export const curtainsOpen = (id: string, s: State = state) => s.rows.depts[id]?.curtains_open !== false
 /** abre/fecha a porta: gerente da sala, a Chefe ou o adm */
 export const canDoor = (id: string, s: State = state) => {
   const p = s.meId ? s.profiles[s.meId] : undefined
@@ -442,6 +443,13 @@ export async function setDoor(id: string, open: boolean) {
   if (!d || doorOpen(id) === open) return
   onRow('depts', { ...d, door_open: open })
   try { await backend.setDoor(id, open) } catch (e) { onRow('depts', d); throw e }
+}
+/** cortina do vidro: fechada, quem está fora não vê o que acontece na sala */
+export async function setCurtains(id: string, open: boolean) {
+  const d = state.rows.depts[id]
+  if (!d || curtainsOpen(id) === open) return
+  onRow('depts', { ...d, curtains_open: open })
+  try { await backend.setCurtains(id, open) } catch (e) { onRow('depts', d); throw e }
 }
 /** o boneco passou por uma porta. A Chefe leva o quadro junto; quem visita só vê a sala */
 export function goTo(where: string) {
