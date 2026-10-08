@@ -2,13 +2,13 @@ import { useEffect, useRef, useState } from 'react'
 import { drawAvatar, onPhotoLoad, SPRITE_H } from '../chibi/sprite'
 import { backend } from '../data'
 import { deptOf, managerOf } from '../game/ranks'
-import { drawCurtain, drawDoor, drawExit, HALL, inkOn, SLOTS } from '../office/andar'
-import { FlagPicker } from './Bandeira'
+import { drawCurtain, drawDoor, drawExit, drawMat, HALL, inkOn, SLOTS } from '../office/andar'
+import { Emblema, FlagPicker } from './Bandeira'
 import { addMark, boardMarks, takeErrands, type Errand } from '../office/errands'
 import { drawAnim, plateFill, PLATE_CV } from '../office/anim'
 import { drawChair } from '../office/props'
 import { drawFurniture, kd, parseSala, type Obj } from '../office/sala'
-import { blocked, boardSpot, BOSS_DESK, deskAtTile, deskIds, deskOf, doorAtTile, doorSpot, drawBoardMarks, drawCarry, drawDesk, emptySala, FH, findPath, floorVersion, furniture, FW, getRooms, hallDecor, hasDesk, HY0, HY1, MAX_DESKS, MH, MW, pathToSeat, regionOfPx, renderFloor, roomOfId, setFloor, setPassable, shelfSpot, T, wallObjs, type Room } from '../office/world'
+import { blocked, boardSpot, BOSS_DESK, deskAtTile, deskIds, deskOf, doorAtTile, doorSpot, drawBoardMarks, drawCarry, drawDesk, emptySala, FH, findPath, floorVersion, furniture, FW, getRooms, hallDecor, hasDesk, HY0, MAX_DESKS, MH, MW, pathToSeat, regionOfPx, renderFloor, roomOfId, setFloor, setPassable, shelfSpot, T, wallObjs, type Room } from '../office/world'
 import { bubbles, canDoor, canEnter, curtainsOpen, deptName, doorOpen, getState, goTo, knock, myDept, positions, roomOf, run, setCurtains, setDoor, setUi, slotDept, useStore } from '../store'
 import type { Dir, Pos, Profile, Task } from '../types'
 import Icon from './Icon'
@@ -98,7 +98,7 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
 
     const myProfile = () => getState().profiles[meId]
     const myRoom = () => roomOfId(deptOf(myProfile()))
-    const hallMid = () => ({ x: FW * T / 2, y: (HY0 + 3) * T + 8 })
+    const hallMid = () => ({ x: FW * T / 2, y: (HY0 + 2) * T + 8 })
     /** ponto logo depois da porta, do lado de dentro da sala */
     const inside = (r: Room) => { const d = doorSpot(r); return { x: d.x, y: r.top ? (r.oy + MH - 2) * T + 8 : (r.oy + 2) * T + 8 } }
     const saved = (() => { try { return JSON.parse(localStorage.getItem(`ev:pos:${meId}`) ?? 'null') as Pos | null } catch { return null } })()
@@ -369,6 +369,7 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
         if (d && !curtainsOpen(d.id, s)) drawCurtain(ctx, r.top, r.door, d.color)
         const st = !d ? 'vazia' : doorOpen(d.id, s) ? 'aberta' : 'fechada'
         if (r.top) drawExit(ctx, r.door, st, d?.color, d?.flag); else drawDoor(ctx, r.door, st, d?.color ?? '#a3a8b3', d?.flag)
+        if (d) drawMat(ctx, r.door * T + 3, r.top ? MH * T + 4 : -T + 4, d.color)
         ctx.restore()
       }
 
@@ -422,23 +423,34 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
       // rótulos em espaço de tela (texto nítido)
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
       const now = Date.now()
-      /** placa: em (wx, wy) do mundo; up = acima do ponto */
-      const plate = (wx: number, wy: number, text: string, bgc: string, fg: string, up = false) => {
+      /** placa em (wx, wy) do mundo; ax/ay = qual ponto da placa fica ali (0 = esquerda/topo, 1 = direita/base) */
+      const plate = (wx: number, wy: number, text: string, o: { bg: string; fg: string; dot?: string; lock?: boolean; ax?: number; ay?: number }) => {
         ctx.font = '700 10px "Pixelify Sans", Inter, sans-serif'
-        const w = ctx.measureText(text).width + 14, px = Math.round((wx - cam.x) * z - w / 2), py = Math.round((wy - cam.y) * z) - (up ? 17 : 0)
-        ctx.fillStyle = bgc; roundRect(ctx, px, py, w, 15, 7.5); ctx.fill()
-        ctx.fillStyle = fg; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
-        ctx.fillText(text, px + w / 2, py + 8)
-        ctx.textAlign = 'left'
+        const lead = o.dot ? 12 : 0, tail = o.lock ? 12 : 0, h = 17
+        const w = Math.round(ctx.measureText(text).width + 16 + lead + tail)
+        const px = Math.round((wx - cam.x) * z - w * (o.ax ?? 0.5)), py = Math.round((wy - cam.y) * z - h * (o.ay ?? 0))
+        ctx.shadowColor = 'rgba(10,12,30,.35)'; ctx.shadowBlur = 6; ctx.shadowOffsetY = 2
+        ctx.fillStyle = o.bg; roundRect(ctx, px, py, w, h, 5); ctx.fill()
+        ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0
+        if (o.dot) { ctx.fillStyle = o.dot; ctx.beginPath(); ctx.arc(px + 11.5, py + h / 2, 3.5, 0, Math.PI * 2); ctx.fill() }
+        ctx.fillStyle = o.fg; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'
+        ctx.fillText(text, px + 8 + lead, py + h / 2 + 1)
+        if (o.lock) {
+          const lx = px + w - 16, ly = py + 4
+          ctx.fillStyle = '#FBC222'; ctx.fillRect(lx, ly + 4, 8, 6)
+          ctx.strokeStyle = '#FBC222'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(lx + 4, ly + 4, 2.6, Math.PI, 0); ctx.stroke()
+        }
       }
+      const NAVY = 'rgba(20,26,51,.95)'
       for (const r of rooms) {
-        const d = r.id ? s.rows.depts[r.id] : undefined, sp = doorSpot(r)
+        const d = r.id ? s.rows.depts[r.id] : undefined
         // placa do Gerente, na mesa dele
-        if (d && !hid[r.slot] && hasDesk(r, BOSS_DESK)) { const b = deskOf(r, BOSS_DESK); plate(b.seat.x, (b.ty + 1) * T + 2, 'GERENTE', 'rgba(11,35,93,.92)', '#FBC222') }
-        if (d && hid[r.slot]) plate((r.ox + MW / 2) * T, (r.oy + MH / 2) * T, 'CORTINA FECHADA', 'rgba(20,24,40,.82)', '#fff')
-        // placa da porta, virada pro corredor: nome da sala na cor dela; cinza = sala sem setor
-        const text = !d ? 'Sala vazia' : d.name.toUpperCase() + (doorOpen(d.id, s) ? '' : ' · FECHADA')
-        plate(sp.x, r.top ? HY0 * T + 1 : (HY1 + 1) * T - 1, text, d?.color ?? '#8a8f98', d ? inkOn(d.color) : '#fff', !r.top)
+        if (d && !hid[r.slot] && hasDesk(r, BOSS_DESK)) { const b = deskOf(r, BOSS_DESK); plate(b.seat.x, (b.ty + 1) * T + 2, 'GERENTE', { bg: NAVY, fg: '#FBC222' }) }
+        if (d && hid[r.slot]) plate((r.ox + MW / 2) * T, (r.oy + MH / 2) * T, 'CORTINA FECHADA', { bg: NAVY, fg: '#fff', dot: d.color, ay: 0.5 })
+        // placa da porta, na parede ao lado dela (a bandeira fica do outro lado): nome + bolinha da cor; cadeado = fechada
+        const px = (r.ox + r.door) * T - 3, py = r.top ? (r.oy + MH - 1) * T + 7 : r.oy * T + 17
+        if (d) plate(px, py, d.name.toUpperCase(), { bg: NAVY, fg: '#fff', dot: d.color, lock: !doorOpen(d.id, s), ax: 1, ay: 0.5 })
+        else plate(px, py, 'DISPONÍVEL', { bg: 'rgba(96,101,116,.92)', fg: '#eef0f4', ax: 1, ay: 0.5 })
       }
       for (const [id, o] of shown) {
         const p = s.profiles[id]
@@ -515,31 +527,42 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
   const hp = hover ? s.profiles[hover.id] : null
   const dd = doorUi ? slotDept(doorUi.slot, s) : undefined
   const doing = hp ? doingOf(Object.values(s.tasks), hp.id) : null
+  const hpOn = !!hp && (s.online.has(hp.id) || hp.id === s.meId)
 
   return (
     <div className={'game' + (cine ? ' cine' : '')} ref={wrap}>
       <canvas ref={cv} />
       {!cine && <>
       {hp && hover && (
-        <div className="game-tip" style={{ left: hover.sx + 14, top: hover.sy + 10 }}>
-          <b>{hp.name}</b>{hp.role && <span> · {hp.role}</span>}
-          <div className="muted">{s.online.has(hp.id) || hp.id === s.meId ? (doing ? `Fazendo: ${doing.title}` : 'Sem tarefa em andamento') : 'Fora do escritório'}</div>
-          <div className="muted small">Clique para ver a mesa</div>
+        <div className="game-tip" style={{ left: hover.sx + 14, top: hover.sy + 10, ['--c' as string]: s.rows.depts[deptOf(hp)]?.color ?? '#0B235D' }}>
+          <div className="gt-head">
+            {hp.photo ? <img src={hp.photo} alt="" /> : <span className="gt-ini">{hp.name.slice(0, 1)}</span>}
+            <div><b>{hp.name}</b>{hp.role && <small>{hp.role}</small>}</div>
+          </div>
+          <div className={'gt-st' + (hpOn ? ' on' : '')}><i />{hpOn ? (doing ? 'Fazendo agora' : 'No escritório, sem tarefa em andamento') : 'Fora do escritório'}</div>
+          {hpOn && doing && <div className="gt-doing">{doing.title}</div>}
+          <div className="gt-hint">Clique para ver a mesa</div>
         </div>
       )}
       {doorUi && (
-        <div className={'game-door' + (doorUi.up ? ' up' : '')} style={{ left: doorUi.x, top: doorUi.y }}>
+        <div className={'game-door' + (doorUi.up ? ' up' : '')} style={{ left: doorUi.x, top: doorUi.y, ['--c' as string]: dd?.color ?? '#a3a8b3' }}>
           <button className="x" onClick={() => setDoorUi(null)} aria-label="Fechar"><Icon n="x" size={13} /></button>
           {dd ? <>
-            <b><i style={{ background: dd.color }} />{dd.name}</b>
-            <span className="muted">{doorOpen(dd.id, s) ? 'Porta aberta' : 'Porta fechada'}</span>
+            <div className="gd-head">
+              <span className="gd-flag">{dd.flag && <Emblema k={dd.flag} size={12} color={inkOn(dd.color)} />}</span>
+              <div><b>{dd.name}</b><span className={'gd-st' + (doorOpen(dd.id, s) ? ' on' : '')}>{doorOpen(dd.id, s) ? 'Porta aberta' : 'Porta fechada'}{curtainsOpen(dd.id, s) ? '' : ' · cortina fechada'}</span></div>
+            </div>
             {!canEnter(dd.id, s) && <button className="primary" onClick={() => run(knock(dd.id).then(() => { bubbles.set(s.meId!, { text: 'Toc, toc! Avisei quem está lá dentro.', until: Date.now() + 3500 }); setDoorUi(null) }))}>Bater na porta</button>}
-            {canDoor(dd.id, s) && <button onClick={() => run(setDoor(dd.id, !doorOpen(dd.id, s)))}>{doorOpen(dd.id, s) ? 'Fechar a porta' : 'Abrir a porta'}</button>}
-            {canDoor(dd.id, s) && <button onClick={() => run(setCurtains(dd.id, !curtainsOpen(dd.id, s)))}>{curtainsOpen(dd.id, s) ? 'Fechar a cortina' : 'Abrir a cortina'}</button>}
-            {canDoor(dd.id, s) && <><span className="muted small">Bandeira da porta</span><FlagPicker d={dd} /></>}
+            {canDoor(dd.id, s) && <div className="gd-row">
+              <button onClick={() => run(setDoor(dd.id, !doorOpen(dd.id, s)))}>{doorOpen(dd.id, s) ? 'Fechar a porta' : 'Abrir a porta'}</button>
+              <button onClick={() => run(setCurtains(dd.id, !curtainsOpen(dd.id, s)))}>{curtainsOpen(dd.id, s) ? 'Fechar a cortina' : 'Abrir a cortina'}</button>
+            </div>}
+            {canDoor(dd.id, s) && <div className="gd-sec"><span>Bandeira da porta</span><FlagPicker d={dd} /></div>}
           </> : <>
-            <b><i style={{ background: '#a3a8b3' }} />Sala vazia</b>
-            <span className="muted">Sem setor atribuído — não dá pra entrar.</span>
+            <div className="gd-head">
+              <span className="gd-flag" />
+              <div><b>Sala disponível</b><span className="gd-st">Sem setor — ainda não dá pra entrar</span></div>
+            </div>
             {s.meId && s.profiles[s.meId]?.is_admin && <span className="muted small">Monte a sala em Contas → Salas do andar.</span>}
           </>}
         </div>
@@ -557,7 +580,7 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
         <button className="sq" onClick={() => setZoom(z => Math.max(ZMIN, z - 1))} aria-label="Afastar" title="Afastar"><Icon n="minus" size={15} /></button>
         <button className="sq" onClick={() => setZoom(z => Math.min(ZMAX, z + 1))} aria-label="Aproximar" title="Aproximar"><Icon n="plus" size={15} /></button>
       </div>
-      <div className="game-help">Clique no chão para andar (ou WASD/setas) · porta cinza: sala sem setor · cortina fechada: só quem está dentro vê</div>
+      <div className="game-help">Clique no chão para andar (ou WASD/setas) · sala com caixas: ainda sem setor · cortina fechada: só quem está dentro vê</div>
       </>}
     </div>
   )

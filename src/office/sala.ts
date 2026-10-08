@@ -213,7 +213,7 @@ export const kd = (o: Obj) => KINDS[o.k]
 
 /** posição de fábrica: 3 fileiras de 4 no meio + gerente na lateral esquerda (de lado pra porta, não de frente) */
 export function defaultDesk(i: number): Desk {
-  if (i === BOSS_DESK) return { tx: 2, ty: 10, w: 3, seat: { x: 2 * T + 24, y: 10 * T + 8 } }
+  if (i === BOSS_DESK) return { tx: 2, ty: 9, w: 3, seat: { x: 2 * T + 24, y: 9 * T + 8 } }
   const tx = 7 + (i % 4) * 4, ty = 4 + Math.floor(i / 4) * 4
   return { tx, ty, w: 2, seat: { x: tx * T + 16, y: ty * T + 8 } }
 }
@@ -225,28 +225,55 @@ export function original(): Sala {
   let id = 1
   const objs: Obj[] = []
   const add = (k: string, x: number, y: number, d?: number) => objs.push(d === undefined ? { id: id++, k, x, y } : { id: id++, k, x, y, d })
-  add('tapete-chefe', 1, 8)
+  add('tapete-chefe', 1, 7)
   for (let i = 0; i < MAX_DESKS; i++) { const d = defaultDesk(i); add('mesa', d.tx, d.ty, i) }
-  add('mesa-chefe', 2, 10, BOSS_DESK)
-  for (const [x, y] of [[1, 2], [28, 2], [1, 18], [28, 18], [5, 18], [24, 18]]) add('planta', x, y)
-  add('estante', 2, 2); add('arquivo', 25, 2); add('impressora', 26, 2); add('bebedouro', 27, 2)
-  for (const x of [3, 8, 22, 26]) add('janela', x, 0)
-  add('quadro-branco', 13, 0); add('quadro-paisagem', 1, 0); add('cartaz', 10, 0); add('foto-piscina', 11, 0)
-  add('calendario', 16, 0); add('relogio', 17, 0); add('arte', 20, 0); add('tv', 24, 0)
+  add('mesa-chefe', 2, 9, BOSS_DESK)
+  for (const [x, y] of [[1, 2], [22, 2], [1, 14], [22, 14], [5, 14], [18, 14]]) add('planta', x, y)
+  add('estante', 2, 2); add('arquivo', 19, 2); add('impressora', 20, 2); add('bebedouro', 21, 2)
+  for (const x of [3, 17]) add('janela', x, 0)
+  add('quadro-branco', 10, 0); add('quadro-paisagem', 1, 0); add('cartaz', 6, 0); add('foto-piscina', 7, 0)
+  add('calendario', 13, 0); add('relogio', 14, 0); add('arte', 15, 0); add('tv', 20, 0)
   return { piso, div, objs }
+}
+
+/** tamanho antigo da sala (30×20): layout salvo nele é reescalado pro atual */
+const OLD_W = 30, OLD_H = 20
+const RING: [number, number][] = []
+for (let dy = -5; dy <= 5; dy++) for (let dx = -5; dx <= 5; dx++) RING.push([dx, dy])
+RING.sort((a, b) => Math.hypot(a[0], a[1]) - Math.hypot(b[0], b[1]))
+
+/** reescala uma sala W×H pro tamanho atual: cada móvel vai pro ponto proporcional ou o mais perto livre */
+function fitSala(s: Sala, W: number, H: number): Sala {
+  const pick = (v: number, n: number, on: number) => Math.round((v * (on - 1)) / (n - 1))
+  const piso = Array.from({ length: MH }, (_, y) => Array.from({ length: MW }, (_, x) => s.piso[pick(y, MH, H)][pick(x, MW, W)]))
+  const div = Array.from({ length: MH }, (_, y) => Array.from({ length: MW }, (_, x) => s.div[pick(y, MH, H)][pick(x, MW, W)]))
+  const out: Sala = { piso, div, objs: [] }
+  const scale = (v: number, lo: number, span: number, old: number) => lo + (old > 0 ? Math.round(((v - lo) * Math.max(0, span)) / old) : 0)
+  const rank = (o: Obj) => (o.k === 'mesa-chefe' ? 0 : isDesk(o.k) ? 1 : kd(o).camada ? 3 : 2)
+  for (const o of [...s.objs].sort((a, b) => rank(a) - rank(b))) {
+    const k = kd(o), wall = k.camada === 'parede'
+    const x0 = scale(o.x, 1, MW - 2 - k.w, W - 2 - k.w), y0 = wall ? 0 : scale(o.y, 2, MH - 3 - k.h, H - 3 - k.h)
+    for (const [dx, dy] of RING) {
+      const c = { ...o, x: x0 + dx, y: wall ? 0 : y0 + dy }
+      if (!check(out, c, () => null)) { out.objs.push(c); break }
+    }
+  }
+  return out
 }
 
 /** valida o JSON salvo; qualquer coisa estranha volta pro original */
 export function parseSala(data: unknown): Sala {
   try {
     const s = data as Sala
-    const grid = (g: unknown, f: (v: unknown) => boolean) => Array.isArray(g) && g.length === MH && g.every(r => Array.isArray(r) && r.length === MW && r.every(f))
+    const old = Array.isArray(s?.piso) && s.piso.length === OLD_H && Array.isArray(s.piso[0]) && s.piso[0].length === OLD_W
+    const W = old ? OLD_W : MW, H = old ? OLD_H : MH
+    const grid = (g: unknown, f: (v: unknown) => boolean) => Array.isArray(g) && g.length === H && g.every(r => Array.isArray(r) && r.length === W && r.every(f))
     if (!s || !grid(s.piso, v => typeof v === 'string' && v in PISOS) || !grid(s.div, v => typeof v === 'boolean') || !Array.isArray(s.objs)) return original()
     const ids = new Set<number>(), ds = new Set<number>(), objs: Obj[] = []
     for (const o of s.objs) {
       const k = o && KINDS[o.k]
       if (!k || !Number.isInteger(o.id) || ids.has(o.id) || !Number.isInteger(o.x) || !Number.isInteger(o.y)) continue
-      if (o.x < 0 || o.y < 0 || o.x + k.w > MW || o.y + k.h > MH) continue
+      if (o.x < 0 || o.y < 0 || o.x + k.w > W || o.y + k.h > H) continue
       let d: number | undefined
       if (isDesk(o.k)) {
         d = o.k === 'mesa-chefe' ? BOSS_DESK : o.d
@@ -256,7 +283,8 @@ export function parseSala(data: unknown): Sala {
       ids.add(o.id)
       objs.push(d === undefined ? { id: o.id, k: o.k, x: o.x, y: o.y } : { id: o.id, k: o.k, x: o.x, y: o.y, d })
     }
-    return { piso: s.piso.map(r => [...r]), div: s.div.map(r => [...r]), objs }
+    const out = { piso: s.piso.map(r => [...r]), div: s.div.map(r => [...r]), objs }
+    return old ? fitSala(out, W, H) : out
   } catch { return original() }
 }
 

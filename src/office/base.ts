@@ -1,7 +1,7 @@
 /** Constantes da sala e pincéis de pixel art compartilhados. */
 export const T = 16
-export const MW = 30
-export const MH = 20
+export const MW = 24
+export const MH = 16
 export const MAX_DESKS = 12
 /** Mesa do Gerente (fila de baixo, centralizada) — fora do sorteio de mesas */
 export const BOSS_DESK = MAX_DESKS

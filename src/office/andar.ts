@@ -12,10 +12,10 @@ export function exitX(s: Sala) {
   const solid = solidGrid(s), y = MH - 2
   const free = (x: number) => x >= 1 && x < MW - 1 && !s.div[y][x] && !solid[y][x]
   for (let k = 0; k < 13; k++) {
-    const x = 14 + (k % 2 ? -(k + 1) / 2 : k / 2)
+    const x = MW / 2 - 1 + (k % 2 ? -(k + 1) / 2 : k / 2)
     if (free(x) && free(x + 1)) return x
   }
-  return 14
+  return MW / 2 - 1
 }
 
 /** porta das salas de baixo: na parede de vidro de cima, onde não tem quadro na parede e a frente está livre */
@@ -24,10 +24,10 @@ export function glassDoorX(s: Sala) {
   const wall = (x: number) => s.objs.some(o => kd(o).camada === 'parede' && o.k !== 'janela' && x >= o.x && x < o.x + kd(o).w)
   const free = (x: number) => x >= 1 && x < MW - 1 && !wall(x) && !s.div[2][x] && !solid[2][x]
   for (let k = 0; k < 25; k++) {
-    const x = 14 + (k % 2 ? -(k + 1) / 2 : k / 2)
+    const x = MW / 2 - 1 + (k % 2 ? -(k + 1) / 2 : k / 2)
     if (free(x) && free(x + 1)) return x
   }
-  return 14
+  return MW / 2 - 1
 }
 
 const darker = (hex: string, k: number) => {
@@ -65,6 +65,13 @@ export function drawDoor(c: C2D, tx: number, st: DoorState, color: string, flag?
   }
   if (empty) return
   drawBanner(c, x + w + 4, 7, color, flag)
+}
+
+/** capacho do corredor na frente da porta, na cor da sala; (x, y) = canto de cima */
+export function drawMat(c: C2D, x: number, y: number, color: string) {
+  const w = 2 * T - 6, dk = darker(color, 0.72), hi = darker(color, 1.22)
+  r(c, OUT, x - 1, y - 1, w + 2, 9); r(c, dk, x, y, w, 7); r(c, color, x + 2, y + 1, w - 4, 5)
+  for (let k = 4; k < w - 4; k += 3) r(c, hi, x + k, y + 3, 1, 1)
 }
 
 /** porta de saída na parede de baixo da sala (tile tx, 2 de largura) */

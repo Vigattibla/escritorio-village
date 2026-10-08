@@ -1,16 +1,23 @@
 import { MH, MW, OUT, rect, SHADOW, T, WALL, WALL_HI, type C2D } from './base'
 import { exitX, glassDoorX, glassStrip, glassWall } from './andar'
 import { drawDecor, drawFloor, drawNotebook, MESA, mesaExtra, type DeskLook } from './props'
-import { defaultDesk, deskFrom, isDesk, kd, PISOS, renderRoom, solidGrid, type Desk, type Obj, type Sala } from './sala'
+import { defaultDesk, deskFrom, isDesk, kd, renderRoom, solidGrid, type Desk, type Obj, type Sala } from './sala'
 
 export * from './base'
 
 /** O andar inteiro num mapa só: 2 salas em cima, corredor no meio, 2 salas embaixo (frente a frente). */
 export const FW = 2 * MW
 /** linhas do corredor (globais) */
-export const HY0 = MH, HY1 = MH + 5
+export const HY0 = MH, HY1 = MH + 4
 export const FH = HY1 + 1 + MH
-const HALL_DECOR: [number, number][] = [[1, HY0], [FW - 2, HY0], [1, HY1], [FW - 2, HY1], [MW - 1, HY0], [MW, HY0], [MW - 1, HY1], [MW, HY1]]
+/** coisas do corredor (tiles globais): sofá e bancos encostados no vidro de cima, plantas e canteiros embaixo */
+const HALL_OBJS: [string, number, number][] = [
+  ['planta', 1, HY0], ['planta', FW - 2, HY0], ['planta', 1, HY1], ['planta', FW - 2, HY1],
+  ['planta', MW - 3, HY0], ['sofa', MW - 2, HY0], ['planta', MW + 2, HY0],
+  ['banco-madeira', 5, HY0], ['banco-madeira', FW - 7, HY0],
+  ['bebedouro', MW - 1, HY1], ['planta', MW, HY1],
+  ['canteiro', 5, HY1], ['canteiro', FW - 7, HY1],
+]
 
 export interface Room {
   slot: number
@@ -30,7 +37,8 @@ export interface Room {
 let rooms: Room[] = []
 let passable: boolean[] = []
 let version = 0
-const hallSolid = new Set<number>(HALL_DECOR.map(([x, y]) => y * FW + x))
+let hall: Obj[] = []
+let hallSolid = new Set<number>()
 
 export const floorVersion = () => version
 export const getRooms = () => rooms
@@ -48,6 +56,11 @@ export function setFloor(specs: { id: string | null; sala: Sala }[]) {
     for (const o of sala.objs) if (isDesk(o.k) && o.d !== undefined) for (let k = 0; k < kd(o).w; k++) deskTile[o.y][o.x + k] = o.d
     return { slot, id, sala, ox: (slot % 2) * MW, oy: top ? 0 : HY1 + 1, top, door: top ? exitX(sala) : glassDoorX(sala), solid: solidGrid(sala), deskTile }
   })
+  // nada do corredor pode ficar na frente de uma porta
+  const front = new Set(rooms.flatMap(r => [0, 1].map(k => (r.top ? HY0 : HY1) * FW + r.ox + r.door + k)))
+  const tilesOf = (o: Obj) => Array.from({ length: kd(o).w }, (_, k) => o.y * FW + o.x + k)
+  hall = HALL_OBJS.map(([k, x, y], i) => ({ id: -1 - i, k, x, y })).filter(o => !tilesOf(o).some(t => front.has(t)))
+  hallSolid = new Set(hall.filter(o => !kd(o).passa).flatMap(tilesOf))
   version++
 }
 /** por quais portas eu passo (por slot) */
@@ -166,19 +179,72 @@ export function renderFloor() {
     c.save(); c.translate(r.ox * T, r.oy * T)
     c.drawImage(renderRoom(r.sala, false, r.top), 0, 0)
     if (r.top) glassStrip(c, r.sala); else glassWall(c, r.sala)
-    if (!r.id) { c.fillStyle = 'rgba(150,155,165,.55)'; c.fillRect(T, 0, (MW - 2) * T, MH * T) }
+    if (!r.id) vacant(c)
     c.restore()
   }
-  // corredor: carpete entre as salas, parede nas pontas
+  // corredor: piso de pedra clara, passadeira da marca no meio, parede nas pontas
   for (let ty = HY0; ty <= HY1; ty++) for (let tx = 0; tx < FW; tx++) {
     if (tx < 1 || tx >= FW - 1) { rect(c, WALL, tx * T, ty * T, T, T); rect(c, WALL_HI, tx < 1 ? T - 2 : tx * T, ty * T, 2, T); continue }
-    PISOS.carpete.draw(c, tx * T, ty * T)
+    hallTile(c, tx, ty)
   }
+  const rx = 3 * T, rw = (FW - 6) * T, ry = (HY0 + 1) * T + 3, rh = (HY1 - HY0 - 1) * T - 6, mid = ry + (rh >> 1)
+  rect(c, 'rgba(40,30,20,.18)', rx, ry + rh, rw, 2)
+  rect(c, OUT, rx - 1, ry - 1, rw + 2, rh + 2); rect(c, '#26324F', rx, ry, rw, rh)
+  rect(c, '#FFC600', rx + 3, ry + 3, rw - 6, 1); rect(c, '#FFC600', rx + 3, ry + rh - 4, rw - 6, 1)
+  rect(c, '#2f3d63', rx + 6, ry + 6, rw - 12, rh - 12)
+  for (let k = rx + 20; k < rx + rw - 16; k += 28) { rect(c, '#46578a', k, mid - 3, 1, 7); rect(c, '#46578a', k - 3, mid, 7, 1); rect(c, '#FFC600', k, mid, 1, 1) }
   rect(c, SHADOW, T, HY0 * T, (FW - 2) * T, 3)
   return cv
 }
-/** plantas do corredor, pra entrar na ordem de profundidade */
-export const hallDecor = (): Obj[] => HALL_DECOR.map(([x, y], i) => ({ id: -1 - i, k: 'planta', x, y }))
+/** ladrilho de pedra clara do corredor, com rejunte e pintinhas */
+function hallTile(c: C2D, tx: number, ty: number) {
+  const x = tx * T, y = ty * T
+  rect(c, (tx + ty) % 2 ? '#e3dccf' : '#ddd5c6', x, y, T, T)
+  rect(c, '#cdc3b1', x, y, T, 1); rect(c, '#cdc3b1', x, y, 1, T)
+  for (const [a, b] of [[4, 5], [11, 9], [7, 13]]) rect(c, '#d0c6b3', x + 1 + ((a + tx * 3) % 14), y + 1 + ((b + ty * 5) % 14), 1, 1)
+}
+/** caixa de papelão fechada; (x, y) = canto de cima */
+function caixa(c: C2D, x: number, y: number, w: number, h: number) {
+  rect(c, OUT, x - 1, y - 1, w + 2, h + 2); rect(c, '#c4925a', x, y, w, h); rect(c, '#d9aa72', x, y, w, 4)
+  rect(c, '#a8784a', x, y + 4, w, 1); rect(c, '#efdcae', x + (w >> 1) - 1, y, 3, 5)
+}
+/** móvel coberto com lençol; (x, y) = canto de cima */
+function coberto(c: C2D, x: number, y: number, w: number, h: number) {
+  rect(c, SHADOW, x + 1, y + h, w, 3)
+  rect(c, OUT, x - 1, y, w + 2, h); rect(c, OUT, x, y - 1, w, h + 2)
+  rect(c, '#eceae4', x, y, w, h); rect(c, '#f7f6f2', x + 1, y + 1, w - 2, 4)
+  for (let k = 6; k < w - 3; k += 9) rect(c, '#d3d0c7', x + k, y + 5, 1, h - 6)
+  rect(c, '#d3d0c7', x, y + h - 2, w, 2)
+}
+/** escada de pintor aberta; (x, y) = topo */
+function escada(c: C2D, x: number, y: number) {
+  rect(c, SHADOW, x - 1, y + 25, 14, 3)
+  for (const dx of [0, 10]) { rect(c, OUT, x + dx - 1, y - 1, 4, 28); rect(c, '#b9bec7', x + dx, y, 2, 26) }
+  for (let k = 5; k < 25; k += 6) { rect(c, OUT, x + 1, k + y - 1, 10, 3); rect(c, '#dfe3e8', x + 2, y + k, 8, 1) }
+  rect(c, OUT, x - 1, y - 2, 14, 4); rect(c, '#8e95a1', x, y - 1, 12, 2)
+}
+/** lata de tinta; (x, y) = canto de cima */
+function lata(c: C2D, x: number, y: number, tinta: string) {
+  rect(c, SHADOW, x, y + 10, 10, 2)
+  rect(c, OUT, x - 1, y - 1, 11, 12); rect(c, '#c8ccd3', x, y, 9, 10); rect(c, tinta, x, y + 3, 9, 4)
+  rect(c, '#e9ecf0', x + 1, y, 7, 2); rect(c, tinta, x + 2, y, 5, 1)
+}
+/** sala sem setor: caixas de mudança, móveis cobertos e material de pintura, um pouco apagada */
+function vacant(c: C2D) {
+  rect(c, 'rgba(255,255,255,.07)', T, 2 * T, (MW - 2) * T, (MH - 2) * T)
+  coberto(c, 9 * T, 6 * T, 3 * T, 22); coberto(c, 14 * T, 6 * T + 4, 2 * T + 6, 20)
+  coberto(c, 3 * T, 11 * T, 2 * T + 8, 24)
+  const boxes: [number, number, number, number][] = [
+    [3 * T, 4 * T, 15, 12], [3 * T + 16, 4 * T + 4, 12, 9], [3 * T + 4, 4 * T - 9, 12, 9],
+    [18 * T, 10 * T, 16, 12], [18 * T + 18, 10 * T + 4, 12, 9], [18 * T + 6, 10 * T - 9, 12, 9],
+    [11 * T, 11 * T + 4, 13, 10], [9 * T, 12 * T, 15, 12],
+  ]
+  for (const [x, y, w, h] of boxes) { rect(c, SHADOW, x, y + h + 1, w + 1, 3); caixa(c, x, y, w, h) }
+  escada(c, 19 * T + 4, 4 * T); lata(c, 17 * T + 6, 5 * T + 10, '#7fb2d8'); lata(c, 21 * T, 5 * T + 12, '#FFC600')
+  c.fillStyle = 'rgba(120,126,140,.22)'; c.fillRect(T, 0, (MW - 2) * T, MH * T)
+}
+/** coisas do corredor, pra entrar na ordem de profundidade */
+export const hallDecor = (): Obj[] => hall
 
 /** móveis que não são mesa de trabalho, pra entrar na ordem de profundidade do jogo */
 export const furniture = (r: Room): Obj[] => r.sala.objs.filter(o => !isDesk(o.k) && !kd(o).camada)
