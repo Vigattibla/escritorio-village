@@ -143,7 +143,7 @@ export default function Office() {
           {page === 'loja' && <Loja />}
           {office && arrumando && <SalaEditor onClose={() => setArrumando(false)} />}
           {office && !arrumando && <>
-            <div className="game-wrap"><Game />{canEdit && <button className="btn primary sm game-edit" onClick={() => setArrumando(true)}>🪚 Arrumar sala</button>}</div>
+            <div className="game-wrap"><Game />{canEdit && s.here === s.sala && <button className="btn primary sm game-edit" onClick={() => setArrumando(true)}>🪚 Arrumar sala</button>}</div>
             <aside className="side">
               <nav className="who-strip" aria-label="Ver a mesa de">
                 {people.map(p => {

@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { makePassword, slugUser } from '../data/login'
 import { RANKS } from '../game/ranks'
-import { accountLogins, createAccount, deleteAccount, deptList, deptName, run, saveDept, setDept, setPassword, updateAccount, useStore } from '../store'
+import { accountLogins, createAccount, deleteAccount, deptList, deptName, run, saveDept, setDept, setDoor, setPassword, updateAccount, useStore } from '../store'
+import { SLOTS } from '../office/andar'
 import { deptOf } from '../game/ranks'
 import type { AccountEdit, Dept, Profile } from '../types'
 
@@ -162,14 +163,28 @@ function Salas({ depts, people }: { depts: Dept[]; people: Profile[] }) {
   const [name, setName] = useState('')
   const [color, setColor] = useState(COLORS[1])
   const [names, setNames] = useState<Record<string, string>>({})
+  const [pick, setPick] = useState(-1)
   const add = (e: React.FormEvent) => {
     e.preventDefault()
-    run(saveDept({ name, color }).then(() => setName('')))
+    run(saveDept({ name, color, slot: pick }).then(() => { setName(''); setPick(-1) }))
   }
   return (
     <div className="acc-salas">
       <h3>Salas do andar</h3>
-      {depts.map(d => {
+      {Array.from({ length: SLOTS }, (_, k) => {
+        const d = depts.find(x => x.floor === 1 && x.slot === k)
+        if (!d) return pick === k
+          ? <form key={k} onSubmit={add} className="row gap acc-sala">
+              <input type="color" value={color} onChange={e => setColor(e.target.value)} title="Cor da sala" />
+              <input className="grow" required autoFocus maxLength={40} value={name} onChange={e => setName(e.target.value)} placeholder="Nome da sala (ex.: Comercial)" />
+              <button className="btn primary sm" disabled={!name.trim()}>Criar sala</button>
+              <button type="button" className="btn ghost sm" onClick={() => setPick(-1)}>Cancelar</button>
+            </form>
+          : <div key={k} className="row gap acc-sala vazia">
+              <span className="acc-sala-dot" />
+              <span className="grow muted">Porta {k + 1} · sala vazia (cinza no corredor, ninguém entra)</span>
+              <button type="button" className="btn ghost sm" onClick={() => setPick(k)}>Montar sala aqui</button>
+            </div>
         const n = names[d.id] ?? d.name
         const count = people.filter(p => deptOf(p) === d.id).length
         return (
@@ -178,14 +193,10 @@ function Salas({ depts, people }: { depts: Dept[]; people: Profile[] }) {
             <input className="grow" maxLength={40} value={n} onChange={e => setNames({ ...names, [d.id]: e.target.value })} />
             <small className="muted">{count} {count === 1 ? 'pessoa' : 'pessoas'}</small>
             {n.trim() && n !== d.name && <button type="button" className="btn ghost sm" onClick={() => run(saveDept({ id: d.id, name: n, color: d.color }))}>Renomear</button>}
+            <button type="button" className="btn ghost sm" title="Fechada: só quem é da sala (e a Chefe) entra; os outros batem na porta" onClick={() => run(setDoor(d.id, d.door_open === false))}>{d.door_open === false ? '🔒 Porta fechada' : '🚪 Porta aberta'}</button>
           </div>
         )
       })}
-      {depts.length < 4 && <form onSubmit={add} className="row gap">
-        <input type="color" value={color} onChange={e => setColor(e.target.value)} title="Cor da sala" />
-        <input className="grow" required maxLength={40} value={name} onChange={e => setName(e.target.value)} placeholder="Nome da nova sala (ex.: Comercial)" />
-        <button className="btn primary sm" disabled={!name.trim()}>Criar sala</button>
-      </form>}
       <small className="muted">Cada sala tem quadro, agenda, metas e chat próprios. Mude a pessoa de sala em "Editar conta".</small>
     </div>
   )

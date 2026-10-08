@@ -9,11 +9,13 @@ let layout: Sala | null = null
 let version = 0
 let solid: boolean[][] | null = null
 let deskTile: (number | null)[][] | null = null
+/** tiles de parede que viram passagem (portas abertas) */
+let doors = new Set<number>()
 
 const L = () => (layout ??= original())
 export const getLayout = () => L()
 export const layoutVersion = () => version
-export function setLayout(s: Sala) { layout = s; version++; solid = null; deskTile = null }
+export function setLayout(s: Sala, open: [number, number][] = []) { layout = s; doors = new Set(open.map(([x, y]) => y * MW + x)); version++; solid = null; deskTile = null }
 
 const desks = () => L().objs.filter(o => isDesk(o.k) && o.d !== undefined)
 export const deskIds = () => desks().map(o => o.d!)
@@ -33,6 +35,7 @@ function grids() {
 }
 
 const tileSolid = (tx: number, ty: number) => {
+  if (tx >= 0 && tx < MW && doors.has(ty * MW + tx)) return false
   if (tx < 1 || ty < 2 || tx >= MW - 1 || ty >= MH - 1) return true
   return L().div[ty][tx] || grids().solid[ty][tx]
 }

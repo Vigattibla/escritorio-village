@@ -211,29 +211,25 @@ export type NameOf = (d: number) => string | null
 export const at = <V,>(g: V[][], x: number, y: number, v: V) => g.map((row, j) => j === y ? row.map((c, i) => i === x ? v : c) : row)
 export const kd = (o: Obj) => KINDS[o.k]
 
-/** posição de fábrica: 3 fileiras de 4 + chefia embaixo */
+/** posição de fábrica: 3 fileiras de 4 no meio + chefia embaixo (a porta fica no meio da parede de baixo) */
 export function defaultDesk(i: number): Desk {
-  if (i === BOSS_DESK) return { tx: 7, ty: 17, w: 3, seat: { x: 7 * T + 24, y: 17 * T + 8 } }
-  const tx = 2 + (i % 4) * 4, ty = 4 + Math.floor(i / 4) * 5
+  if (i === BOSS_DESK) return { tx: 13, ty: 16, w: 3, seat: { x: 13 * T + 24, y: 16 * T + 8 } }
+  const tx = 7 + (i % 4) * 4, ty = 4 + Math.floor(i / 4) * 4
   return { tx, ty, w: 2, seat: { x: tx * T + 16, y: ty * T + 8 } }
 }
 export const deskFrom = (o: Obj): Desk => { const w = kd(o).w; return { tx: o.x, ty: o.y, w, seat: { x: o.x * T + (w * T) / 2, y: o.y * T + 8 } } }
 
 export function original(): Sala {
-  const piso = Array.from({ length: MH }, (_, y) => Array.from({ length: MW }, (_, x) => (x >= 20 && y >= 10 ? 'ceramica' : 'madeira') as Piso))
+  const piso = Array.from({ length: MH }, () => Array.from({ length: MW }, () => 'madeira' as Piso))
   const div = Array.from({ length: MH }, () => Array<boolean>(MW).fill(false))
-  for (let y = 2; y < MH - 1; y++) if (![5, 6, 14, 15].includes(y)) div[y][19] = true
-  for (let x = 19; x <= 28; x++) if (![23, 24].includes(x)) div[10][x] = true
   let id = 1
   const objs: Obj[] = []
   const add = (k: string, x: number, y: number, d?: number) => objs.push(d === undefined ? { id: id++, k, x, y } : { id: id++, k, x, y, d })
-  add('tapete-reuniao', 20, 3); add('tapete-chefe', 6, 15)
+  add('tapete-chefe', 12, 14)
   for (let i = 0; i < MAX_DESKS; i++) { const d = defaultDesk(i); add('mesa', d.tx, d.ty, i) }
-  add('mesa-chefe', 7, 17, BOSS_DESK)
-  for (const [x, y] of [[1, 2], [18, 2], [1, 18], [18, 18], [28, 2], [20, 9], [28, 18], [20, 11]]) add('planta', x, y)
-  add('mesa-reuniao', 22, 4)
-  for (let x = 22; x <= 26; x++) { add('cadeira-reuniao', x, 3); add('cadeira-reuniao', x, 8) }
-  add('sofa', 21, 17); add('balcao', 25, 11); add('estante', 5, 2)
+  add('mesa-chefe', 13, 16, BOSS_DESK)
+  for (const [x, y] of [[1, 2], [28, 2], [1, 18], [28, 18], [5, 18], [24, 18]]) add('planta', x, y)
+  add('estante', 2, 2); add('arquivo', 25, 2); add('impressora', 26, 2); add('bebedouro', 27, 2)
   for (const x of [3, 8, 22, 26]) add('janela', x, 0)
   add('quadro-branco', 13, 0); add('quadro-paisagem', 1, 0); add('cartaz', 10, 0); add('foto-piscina', 11, 0)
   add('calendario', 16, 0); add('relogio', 17, 0); add('arte', 20, 0); add('tv', 24, 0)

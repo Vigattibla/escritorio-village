@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react'
 import { backend } from './data'
-import { canAssign, DEPT0, deptOf, isChief, outranks, rankName, rankOf } from './game/ranks'
+import { canAssign, DEPT0, deptOf, isChief, managerOf, outranks, rankName, rankOf } from './game/ranks'
+import { HALL, SLOTS } from './office/andar'
 import { dayKey, taskXp } from './game/xp'
 import { MAX_DESKS } from './office/base'
 import { parseSala } from './office/sala'
@@ -65,13 +66,15 @@ export interface State {
   stickTo: string | null
   /** sala aberta: a minha; a Chefe pode abrir as outras */
   sala: string
+  /** onde o meu boneco está: id da sala ou 'andar' (corredor). Visitante não troca o quadro, só a Chefe */
+  here: string
 }
 
 
 const initial: State = {
   phase: 'loading', meId: null, accountName: '', error: '', profiles: {}, tasks: {}, messages: [], notes: [], projects: {}, rows: { events: {}, goals: {}, stickers: {}, flows: {}, stages: {}, groups: {}, rooms: {}, carpenters: {}, depts: {} }, online: new Set(),
   tab: 'mesa', viewing: null, channel: 'geral', reads: {}, requestTo: null, task: null, editing: false, notices: [], pipOpen: false, view: 'quadro' as View, wallet: null, drawer: false,
-  project: '', projectEdit: null, aiOpen: false, chatOpen: false, bellOpen: false, qApprove: false, flow: null, sheet: false, stickTo: null, sala: DEPT0,
+  project: '', projectEdit: null, aiOpen: false, chatOpen: false, bellOpen: false, qApprove: false, flow: null, sheet: false, stickTo: null, sala: DEPT0, here: DEPT0,
 }
 
 let state = initial
@@ -376,7 +379,7 @@ export async function enter(uid: string) {
   try { reads = JSON.parse(localStorage.getItem(`ev:reads:${uid}`) ?? '{}') } catch { /* sem leituras salvas */ }
   const mine = snap.profiles.find(p => p.id === uid)
   set({
-    meId: uid, accountName, error: '', reads, sala: deptOf(mine),
+    meId: uid, accountName, error: '', reads, sala: deptOf(mine), here: deptOf(mine),
     profiles: Object.fromEntries(snap.profiles.map(p => [p.id, p])),
     notes: snap.notes,
     phase: mine?.avatar ? 'office' : 'creator',
@@ -417,8 +420,40 @@ function ingest(snap: Snapshot) {
 export async function openSala(id: string) {
   if (id === state.sala || (!isChief(me()) && id !== myDept())) return
   const snap = await backend.loadAll()
-  set({ sala: id, project: '', task: null, flow: null, viewing: state.meId })
+  set({ sala: id, here: id, project: '', task: null, flow: null, viewing: state.meId })
   ingest(snap)
+}
+
+/** sala no lugar `slot` do andar */
+export const slotDept = (slot: number, s: State = state) => Object.values(s.rows.depts).find(d => d.floor === 1 && d.slot === slot)
+export const doorOpen = (id: string, s: State = state) => s.rows.depts[id]?.door_open !== false
+/** abre/fecha a porta: gerente da sala, a Chefe ou o adm */
+export const canDoor = (id: string, s: State = state) => {
+  const p = s.meId ? s.profiles[s.meId] : undefined
+  return !!p && !!s.rows.depts[id] && (!!p.is_admin || isChief(p) || (rankOf(p) >= 3 && deptOf(p) === id))
+}
+/** entra: sala montada e porta aberta (a própria sala e a Chefe entram sempre) */
+export const canEnter = (id: string, s: State = state) => {
+  const p = s.meId ? s.profiles[s.meId] : undefined
+  return !!s.rows.depts[id] && (doorOpen(id, s) || deptOf(p) === id || isChief(p))
+}
+export async function setDoor(id: string, open: boolean) {
+  const d = state.rows.depts[id]
+  if (!d || doorOpen(id) === open) return
+  onRow('depts', { ...d, door_open: open })
+  try { await backend.setDoor(id, open) } catch (e) { onRow('depts', d); throw e }
+}
+/** o boneco passou por uma porta. A Chefe leva o quadro junto; quem visita só vê a sala */
+export function goTo(where: string) {
+  if (where === state.here) return
+  set({ here: where })
+  if (where !== HALL && where !== state.sala && isChief(me())) run(openSala(where))
+}
+/** bate na porta fechada: avisa o gerente da sala (sem gerente, a Chefe) */
+export async function knock(id: string) {
+  const g = managerOf(state.profiles, id) ?? Object.values(state.profiles).find(p => isChief(p) && p.id !== state.meId)
+  if (!g || !state.meId || g.id === state.meId) throw new Error('Essa sala ainda não tem quem atenda a porta.')
+  await send(dmChannel(state.meId, g.id), `🚪 Toc, toc! Estou na porta da sala ${deptName(id)}.`)
 }
 
 export async function signOut() {
@@ -744,7 +779,7 @@ export async function setDept(target: string, dept: string) {
 }
 
 /** cria ou renomeia uma sala (o id não muda depois de criado) */
-export async function saveDept(d: { id?: string; name: string; color: string }) {
+export async function saveDept(d: { id?: string; name: string; color: string; slot?: number }) {
   const prev = d.id ? state.rows.depts[d.id] : undefined
   const name = d.name.trim().slice(0, 40)
   if (!name) return
@@ -755,9 +790,10 @@ export async function saveDept(d: { id?: string; name: string; color: string }) 
     for (let i = 2; state.rows.depts[id]; i++) id = `${base}-${i}`
   }
   const used = new Set(Object.values(state.rows.depts).filter(x => x.floor === 1).map(x => x.slot))
-  let slot = prev?.slot ?? 0
-  if (!prev) while (used.has(slot)) slot++
-  if (slot > 7) throw new Error('O andar já está cheio.')
+  let slot = prev?.slot ?? d.slot ?? 0
+  if (!prev && d.slot === undefined) while (used.has(slot)) slot++
+  if (!prev && used.has(slot)) throw new Error('Esse lugar do andar já tem sala.')
+  if (slot >= SLOTS) throw new Error(`O andar já está cheio (${SLOTS} salas).`)
   await putRow('depts', { id, name, color: d.color, floor: prev?.floor ?? 1, slot, created_at: prev?.created_at ?? new Date().toISOString() })
 }
 
