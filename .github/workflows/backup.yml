@@ -29,4 +29,5 @@ jobs:
             chave.bin.enc
           retention-days: 90
       # um acesso por dia: o plano grátis do Supabase pausa depois de 7 dias parado
-      - run: curl -fsS -o /dev/null "${{ vars.VITE_SUPABASE_URL }}/rest/v1/" -H "apikey: ${{ vars.VITE_SUPABASE_ANON_KEY }}" || true
+      - run: |
+          curl -fsS -o /dev/null "${{ vars.VITE_SUPABASE_URL }}/rest/v1/" -H "apikey: ${{ vars.VITE_SUPABASE_ANON_KEY }}" || true
