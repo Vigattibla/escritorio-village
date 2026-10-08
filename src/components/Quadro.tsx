@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { canAssign, rankName, rankOf } from '../game/ranks'
 import { dayKey } from '../game/xp'
 import {
-  acceptRequest, addTask, canUseAI, approverOf, canApprove, canAskReview, CHEFIA, canCreateProject, canEditProject, canEditTask, canMove, canReassign, declineRequest, involved,
+  acceptRequest, addTask, canUseAI, approverOf, canApprove, canAskReview, canFinish, CHEFIA, canCreateProject, canEditProject, canEditTask, canMove, canReassign, declineRequest, involved,
   canEditStages, placeTask, reassign, removeStage, run, saveStages, setStatus, setUi, stageList, stageOf, STAGE_KINDS, teamOf, toApprove, useStore,
 } from '../store'
 import type { DriveLink, Priority, Profile, Project, Stage, StageKind, Task, TaskStatus } from '../types'
@@ -188,7 +188,7 @@ export default function Quadro() {
   const stageOk = (t: Task, st: TaskStatus, stage?: string) => {
     if (st === t.status) return stage && stage !== stageOf(t, stages) ? canMove(t) : st !== 'done' && canEditTask(t)
     if (st === 'inbox') return false
-    if (t.status === 'review') return st === 'done' ? canApprove(t) : t.owner_id === meId
+    if (t.status === 'review') return st === 'done' ? canFinish(t) : t.owner_id === meId
     if (st === 'review') return (!!approverOf(t) || canAskReview(t)) && canMove(t)
     return canMove(t)
   }

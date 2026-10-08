@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { isChief, rankName } from '../game/ranks'
 import {
-  acceptRequest, addNote, approverOf, attachFiles, canApprove, canAskReview, CHEFIA, canEditTask, canMove, canReassign, declineRequest, reassign, fileUrl, removeAttachment, removeNote, removeTask, run,
+  acceptRequest, addNote, approverOf, attachFiles, canApprove, canAskReview, canFinish, CHEFIA, canEditTask, canMove, canReassign, declineRequest, reassign, fileUrl, removeAttachment, removeNote, removeTask, run,
   setCriteria, setProject, setStatus, setUi, stageList, stageOf, updateTask, useStore,
 } from '../store'
 import type { Attachment, Channel, CheckItem, Priority, Task } from '../types'
@@ -173,7 +173,7 @@ export default function TaskDetail() {
           <button className="btn ghost sm" onClick={close} aria-label="Fechar">✕</button>
         </header>
 
-        <Etapas t={t} can={move || approve} />
+        <Etapas t={t} can={move || approve || canFinish(t)} />
 
         {last && !last.ok && t.status !== 'done' && t.status !== 'review' && (
           <div className="rvbanner">
@@ -183,7 +183,7 @@ export default function TaskDetail() {
         )}
         {t.status === 'review' && (approve
           ? <div className="rvpanel"><h3>Sua aprovação</h3><ReviewBox t={t} /></div>
-          : <div className="rvbanner wait">⏳ Esperando a aprovação {appr === CHEFIA ? <>de <b>um cargo acima</b></> : <>de <b>{appr ? name(appr) : 'alguém'}</b></>}.</div>)}
+          : <div className="rvbanner wait">⏳ Esperando a aprovação {appr === CHEFIA ? <>de <b>um cargo acima</b>{t.owner_id === meId && <> — opcional: você mesmo pode levar para <b>Feito</b></>}</> : <>de <b>{appr ? name(appr) : 'alguém'}</b></>}.</div>)}
 
         <div className="task-body td2-body">
           <div className="td2-main">

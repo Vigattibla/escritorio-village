@@ -163,6 +163,8 @@ export function teamOf(pid: string) {
   return ids
 }
 /** Tarefas esperando a minha aprovação. */
+/** Leva para Feito: quem aprova; no card que o próprio dono criou (aprovação da chefia é opcional), o dono também. */
+export const canFinish = (t: Task, uid = state.meId) => canApprove(t, uid) || (approverOf(t) === CHEFIA && !!uid && t.owner_id === uid)
 export const toApprove = (s: State) => Object.values(s.tasks).filter(t => t.status === 'review' && canApprove(t, s.meId))
 /** O chat está na tela? */
 const chatShown = () => state.chatOpen
@@ -530,7 +532,7 @@ export async function setStatus(id: string, status: TaskStatus, position = Date.
   const my = me()
   if (!t || !my) return
   // quem não aprova, ao concluir, manda para aprovação
-  if (status === 'done' && approverOf(t) && !canApprove(t)) { status = 'review'; stage = null }
+  if (status === 'done' && approverOf(t) && !canFinish(t)) { status = 'review'; stage = null }
   if (t.status === status) {
     // mesma etapa-tipo, coluna diferente (ex.: Fazendo → Revisão interna)
     if (stage !== (t.stage ?? null) && stageOf({ ...t, stage }) !== stageOf(t)) {
@@ -542,7 +544,7 @@ export async function setStatus(id: string, status: TaskStatus, position = Date.
   if (t.status === 'review') {
     // dono pode retirar; aprovador só aprova por aqui (reprovar pede justificativa)
     const withdraw = t.owner_id === my.id && status !== 'done'
-    if (!withdraw && !(status === 'done' && canApprove(t)))
+    if (!withdraw && !(status === 'done' && canFinish(t)))
       throw new Error(canApprove(t) ? 'Para devolver, use Reprovar e explique o porquê.' : `Essa entrega está esperando a aprovação de ${nameOf(approverOf(t) ?? '')}.`)
   } else if (!canMove(t)) throw new Error('Só quem é responsável (ou um cargo acima) muda a etapa dessa tarefa.')
   const review: Review[] = t.status === 'review' && status === 'done' && canApprove(t) && t.owner_id !== my.id
