@@ -453,8 +453,8 @@ button.panel { width: 100%; border: 0; text-align: left; font: inherit; color: i
 .quadro .qtabs .qclear { margin-left: 2px; }
 .stat.link { cursor: pointer; }
 .stat.link:hover b { color: var(--t-amber-i, var(--ink)); }
-.quadro .qlists { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(168px, 1fr); align-items: start; overflow-x: auto; padding: 0 32px 24px; gap: 14px; }
-.quadro .qlist { width: auto; min-width: 0; }
+.quadro .qlists { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(168px, 1fr); align-items: stretch; overflow-x: auto; padding: 0 32px 24px; gap: 14px; }
+.quadro .qlist { width: auto; min-width: 0; min-height: 60vh; }
 .tc-note { font-size: 13px; color: var(--muted); line-height: 1.45; margin-top: 5px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .tcard.hot .tc-note { color: #5A4A10; } .tcard.dark .tc-note { color: #A9A59C; }
 .mcard.hot { background: var(--yellow); }
