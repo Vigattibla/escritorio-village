@@ -34,6 +34,7 @@ const narrow = () => window.matchMedia('(max-width: 900px)').matches
 export default function Office() {
   const s = useStore(x => x)
   const [arrumando, setArrumando] = useState(false)
+  const [meOpen, setMeOpen] = useState(false)
   const me = s.profiles[s.meId!]
   const tasks = Object.values(s.tasks)
   const pend = tasks.filter(t => t.owner_id === me?.id && t.status === 'inbox').length
@@ -62,7 +63,6 @@ export default function Office() {
     { id: 'fluxos', label: 'Fluxos', ic: 'flow-arrow' },
     { id: 'arquivos', label: 'Arquivos', ic: 'folder-simple' },
     { id: 'escritorio', label: 'Escritório', ic: 'desk' },
-    { id: 'loja', label: 'Almoxarifado', ic: 'coffee' },
     { id: 'equipe', label: 'Equipe', ic: 'users-three' },
   ]
   if (chief) items.push({ id: 'geral', label: 'Geral', ic: 'squares-four', n: tasks.filter(t => t.status === 'inbox').length })
@@ -103,15 +103,23 @@ export default function Office() {
           {items.map(it => <NavItem key={it.id} it={it} />)}
         </nav>
         <div className="nav-me">
-          <button className="nav-item" onClick={() => signOut()} title="Sair"><span className="nav-ic"><Icon n="logout" size={20} /></span><span className="nav-tip">Sair</span></button>
-          <button className="nav-av" onClick={() => setUi({ editing: true })} title={`${me.name} · ${me.role || rankName(me)} — editar personagem`}>
+          <button className={'nav-av' + (page === 'loja' ? ' on' : '')} onClick={() => setMeOpen(!meOpen)} title={`${me.name} · ${me.role || rankName(me)}`} aria-expanded={meOpen}>
             <MiniAvatar avatar={me.avatar} photo={me.photo} size={36} />
           </button>
+          {meOpen && <>
+            <div className="more-veil" onClick={() => setMeOpen(false)} />
+            <div className="menu-pop more-pop me-pop">
+              <div className="me-pop-h"><b>{me.name}</b><small>{me.role || rankName(me)}</small></div>
+              <button onClick={() => { setMeOpen(false); setUi({ editing: true }) }}><Ph n="smiley" size={20} /><b className="grow">Meu personagem</b></button>
+              <button onClick={() => { setMeOpen(false); goTo('loja') }}><Ph n="coffee" size={20} /><b className="grow">Almoxarifado</b>{s.wallet && <small className="me-pop-cf">☕ {s.wallet.balance}</small>}</button>
+              <button onClick={() => { setMeOpen(false); void signOut() }}><Icon n="logout" size={20} /><b className="grow">Sair</b></button>
+            </div>
+          </>}
         </div>
       </aside>
       <div className="page">
         {page !== 'inicio' && <div className="mbar">
-          <b className="grow">{items.find(i => i.id === page)?.label ?? 'Escritório'}</b>
+          <b className="grow">{page === 'loja' ? 'Almoxarifado' : items.find(i => i.id === page)?.label ?? 'Escritório'}</b>
           <Bell />
           <MoreMenu />
         </div>}

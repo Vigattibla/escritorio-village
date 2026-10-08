@@ -988,3 +988,11 @@ button.panel { width: 100%; border: 0; text-align: left; font: inherit; color: i
 @media (max-width: 860px) { .sl-main { grid-template-columns: 1fr; } }
 .game-wrap { position: relative; flex: 1; min-width: 0; display: flex; }
 @media (max-width: 860px) { .game-edit { display: none; } }
+
+/* ---------- Menu do avatar (barra lateral) ---------- */
+.nav-me { position: relative; }
+.nav-av.on { box-shadow: 0 0 0 3px rgba(251,194,34,.45); }
+.menu-pop.me-pop { top: auto; bottom: 0; left: calc(100% + 10px); right: auto; width: 230px; }
+.me-pop-h { display: grid; padding: 6px 10px 8px; border-bottom: 1px solid var(--line); margin-bottom: 4px; }
+.me-pop-h b { font-size: 14px; } .me-pop-h small { color: var(--muted); font-size: 12px; }
+.me-pop-cf { color: var(--muted); font-weight: 600; white-space: nowrap; }
