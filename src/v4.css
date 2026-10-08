@@ -526,3 +526,59 @@ button.panel { width: 100%; border: 0; text-align: left; font: inherit; color: i
   .fl-head .icon-btn { margin-left: auto; }
 }
 .msheet .qchip.on { background: var(--yellow-soft); border-color: var(--yellow); box-shadow: 0 0 0 1px var(--yellow); color: var(--ink); }
+
+/* ===== coluna da direita: cabe na tela, chat ocupa o resto ===== */
+@media (min-width: 1201px) {
+  .qside { height: auto; padding: 24px 24px 24px 0; gap: 14px; overflow-y: auto; scrollbar-width: none; }
+  .qside::-webkit-scrollbar { display: none; }
+  .qside .pchat { flex: 1 1 auto; min-height: 260px; }
+  .qside .pmsgs { flex: 1; min-height: 0; max-height: none; }
+}
+.qside .panel { padding: 18px; }
+.day-h { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 6px; }
+.day-h > div { flex: 1; min-width: 0; }
+.day-h h2 { font-size: 19px; margin: 3px 0 0; }
+.day-h .icon-btn.soft { width: auto; height: 34px; padding: 0 9px; gap: 1px; display: inline-flex; align-items: center; border-radius: 11px; background: var(--bg); color: var(--ink); }
+.day-h .icon-btn.soft:hover { background: var(--yellow-soft); }
+.day .li { padding: 9px 0; }
+.day .li b { font-size: 13.5px; }
+.day .li small { font-size: 12px; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.day .li > div { min-width: 0; }
+.day .tile { width: 34px; height: 34px; border-radius: 11px; }
+.day .remind-form { margin-top: 8px; }
+.gcard.compact { padding: 16px 18px; display: grid; gap: 12px; }
+.gcard.compact .g-row { gap: 14px; margin: 0; align-items: center; }
+.gcard.compact .gring b { font-size: 16px; }
+.gcard.compact .gring circle { stroke-width: 10; }
+.gcard.compact h3 { font-size: 15px; margin: 0 0 2px; }
+.gcard.compact .big { font-size: 13px; color: #CFCBC1; } .gcard.compact .big b { font-size: 18px; color: #fff; }
+.gcard.compact .left { font-size: 12px; color: #A9A59C; }
+.gbar { height: 6px; border-radius: 6px; background: rgba(255, 255, 255, .14); overflow: hidden; }
+.gbar i { display: block; height: 100%; border-radius: 6px; background: var(--yellow); transition: width 1.6s cubic-bezier(.3, .8, .3, 1); }
+.gcard.compact .contrib { margin: 0; min-width: 0; }
+.gcard.compact .contrib span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.reward-l { display: flex; align-items: center; gap: 8px; padding-top: 12px; border-top: 1px solid rgba(255, 255, 255, .1); font: 600 12.5px Inter; color: #fff; }
+.reward-l .ph { color: var(--yellow); flex: none; }
+.reward-l span { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.qside .pchat { gap: 12px; }
+.qside .pchat .ch-hd { margin: 0; }
+/* chat da coluna no desenho do mockup: nome em cima, balão só no texto */
+.qside .pchat .unread { background: var(--yellow); color: var(--ink); font: 600 11px Inter; padding: 3px 9px; border-radius: 99px; }
+.qside .pchat .ch-hd { gap: 8px; }
+.qside .pchat .ch-hd .icon-btn { width: 30px; height: 30px; background: none; color: var(--muted); }
+.qside .pchat .ch-hd .icon-btn:hover { background: var(--bg); color: var(--ink); }
+.qside .pmsgs { gap: 12px; scrollbar-width: thin; scrollbar-color: #E2DFD7 transparent; padding-right: 2px; }
+.qside .pchat .msg { align-items: flex-start; gap: 10px; }
+.qside .pchat .msg .mini-av { border-radius: 10px; flex: none; }
+.qside .pchat .msg > div { background: none; padding: 0; max-width: 84%; min-width: 0; }
+.qside .pchat .msg b { font: 600 12.5px Inter; color: var(--ink); }
+.qside .pchat .msg time { font-size: 11px; }
+.qside .pchat .msg p { margin: 4px 0 0; background: var(--bg); border-radius: 4px 12px 12px 12px; padding: 8px 11px; font-size: 12.5px; color: var(--ink); }
+.qside .pchat .msg.mine > div { background: none; text-align: right; }
+.qside .pchat .msg.mine p { background: var(--yellow); border-radius: 12px 4px 12px 12px; text-align: left; display: inline-block; }
+.qside .pchat .msg.same { margin-top: -8px; }
+.qside .pchat .msg .av-gap { width: 30px; flex: none; }
+.qside .pchat .msg.same p { margin-top: 0; border-radius: 12px; }
+.qside .cin input { font: 400 13px Inter; }
+.qside .cin { padding: 5px 5px 5px 12px; }
+.qside .cin button:disabled { opacity: 1; background: #E2DFD7; color: #fff; }

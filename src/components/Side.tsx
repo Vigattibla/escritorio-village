@@ -98,8 +98,10 @@ export function SeuDia() {
 
   return (
     <div className="panel day">
-      <div className="eyebrow">Seu dia</div>
-      <h2>{title[0].toUpperCase() + title.slice(1).replace('-feira', '')}</h2>
+      <div className="day-h">
+        <div><div className="eyebrow">Seu dia</div><h2>{title[0].toUpperCase() + title.slice(1).replace('-feira', '')}</h2></div>
+        {!adding && <button className="icon-btn soft" onClick={() => setAdding(true)} title="Criar lembrete" aria-label="Criar lembrete"><Ph n="bell" size={17} /><Icon n="plus" size={11} /></button>}
+      </div>
       <button className="li" onClick={() => setUi({ view: 'quadro', drawer: false })}>
         <span className="tile ink"><Icon n="check" /></span>
         <div><b>{due.length ? `${due.length} ${due.length > 1 ? 'tarefas vencem' : 'tarefa vence'} hoje` : 'Nada vence hoje'}</b>
@@ -116,21 +118,19 @@ export function SeuDia() {
           <div><b>Lembrete {localDay(rem.remind_at!) === today ? `às ${hm(rem.remind_at!)}` : new Date(rem.remind_at!).toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' })}</b><small>{rem.title}</small></div>
         </button>
       )}
-      {adding ? (
+      {adding && (
         <form className="remind-form" onSubmit={save}>
           <input autoFocus placeholder="Lembrar de…" value={txt} maxLength={120} onChange={e => setTxt(e.target.value)} />
           <input type="datetime-local" value={at} onChange={e => setAt(e.target.value)} aria-label="Quando" />
           <div className="row"><button className="btn primary sm" disabled={!txt.trim() || !at}>Salvar</button><button type="button" className="btn ghost sm" onClick={() => setAdding(false)}>Cancelar</button></div>
         </form>
-      ) : (
-        <button className="btn soft wide" onClick={() => setAdding(true)}><Ph n="bell" size={18} />Criar lembrete</button>
       )}
     </div>
   )
 }
 
 /** Anel + degraus + quem ajudou + recompensa. */
-export function MetaCard({ onOpen }: { onOpen?: () => void }) {
+export function MetaCard({ onOpen, compact = false }: { onOpen?: () => void; compact?: boolean }) {
   const goals = useStore(s => s.rows.goals)
   const tasks = useStore(s => s.tasks)
   const profiles = useStore(s => s.profiles)
@@ -145,21 +145,22 @@ export function MetaCard({ onOpen }: { onOpen?: () => void }) {
   const month = new Date(g.month + '-02').toLocaleDateString('pt-BR', { month: 'long' })
   const tops = Object.entries(pr.by).sort((a, b) => b[1] - a[1]).slice(0, 3)
   return (
-    <div className="panel gcard" role="button" tabIndex={0} onClick={onOpen ?? (() => setUi({ view: 'metas' }))} onKeyDown={e => { if (e.key === 'Enter') setUi({ view: 'metas' }) }}>
+    <div className={'panel gcard' + (compact ? ' compact' : '')} role="button" tabIndex={0} onClick={onOpen ?? (() => setUi({ view: 'metas' }))} onKeyDown={e => { if (e.key === 'Enter') setUi({ view: 'metas' }) }}>
       <div className="eyebrow">Meta da equipe · {month}</div>
       <div className="g-row">
-        <Ring pct={pr.pct} />
+        <Ring pct={pr.pct} size={compact ? 64 : 92} />
         <div><h3>{g.title}</h3><div className="big"><b>{pr.value}</b> de {g.target}</div>
           <div className="left">{pr.hit ? 'Meta batida!' : `faltam ${g.target - pr.value} · ${daysLeft(g.month)} dias`}</div></div>
       </div>
-      <Steps pct={pr.pct} target={g.target} />
+      {compact ? <div className="gbar"><i style={{ width: pr.pct + '%' }} /></div> : <Steps pct={pr.pct} target={g.target} />}
       {tops.length > 0 && (
         <div className="contrib">
           <div className="faces">{tops.map(([id]) => <MiniAvatar key={id} avatar={profiles[id]?.avatar ?? null} photo={profiles[id]?.photo ?? null} size={24} />)}</div>
-          {tops.map(([id, n]) => `${first(profiles[id])} ${n}`).join(' · ')}
+          <span>{tops.map(([id, n]) => `${first(profiles[id])} ${n}`).join(' · ')}</span>
         </div>
       )}
-      {g.reward && <div className="reward"><span className="tile"><Ph n="gift" size={18} fill /></span><div><small>Recompensa ao bater</small><b>{g.reward}</b></div></div>}
+      {g.reward && compact && <div className="reward-l"><Ph n="gift" size={15} fill /><span>{g.reward}</span></div>}
+      {g.reward && !compact && <div className="reward"><span className="tile"><Ph n="gift" size={18} fill /></span><div><small>Recompensa ao bater</small><b>{g.reward}</b></div></div>}
     </div>
   )
 }
@@ -210,13 +211,14 @@ export function ChatPanel() {
       </div>
       <div className="pmsgs" ref={box}>
         {last.length === 0 && <small className="muted">Ninguém falou nada ainda.</small>}
-        {last.map(m => {
+        {last.map((m, i) => {
           const p = profiles[m.sender_id]
           const mine = m.sender_id === meId
+          const same = i > 0 && last[i - 1].sender_id === m.sender_id // seguida da mesma pessoa: sem repetir rosto e nome
           return (
-            <div key={m.id} className={'msg' + (mine ? ' mine' : '')}>
-              {!mine && <MiniAvatar avatar={p?.avatar ?? null} photo={p?.photo ?? null} size={30} />}
-              <div><b>{mine ? 'Você' : first(p)} <time>{hm(m.created_at)}</time></b><p>{m.body}</p></div>
+            <div key={m.id} className={'msg' + (mine ? ' mine' : '') + (same ? ' same' : '')}>
+              {!mine && (same ? <span className="av-gap" /> : <MiniAvatar avatar={p?.avatar ?? null} photo={p?.photo ?? null} size={30} />)}
+              <div>{!same && <b>{mine ? 'Você' : first(p)} <time>{hm(m.created_at)}</time></b>}<p>{m.body}</p></div>
             </div>
           )
         })}
@@ -234,7 +236,7 @@ export default function Side() {
   return (
     <aside className="qside">
       <SeuDia />
-      <MetaCard />
+      <MetaCard compact />
       <ChatPanel />
     </aside>
   )
