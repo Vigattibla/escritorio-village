@@ -217,12 +217,13 @@ export function TeamNow() {
       <ul className="tlist">
         {people.map(({ p, doing, done, on }) => (
           <li key={p.id}>
-            <button className={'tperson' + (on ? ' on' : '')} onClick={() => setUi({ chatOpen: true, channel: dmChannel(meId, p.id) })} title={`Conversar com ${first(p)}`}>
+            <button className={'tperson' + (on ? ' on' : '')} onClick={() => setUi({ chatOpen: true, channel: dmChannel(meId, p.id) })} aria-label={`Conversar com ${first(p)}`}>
               <span className="tav"><MiniAvatar avatar={p.avatar} photo={p.photo} name={p.name} size={32} dim={!on} /><i /></span>
               <span className="tinfo"><b>{first(p)}</b>
-                <small className={doing ? '' : 'muted'}>{doing ? <><Ph n="pencil-simple-line" size={12} />{doing.title}</> : on ? 'Livre agora' : 'Fora'}</small>
+                <small className={doing ? '' : 'muted'}>{doing ? <><Ph n="pencil-simple-line" size={12} /><span>{doing.title}</span></> : on ? 'Livre agora' : 'Fora'}</small>
               </span>
               {done > 0 && <span className="tdone" title={`${done} feitas hoje`}><Ph n="check" size={12} />{done}</span>}
+              <span className="tchat"><Ph n="chat-circle-dots" size={15} /></span>
             </button>
           </li>
         ))}
