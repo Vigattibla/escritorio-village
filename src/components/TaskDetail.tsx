@@ -154,7 +154,7 @@ export default function TaskDetail() {
   const person = (uid: string, tag: string, del?: () => void) => (
     <span key={uid + tag} className="who">
       <MiniAvatar avatar={profiles[uid]?.avatar ?? null} photo={profiles[uid]?.photo ?? null} size={22} />
-      {name(uid)}<small>{tag}</small>
+      {name(uid)}{tag && <small>{tag}</small>}
       {del && <button onClick={del} title="Tirar da tarefa">✕</button>}
     </span>
   )
@@ -162,7 +162,7 @@ export default function TaskDetail() {
   return (
     <div className="modal-bg" onMouseDown={e => e.target === e.currentTarget && close()}>
       <div
-        className="task-modal"
+        className="task-modal td2"
         onPaste={e => { const f = [...e.clipboardData.files]; if (f.length && edit) { e.preventDefault(); upload(f) } }}
       >
         <header className="task-top">
@@ -185,189 +185,186 @@ export default function TaskDetail() {
           ? <div className="rvpanel"><h3>Sua aprovação</h3><ReviewBox t={t} /></div>
           : <div className="rvbanner wait">⏳ Esperando a aprovação de <b>{appr ? name(appr) : 'alguém'}</b>.</div>)}
 
-        <div className="task-body">
-          <input
-            key={'t' + t.title}
-            className="task-title"
-            defaultValue={t.title}
-            readOnly={!edit}
-            maxLength={140}
-            onBlur={e => run(updateTask(t.id, { title: e.target.value }))}
-            onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }}
-          />
+        <div className="task-body td2-body">
+          <div className="td2-main">
+            <input
+              key={'t' + t.title}
+              className="task-title"
+              defaultValue={t.title}
+              readOnly={!edit}
+              maxLength={140}
+              onBlur={e => run(updateTask(t.id, { title: e.target.value }))}
+              onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }}
+            />
 
-          <label>
-            Descrição / legenda
             <textarea
               key={'n' + t.notes}
+              className="td2-desc"
               defaultValue={t.notes}
               readOnly={!edit}
               rows={3}
               maxLength={4000}
-              placeholder={edit ? 'O que precisa ser feito, links, detalhes…' : 'Sem descrição.'}
+              aria-label="Descrição / legenda"
+              placeholder={edit ? 'Descrição, legenda, links, detalhes…' : 'Sem descrição.'}
               onBlur={e => run(updateTask(t.id, { notes: e.target.value }))}
             />
-          </label>
 
-          <div className="row gap wrap">
-            <label className="grow">Início
-              <input type="date" value={t.start ?? ''} disabled={!edit} max={t.due ?? undefined} onChange={e => run(updateTask(t.id, { start: e.target.value || null }))} />
-            </label>
-            <label className="grow">Prazo
-              <input type="date" value={t.due ?? ''} disabled={!edit} min={t.start ?? undefined} onChange={e => run(updateTask(t.id, { due: e.target.value || null }))} />
-            </label>
-          </div>
-
-          <div className="row gap wrap">
-            <label className="grow">Prioridade
-              <select value={t.priority ?? ''} disabled={!edit} onChange={e => run(updateTask(t.id, { priority: (e.target.value || null) as Priority | null }))}>
-                <option value="">Sem prioridade</option>
-                <option value="alta">Alta</option>
-                <option value="media">Média</option>
-                <option value="baixa">Baixa</option>
-              </select>
-            </label>
-            <label className="grow">Lembrete
-              <input type="datetime-local" value={localDT(t.remind_at)} disabled={!edit} onChange={e => run(updateTask(t.id, { remind_at: e.target.value ? new Date(e.target.value).toISOString() : null }))} />
-            </label>
-          </div>
-          <div className="row gap wrap">
-            <label className="grow">Canal (post)
-              <select value={t.channel ?? ''} disabled={!edit} onChange={e => run(updateTask(t.id, { channel: (e.target.value || null) as Channel | null, ...(!e.target.value ? { publish_at: null } : {}) }))}>
-                <option value="">Não é post</option>
-                {CHANNEL_KEYS.map(c => <option key={c} value={c}>{CHANNELS[c].label}</option>)}
-              </select>
-            </label>
-            {t.channel && <label className="grow">Publicar em
-              <input type="datetime-local" value={localDT(t.publish_at)} disabled={!edit} onChange={e => run(updateTask(t.id, { publish_at: e.target.value ? new Date(e.target.value).toISOString() : null }))} />
-            </label>}
-          </div>
-
-          <div className="field">
-            <h3>Checklist{t.checklist.length > 0 && <span className="muted small"> · {t.checklist.filter(c => c.done).length}/{t.checklist.length}</span>}</h3>
-            <ul className="checklist">
-              {t.checklist.map(c => (
-                <li key={c.id} className={c.done ? 'done' : ''}>
-                  <label><input type="checkbox" checked={c.done} disabled={!edit} onChange={() => setList(t.checklist.map(x => (x.id === c.id ? { ...x, done: !x.done } : x)))} />{c.text}</label>
-                  {edit && <button className="icon" onClick={() => setList(t.checklist.filter(x => x.id !== c.id))} title="Tirar item">✕</button>}
-                </li>
-              ))}
-              {!t.checklist.length && !edit && <li className="muted">Sem checklist.</li>}
-            </ul>
-            {edit && (
-              <input value={item} maxLength={140} placeholder="+ item (Enter)" onChange={e => setItem(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addItem() } }} />
-            )}
-          </div>
-
-          <div className="field">
-            <h3>Projeto e critérios</h3>
-            <div className="row gap wrap">
-              <select
-                className="add-person" value={t.project_id ?? ''} disabled={!edit || t.status === 'review'}
-                onChange={e => run(setProject(t.id, e.target.value || null))}
-                style={proj ? { borderColor: proj.color } : undefined}
-              >
-                <option value="">Sem projeto (sem aprovação)</option>
-                {Object.values(projects).filter(p => !p.archived || p.id === t.project_id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
-              {proj && <span className="muted small">Mestre: <b>{name(proj.master_id)}</b>{appr ? ' · aprova a entrega' : ' · você é o mestre'}</span>}
-            </div>
-            <ul className="critlist">
-              {proj?.criteria.map((c, i) => <li key={'p' + i} className="fixed" title="Critério do projeto">📏 {c}</li>)}
-              {t.criteria.map((c, i) => (
-                <li key={'t' + i}>☐ {c}
-                  {edit && <button className="icon" onClick={() => run(setCriteria(t.id, t.criteria.filter((_, j) => j !== i)))} title="Tirar critério">✕</button>}
-                </li>
-              ))}
-              {!proj?.criteria.length && !t.criteria.length && <li className="muted">Nenhum critério.</li>}
-            </ul>
-            {edit && (
-              <div className="row gap">
-                <input className="grow" value={crit} maxLength={140} placeholder="+ critério só desta tarefa (Enter)" onChange={e => setCrit(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addCrit() } }} />
-              </div>
-            )}
-            {t.reviews.length > 0 && <><h3 className="mt">Histórico de aprovação</h3><ReviewHistory t={t} /></>}
-          </div>
-
-          <div className="field">
-            <h3>Pessoas</h3>
-            <div className="people">
-              {person(t.owner_id, 'responsável')}
-              {targets.length > 0 && (
-                <select className="add-person" value="" onChange={e => e.target.value && run(reassign(t.id, e.target.value))} title="Trocar o responsável">
-                  <option value="">⇄ passar para…</option>
-                  {targets.map(p => <option key={p.id} value={p.id}>{p.name} · {p.role || rankName(p)}</option>)}
-                </select>
-              )}
-              {t.created_by !== t.owner_id && person(t.created_by, 'pediu')}
-              {t.collaborators.map(uid => person(uid, 'colabora', edit ? () => run(updateTask(t.id, { collaborators: t.collaborators.filter(x => x !== uid) })) : undefined))}
-              {edit && free.length > 0 && (
-                <select className="add-person" value="" onChange={e => e.target.value && run(updateTask(t.id, { collaborators: [...t.collaborators, e.target.value] }))}>
-                  <option value="">+ colaborador</option>
-                  {free.map(p => <option key={p.id} value={p.id}>{p.name} · {p.role || rankName(p)}</option>)}
-                </select>
-              )}
-            </div>
-          </div>
-
-          <FolderBox
-            link={t.drive ?? proj?.drive ?? null} own={!!t.drive} edit={edit} suggest={t.title} base={proj?.drive ?? null}
-            onLink={l => run(updateTask(t.id, { drive: l }))} onZoom={setZoom}
-          />
-
-          <div
-            className={'field drop' + (over ? ' over' : '')}
-            onDragOver={e => { if (edit && e.dataTransfer.types.includes('Files')) { e.preventDefault(); setOver(true) } }}
-            onDragLeave={() => setOver(false)}
-            onDrop={e => { e.preventDefault(); setOver(false); upload([...e.dataTransfer.files]) }}
-          >
-            <h3>Arquivos e imagens <span className="count">{t.attachments.length}</span></h3>
-            <div className="atts">
-              {t.attachments.map(a => (
-                <Thumb key={a.id} a={a} onZoom={setZoom} onDel={edit && (a.by === meId || own || chief) ? () => run(removeAttachment(t.id, a.id)) : undefined} />
-              ))}
-              {sending > 0 && <div className="att"><div className="att-box sending">⏳</div><div className="att-name">enviando {sending}…</div></div>}
+            <div className="field">
+              <h3>Checklist{t.checklist.length > 0 && <span className="muted small"> · {t.checklist.filter(c => c.done).length}/{t.checklist.length}</span>}</h3>
+              {t.checklist.length > 0 && <i className="td2-bar"><i style={{ width: Math.round(100 * t.checklist.filter(c => c.done).length / t.checklist.length) + '%' }} /></i>}
+              <ul className="checklist">
+                {t.checklist.map(c => (
+                  <li key={c.id} className={c.done ? 'done' : ''}>
+                    <label><input type="checkbox" checked={c.done} disabled={!edit} onChange={() => setList(t.checklist.map(x => (x.id === c.id ? { ...x, done: !x.done } : x)))} />{c.text}</label>
+                    {edit && <button className="icon" onClick={() => setList(t.checklist.filter(x => x.id !== c.id))} title="Tirar item">✕</button>}
+                  </li>
+                ))}
+                {!t.checklist.length && !edit && <li className="muted">Sem checklist.</li>}
+              </ul>
               {edit && (
-                <button className="att add" onClick={() => fileRef.current?.click()} disabled={sending > 0}>
-                  <span>＋</span><small>Arraste, cole (Ctrl+V) ou clique</small>
-                </button>
+                <input value={item} maxLength={140} placeholder="+ item (Enter)" onChange={e => setItem(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addItem() } }} />
               )}
             </div>
-            {!edit && t.attachments.length === 0 && <p className="empty">Nenhum arquivo.</p>}
-            <input ref={fileRef} type="file" multiple hidden onChange={e => { upload([...(e.target.files ?? [])]); e.target.value = '' }} />
+
+            <FolderBox
+              link={t.drive ?? proj?.drive ?? null} own={!!t.drive} edit={edit} suggest={t.title} base={proj?.drive ?? null}
+              onLink={l => run(updateTask(t.id, { drive: l }))} onZoom={setZoom}
+            />
+
+            <div
+              className={'field drop' + (over ? ' over' : '')}
+              onDragOver={e => { if (edit && e.dataTransfer.types.includes('Files')) { e.preventDefault(); setOver(true) } }}
+              onDragLeave={() => setOver(false)}
+              onDrop={e => { e.preventDefault(); setOver(false); upload([...e.dataTransfer.files]) }}
+            >
+              <h3>Anexos <span className="count">{t.attachments.length}</span></h3>
+              <div className="atts">
+                {t.attachments.map(a => (
+                  <Thumb key={a.id} a={a} onZoom={setZoom} onDel={edit && (a.by === meId || own || chief) ? () => run(removeAttachment(t.id, a.id)) : undefined} />
+                ))}
+                {sending > 0 && <div className="att"><div className="att-box sending">⏳</div><div className="att-name">enviando {sending}…</div></div>}
+                {edit && (
+                  <button className="att add" onClick={() => fileRef.current?.click()} disabled={sending > 0}>
+                    <span>＋</span><small>Arraste, cole (Ctrl+V) ou clique</small>
+                  </button>
+                )}
+              </div>
+              {!edit && t.attachments.length === 0 && <p className="empty">Nenhum arquivo.</p>}
+              <input ref={fileRef} type="file" multiple hidden onChange={e => { upload([...(e.target.files ?? [])]); e.target.value = '' }} />
+            </div>
+
+            <div className="field">
+              <h3>Critérios de aprovação</h3>
+              <ul className="critlist">
+                {proj?.criteria.map((c, i) => <li key={'p' + i} className="fixed" title="Critério do projeto">📏 {c}</li>)}
+                {t.criteria.map((c, i) => (
+                  <li key={'t' + i}>☐ {c}
+                    {edit && <button className="icon" onClick={() => run(setCriteria(t.id, t.criteria.filter((_, j) => j !== i)))} title="Tirar critério">✕</button>}
+                  </li>
+                ))}
+                {!proj?.criteria.length && !t.criteria.length && <li className="muted">Nenhum critério{proj ? '' : ' · sem projeto não passa por aprovação'}.</li>}
+              </ul>
+              {edit && (
+                <input value={crit} maxLength={140} placeholder="+ critério só desta tarefa (Enter)" onChange={e => setCrit(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addCrit() } }} />
+              )}
+              {t.reviews.length > 0 && <><h3 className="mt">Histórico de aprovação</h3><ReviewHistory t={t} /></>}
+            </div>
           </div>
 
-          <div className="field">
-            <h3>Notas <span className="count">{notes.length}</span></h3>
-            <div className="thread" ref={thread}>
-              {notes.length === 0 && <p className="empty">Ninguém comentou ainda.</p>}
-              {notes.map(n => (
-                <div key={n.id} className={'note' + (n.author_id === meId ? ' me' : '')}>
-                  <MiniAvatar avatar={profiles[n.author_id]?.avatar ?? null} photo={profiles[n.author_id]?.photo ?? null} size={26} />
-                  <div className="grow">
-                    <div className="muted small"><b>{name(n.author_id)}</b> · {when(n.created_at)}
-                      {(n.author_id === meId || chief) && <button className="icon" onClick={() => run(removeNote(n.id))} title="Apagar nota">🗑</button>}
-                    </div>
-                    <p>{n.body}</p>
-                  </div>
+          <aside className="td2-side">
+            <div className="td2-props">
+              <div className="prop"><span>Responsável</span>
+                <div className="people">
+                  {person(t.owner_id, '')}
+                  {targets.length > 0 && (
+                    <select className="add-person swap" value="" onChange={e => e.target.value && run(reassign(t.id, e.target.value))} title="Passar para outra pessoa">
+                      <option value="">⇄</option>
+                      {targets.map(p => <option key={p.id} value={p.id}>{p.name} · {p.role || rankName(p)}</option>)}
+                    </select>
+                  )}
                 </div>
-              ))}
+              </div>
+              {t.created_by !== t.owner_id && <div className="prop"><span>Pediu</span><div className="people">{person(t.created_by, '')}</div></div>}
+              <div className="prop"><span>Colaboram</span>
+                <div className="people">
+                  {t.collaborators.map(uid => person(uid, '', edit ? () => run(updateTask(t.id, { collaborators: t.collaborators.filter(x => x !== uid) })) : undefined))}
+                  {edit && free.length > 0 && (
+                    <select className="add-person" value="" onChange={e => e.target.value && run(updateTask(t.id, { collaborators: [...t.collaborators, e.target.value] }))}>
+                      <option value="">+ pessoa</option>
+                      {free.map(p => <option key={p.id} value={p.id}>{p.name} · {p.role || rankName(p)}</option>)}
+                    </select>
+                  )}
+                  {!edit && !t.collaborators.length && <small className="muted">—</small>}
+                </div>
+              </div>
+              <label className="prop"><span>Início</span>
+                <input type="date" value={t.start ?? ''} disabled={!edit} max={t.due ?? undefined} onChange={e => run(updateTask(t.id, { start: e.target.value || null }))} />
+              </label>
+              <label className="prop"><span>Prazo</span>
+                <input type="date" value={t.due ?? ''} disabled={!edit} min={t.start ?? undefined} onChange={e => run(updateTask(t.id, { due: e.target.value || null }))} />
+              </label>
+              <label className="prop"><span>Prioridade</span>
+                <select value={t.priority ?? ''} disabled={!edit} onChange={e => run(updateTask(t.id, { priority: (e.target.value || null) as Priority | null }))}>
+                  <option value="">—</option>
+                  <option value="alta">Alta</option>
+                  <option value="media">Média</option>
+                  <option value="baixa">Baixa</option>
+                </select>
+              </label>
+              <label className="prop"><span>Lembrete</span>
+                <input type="datetime-local" value={localDT(t.remind_at)} disabled={!edit} onChange={e => run(updateTask(t.id, { remind_at: e.target.value ? new Date(e.target.value).toISOString() : null }))} />
+              </label>
+              <label className="prop"><span>Projeto</span>
+                <select value={t.project_id ?? ''} disabled={!edit || t.status === 'review'} onChange={e => run(setProject(t.id, e.target.value || null))}
+                  style={proj ? { color: proj.color, fontWeight: 600 } : undefined}>
+                  <option value="">Sem projeto</option>
+                  {Object.values(projects).filter(p => !p.archived || p.id === t.project_id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+              </label>
+              {proj && <div className="prop"><span>Aprova</span><small>{name(proj.master_id)}{appr ? '' : ' (você)'}</small></div>}
+              <label className="prop"><span>Canal</span>
+                <select value={t.channel ?? ''} disabled={!edit} onChange={e => run(updateTask(t.id, { channel: (e.target.value || null) as Channel | null, ...(!e.target.value ? { publish_at: null } : {}) }))}>
+                  <option value="">Não é post</option>
+                  {CHANNEL_KEYS.map(c => <option key={c} value={c}>{CHANNELS[c].label}</option>)}
+                </select>
+              </label>
+              {t.channel && <label className="prop"><span>Publicar em</span>
+                <input type="datetime-local" value={localDT(t.publish_at)} disabled={!edit} onChange={e => run(updateTask(t.id, { publish_at: e.target.value ? new Date(e.target.value).toISOString() : null }))} />
+              </label>}
             </div>
-            <div className="row gap">
-              <textarea
-                className="grow"
-                rows={1}
-                value={note}
-                maxLength={2000}
-                placeholder="Escreva uma nota… (Enter envia)"
-                onChange={e => setNote(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
-              />
-              <button className="btn primary" onClick={send} disabled={!note.trim()}>Enviar</button>
+
+            <div className="field td2-chat">
+              <h3>Conversa <span className="count">{notes.length}</span></h3>
+              <div className="thread" ref={thread}>
+                {notes.length === 0 && <p className="empty">Ninguém comentou ainda.</p>}
+                {notes.map(n => (
+                  <div key={n.id} className={'note' + (n.author_id === meId ? ' me' : '')}>
+                    <MiniAvatar avatar={profiles[n.author_id]?.avatar ?? null} photo={profiles[n.author_id]?.photo ?? null} size={26} />
+                    <div className="grow">
+                      <div className="muted small"><b>{name(n.author_id)}</b> · {when(n.created_at)}
+                        {(n.author_id === meId || chief) && <button className="icon" onClick={() => run(removeNote(n.id))} title="Apagar nota">🗑</button>}
+                      </div>
+                      <p>{n.body}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="row gap">
+                <textarea
+                  className="grow"
+                  rows={1}
+                  value={note}
+                  maxLength={2000}
+                  placeholder="Escreva… (Enter envia)"
+                  onChange={e => setNote(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
+                />
+                <button className="btn primary sm" onClick={send} disabled={!note.trim()}>Enviar</button>
+              </div>
             </div>
-          </div>
+          </aside>
         </div>
 
         <footer className="task-foot">
