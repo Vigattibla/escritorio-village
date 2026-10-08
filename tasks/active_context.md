@@ -92,3 +92,7 @@
 - Agenda mês/semana/lista com posts (channel + publish_at), Metas com "Meta batida!", Fluxos em canvas.
 - Celular: Início + barra de baixo (Início, Agenda, +, Metas, Escritório) + folha "Nova tarefa".
 - CSS novo em src/v4.css (depois do index.css). Push exige rodar migration 202610080900_v4_agenda_metas.sql.
+
+## 2026-10-07 — revisão de layout contra o mockup v4 (commit 769b767, local)
+Corrigido em todas as telas, desktop e celular. Quadro: filtros numa linha só, colunas cabem na tela, card mostra canal, nota e "Aprovado". Celular: menu "mais" único. Fluxos: objetivo vira nó, Sequência/Mapa, zoom.
+Pendente: push (precisa da migration 202610080900_v4_agenda_metas.sql e do secret SUPABASE_ACCESS_TOKEN).
