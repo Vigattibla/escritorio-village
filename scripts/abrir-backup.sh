@@ -10,6 +10,6 @@ mkdir -p "$dir"
 gh run download "$id" -D "$dir/tmp"
 src=$(dirname "$(find "$dir/tmp" -name backup.sql.enc | head -n 1)")
 openssl pkeyutl -decrypt -inkey "$key" -pkeyopt rsa_padding_mode:oaep -in "$src/chave.bin.enc" -out "$dir/k.bin"
-openssl enc -d -aes-256-cbc -pbkdf2 -in "$src/backup.sql.enc" -out "$dir/backup.sql" -pass file:"$dir/k.bin"
+openssl enc -d -aes-256-cbc -pbkdf2 -in "$src/backup.sql.enc" -out "$dir/backup.sql" -pass file:"$(cygpath -m "$dir/k.bin" 2>/dev/null || echo "$dir/k.bin")"
 rm -rf "$dir/tmp" "$dir/k.bin"
 echo "$dir/backup.sql ($(wc -c < "$dir/backup.sql") bytes)"
