@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { isChief, rankName, rankOf } from '../game/ranks'
 import { driveOn } from '../data/drive'
-import { removeProject, run, saveProject, setUi, useStore } from '../store'
+import { removeProject, run, saveProject, setUi, team, useStore } from '../store'
 import type { DriveLink } from '../types'
 import { folderName, FolderPicker } from './DriveFolder'
 
@@ -23,7 +23,7 @@ export default function ProjectModal() {
   const [picking, setPicking] = useState(false)
   const [sure, setSure] = useState(false)
   const close = () => setUi({ projectEdit: null })
-  const people = Object.values(profiles).sort((a, b) => rankOf(b) - rankOf(a) || a.name.localeCompare(b.name))
+  const people = team(profiles).sort((a, b) => rankOf(b) - rankOf(a) || a.name.localeCompare(b.name))
   const canDel = !!prev && (prev.created_by === meId || isChief(profiles[meId]))
   const add = () => { if (draft.trim()) { setCrit(c => [...c, draft.trim()]); setDraft('') } }
   const submit = () => {

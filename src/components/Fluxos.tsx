@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { rankOf } from '../game/ranks'
-import { addTask, dropRow, getState, me, putRow, run, setUi, useStore } from '../store'
+import { addTask, dropRow, getState, me, putRow, run, setUi, team, useStore } from '../store'
 import type { Flow, FlowNode } from '../types'
 import { StatusTag } from './Agenda'
 import Icon, { Ph } from './Icon'
@@ -39,7 +39,7 @@ export default function Fluxos() {
   const [z, setZ] = useState(() => (matchMedia('(max-width: 900px)').matches ? 0.6 : 1))
   const box = useRef<HTMLDivElement>(null)
   const can = rankOf(me()) >= 2
-  const people = Object.values(profiles).filter(p => p.avatar)
+  const people = team(profiles).filter(p => p.avatar)
   const openN = (id: string) => Object.values(tasks).filter(t => t.owner_id === id && t.status !== 'done' && t.status !== 'declined').length
 
   const save = (fl: Flow) => run(putRow('flows', fl))

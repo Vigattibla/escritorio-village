@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { rankOf } from '../game/ranks'
-import { dropRow, me, putRow, run, setUi, useStore } from '../store'
+import { dropRow, me, putRow, run, setUi, team, useStore } from '../store'
 import type { Sticker, StickerKind } from '../types'
 import Icon, { Ph } from './Icon'
 import MiniAvatar from './MiniAvatar'
@@ -51,7 +51,7 @@ export function StickerPicker() {
   const [pos, setPos] = useState({ x: 0.72, y: 0.75 })
   if (to === null) return null
   const target = who || to
-  const people = Object.values(profiles).filter(p => p.avatar && p.id !== meId)
+  const people = team(profiles).filter(p => p.avatar && p.id !== meId)
   const close = () => { setUi({ stickTo: null }); setText(''); setWho('') }
   const submit = (e: React.FormEvent) => {
     e.preventDefault()

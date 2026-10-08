@@ -4,7 +4,7 @@ import { managerOf, rankOf } from '../game/ranks'
 import { drawChair } from '../office/props'
 import { at, bbox, check, hitTest, isDesk, KINDS, kd, original, parseSala, PISOS, reach, renderRoom, solidGrid, TEMAS, type Kind, type Obj, type Piso, type Sala, type Tema } from '../office/sala'
 import { BOSS_DESK, deskOf, drawDesk, MAX_DESKS, MH, MW, T, upperWall, wallFace } from '../office/world'
-import { dropRow, me, putRow, useStore } from '../store'
+import { dropRow, me, putRow, roomOf, team, useStore } from '../store'
 import type { Profile } from '../types'
 import { Px } from './Px'
 
@@ -40,9 +40,9 @@ function KindThumb({ k, id }: { k: Kind; id: string }) {
 }
 
 export default function SalaEditor({ onClose }: { onClose: () => void }) {
-  const s = { rows: useStore(x => x.rows), profiles: useStore(x => x.profiles) }
+  const s = { rows: useStore(x => x.rows), profiles: useStore(x => x.profiles), sala: useStore(x => x.sala) }
   const meP = me()
-  const saved = s.rows.rooms['escritorio']
+  const saved = roomOf(s)
   const [sala, setSala] = useState<Sala>(() => parseSala(saved?.data))
   const [hist, setHist] = useState<Sala[]>([])
   const [dirty, setDirty] = useState(false)
@@ -64,10 +64,10 @@ export default function SalaEditor({ onClose }: { onClose: () => void }) {
   const myCarp = meP && !chief ? s.rows.carpenters[meP.id] : undefined
 
   // quem senta em cada mesa (mesma regra do jogo: chefia na mesa grande)
-  const boss = managerOf(s.profiles)
+  const boss = managerOf(s.profiles, s.sala)
   const sitter = useMemo(() => {
     const m = new Map<number, Profile>()
-    for (const p of Object.values(s.profiles)) {
+    for (const p of team(s.profiles, s)) {
       if (!p.avatar) continue
       if (boss?.id === p.id) m.set(BOSS_DESK, p)
       else if (p.desk >= 0 && p.desk < MAX_DESKS && !m.has(p.desk)) m.set(p.desk, p)
@@ -210,7 +210,7 @@ export default function SalaEditor({ onClose }: { onClose: () => void }) {
     if (err) { setMsg({ t: err, bad: true }); return }
     setBusy(true)
     try {
-      await putRow('rooms', { id: 'escritorio', data: sala, created_by: meP.id, created_at: new Date().toISOString() })
+      await putRow('rooms', { id: s.sala, data: sala, created_by: meP.id, created_at: new Date().toISOString() })
       setDirty(false); setMsg({ t: 'Sala salva — todo mundo vê a mudança na hora.' })
     } catch (e) {
       setMsg({ t: `Não salvou: ${e instanceof Error ? e.message : 'erro'}`, bad: true })
@@ -220,7 +220,7 @@ export default function SalaEditor({ onClose }: { onClose: () => void }) {
 
   // ---------- carpinteiro ----------
   const now = Date.now()
-  const crew = Object.values(s.profiles).filter(p => p.avatar && rankOf(p) < 3).sort((a, b) => a.name.localeCompare(b.name))
+  const crew = team(s.profiles, s).filter(p => p.avatar && rankOf(p) < 3).sort((a, b) => a.name.localeCompare(b.name))
   async function grant(p: Profile, min: number) {
     if (!meP) return
     const cur = s.rows.carpenters[p.id], from = cur && new Date(cur.until).getTime() > now ? new Date(cur.until).getTime() : now

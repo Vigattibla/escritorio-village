@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { rankName, rankOf } from '../game/ranks'
-import { aiOnline, askAI, distribute, run, setUi, useStore } from '../store'
+import { aiOnline, askAI, distribute, run, setUi, team, useStore } from '../store'
 import type { AiItem, AiStage } from '../types'
 
 const STAGE: Record<AiStage, string> = {
@@ -46,7 +46,7 @@ export default function Distribuir() {
   const [sending, setSending] = useState(false)
   const abort = useRef<AbortController | null>(null)
   const close = () => { abort.current?.abort(); setUi({ aiOpen: false }) }
-  const people = Object.values(profiles).sort((a, b) => rankOf(b) - rankOf(a) || a.name.localeCompare(b.name))
+  const people = team(profiles).sort((a, b) => rankOf(b) - rankOf(a) || a.name.localeCompare(b.name))
   const projList = Object.values(projects).filter(p => !p.archived).sort((a, b) => a.name.localeCompare(b.name))
 
   useEffect(() => {

@@ -36,7 +36,7 @@ export const localDay = (iso: string) => { const d = new Date(iso); return `${d.
 /** Progresso da meta: posts = tarefas com canal feitas no mês; tarefas = feitas no mês; manual = valor.
  *  Só conta tarefa com outra pessoa envolvida (mesma regra do servidor). */
 export function goalProgress(g: Goal, tasks: Task[], projects: Record<string, Project>) {
-  const done = tasks.filter(t => t.status === 'done' && t.done_at && localDay(t.done_at).startsWith(g.month) && (g.metric !== 'posts' || !!t.channel) && counts(t, projects))
+  const done = tasks.filter(t => t.status === 'done' && (t.dept || 'marketing') === (g.dept || 'marketing') && t.done_at && localDay(t.done_at).startsWith(g.month) && (g.metric !== 'posts' || !!t.channel) && counts(t, projects))
   const value = g.metric === 'manual' ? g.value : done.length
   const by: Record<string, number> = {}
   if (g.metric !== 'manual') for (const t of done) by[t.owner_id] = (by[t.owner_id] ?? 0) + 1

@@ -1,10 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { canAssign, rankName, rankOf } from '../game/ranks'
 import { dayKey } from '../game/xp'
-import {
-  acceptRequest, addTask, canUseAI, approverOf, canApprove, canAskReview, canFinish, CHEFIA, canCreateProject, canEditProject, canEditTask, canMove, canReassign, declineRequest, involved,
-  canEditStages, placeTask, reassign, removeStage, run, saveStages, setStatus, setUi, stageList, stageOf, STAGE_KINDS, teamOf, toApprove, useStore,
-} from '../store'
+import { acceptRequest, addTask, approverOf, canApprove, canAskReview, canCreateProject, canEditProject, canEditStages, canEditTask, canFinish, canMove, canReassign, canUseAI, CHEFIA, declineRequest, involved, placeTask, reassign, removeStage, run, saveStages, setStatus, setUi, STAGE_KINDS, stageList, stageOf, team as salaTeam, teamOf, toApprove, useStore } from '../store'
 import type { DriveLink, Priority, Profile, Project, Stage, StageKind, Task, TaskStatus } from '../types'
 import { Bell } from './Avisos'
 import { folderName, FolderPicker } from './DriveFolder'
@@ -113,7 +110,7 @@ export default function Quadro() {
   }, [notes])
 
   const team = proj ? teamOf(proj.id) : null
-  const everyone = Object.values(profiles)
+  const everyone = salaTeam(profiles)
     .sort((a, b) => a.id === meId ? -1 : b.id === meId ? 1 : rankOf(b) - rankOf(a) || a.name.localeCompare(b.name))
   // com projeto aberto: só quem está no time (mestre, donos, ajudantes) + quem eu acabei de colocar
   const people = everyone.filter(p => !team || team.has(p.id) || p.id === meId || extra.includes(p.id))

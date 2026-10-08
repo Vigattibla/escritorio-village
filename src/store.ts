@@ -1,12 +1,12 @@
 import { useSyncExternalStore } from 'react'
 import { backend } from './data'
-import { canAssign, isChief, rankName, rankOf } from './game/ranks'
+import { canAssign, DEPT0, deptOf, isChief, outranks, rankName, rankOf } from './game/ranks'
 import { dayKey, taskXp } from './game/xp'
 import { MAX_DESKS } from './office/base'
 import { parseSala } from './office/sala'
 import { ITEM, type Slot } from './shop/catalog'
 import { REASON } from './shop/economy'
-import type { Group, RowTable, Rows, Stage, StageKind, Sticker, AccountEdit, AiContext, AiItem, AiProposal, AiStage, Attachment, Avatar, CoffeeLine, Gear, Message, Pos, Profile, Project, Review, Task, TaskNote, TaskStatus, Wallet } from './types'
+import type { Snapshot, Group, RowTable, Rows, Stage, StageKind, Sticker, AccountEdit, AiContext, AiItem, AiProposal, AiStage, Attachment, Avatar, CoffeeLine, Gear, Message, Pos, Profile, Project, Review, Task, TaskNote, TaskStatus, Wallet } from './types'
 import { ROW_TABLES } from './types'
 
 export type Phase = 'loading' | 'auth' | 'creator' | 'office'
@@ -63,13 +63,15 @@ export interface State {
   sheet: boolean
   /** colar adesivo: id de quem recebe ('' = escolher) ou null */
   stickTo: string | null
+  /** sala aberta: a minha; a Chefe pode abrir as outras */
+  sala: string
 }
 
 
 const initial: State = {
-  phase: 'loading', meId: null, accountName: '', error: '', profiles: {}, tasks: {}, messages: [], notes: [], projects: {}, rows: { events: {}, goals: {}, stickers: {}, flows: {}, stages: {}, groups: {}, rooms: {}, carpenters: {} }, online: new Set(),
+  phase: 'loading', meId: null, accountName: '', error: '', profiles: {}, tasks: {}, messages: [], notes: [], projects: {}, rows: { events: {}, goals: {}, stickers: {}, flows: {}, stages: {}, groups: {}, rooms: {}, carpenters: {}, depts: {} }, online: new Set(),
   tab: 'mesa', viewing: null, channel: 'geral', reads: {}, requestTo: null, task: null, editing: false, notices: [], pipOpen: false, view: 'quadro' as View, wallet: null, drawer: false,
-  project: '', projectEdit: null, aiOpen: false, chatOpen: false, bellOpen: false, qApprove: false, flow: null, sheet: false, stickTo: null,
+  project: '', projectEdit: null, aiOpen: false, chatOpen: false, bellOpen: false, qApprove: false, flow: null, sheet: false, stickTo: null, sala: DEPT0,
 }
 
 let state = initial
@@ -89,8 +91,10 @@ export const positions = new Map<string, Pos>()
 export const bubbles = new Map<string, { text: string; until: number }>()
 
 export const dmChannel = (a: string, b: string) => 'dm:' + [a, b].sort().join(':')
-/** canais que chegam até mim (grupo: o banco já filtra pelo RLS; quem não é membro não recebe aviso) */
+/** canais que chegam até mim (grupo: o banco já filtra pelo RLS; quem não é membro não recebe aviso; sala: a minha, a Chefe todas) */
 export const isMyChannel = (ch: string, me: string) => ch === 'geral' || ch.startsWith('g:') || (ch.startsWith('dm:') && ch.split(':').includes(me))
+  || (ch.startsWith('sala:') && (ch === salaChannel(deptOf(state.profiles[me])) || isChief(state.profiles[me])))
+export const salaChannel = (id: string) => 'sala:' + id
 export const groupChannel = (id: string) => 'g:' + id
 export const groupOf = (ch: string, s: State = state) => (ch.startsWith('g:') ? s.rows.groups[ch.slice(2)] : undefined)
 /** faço parte do canal? (geral e conversa: sempre; grupo: só membro) */
@@ -99,6 +103,21 @@ export const inChannel = (ch: string, s: State = state) => !ch.startsWith('g:') 
 export const seesChannel = (ch: string, s: State = state) => { const g = groupOf(ch, s); return !ch.startsWith('g:') || !!g && (g.open || inChannel(ch, s)) }
 export const dmPeer = (ch: string, me: string) => ch.split(':').slice(1).find(id => id !== me) ?? me
 export const me = () => (state.meId ? state.profiles[state.meId] : undefined)
+/** minha sala */
+export const myDept = (s: State = state) => deptOf(s.meId ? s.profiles[s.meId] : undefined)
+/** salas do andar, na ordem */
+export const deptList = (s: Pick<State, 'rows'> = state) => Object.values(s.rows.depts).sort((a, b) => a.floor - b.floor || a.slot - b.slot)
+export const deptName = (id: string, s: State = state) => s.rows.depts[id]?.name ?? (id === DEPT0 ? 'Marketing' : id)
+/** pessoas da sala aberta (o andar todo fica em `profiles`: conversa, nomes, visitas) */
+export const team = (profiles: Record<string, Profile>, s: Pick<State, 'sala'> = state) => Object.values(profiles).filter(p => deptOf(p) === s.sala)
+/** layout da sala (o Marketing herda o antigo 'escritorio') */
+export const roomOf = (s: Pick<State, 'rows' | 'sala'> = state, sala = s.sala) => s.rows.rooms[sala] ?? (sala === DEPT0 ? s.rows.rooms['escritorio'] : undefined)
+/** tabelas que são de uma sala só */
+const DEPT_ROWS = new Set<RowTable>(['events', 'goals', 'stages', 'flows'])
+/** o que entra no estado: as coisas da sala aberta; na minha sala, também o que é meu em outras (pedido que fiz, colaboração) */
+const keepTask = (t: Task) => deptOf(t) === state.sala || (!!state.meId && state.sala === myDept() && involved(t, state.meId))
+const keepProject = (p: Project) => deptOf(p) === state.sala || (state.sala === myDept() && (p.master_id === state.meId || p.created_by === state.meId))
+const keepRow = (k: RowTable, r: unknown) => !DEPT_ROWS.has(k) || deptOf(r as { dept?: string }) === state.sala
 export const nameOf = (id: string) => id === CHEFIA ? 'chefia' : state.profiles[id]?.name ?? 'Alguém'
 
 /** linhas antigas (antes do SQL v3) não têm os campos novos */
@@ -125,8 +144,7 @@ export function canMove(t: Task, uid = state.meId) {
 export function canReassign(t: Task, to: string, uid = state.meId) {
   const my = uid ? state.profiles[uid] : undefined
   if (!my || to === t.owner_id) return false
-  const r = rankOf(my)
-  return r === 4 || (r > rankOf(state.profiles[t.owner_id]) && r > rankOf(state.profiles[to]))
+  return outranks(my, state.profiles[t.owner_id]) && outranks(my, state.profiles[to])
 }
 /** aprovador "qualquer cargo acima do responsável" (card sem projeto criado pelo próprio dono) */
 export const CHEFIA = 'chefia'
@@ -148,7 +166,7 @@ export function approverOf(t: Task): string | null {
 export function canApprove(t: Task, uid = state.meId) {
   const a = approverOf(t)
   if (!uid || !a) return false
-  if (a === CHEFIA) return uid !== t.owner_id && (isChief(state.profiles[uid]) || rankOf(state.profiles[uid]) > rankOf(state.profiles[t.owner_id]))
+  if (a === CHEFIA) return uid !== t.owner_id && outranks(state.profiles[uid], state.profiles[t.owner_id])
   return a === uid || isChief(state.profiles[uid])
 }
 /** Critérios que valem para a tarefa: os do projeto + os dela. */
@@ -209,6 +227,7 @@ function onProfileDeleted(id: string) {
 function onTask(raw: Task) {
   const t = norm(raw)
   const prev = state.tasks[t.id]
+  if (!keepTask(t)) return onTaskDeleted(t.id)
   set({ tasks: { ...state.tasks, [t.id]: t } })
   const my = state.meId
   if (!my) return
@@ -239,6 +258,7 @@ function onTask(raw: Task) {
 
 function onRow<K extends RowTable>(k: K, r: Rows[K]) {
   const prev = state.rows[k][r.id]
+  if (!keepRow(k, r)) { if (prev) onRowDeleted(k, r.id); return }
   set({ rows: { ...state.rows, [k]: { ...state.rows[k], [r.id]: r } } })
   if (k === 'stickers' && !prev) {
     const st = r as Sticker
@@ -254,6 +274,7 @@ function onRowDeleted(k: RowTable, id: string) {
 
 /** grava e já mostra (o realtime confirma depois) */
 export async function putRow<K extends RowTable>(k: K, r: Rows[K]) {
+  if (DEPT_ROWS.has(k) && !(r as { dept?: string }).dept) r = { ...r, dept: state.sala }
   onRow(k, r)
   await backend.upsertRow(k, r)
 }
@@ -265,6 +286,7 @@ export async function dropRow(k: RowTable, id: string) {
 
 function onProject(p: Project) {
   const prev = state.projects[p.id]
+  if (!keepProject(p)) return onProjectDeleted(p.id)
   set({ projects: { ...state.projects, [p.id]: { ...p, criteria: p.criteria ?? [] } } })
   const my = state.meId
   if (my && p.master_id === my && prev?.master_id !== my && p.created_by !== my)
@@ -354,18 +376,14 @@ export async function enter(uid: string) {
   try { reads = JSON.parse(localStorage.getItem(`ev:reads:${uid}`) ?? '{}') } catch { /* sem leituras salvas */ }
   const mine = snap.profiles.find(p => p.id === uid)
   set({
-    meId: uid, accountName, error: '', reads,
+    meId: uid, accountName, error: '', reads, sala: deptOf(mine),
     profiles: Object.fromEntries(snap.profiles.map(p => [p.id, p])),
-    tasks: Object.fromEntries(snap.tasks.map(t => [t.id, norm(t)])),
     notes: snap.notes,
-    projects: Object.fromEntries((snap.projects ?? []).map(p => [p.id, { ...p, criteria: p.criteria ?? [] }])),
-    rows: {
-      ...(Object.fromEntries(ROW_TABLES.map(k => [k, Object.fromEntries((snap.rows?.[k] ?? []).map(r => [r.id, r]))])) as State['rows']),
-    },
-    messages: snap.messages.filter(m => isMyChannel(m.channel, uid)),
     phase: mine?.avatar ? 'office' : 'creator',
     viewing: uid,
   })
+  ingest(snap)
+  set({ messages: snap.messages.filter(m => isMyChannel(m.channel, uid)) })
   clearInterval(remindTimer)
   clearInterval(coffeeTimer)
   void claim()
@@ -382,6 +400,25 @@ export async function enter(uid: string) {
       if (next.size !== state.online.size || ids.some(id => !state.online.has(id))) set({ online: next })
     },
   })
+}
+
+/** tarefas, projetos e linhas da sala aberta */
+function ingest(snap: Snapshot) {
+  set({
+    tasks: Object.fromEntries(snap.tasks.map(norm).filter(keepTask).map(t => [t.id, t])),
+    projects: Object.fromEntries((snap.projects ?? []).filter(keepProject).map(p => [p.id, { ...p, criteria: p.criteria ?? [] }])),
+    rows: {
+      ...(Object.fromEntries(ROW_TABLES.map(k => [k, Object.fromEntries((snap.rows?.[k] ?? []).filter(r => keepRow(k, r)).map(r => [r.id, r]))])) as State['rows']),
+    },
+  })
+}
+
+/** a Chefe entra em outra sala (as outras pessoas só na delas) */
+export async function openSala(id: string) {
+  if (id === state.sala || (!isChief(me()) && id !== myDept())) return
+  const snap = await backend.loadAll()
+  set({ sala: id, project: '', task: null, flow: null, viewing: state.meId })
+  ingest(snap)
 }
 
 export async function signOut() {
@@ -415,18 +452,22 @@ export async function saveProfile(d: { name: string; role: string; avatar: Avata
   const uid = state.meId!
   const prev = state.profiles[uid]
   let desk = prev?.desk ?? -1
-  if (desk < 0) {
-    const taken = new Set(Object.values(state.profiles).map(p => p.desk))
-    // só mesas que existem na sala atual
-    const free = parseSala(state.rows.rooms['escritorio']?.data).objs.filter(o => o.k === 'mesa' && o.d !== undefined).map(o => o.d!).sort((a, b) => a - b)
-    desk = free.find(i => !taken.has(i)) ?? free[Object.keys(state.profiles).length % Math.max(1, free.length)] ?? Object.keys(state.profiles).length % MAX_DESKS
-  }
+  if (desk < 0) desk = freeDesk(myDept(), uid)
+  if (desk < 0) desk = Object.keys(state.profiles).length % MAX_DESKS
   const p: Profile = {
-    id: uid, xp: prev?.xp ?? 0, desk, rank: prev?.rank ?? 1, created_at: prev?.created_at ?? new Date().toISOString(),
+    id: uid, xp: prev?.xp ?? 0, desk, rank: prev?.rank ?? 1, created_at: prev?.created_at ?? new Date().toISOString(), dept: prev?.dept,
     name: d.name.trim() || state.accountName || 'Sem nome', role: d.role.trim(), avatar: d.avatar, photo: d.photo,
   }
   const saved = await backend.upsertProfile(p)
   set({ profiles: { ...state.profiles, [uid]: saved }, phase: 'office', editing: false })
+}
+
+/** primeira mesa livre na sala `sala` (sala sem layout salvo = a sala original) */
+export function freeDesk(sala: string, uid?: string) {
+  const room = roomOf(state, sala)
+  const taken = new Set(Object.values(state.profiles).filter(p => p.id !== uid && deptOf(p) === sala).map(p => p.desk))
+  const free = parseSala(room?.data).objs.filter(o => o.k === 'mesa' && o.d !== undefined).map(o => o.d!).sort((a, b) => a - b)
+  return free.find(i => !taken.has(i)) ?? free[taken.size % Math.max(1, free.length)] ?? -1
 }
 
 /** Mostra na hora; se o servidor recusar, volta como estava. */
@@ -459,6 +500,7 @@ export async function addTask(owner: string, title: string, due: string | null =
     done_at: null, project_id: project || null, criteria: [], reviews: [],
     priority: extra.priority ?? null, checklist: [], remind_at: extra.remind_at ?? null,
     channel: extra.channel ?? null, publish_at: extra.publish_at ?? null, stage: extra.stage ?? null, drive: extra.drive ?? null,
+    dept: deptOf(state.profiles[owner]),
   }
   await putTask(t)
   return t
@@ -511,7 +553,9 @@ export async function deleteGroup(id: string) {
 
 export function stageList(rows = state.rows.stages): Stage[] {
   const l = Object.values(rows)
-  return (l.length ? l : DEFAULT_STAGES).slice().sort((a, b) => a.pos - b.pos)
+  // o id da etapa é único no banco: as padrão das outras salas ganham o prefixo da sala
+  const def = state.sala === DEPT0 ? DEFAULT_STAGES : DEFAULT_STAGES.map(x => ({ ...x, id: `${state.sala}-${x.id}` }))
+  return (l.length ? l : def).slice().sort((a, b) => a.pos - b.pos)
 }
 /** coluna da tarefa: a etapa dela, se ainda existir e for do mesmo tipo; senão a primeira do tipo */
 export function stageOf(t: Task, list = stageList()): string | null {
@@ -611,7 +655,7 @@ function aiContext(): AiContext {
   const open = Object.values(state.tasks).filter(t => t.status === 'inbox' || t.status === 'todo' || t.status === 'doing' || t.status === 'review')
   return {
     today, me: { id: my.id, name: my.name, rank: rankOf(my) },
-    people: Object.values(state.profiles).map(p => {
+    people: team(state.profiles).map(p => {
       const mine = open.filter(t => t.owner_id === p.id)
       return { id: p.id, name: p.name, role: p.role || rankName(p), rank: rankOf(p), open: mine.length, late: mine.filter(t => t.due && t.due < today).length, online: state.online.has(p.id) }
     }),
@@ -662,6 +706,7 @@ export async function saveProject(d: { id?: string; name: string; master_id: str
     name: d.name.trim().slice(0, 80), master_id: d.master_id, color: d.color, archived: d.archived ?? prev?.archived ?? false,
     criteria: d.criteria.map(x => x.trim()).filter(Boolean).slice(0, 20),
     drive: d.drive !== undefined ? d.drive : prev?.drive ?? null,
+    dept: prev?.dept ?? state.sala,
   }
   const before = state.projects
   set({ projects: { ...state.projects, [p.id]: p } })
@@ -686,6 +731,34 @@ export async function setRank(target: string, rank: number) {
   if (!p || p.rank === rank) return
   await backend.setRank(target, rank)
   set({ profiles: { ...state.profiles, [target]: { ...p, rank } } })
+}
+
+/** muda a pessoa de sala (vai pra primeira mesa livre de lá; as tarefas abertas vão junto) */
+export async function setDept(target: string, dept: string) {
+  const p = state.profiles[target]
+  if (!p || deptOf(p) === dept) return
+  const desk = freeDesk(dept, target)
+  await backend.setDept(target, dept, desk)
+  set({ profiles: { ...state.profiles, [target]: { ...p, dept, desk } } })
+  ingest(await backend.loadAll())
+}
+
+/** cria ou renomeia uma sala (o id não muda depois de criado) */
+export async function saveDept(d: { id?: string; name: string; color: string }) {
+  const prev = d.id ? state.rows.depts[d.id] : undefined
+  const name = d.name.trim().slice(0, 40)
+  if (!name) return
+  let id = prev?.id
+  if (!id) {
+    const base = name.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 24) || 'sala'
+    id = base.length < 2 ? base + '-1' : base
+    for (let i = 2; state.rows.depts[id]; i++) id = `${base}-${i}`
+  }
+  const used = new Set(Object.values(state.rows.depts).filter(x => x.floor === 1).map(x => x.slot))
+  let slot = prev?.slot ?? 0
+  if (!prev) while (used.has(slot)) slot++
+  if (slot > 7) throw new Error('O andar já está cheio.')
+  await putRow('depts', { id, name, color: d.color, floor: prev?.floor ?? 1, slot, created_at: prev?.created_at ?? new Date().toISOString() })
 }
 
 export async function createAccount(user: string, pass: string, name: string, rank: number) {

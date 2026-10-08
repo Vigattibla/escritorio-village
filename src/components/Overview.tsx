@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { rankName } from '../game/ranks'
 import { dayKey } from '../game/xp'
-import { setUi, useStore } from '../store'
+import { setUi, team, useStore } from '../store'
 import type { Task } from '../types'
 import MiniAvatar from './MiniAvatar'
 
@@ -26,7 +26,7 @@ export default function Overview() {
     abertas: t => OPEN.has(t.status), doing: t => t.status === 'doing', todo: t => t.status === 'todo',
     late, inbox: t => t.status === 'inbox', done: doneToday,
   }
-  const people = Object.values(profiles).sort((a, b) => b.rank - a.rank || a.name.localeCompare(b.name))
+  const people = team(profiles).sort((a, b) => b.rank - a.rank || a.name.localeCompare(b.name))
   const list = tasks
     .filter(t => test[f](t) && (!who || t.owner_id === who || t.collaborators.includes(who)))
     .sort((a, b) => Number(late(b)) - Number(late(a)) || (a.due ?? '9').localeCompare(b.due ?? '9') || b.position - a.position)

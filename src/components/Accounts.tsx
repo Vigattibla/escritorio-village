@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { makePassword, slugUser } from '../data/login'
 import { RANKS } from '../game/ranks'
-import { accountLogins, createAccount, deleteAccount, run, setPassword, updateAccount, useStore } from '../store'
-import type { AccountEdit } from '../types'
+import { accountLogins, createAccount, deleteAccount, deptList, deptName, run, saveDept, setDept, setPassword, updateAccount, useStore } from '../store'
+import { deptOf } from '../game/ranks'
+import type { AccountEdit, Dept, Profile } from '../types'
 
 /** Só o adm: cria, edita e exclui contas. Ninguém se cadastra sozinho. */
 export default function Accounts() {
@@ -20,7 +21,13 @@ export default function Accounts() {
   const [logins, setLogins] = useState<Record<string, string>>({})
   const [killing, setKilling] = useState(false)
   const [heir, setHeir] = useState('')
+  const depts = deptList({ rows: useStore(s => s.rows) })
   const people = Object.values(profiles).sort((a, b) => a.name.localeCompare(b.name))
+  const move = (dept: string) => {
+    const name = profiles[who]?.name ?? 'A pessoa'
+    setBusy(true); setMsg('')
+    run(setDept(who, dept).then(() => setMsg(`${name} agora está na sala ${deptName(dept)}. As tarefas abertas foram junto.`)).finally(() => setBusy(false)))
+  }
   const waiting = people.filter(p => !p.avatar)
   const login = slugUser(user || name)
 
@@ -114,6 +121,11 @@ export default function Accounts() {
                 {RANKS.map((r, i) => i > 0 && <option key={i} value={i}>{r}</option>)}
               </select>
             </label>
+            <label className="grow">Sala
+              <select value={deptOf(profiles[who])} disabled={busy} onChange={e => move(e.target.value)}>
+                {depts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+              </select>
+            </label>
             <label className="acc-check"><input type="checkbox" checked={edit.is_admin} disabled={who === meId}
               onChange={e => setEdit({ ...edit, is_admin: e.target.checked })} /> Adm (mexe nas contas)</label>
           </div>
@@ -135,8 +147,46 @@ export default function Accounts() {
         </>}
       </form>
 
+      <Salas depts={depts} people={people} />
+
       {msg && <p className="ok">{msg}</p>}
       {waiting.length > 0 && <p className="muted small">Ainda não entraram: {waiting.map(p => p.name).join(', ')}</p>}
     </details>
+  )
+}
+
+const COLORS = ['#FBC222', '#4F8EF7', '#3DBE8B', '#E8664F', '#A77BF3', '#F28BB8', '#2BB3C0', '#8A8F98']
+
+/** salas do andar: criar, renomear, mudar a cor (o Marketing não sai) */
+function Salas({ depts, people }: { depts: Dept[]; people: Profile[] }) {
+  const [name, setName] = useState('')
+  const [color, setColor] = useState(COLORS[1])
+  const [names, setNames] = useState<Record<string, string>>({})
+  const add = (e: React.FormEvent) => {
+    e.preventDefault()
+    run(saveDept({ name, color }).then(() => setName('')))
+  }
+  return (
+    <div className="acc-salas">
+      <h3>Salas do andar</h3>
+      {depts.map(d => {
+        const n = names[d.id] ?? d.name
+        const count = people.filter(p => deptOf(p) === d.id).length
+        return (
+          <div key={d.id} className="row gap acc-sala">
+            <input type="color" value={d.color} title="Cor da sala" onChange={e => run(saveDept({ id: d.id, name: d.name, color: e.target.value }))} />
+            <input className="grow" maxLength={40} value={n} onChange={e => setNames({ ...names, [d.id]: e.target.value })} />
+            <small className="muted">{count} {count === 1 ? 'pessoa' : 'pessoas'}</small>
+            {n.trim() && n !== d.name && <button type="button" className="btn ghost sm" onClick={() => run(saveDept({ id: d.id, name: n, color: d.color }))}>Renomear</button>}
+          </div>
+        )
+      })}
+      {depts.length < 4 && <form onSubmit={add} className="row gap">
+        <input type="color" value={color} onChange={e => setColor(e.target.value)} title="Cor da sala" />
+        <input className="grow" required maxLength={40} value={name} onChange={e => setName(e.target.value)} placeholder="Nome da nova sala (ex.: Comercial)" />
+        <button className="btn primary sm" disabled={!name.trim()}>Criar sala</button>
+      </form>}
+      <small className="muted">Cada sala tem quadro, agenda, metas e chat próprios. Mude a pessoa de sala em "Editar conta".</small>
+    </div>
   )
 }

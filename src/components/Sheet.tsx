@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { dayKey } from '../game/xp'
-import { addTask, run, setUi, useStore } from '../store'
+import { addTask, run, setUi, team, useStore } from '../store'
 import type { Channel } from '../types'
 import Icon, { Ph } from './Icon'
 import MiniAvatar from './MiniAvatar'
@@ -26,7 +26,7 @@ export default function Sheet() {
   const [mine, setMine] = useState(true)
   if (!open) return null
   const owner = who || meId
-  const people = Object.values(profiles).filter(p => p.avatar).sort((a, b) => Number(b.id === meId) - Number(a.id === meId) || a.name.localeCompare(b.name))
+  const people = team(profiles).filter(p => p.avatar).sort((a, b) => Number(b.id === meId) - Number(a.id === meId) || a.name.localeCompare(b.name))
   const openN = (id: string) => Object.values(tasks).filter(t => t.owner_id === id && t.status !== 'done').length
   // aprovação vem do mestre do projeto: uso o projeto aberto (se for meu) ou o primeiro que eu mestro
   const myProj = (projects[cur]?.master_id === meId ? projects[cur] : Object.values(projects).find(p => p.master_id === meId && !p.archived)) ?? null

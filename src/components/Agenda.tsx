@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { dayKey } from '../game/xp'
-import { addTask, approverOf, canApprove, CHEFIA, getState, putRow, review, run, setUi, updateTask, useStore } from '../store'
+import { addTask, approverOf, canApprove, CHEFIA, getState, putRow, review, run, setUi, team as salaTeam, updateTask, useStore } from '../store'
 import type { CalEvent, Channel, Task } from '../types'
 import { Bell } from './Avisos'
 import Icon, { Ph } from './Icon'
@@ -73,7 +73,7 @@ export default function Agenda() {
   const dayList = byDay(day)
   const selItem = (sel ? vis.find(i => itemId(i) === sel) ?? items.find(i => itemId(i) === sel) : undefined) ?? dayList.find(i => i.kind === 'post') ?? dayList[0]
   const selId = selItem ? itemId(selItem) : null
-  const team = Object.values(profiles).filter(p => p.avatar).sort((a, b) => Number(b.id === meId) - Number(a.id === meId) || a.name.localeCompare(b.name))
+  const team = salaTeam(profiles).filter(p => p.avatar).sort((a, b) => Number(b.id === meId) - Number(a.id === meId) || a.name.localeCompare(b.name))
 
   const chip = (i: Item) => {
     const cls = i.kind === 'evento' ? 'ev evt' : i.kind === 'prazo' ? 'ev due' : 'ev tag ' + (i.t.channel ? CHANNELS[i.t.channel].tag : 'gray')
@@ -314,7 +314,7 @@ function Acts({ t, can }: { t: Task; can: boolean }) {
 function PostForm({ day, onClose, onDone }: { day: string; onClose: () => void; onDone: (id: string) => void }) {
   const profiles = useStore(s => s.profiles)
   const meId = useStore(s => s.meId)!
-  const people = Object.values(profiles).filter(p => p.avatar)
+  const people = salaTeam(profiles).filter(p => p.avatar)
   const [title, setTitle] = useState('')
   const [ch, setCh] = useState<Channel>('feed')
   const [d, setD] = useState(day)

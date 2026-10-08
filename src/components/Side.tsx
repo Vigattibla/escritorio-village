@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { addTask, dmChannel, run, setUi, useStore } from '../store'
+import { addTask, dmChannel, run, setUi, team, useStore } from '../store'
 import { dayKey } from '../game/xp'
 import Icon, { Ph } from './Icon'
 import MiniAvatar from './MiniAvatar'
@@ -12,7 +12,7 @@ export function Live({ small = false }: { small?: boolean }) {
   const profiles = useStore(s => s.profiles)
   const online = useStore(s => s.online)
   const tasks = useStore(s => s.tasks)
-  const people = Object.values(profiles).filter(p => p.avatar)
+  const people = team(profiles).filter(p => p.avatar)
   const here = [meId, ...people.filter(p => p.id !== meId && online.has(p.id)).map(p => p.id)]
   const key = here.join(',')
   const [i, setI] = useState(0)
@@ -200,7 +200,7 @@ export function TeamNow() {
   const tasks = useStore(s => s.tasks)
   const online = useStore(s => s.online)
   const today = localDay(new Date().toISOString())
-  const people = Object.values(profiles).filter(p => p.avatar && p.id !== meId).map(p => {
+  const people = team(profiles).filter(p => p.avatar && p.id !== meId).map(p => {
     const mine = Object.values(tasks).filter(t => t.owner_id === p.id)
     const doing = mine.filter(t => t.status === 'doing').sort((a, b) => b.position - a.position)[0]
     const done = mine.filter(t => t.done_at && localDay(t.done_at) === today).length

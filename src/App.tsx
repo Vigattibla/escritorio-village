@@ -6,9 +6,10 @@ import { boot, useStore } from './store'
 
 export default function App() {
   const phase = useStore(s => s.phase)
+  const sala = useStore(s => s.sala)
   useEffect(() => { boot() }, [])
   if (phase === 'loading') return <div className="loading">Abrindo o escritório…</div>
   if (phase === 'auth') return <Auth />
   if (phase === 'creator') return <Creator />
-  return <Office />
+  return <Office key={sala} />
 }

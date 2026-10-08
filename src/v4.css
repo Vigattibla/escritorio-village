@@ -1004,3 +1004,14 @@ button.panel { width: 100%; border: 0; text-align: left; font: inherit; color: i
 .qlist-head .grow { min-width: 0; }
 .qlist-head b, .qlist-head small { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .quadro .qlist { scroll-snap-align: start; }
+
+/* salas do andar */
+.me-pop-salas { display: grid; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); margin: 4px 0; padding: 4px 0; }
+.me-pop-salas > small { color: var(--muted); font-size: 11px; padding: 2px 10px; text-transform: uppercase; letter-spacing: .04em; }
+.me-pop-salas button.on { background: var(--soft, rgba(0,0,0,.05)); }
+.sala-dot { width: 10px; height: 10px; border-radius: 50%; flex: none; display: inline-block; }
+.banner.sala-visit { background: #e6eefc; color: #23408e; }
+.acc-salas { display: grid; gap: 8px; padding: 12px 0; border-top: 1px solid var(--line); }
+.acc-salas h3 { margin: 0; }
+.acc-sala { align-items: center; }
+.acc-salas input[type=color] { width: 34px; height: 30px; padding: 0; border: 1px solid var(--line); border-radius: 8px; background: none; flex: none; }

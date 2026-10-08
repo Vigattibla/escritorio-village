@@ -1,5 +1,5 @@
 import { RANKS, rankName, ranksFor } from '../game/ranks'
-import { dmChannel, run, setRank, setUi, useStore } from '../store'
+import { dmChannel, run, setRank, setUi, team, useStore } from '../store'
 import Accounts from './Accounts'
 import MiniAvatar from './MiniAvatar'
 import { canStick } from './Stickers'
@@ -10,7 +10,7 @@ export default function Team() {
   const tasksMap = useStore(s => s.tasks)
   const online = useStore(s => s.online)
   const tasks = Object.values(tasksMap)
-  const people = Object.values(profiles)
+  const people = team(profiles)
     .filter(p => p.avatar)
     .sort((a, b) => Number(online.has(b.id) || b.id === meId) - Number(online.has(a.id) || a.id === meId) || a.name.localeCompare(b.name))
 

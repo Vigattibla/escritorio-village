@@ -7,7 +7,7 @@ import { drawAnim, plateFill, PLATE_CV } from '../office/anim'
 import { drawChair } from '../office/props'
 import { drawFurniture, kd, parseSala } from '../office/sala'
 import { blocked, boardSpot, BOSS_DESK, deskAtTile, deskIds, deskOf, drawBoardMarks, drawCarry, drawDesk, findPath, furniture, hasDesk, layoutVersion, MAX_DESKS, MH, MW, pathToSeat, renderBackground, setLayout, shelfSpot, T, wallObjs } from '../office/world'
-import { bubbles, getState, positions, setUi } from '../store'
+import { bubbles, getState, positions, roomOf, setUi, team } from '../store'
 import type { Dir, Pos, Profile, Task } from '../types'
 import Icon from './Icon'
 
@@ -26,14 +26,14 @@ interface Hover { id: string; sx: number; sy: number }
 
 /** Mesa de alguém: o Gerente vai para a mesa dele, o resto usa a sorteada */
 const deskIdx = (p: Profile) => {
-  if (managerOf(getState().profiles)?.id === p.id && hasDesk(BOSS_DESK)) return BOSS_DESK
+  if (managerOf(getState().profiles, getState().sala)?.id === p.id && hasDesk(BOSS_DESK)) return BOSS_DESK
   if (p.desk >= 0 && p.desk < MAX_DESKS && hasDesk(p.desk)) return p.desk
   return deskIds().find(i => i !== BOSS_DESK) ?? 0
 }
 /** a sala salva (rooms/escritorio) manda nas posições; troca quando alguém salva */
 let roomSeen: unknown = undefined
 export function syncRoom() {
-  const r = getState().rows.rooms['escritorio']
+  const r = roomOf(getState())
   if (r === roomSeen) return
   roomSeen = r
   setLayout(parseSala(r?.data))
@@ -239,7 +239,7 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
 
       // demais pessoas
       const s = getState()
-      for (const p of Object.values(s.profiles)) {
+      for (const p of team(s.profiles, s)) {
         if (p.id === meId || !p.avatar) continue
         const online = s.online.has(p.id)
         const tgt = (online && positions.get(p.id)) || { ...seatOf(p), dir: 'down' as Dir, moving: false }
@@ -282,7 +282,7 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
 
       const tasks = Object.values(s.tasks)
       const byDesk = new Map<number, Profile>()
-      for (const p of Object.values(s.profiles)) if (p.avatar && !byDesk.has(deskIdx(p))) byDesk.set(deskIdx(p), p)
+      for (const p of team(s.profiles, s)) if (p.avatar && !byDesk.has(deskIdx(p))) byDesk.set(deskIdx(p), p)
       const items: { key: number; draw: () => void }[] = []
       for (const i of deskIds()) {
         const owner = byDesk.get(i), d = deskOf(i), gear = owner?.avatar?.gear

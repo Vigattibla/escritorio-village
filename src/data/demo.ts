@@ -1,6 +1,6 @@
 import { toEmail, validUser } from './login'
 import { dayKey } from '../game/xp'
-import type { CoffeeLine, Goal, Wallet, Group, RowTable, Rows, AccountEdit, AiContext, AiProposal, AiStage, Avatar, Backend, Handlers, Message, Pos, Profile, Project, Snapshot, Task, TaskNote } from '../types'
+import type { CoffeeLine, Dept, Goal, Wallet, Group, RowTable, Rows, AccountEdit, AiContext, AiProposal, AiStage, Avatar, Backend, Handlers, Message, Pos, Profile, Project, Snapshot, Task, TaskNote } from '../types'
 import { ROW_TABLES } from '../types'
 import { counts, DAY, MAX_GOALS, payouts, WELCOME } from '../shop/economy'
 import { ITEM } from '../shop/catalog'
@@ -77,6 +77,8 @@ export class DemoBackend implements Backend {
 
   async loadAll(): Promise<Snapshot> {
     if (!localStorage.getItem(K.seeded)) seed()
+    if (!localStorage.getItem(K.row + 'depts'))
+      write(K.row + 'depts', { marketing: { id: 'marketing', name: 'Marketing', color: '#0B235D', floor: 1, slot: 0, created_at: new Date(0).toISOString() } })
     return {
       profiles: Object.values(read<Record<string, Profile>>(K.prof, {})),
       tasks: Object.values(read<Record<string, Task>>(K.task, {})),
@@ -94,7 +96,7 @@ export class DemoBackend implements Backend {
     // como no servidor: cargo e adm não vêm do cliente; o primeiro a entrar sem adm vira adm
     const adm = Object.values(all).some(x => x.is_admin && x.id !== p.id)
     // demo: quem entra primeiro já é Coordenação, pra ver Metas, Fluxos e aprovações
-    p = { ...p, rank: all[p.id]?.rank ?? (adm ? 1 : 3), is_admin: all[p.id]?.is_admin ?? !adm }
+    p = { ...p, rank: all[p.id]?.rank ?? (adm ? 1 : 3), is_admin: all[p.id]?.is_admin ?? !adm, dept: all[p.id]?.dept }
     all[p.id] = p
     write(K.prof, all)
     this.post({ t: 'profile', p })
@@ -109,6 +111,22 @@ export class DemoBackend implements Backend {
     if (!t || rank < 1 || rank > 4 || (!me?.is_admin && (t.id === me?.id || (t.rank ?? 1) >= mine || rank > mine)))
       throw new Error('Sem permissão para mudar esse cargo.')
     await this.upsertProfileRaw({ ...t, rank })
+  }
+
+  async setDept(target: string, dept: string, desk: number) {
+    const all = read<Record<string, Profile>>(K.prof, {})
+    const me = all[sessionStorage.getItem(K.session) ?? '']
+    const t = all[target]
+    if (!t || !(me?.is_admin || me?.rank === 4)) throw new Error('Só o adm ou a Chefe muda alguém de sala.')
+    if (!read<Record<string, Dept>>(K.row + 'depts', {})[dept]) throw new Error('Essa sala não existe.')
+    if ((t.dept || 'marketing') === dept) return
+    await this.upsertProfileRaw({ ...t, dept, desk })
+    const tasks = read<Record<string, Task>>(K.task, {})
+    for (const x of Object.values(tasks)) if (x.owner_id === target && x.status !== 'done' && x.status !== 'declined') {
+      tasks[x.id] = { ...x, dept }
+      this.post({ t: 'task', task: tasks[x.id] })
+    }
+    write(K.task, tasks)
   }
 
   private chief() {
@@ -213,6 +231,8 @@ export class DemoBackend implements Backend {
 
   async upsertTask(t: Task) {
     const all = read<Record<string, Task>>(K.task, {})
+    const prev = all[t.id]
+    t = { ...t, dept: prev && prev.owner_id === t.owner_id ? prev.dept : read<Record<string, Profile>>(K.prof, {})[t.owner_id]?.dept || 'marketing' }
     all[t.id] = t
     write(K.task, all)
     this.post({ t: 'task', task: t })
@@ -316,8 +336,9 @@ export class DemoBackend implements Backend {
     this.credit(log, DAY, 'dia', localDay(new Date().toISOString()), out)
     const tasks = Object.values(read<Record<string, Task>>(K.task, {}))
     const projects = read<Record<string, Project>>(K.proj, {})
-    const goals = Object.values(read<Record<string, Goal>>(K.row + 'goals', {})).sort((a, b) => a.created_at.localeCompare(b.created_at))
-    const done = (g: Goal, upto: number) => tasks.filter(t => t.status === 'done' && t.done_at && new Date(t.done_at).getTime() < upto
+    const sala = read<Record<string, Profile>>(K.prof, {})[me]?.dept || 'marketing'
+    const goals = Object.values(read<Record<string, Goal>>(K.row + 'goals', {})).filter(g => (g.dept || 'marketing') === sala).sort((a, b) => a.created_at.localeCompare(b.created_at))
+    const done = (g: Goal, upto: number) => tasks.filter(t => t.status === 'done' && (t.dept || 'marketing') === (g.dept || 'marketing') && t.done_at && new Date(t.done_at).getTime() < upto
       && localDay(t.done_at).startsWith(g.month) && (g.metric !== 'posts' || !!t.channel) && counts(t, projects)).length
     for (const g of goals) {
       const paidGoals = new Set(log.filter(l => (l.reason === 'fase' || l.reason === 'meta') && l.ref.startsWith(g.month + ':')).map(l => l.ref.split(':')[1]))

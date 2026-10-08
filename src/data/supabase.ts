@@ -81,7 +81,7 @@ export class SupabaseBackend implements Backend {
   }
 
   async upsertProfile(p: Profile) {
-    const { rank: _rank, is_admin: _adm, ...row } = p // cargo e adm são do servidor
+    const { rank: _rank, is_admin: _adm, dept: _dept, ...row } = p // cargo, adm e sala são do servidor
     const { data, error } = await this.sb.from('profiles').upsert(row).select().single()
     if (error) throw pt(error)
     return data as Profile
@@ -89,6 +89,11 @@ export class SupabaseBackend implements Backend {
 
   async setRank(target: string, rank: number) {
     const { error } = await this.sb.rpc('set_rank', { target, new_rank: rank })
+    if (error) throw pt(error)
+  }
+
+  async setDept(target: string, dept: string, desk: number) {
+    const { error } = await this.sb.rpc('admin_set_dept', { target, p_dept: dept, p_desk: desk })
     if (error) throw pt(error)
   }
 

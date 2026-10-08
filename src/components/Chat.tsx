@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { canEditGroup, deleteGroup, dmChannel, dmPeer, GROUP_ICONS, groupChannel, groupOf, inChannel, joinGroup, markRead, run, saveGroup, send, setUi, unread, useStore } from '../store'
+import { canEditGroup, deleteGroup, deptList, deptName, dmChannel, dmPeer, GROUP_ICONS, groupChannel, groupOf, inChannel, joinGroup, markRead, run, salaChannel, saveGroup, send, setUi, unread, useStore } from '../store'
 import type { Group } from '../types'
 import MiniAvatar from './MiniAvatar'
 import { Ph } from './Icon'
@@ -23,7 +23,8 @@ export default function Chat({ fixed, onPop, onGone }: { fixed?: string; onPop?:
   const groups = Object.values(s.rows.groups)
     .filter(g => g.open || g.members.includes(meId))
     .sort((a, b) => +b.members.includes(meId) - +a.members.includes(meId) || a.name.localeCompare(b.name))
-  const title = ch === 'geral' ? '# Geral' : group ? group.name : ch.startsWith('g:') ? 'Grupo' : s.profiles[dmPeer(ch, meId)]?.name ?? 'Conversa'
+  const salas = deptList(s).length > 1
+  const title = ch === 'geral' ? (salas ? '# Geral (andar todo)' : '# Geral') : ch.startsWith('sala:') ? '# ' + deptName(ch.slice(5), s) : group ? group.name : ch.startsWith('g:') ? 'Grupo' : s.profiles[dmPeer(ch, meId)]?.name ?? 'Conversa'
 
   useEffect(() => { end.current?.scrollIntoView({ block: 'end' }) }, [msgs.length, ch])
   useEffect(() => { markRead(ch) }, [ch, msgs.length])
@@ -49,6 +50,7 @@ export default function Chat({ fixed, onPop, onGone }: { fixed?: string; onPop?:
     <div className={'chat' + (fixed ? ' solo' : '')}>
       {!fixed && <nav className="chans">
         {chan('geral', <span># Geral</span>)}
+        {salas && chan(salaChannel(s.sala), <span># {deptName(s.sala, s)}</span>)}
         <div className="chans-sec"><span>Grupos</span><button className="icon-btn xs" onClick={() => setForm('new')} title="Novo grupo" aria-label="Novo grupo"><Ph n="plus" size={14} /></button></div>
         {groups.map(g => chan(groupChannel(g.id), <><Ph n={g.icon as PhName} size={18} /><span className={g.members.includes(meId) ? '' : 'out'}>{g.name}</span></>))}
         {groups.length === 0 && <button className="chan ghost" onClick={() => setForm('new')}><Ph n="plus" size={16} /><span>Criar grupo</span></button>}

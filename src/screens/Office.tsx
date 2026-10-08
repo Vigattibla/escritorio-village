@@ -26,7 +26,7 @@ import { StickerLayer, StickerPicker } from '../components/Stickers'
 import Creator from './Creator'
 import { backend } from '../data'
 import { isChief, rankName } from '../game/ranks'
-import { setUi, signOut, unread, useStore, type Tab, type View } from '../store'
+import { deptList, deptName, myDept, openSala, run, setUi, signOut, team, unread, useStore, type Tab, type View } from '../store'
 
 type Page = View | Tab
 const narrow = () => window.matchMedia('(max-width: 900px)').matches
@@ -49,9 +49,10 @@ export default function Office() {
   if (!me) return null
 
   const chief = isChief(me)
+  const depts = deptList(s)
   const canEdit = canEditOffice(me, s.rows.carpenters)
   // painel do escritório: eu primeiro, depois quem está na sala, depois quem está fora
-  const people = Object.values(s.profiles).filter(p => p.avatar).sort((a, b) =>
+  const people = team(s.profiles, s).filter(p => p.avatar).sort((a, b) =>
     Number(b.id === me.id) - Number(a.id === me.id) || Number(s.online.has(b.id)) - Number(s.online.has(a.id)) || a.name.localeCompare(b.name))
   const office = s.view === 'escritorio'
   const page: Page = s.view !== 'quadro' ? s.view : s.drawer ? s.tab : 'quadro'
@@ -112,6 +113,12 @@ export default function Office() {
               <div className="me-pop-h"><b>{me.name}</b><small>{me.role || rankName(me)}</small></div>
               <button onClick={() => { setMeOpen(false); setUi({ editing: true }) }}><Ph n="smiley" size={20} /><b className="grow">Meu personagem</b></button>
               <button onClick={() => { setMeOpen(false); goTo('loja') }}><Ph n="coffee" size={20} /><b className="grow">Almoxarifado</b>{s.wallet && <small className="me-pop-cf">☕ {s.wallet.balance}</small>}</button>
+              {chief && depts.length > 1 && <div className="me-pop-salas">
+                <small>Salas do andar</small>
+                {depts.map(d => <button key={d.id} className={d.id === s.sala ? 'on' : ''} onClick={() => { setMeOpen(false); run(openSala(d.id)) }}>
+                  <i className="sala-dot" style={{ background: d.color }} /><b className="grow">{d.name}</b>{d.id === s.sala && <small>aqui</small>}
+                </button>)}
+              </div>}
               <button onClick={() => { setMeOpen(false); void signOut() }}><Icon n="logout" size={20} /><b className="grow">Sair</b></button>
             </div>
           </>}
@@ -123,6 +130,7 @@ export default function Office() {
           <Bell />
           <MoreMenu />
         </div>}
+        {s.sala !== myDept(s) && <div className="banner sala-visit" onClick={() => run(openSala(myDept(s)))}>Você está na sala {deptName(s.sala, s)} <small>(clique para voltar para a sua)</small></div>}
         {s.error && <div className="banner" onClick={() => setUi({ error: '' })}>{s.error} <small>(clique para fechar)</small></div>}
         {page !== 'quadro' && page !== 'agenda' && page !== 'metas' && page !== 'fluxos' && page !== 'arquivos' && page !== 'inicio' && page !== 'loja' && <div className="ptop"><h1 className="grow">{items.find(i => i.id === page)?.label}</h1><Bell /></div>}
         <main className="main">

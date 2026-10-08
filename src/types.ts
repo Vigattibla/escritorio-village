@@ -37,6 +37,8 @@ export interface Profile {
   rank: number
   /** adm: cria contas, troca senhas e define cargos (não é o mesmo que Chefe) */
   is_admin?: boolean
+  /** sala (departamento); só o adm ou a Chefe muda (setDept) */
+  dept?: string
   created_at: string
 }
 
@@ -57,6 +59,7 @@ export interface Project {
   created_at: string
   /** pasta do Drive do projeto (as tarefas sem pasta usam esta) */
   drive?: DriveLink | null
+  dept?: string
 }
 
 /** pasta do Drive ligada a tarefa/projeto: caminho desde a raiz "Escritório Village" (o servidor confere cada passo) */
@@ -104,12 +107,14 @@ export interface Task {
   stage?: string | null
   /** pasta do Drive desta tarefa */
   drive?: DriveLink | null
+  /** sala de quem é responsável (o banco decide) */
+  dept?: string
 }
 
 export type Channel = 'feed' | 'reels' | 'stories' | 'facebook' | 'site'
 
 /** evento da agenda (não é tarefa) */
-export interface CalEvent { id: string; title: string; day: string; time: string | null; created_by: string; created_at: string }
+export interface CalEvent { id: string; title: string; day: string; time: string | null; created_by: string; created_at: string; dept?: string }
 
 /** meta do mês: posts = posts publicados (tarefa com canal feita), tasks = tarefas feitas, manual = valor digitado */
 export interface Goal {
@@ -117,6 +122,7 @@ export interface Goal {
   reward: string; value: number; created_by: string; created_at: string
   /** progresso já existente na criação (não paga) */
   base?: number
+  dept?: string
 }
 
 export type StickerKind = 'mandou-bem' | 'destaque' | 'pausa' | 'parabens' | 'top' | 'recorde'
@@ -125,21 +131,23 @@ export interface Sticker { id: string; to_id: string; by_id: string; kind: Stick
 
 /** passo de um fluxo: vira tarefa ao enviar */
 export interface FlowNode { id: string; title: string; owner: string | null; due: string | null; x: number; y: number; after: string[]; task_id: string | null }
-export interface Flow { id: string; name: string; objective: string; nodes: FlowNode[]; created_by: string; created_at: string }
+export interface Flow { id: string; name: string; objective: string; nodes: FlowNode[]; created_by: string; created_at: string; dept?: string }
 
 /** etapa do quadro (coluna). kind = como o sistema entende a etapa: aprovação, feito… */
 export type StageKind = 'todo' | 'doing' | 'review' | 'done'
-export interface Stage { id: string; label: string; kind: StageKind; pos: number; created_by: string; created_at: string }
+export interface Stage { id: string; label: string; kind: StageKind; pos: number; created_by: string; created_at: string; dept?: string }
 
 /** grupo do chat: canal 'g:<id>'; aberto = qualquer um entra, fechado = só quem foi convidado */
 export interface Group { id: string; name: string; icon: string; open: boolean; members: string[]; created_by: string; created_at: string }
-/** layout do escritório (id 'escritorio'); data = Sala do editor */
+/** sala do andar: id = rooms.id do layout dela; floor/slot = posição no andar */
+export interface Dept { id: string; name: string; color: string; floor: number; slot: number; created_at: string }
+/** layout de cada sala (id = id da sala; 'escritorio' = layout antigo do Marketing); data = Sala do editor */
 export interface Room { id: string; data: unknown; created_by: string; created_at: string }
 /** carpinteiro: pode editar o escritório até `until` */
 export interface Carpenter { id: string; until: string; created_by: string; created_at: string }
-export interface Rows { events: CalEvent; goals: Goal; stickers: Sticker; flows: Flow; stages: Stage; groups: Group; rooms: Room; carpenters: Carpenter }
+export interface Rows { events: CalEvent; goals: Goal; stickers: Sticker; flows: Flow; stages: Stage; groups: Group; rooms: Room; carpenters: Carpenter; depts: Dept }
 export type RowTable = keyof Rows
-export const ROW_TABLES: RowTable[] = ['events', 'goals', 'stickers', 'flows', 'stages', 'groups', 'rooms', 'carpenters']
+export const ROW_TABLES: RowTable[] = ['events', 'goals', 'stickers', 'flows', 'stages', 'groups', 'rooms', 'carpenters', 'depts']
 
 export type Priority = 'alta' | 'media' | 'baixa'
 export interface CheckItem {
@@ -245,6 +253,8 @@ export interface Backend {
   /** devolve o perfil como ficou salvo (o cargo é decidido no servidor) */
   upsertProfile(p: Profile): Promise<Profile>
   setRank(target: string, rank: number): Promise<void>
+  /** adm ou Chefe: muda de sala (as tarefas abertas vão junto) e senta na mesa `desk` */
+  setDept(target: string, dept: string, desk: number): Promise<void>
   /** só o adm: cria a conta já com perfil e cargo */
   createAccount(user: string, password: string, name: string, rank: number): Promise<Profile>
   /** só o adm */
