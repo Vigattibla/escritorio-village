@@ -454,7 +454,7 @@ button.panel { width: 100%; border: 0; text-align: left; font: inherit; color: i
 .quadro .qtabs .qclear { margin-left: 2px; }
 .stat.link { cursor: pointer; }
 .stat.link:hover b { color: var(--t-amber-i, var(--ink)); }
-.quadro .qlists { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(168px, 1fr); align-items: stretch; overflow-x: auto; padding: 0 32px 24px; gap: 14px; }
+.quadro .qlists { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(256px, 1fr); align-items: stretch; overflow-x: auto; overscroll-behavior-x: contain; scroll-padding: 0 32px; padding: 0 32px 24px; gap: 14px; }
 .quadro .qlist { width: auto; min-width: 0; min-height: 60vh; }
 .tc-note { font-size: 13px; color: var(--muted); line-height: 1.45; margin-top: 5px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .tcard.hot .tc-note { color: #5A4A10; } .tcard.dark .tc-note { color: #A9A59C; }
@@ -999,3 +999,8 @@ button.panel { width: 100%; border: 0; text-align: left; font: inherit; color: i
 
 /* quem ainda não montou o boneco */
 .mini-av.mini-ini { display: inline-grid; place-items: center; flex: none; border-radius: 50%; color: #fff; font-family: Inter, sans-serif; font-weight: 700; letter-spacing: -.02em; line-height: 1; user-select: none; }
+/* colunas do quadro: nunca espremer; título numa linha só */
+.qlist-head { min-width: 0; }
+.qlist-head .grow { min-width: 0; }
+.qlist-head b, .qlist-head small { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.quadro .qlist { scroll-snap-align: start; }

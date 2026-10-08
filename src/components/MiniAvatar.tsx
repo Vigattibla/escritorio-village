@@ -7,12 +7,15 @@ const initials = (name: string) => {
   const w = name.trim().split(/\s+/).filter(Boolean)
   return ((w[0]?.[0] ?? '') + (w.length > 1 ? w[w.length - 1][0] : '')).toUpperCase() || '?'
 }
+/** salvou o boneco sem mexer em nada = ainda não montou */
+const LOOK = ['skin', 'hair', 'hairColor', 'outfit', 'top', 'bottom', 'shoes', 'face'] as const
+const untouched = (a: Avatar) => LOOK.every(k => a[k] === DEFAULT_AVATAR[k])
 const tint = (name: string) => TINTS[[...name].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7) % TINTS.length]
 
 /** Busto do chibi (cabeça + tronco), escalado em pixels inteiros. Quem ainda não montou o boneco aparece com as iniciais. */
 export default function MiniAvatar({ avatar, photo, size = 36, dim = false, name }: { avatar: Avatar | null; photo: string | null; size?: number; dim?: boolean; name?: string }) {
   const ref = useRef<HTMLCanvasElement>(null)
-  const blank = !avatar && !photo && !!name
+  const blank = !photo && !!name && (!avatar || untouched(avatar))
   useEffect(() => {
     if (blank) return
     const cv = ref.current!
