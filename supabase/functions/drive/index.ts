@@ -77,7 +77,7 @@ async function fileIn(path: unknown, id: unknown) {
 
 type GFile = { id: string; name: string; mimeType: string; size?: string; modifiedTime: string; thumbnailLink?: string; webViewLink?: string; shortcutDetails?: { targetId: string; targetMimeType: string } }
 const shape = (f: GFile) => f.shortcutDetails
-  ? { id: f.shortcutDetails.targetId, name: f.name, mime: f.shortcutDetails.targetMimeType, modified: f.modifiedTime, thumb: false, link: null, size: 0 }
+  ? { id: f.shortcutDetails.targetId, name: f.name, mime: f.shortcutDetails.targetMimeType, modified: f.modifiedTime, thumb: f.shortcutDetails.targetMimeType.startsWith('image/'), link: null, size: 0 }
   : { id: f.id, name: f.name, mime: f.mimeType, modified: f.modifiedTime, thumb: !!f.thumbnailLink, link: f.webViewLink ?? null, size: Number(f.size ?? 0) }
 
 async function multipart(parent: string, name: string, mime: string, body: Uint8Array) {
@@ -134,7 +134,12 @@ Deno.serve(async req => {
       }
       case 'thumb': {
         const id = await fileIn(b.path, b.id)
-        const f = await (await g(`/files/${id}?fields=thumbnailLink`)).json()
+        const f = await (await g(`/files/${id}?fields=thumbnailLink,mimeType,size`)).json()
+        // foto recém-enviada: o Google ainda não gerou a miniatura, manda a própria imagem (até 15 MB)
+        if (!f.thumbnailLink && f.mimeType?.startsWith('image/') && Number(f.size ?? 0) < 15e6) {
+          const img = await g(`/files/${id}?alt=media`)
+          return new Response(img.body, { headers: { ...cors, 'Content-Type': f.mimeType, 'Cache-Control': 'private, max-age=600' } })
+        }
         if (!f.thumbnailLink) throw new Http(404, 'Sem miniatura.')
         const px = Math.min(Math.max(Number(b.px) || 400, 100), 1600)
         const img = await g(f.thumbnailLink.replace(/=s\d+$/, `=s${px}`))
@@ -153,7 +158,7 @@ Deno.serve(async req => {
         const name = String(b.name ?? '').trim().slice(0, 120)
         if (!name) throw new Http(400, 'Dê um nome pra pasta.')
         const c = await (await g(`/files?fields=${FIELDS}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, mimeType: FOLDER, parents: [dir] }) })).json()
-        return json(shape(c))
+        return json({ ...shape(c), root: await root() })
       }
       case 'upload': {
         // sessão de envio: o navegador manda o arquivo direto pro Google, sem passar por aqui

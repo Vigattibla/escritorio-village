@@ -44,7 +44,12 @@ export interface Project {
   archived: boolean
   created_by: string
   created_at: string
+  /** pasta do Drive do projeto (as tarefas sem pasta usam esta) */
+  drive?: DriveLink | null
 }
+
+/** pasta do Drive ligada a tarefa/projeto: caminho desde a raiz "Escritório Village" (o servidor confere cada passo) */
+export interface DriveLink { crumbs: { id: string; name: string }[] }
 
 /** Uma decisão do aprovador (fica o histórico na tarefa). */
 export interface Review {
@@ -86,6 +91,8 @@ export interface Task {
   publish_at: string | null
   /** etapa personalizada do quadro (null = primeira etapa do tipo do status) */
   stage?: string | null
+  /** pasta do Drive desta tarefa */
+  drive?: DriveLink | null
 }
 
 export type Channel = 'feed' | 'reels' | 'stories' | 'facebook' | 'site'

@@ -5,8 +5,10 @@ import {
   acceptRequest, addTask, canUseAI, approverOf, canApprove, canCreateProject, canEditProject, canEditTask, canMove, canReassign, declineRequest, involved,
   canEditStages, placeTask, reassign, removeStage, run, saveStages, setStatus, setUi, stageList, stageOf, STAGE_KINDS, teamOf, toApprove, useStore,
 } from '../store'
-import type { Priority, Profile, Project, Stage, StageKind, Task, TaskStatus } from '../types'
+import type { DriveLink, Priority, Profile, Project, Stage, StageKind, Task, TaskStatus } from '../types'
 import { Bell } from './Avisos'
+import { folderName, FolderPicker } from './DriveFolder'
+import { driveOn } from '../data/drive'
 import Icon, { Ph } from './Icon'
 import MiniAvatar from './MiniAvatar'
 import SegInd from './SegInd'
@@ -519,6 +521,9 @@ function Composer({ list, meId, profiles, people, project, onClose }: {
   const [due, setDue] = useState('')
   const [prio, setPrio] = useState<Priority | null>(null)
   const [remind, setRemind] = useState('')
+  const [drive, setDrive] = useState<DriveLink | null>(null)
+  const [picking, setPicking] = useState(false)
+  const projDrive = useStore(s => (project ? s.projects[project]?.drive ?? null : null))
   const [pop, setPop] = useState<Tool | null>(ask && !list.owner ? 'owner' : null)
   const ref = useRef<HTMLTextAreaElement>(null)
   useEffect(() => ref.current?.focus(), [])
@@ -532,8 +537,8 @@ function Composer({ list, meId, profiles, people, project, onClose }: {
     const name = title.trim()
     if (!name) return
     if (!owner) { setPop('owner'); return }
-    run(addTask(owner, name, due || null, '', list.status ?? 'todo', project, { priority: prio, remind_at: remind ? new Date(remind).toISOString() : null, stage: list.stage ?? null }))
-    setTitle(''); setPrio(null); setDue(''); setRemind(''); setPop(null)
+    run(addTask(owner, name, due || null, '', list.status ?? 'todo', project, { priority: prio, remind_at: remind ? new Date(remind).toISOString() : null, stage: list.stage ?? null, drive }))
+    setTitle(''); setPrio(null); setDue(''); setRemind(''); setDrive(null); setPop(null)
     ref.current?.focus()
   }
   const tools: { k: Tool; ic: 'user' | 'flag' | 'calendar' | 'alarm'; tip: string; on: boolean }[] = [
@@ -550,11 +555,12 @@ function Composer({ list, meId, profiles, people, project, onClose }: {
       onKeyDown={e => { if (e.key === 'Escape') { e.stopPropagation(); if (pop) setPop(null); else onClose() } }}
     >
       <div className={'tcard cmp-card' + (due === today ? ' hot' : '')}>
-        {(prio || due || remind) && (
+        {(prio || due || remind || drive) && (
           <div className="tc-tags">
             {prio && <button type="button" className={'tag ' + PRIO[prio].cls} onClick={() => toggle('prio')}><Icon n="flag" size={13} />{PRIO[prio].label}</button>}
             {due && <button type="button" className="tag gray" onClick={() => toggle('due')}><Icon n="clock" size={13} />{due === today ? 'Hoje' : shortDate(due)}</button>}
             {remind && <button type="button" className="tag lilac" onClick={() => toggle('remind')}><Icon n="alarm" size={13} />{remindLabel}</button>}
+            {drive && <button type="button" className="tag gray" onClick={() => setDrive(null)} title="Tirar a pasta"><Icon n="folder" size={13} />{folderName(drive)} ✕</button>}
           </div>
         )}
         <textarea
@@ -619,7 +625,9 @@ function Composer({ list, meId, profiles, people, project, onClose }: {
             <Icon n={t.ic} size={16} />
           </button>
         ))}
+        {driveOn && <button type="button" className={'cmp-tool' + (drive ? ' set' : '')} onClick={() => setPicking(true)} title="Pasta no Drive" aria-label="Pasta no Drive"><Icon n="folder" size={16} /></button>}
       </div>
+      {picking && <FolderPicker start={drive ?? projDrive} onClose={() => { setPicking(false); ref.current?.focus() }} onPick={l => { setDrive(l); setPicking(false); ref.current?.focus() }} />}
     </form>
   )
 }

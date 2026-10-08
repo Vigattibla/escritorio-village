@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { download, driveOn, FOLDER, isImage, kb, list, mkdir, thumb, upload, type DFile } from '../data/drive'
+import { download, driveOn, takeOpenAt, FOLDER, isImage, kb, list, mkdir, thumb, upload, type DFile } from '../data/drive'
 import { Ph } from './Icon'
 import type { PhName } from './ph'
 
@@ -9,13 +9,15 @@ type Sending = { key: string; name: string; p: number; err?: string }
 const icon = (f: DFile): PhName => f.mime === FOLDER ? 'folder-simple' : f.mime.startsWith('image/') ? 'images' : f.mime.startsWith('video/') ? 'film-strip' : 'file-text'
 const ids = (c: Crumb[]) => c.map(x => x.id)
 
-function Thumb({ path, f, px = 400 }: { path: string[]; f: DFile; px?: number }) {
+export function Thumb({ path, f, px = 400 }: { path: string[]; f: DFile; px?: number }) {
   const [src, setSrc] = useState('')
   useEffect(() => {
-    if (!f.thumb) return
-    let on = true
-    thumb(path, f.id, px).then(u => on && setSrc(u), () => {})
-    return () => { on = false }
+    if (!f.thumb && !isImage(f)) return
+    let on = true, t = 0
+    // foto recém-enviada pode demorar uns segundos no Google: tenta de novo duas vezes
+    const go = (n: number) => thumb(path, f.id, px).then(u => on && setSrc(u), () => { if (on && n < 2) t = setTimeout(() => go(n + 1), 4000 * (n + 1)) })
+    go(0)
+    return () => { on = false; clearTimeout(t) }
   }, [f.id, px]) // eslint-disable-line react-hooks/exhaustive-deps
   return src ? <img src={src} alt="" draggable={false} /> : <Ph n={icon(f)} size={px > 400 ? 48 : 34} />
 }
@@ -46,7 +48,7 @@ export default function Arquivos() {
       setFiles(r.files); setNext(r.next)
     } catch (e) { setErr((e as Error).message) }
   }
-  useEffect(() => { if (driveOn) open([]) }, [])
+  useEffect(() => { if (driveOn) open(takeOpenAt()) }, [])
   // espera explícita: conta os segundos enquanto o Drive não responde
   useEffect(() => {
     if (files || err) return

@@ -4,6 +4,10 @@ import { SupabaseBackend } from './supabase'
 export interface DFile { id: string; name: string; mime: string; modified: string; thumb: boolean; link: string | null; size: number }
 export const FOLDER = 'application/vnd.google-apps.folder'
 export const driveOn = backend instanceof SupabaseBackend
+/** pasta em que a aba Arquivos abre da próxima vez (vem de "Abrir em Arquivos" na tarefa) */
+let openAt: { id: string; name: string }[] = []
+export const setOpenAt = (c: { id: string; name: string }[]) => { openAt = c }
+export const takeOpenAt = () => { const c = openAt; openAt = []; return c }
 const FN = (import.meta.env.VITE_SUPABASE_URL as string) + '/functions/v1/drive'
 
 async function call(body: object) {
@@ -18,7 +22,7 @@ export async function list(path: string[], page?: string) {
   return (await call({ a: 'list', path, page })).json() as Promise<{ root: string; files: DFile[]; next: string | null }>
 }
 export async function mkdir(path: string[], name: string) {
-  return (await call({ a: 'mkdir', path, name })).json() as Promise<DFile>
+  return (await call({ a: 'mkdir', path, name })).json() as Promise<DFile & { root: string }>
 }
 
 // miniaturas: no máximo 4 de cada vez, guardadas enquanto a página estiver aberta
@@ -60,7 +64,7 @@ export async function upload(path: string[], file: File, onProgress: (p: number)
     x.onload = () => {
       if (x.status >= 300) return fail(new Error(`O Drive recusou "${file.name}" (${x.status}).`))
       const g = JSON.parse(x.responseText)
-      ok({ id: g.id, name: g.name, mime: g.mimeType, modified: g.modifiedTime, thumb: !!g.thumbnailLink, link: g.webViewLink ?? null, size: Number(g.size ?? file.size) })
+      ok({ id: g.id, name: g.name, mime: g.mimeType, modified: g.modifiedTime, thumb: !!g.thumbnailLink || String(g.mimeType).startsWith('image/'), link: g.webViewLink ?? null, size: Number(g.size ?? file.size) })
     }
     x.onerror = () => fail(new Error(`Falhou o envio de "${file.name}". Confira a internet.`))
     x.send(file)

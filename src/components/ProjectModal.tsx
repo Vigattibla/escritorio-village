@@ -1,6 +1,9 @@
 import { useState } from 'react'
 import { isChief, rankName, rankOf } from '../game/ranks'
+import { driveOn } from '../data/drive'
 import { removeProject, run, saveProject, setUi, useStore } from '../store'
+import type { DriveLink } from '../types'
+import { folderName, FolderPicker } from './DriveFolder'
 
 const COLORS = ['#e8a33d', '#3d8be8', '#2fb36d', '#d9493a', '#8e5cd9', '#1fa5a0', '#e05ea8', '#6b7a90']
 
@@ -16,6 +19,8 @@ export default function ProjectModal() {
   const [color, setColor] = useState(prev?.color ?? COLORS[nProj % COLORS.length])
   const [crit, setCrit] = useState<string[]>(prev?.criteria ?? [])
   const [draft, setDraft] = useState('')
+  const [drive, setDrive] = useState<DriveLink | null>(prev?.drive ?? null)
+  const [picking, setPicking] = useState(false)
   const [sure, setSure] = useState(false)
   const close = () => setUi({ projectEdit: null })
   const people = Object.values(profiles).sort((a, b) => rankOf(b) - rankOf(a) || a.name.localeCompare(b.name))
@@ -23,7 +28,7 @@ export default function ProjectModal() {
   const add = () => { if (draft.trim()) { setCrit(c => [...c, draft.trim()]); setDraft('') } }
   const submit = () => {
     const all = draft.trim() ? [...crit, draft.trim()] : crit
-    run(saveProject({ id: prev?.id, name, master_id: master, criteria: all, color }).then(p => { close(); setUi({ project: p.id, view: 'quadro' }) }))
+    run(saveProject({ id: prev?.id, name, master_id: master, criteria: all, color, drive }).then(p => { close(); setUi({ project: p.id, view: 'quadro' }) }))
   }
 
   return (
@@ -51,6 +56,16 @@ export default function ProjectModal() {
               ))}
             </div>
           </div>
+          {driveOn && <div className="field">
+            <h3>Pasta no Drive <small className="muted">— as tarefas do projeto usam esta pasta</small></h3>
+            <div className="row gap">
+              {drive ? <><span className="tag gray">📁 {folderName(drive)}</span>
+                <button type="button" className="btn ghost sm" onClick={() => setPicking(true)}>Trocar</button>
+                <button type="button" className="btn ghost sm" onClick={() => setDrive(null)} title="Desvincular (a pasta continua no Drive)">✕</button></>
+                : <button type="button" className="btn soft sm" onClick={() => setPicking(true)}>📁 Vincular pasta</button>}
+            </div>
+            {picking && <FolderPicker start={drive} onClose={() => setPicking(false)} onPick={l => { setDrive(l); setPicking(false) }} />}
+          </div>}
           <div className="field">
             <h3>Critérios de aprovação <span className="count">{crit.length}</span></h3>
             <ul className="critlist">

@@ -101,7 +101,7 @@ const norm = (t: Task): Task => ({
   ...t, start: t.start ?? null, collaborators: t.collaborators ?? [], attachments: t.attachments ?? [],
   project_id: t.project_id ?? null, criteria: t.criteria ?? [], reviews: t.reviews ?? [],
   priority: t.priority ?? null, checklist: t.checklist ?? [], remind_at: t.remind_at ?? null,
-  channel: t.channel ?? null, publish_at: t.publish_at ?? null, stage: t.stage ?? null,
+  channel: t.channel ?? null, publish_at: t.publish_at ?? null, stage: t.stage ?? null, drive: t.drive ?? null,
 })
 export const involved = (t: Task, uid: string) => t.owner_id === uid || t.created_by === uid || t.collaborators.includes(uid)
 /** Mexe nos detalhes: dono, autor, colaborador, cargo acima do dono ou Chefe. */
@@ -422,7 +422,7 @@ async function putTask(t: Task) {
  * Na própria pasta ou de quem tem cargo menor: entra direto (na etapa pedida).
  * Senão (ou se `status` = 'inbox') vira pedido para a pessoa aceitar.
  */
-export async function addTask(owner: string, title: string, due: string | null = null, notes = '', status: TaskStatus = 'todo', project: string | null = null, extra: Pick<Partial<Task>, 'priority' | 'remind_at' | 'channel' | 'publish_at' | 'notes' | 'stage'> = {}) {
+export async function addTask(owner: string, title: string, due: string | null = null, notes = '', status: TaskStatus = 'todo', project: string | null = null, extra: Pick<Partial<Task>, 'priority' | 'remind_at' | 'channel' | 'publish_at' | 'notes' | 'stage' | 'drive'> = {}) {
   const direct = canAssign(me(), state.profiles[owner])
   if (status === 'review' || status === 'done') status = 'todo' // entrega passa pela etapa certa
   const t: Task = {
@@ -430,7 +430,7 @@ export async function addTask(owner: string, title: string, due: string | null =
     start: null, due, collaborators: [], attachments: [], position: Date.now(), created_at: new Date().toISOString(),
     done_at: null, project_id: project || null, criteria: [], reviews: [],
     priority: extra.priority ?? null, checklist: [], remind_at: extra.remind_at ?? null,
-    channel: extra.channel ?? null, publish_at: extra.publish_at ?? null, stage: extra.stage ?? null,
+    channel: extra.channel ?? null, publish_at: extra.publish_at ?? null, stage: extra.stage ?? null, drive: extra.drive ?? null,
   }
   await putTask(t)
   return t
@@ -625,7 +625,7 @@ export async function setCriteria(id: string, criteria: string[]) {
   await putTask({ ...t, criteria: c })
 }
 
-export async function saveProject(d: { id?: string; name: string; master_id: string; criteria: string[]; color: string; archived?: boolean }) {
+export async function saveProject(d: { id?: string; name: string; master_id: string; criteria: string[]; color: string; archived?: boolean; drive?: Project['drive'] }) {
   const prev = d.id ? state.projects[d.id] : undefined
   if (prev ? !canEditProject(prev) : !canCreateProject()) throw new Error('Sem permissão para mexer nesse projeto.')
   if (!d.name.trim()) throw new Error('Dê um nome ao projeto.')
@@ -633,6 +633,7 @@ export async function saveProject(d: { id?: string; name: string; master_id: str
     id: prev?.id ?? crypto.randomUUID(), created_by: prev?.created_by ?? state.meId!, created_at: prev?.created_at ?? new Date().toISOString(),
     name: d.name.trim().slice(0, 80), master_id: d.master_id, color: d.color, archived: d.archived ?? prev?.archived ?? false,
     criteria: d.criteria.map(x => x.trim()).filter(Boolean).slice(0, 20),
+    drive: d.drive !== undefined ? d.drive : prev?.drive ?? null,
   }
   const before = state.projects
   set({ projects: { ...state.projects, [p.id]: p } })
@@ -706,7 +707,7 @@ export async function removeTask(id: string) {
   await Promise.allSettled(t.attachments.map(a => backend.deleteFile(a.path)))
 }
 
-type Details = Partial<Pick<Task, 'title' | 'notes' | 'start' | 'due' | 'collaborators' | 'priority' | 'checklist' | 'remind_at' | 'channel' | 'publish_at'>>
+type Details = Partial<Pick<Task, 'title' | 'notes' | 'start' | 'due' | 'collaborators' | 'priority' | 'checklist' | 'remind_at' | 'channel' | 'publish_at' | 'drive'>>
 export async function updateTask(id: string, patch: Details) {
   const t = state.tasks[id]
   if (!t) return

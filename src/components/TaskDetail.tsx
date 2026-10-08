@@ -2,10 +2,11 @@ import { useEffect, useRef, useState } from 'react'
 import { isChief, rankName } from '../game/ranks'
 import {
   acceptRequest, addNote, approverOf, attachFiles, canApprove, canEditTask, canMove, canReassign, declineRequest, reassign, fileUrl, removeAttachment, removeNote, removeTask, run,
-  setCriteria, setProject, setStatus, setUi, updateTask, useStore,
+  setCriteria, setProject, setStatus, setUi, stageList, stageOf, updateTask, useStore,
 } from '../store'
 import type { Attachment, Channel, CheckItem, Priority, Task } from '../types'
 import { CHANNEL_KEYS, CHANNELS } from './v4'
+import { FolderBox } from './DriveFolder'
 import MiniAvatar from './MiniAvatar'
 import { ReviewBox, ReviewHistory } from './Revisao'
 
@@ -59,6 +60,38 @@ function Thumb({ a, onZoom, onDel }: { a: Attachment; onZoom: (url: string) => v
         <button onClick={() => run(openFile(a, true))} title="Baixar">⬇</button>
         {onDel && <button onClick={onDel} title="Remover">✕</button>}
       </div>
+    </div>
+  )
+}
+
+/** Etapas do quadro em fila: clicar move o cartão. Muitas etapas → rola para o lado. */
+function Etapas({ t, can }: { t: Task; can: boolean }) {
+  const rows = useStore(s => s.rows.stages)
+  const list = stageList(rows)
+  const cur = stageOf(t, list)
+  const at = list.findIndex(s => s.id === cur)
+  const box = useRef<HTMLDivElement>(null)
+  const [edge, setEdge] = useState({ l: false, r: false })
+  const look = () => { const b = box.current; if (b) setEdge({ l: b.scrollLeft > 4, r: b.scrollLeft + b.clientWidth < b.scrollWidth - 4 }) }
+  useEffect(() => {
+    box.current?.querySelector<HTMLElement>('.on')?.scrollIntoView({ block: 'nearest', inline: 'center' })
+    look()
+  }, [cur, list.length])
+  if (t.status === 'inbox' || t.status === 'declined') return null
+  const go = (d: number) => box.current?.scrollBy({ left: d * box.current.clientWidth * .7, behavior: 'smooth' })
+  return (
+    <div className="etapas">
+      {edge.l && <button className="etapas-arrow l" onClick={() => go(-1)} aria-label="Etapas anteriores">‹</button>}
+      <div className="etapas-row" ref={box} onScroll={look}>
+        {list.map((s, i) => (
+          <button key={s.id} className={'etapa k-' + s.kind + (s.id === cur ? ' on' : i < at ? ' past' : '')} disabled={!can || s.id === cur}
+            title={can ? (s.id === cur ? 'Etapa atual' : 'Mover para ' + s.label) : 'Só quem é responsável (ou um cargo acima) muda a etapa'}
+            onClick={() => run(setStatus(t.id, s.kind, Date.now(), s.id))}>
+            <i>{i < at ? '✓' : i + 1}</i>{s.label}
+          </button>
+        ))}
+      </div>
+      {edge.r && <button className="etapas-arrow r" onClick={() => go(1)} aria-label="Próximas etapas">›</button>}
     </div>
   )
 }
@@ -139,6 +172,8 @@ export default function TaskDetail() {
           </span>
           <button className="btn ghost sm" onClick={close} aria-label="Fechar">✕</button>
         </header>
+
+        <Etapas t={t} can={move || approve} />
 
         {last && !last.ok && t.status !== 'done' && t.status !== 'review' && (
           <div className="rvbanner">
@@ -276,6 +311,11 @@ export default function TaskDetail() {
               )}
             </div>
           </div>
+
+          <FolderBox
+            link={t.drive ?? proj?.drive ?? null} own={!!t.drive} edit={edit} suggest={t.title} base={proj?.drive ?? null}
+            onLink={l => run(updateTask(t.id, { drive: l }))} onZoom={setZoom}
+          />
 
           <div
             className={'field drop' + (over ? ' over' : '')}

@@ -816,3 +816,61 @@ button.panel { width: 100%; border: 0; text-align: left; font: inherit; color: i
   .ar-bar { flex-basis: 70px; }
   .ar-view { padding: 12px; }
 }
+
+/* etapas do card (stepper do kanban) */
+.etapas { position: relative; display: flex; align-items: center; gap: 4px; padding: 10px 20px 4px; }
+.etapas-row { display: flex; gap: 6px; overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: none; scroll-behavior: smooth; flex: 1; min-width: 0; padding: 2px; }
+.etapas-row::-webkit-scrollbar { display: none; }
+.etapa { flex: none; scroll-snap-align: center; display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px 6px 6px; border: 0; border-radius: 999px; background: var(--t-gray); color: var(--muted); font: 600 13px Inter; white-space: nowrap; transition: background .15s, color .15s; }
+.etapa i { width: 20px; height: 20px; display: grid; place-items: center; border-radius: 50%; background: #fff; font: 700 11px Inter; font-style: normal; }
+.etapa:not(:disabled):hover { background: var(--hover); color: var(--ink); }
+.etapa:disabled { cursor: default; opacity: 1; }
+.etapa.past { color: var(--ink-2); }
+.etapa.past i { background: var(--ink); color: #fff; }
+.etapa.on { color: #fff; }
+.etapa.on.k-todo { background: var(--muted); }
+.etapa.on.k-doing { background: var(--navy); }
+.etapa.on.k-review { background: #b7791f; }
+.etapa.on.k-done { background: #2f855a; }
+.etapa.on i { background: rgba(255, 255, 255, .25); color: #fff; }
+.etapas-arrow { flex: none; width: 28px; height: 28px; display: grid; place-items: center; border: 0; border-radius: 50%; background: #fff; box-shadow: var(--sh); color: var(--ink); }
+
+/* escolher pasta do Drive */
+.fp-bg { z-index: 65; }
+.task-modal.fp { max-width: 480px; max-height: min(620px, calc(100vh - 32px)); }
+.fp-path { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; padding: 8px 16px; border-bottom: 1px solid var(--line); color: var(--muted); }
+.fp-path span { display: inline-flex; align-items: center; gap: 2px; min-width: 0; }
+.fp-path button { border: 0; background: none; padding: 4px 6px; border-radius: 6px; font: 600 13px Inter; color: var(--muted); }
+.fp-path button:not(:disabled):hover { background: var(--hover); color: var(--ink); }
+.fp-path button:disabled { color: var(--ink); cursor: default; }
+.fp-list { flex: 1; overflow: auto; padding: 8px; display: grid; align-content: start; gap: 2px; min-height: 180px; }
+.fp-list > p { padding: 12px; }
+.fp-dir { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 0; border-radius: var(--r-sm); background: none; color: #c9a227; text-align: left; min-width: 0; }
+.fp-dir b { color: var(--ink); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fp-dir:hover { background: var(--hover); }
+.ar-err-in { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 8px 12px; border-radius: var(--r-sm); background: var(--t-red); color: var(--t-red-i); font-size: 13px; }
+
+/* pasta do Drive dentro da tarefa */
+.fb-empty { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; padding: 12px 14px; border: 1.5px dashed var(--line); border-radius: var(--r-md); color: var(--muted); }
+.fb { position: relative; border-radius: var(--r-md); }
+.fb.over { outline: 2px dashed var(--ink); outline-offset: 4px; }
+.fb-head { display: flex; align-items: center; gap: 4px; }
+.fb-head h3 { display: flex; align-items: center; gap: 6px; min-width: 0; margin: 0; }
+.fb-head .count { font: 600 12px Inter; color: var(--muted); background: var(--t-gray); border-radius: 999px; padding: 1px 8px; }
+.fb-grid { margin-top: 8px; display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
+.fb-th { position: relative; aspect-ratio: 1; display: grid; place-items: center; padding: 0; border: 0; border-radius: var(--r-sm); background: var(--bg); color: var(--muted); overflow: hidden; }
+.fb-th img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.fb-th small { position: absolute; left: 0; right: 0; bottom: 0; padding: 14px 6px 4px; font-size: 11px; text-align: left; color: #fff; background: linear-gradient(transparent, rgba(0, 0, 0, .6)); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; opacity: 0; transition: opacity .15s; }
+.fb-th:hover small, .fb-th:not(:has(img)) small { opacity: 1; }
+.fb-th:not(:has(img)) small { color: var(--ink-2); background: none; }
+.fb-th:hover { box-shadow: var(--sh-hi); }
+.fb-th.add { border: 1.5px dashed var(--line); background: none; align-content: center; gap: 4px; }
+.fb-th.add small { position: static; opacity: 1; padding: 0 6px; text-align: center; white-space: normal; color: var(--muted); background: none; }
+.fb-th.add:hover { color: var(--ink); border-color: var(--ink); }
+.fb-th.sending { align-content: center; padding: 0 10px; }
+.fb-th.sending .ar-bar { flex: none; width: 100%; }
+@media (max-width: 900px) {
+  .etapas { padding: 8px 12px 2px; }
+  .etapas-arrow { display: none; }
+  .fb-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
