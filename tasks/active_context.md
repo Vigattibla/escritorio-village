@@ -11,7 +11,7 @@
 
 - 07/10 (v4): F0+F1 feitos e commitados local (68f8a6b), NÃO publicados: barra preta Phosphor (bottom tabbar no celular), paleta quente, cartão com prioridade/checklist/rostos/contadores (hot = vence hoje, dark = você aprova), criar tarefa estilo Trello (título + ícones quem faz/prioridade/prazo/lembrete → etiquetas), TaskDetail edita prioridade/lembrete/checklist, lembretes client-side a cada 20s (ev:lembretes:uid), PWA instalável (manifest + ícones, sem service worker). Migração 202610072359_tarefas_f1.sql.
 
-- 08/10: Quadro — caixa de novo cartão não vaza mais da coluna (ec471db, publicado). Backup diário criptografado (backup.yml + scripts/backup.mjs; abrir com scripts/abrir-backup.sh; chave privada em D:\Backups\escritorio-village). Primeiro backup rodou e abriu ok. Anexos do Storage fora do backup. Loja (Almoxarifado) em andamento, não commitada: sprite.ts, types.ts, office/props.ts, shop/catalog.ts.
+- 08/10: Quadro — caixa de novo cartão não vaza mais da coluna (ec471db, publicado). Backup diário criptografado (backup.yml + scripts/backup.mjs; abrir com scripts/abrir-backup.sh; chave privada em D:\Backups\escritorio-village). Primeiro backup rodou e abriu ok. Anexos do Storage fora do backup. Loja (Almoxarifado) publicada em 84e5dac (ver seção 08/10 loja).
 
 ## Próximo
 0. Usuário aprovar e push (migrate aplica a migração F1). Depois: F2+ do mockup v4.
@@ -112,3 +112,11 @@ Pendente: push (precisa da migration 202610080900_v4_agenda_metas.sql e do secre
 - 08/10: Drive — aba Arquivos + função `drive` + backup pro Drive prontos no código; falta o usuário criar o OAuth no Google Cloud e colar os secrets no Supabase. Depois: anexar do Drive no TaskDetail.
 - 08/10: Drive no ar. Commit 20df898 (main, falta push): pasta do Drive em tarefa/projeto (`drive` jsonb, tarefa herda do projeto; DriveLink guarda crumbs desde a raiz porque a função valida o caminho), FolderBox com miniaturas + envio no TaskDetail, FolderPicker no Composer e no ProjectModal, stepper `.etapas` no topo do cartão (classe `.steps` já existia no Side). Modal da tarefa = Modelo B (commit 403f9d6): `.td2` 1040px, `.td2-main` (título, descrição, checklist c/ barra, pasta Drive, anexos, critérios) | `.td2-side` 320px (`.prop` linhas: pessoas, datas, prioridade, projeto, canal + Conversa); ≤900px vira 1 coluna. No ar desde 08/10 18:35 (run 37825349949).
 - 08/10 19h: composer com ícones numa linha própria (125a2e1); card sem projeto pode ir para Aprovação — aprova quem pediu, senão cargo acima (`CHEFIA` em store.ts + migration 202610082000_aprovacao_raia no guard_task) (f112c2b). No ar (run 37828354584). Falta: teste logado do aprovador; "Novo post" no alto da tela não reproduzido (aguardando print).
+
+## 08/10 — Almoxarifado + editor da sala (84e5dac, no ar)
+- Cafezinhos: +60 boas-vindas, +10/dia, metas em fases 5/5/5/20 (alvo < 4 só +20); preços 30/60/120/250. Só o servidor credita (migração 202610090900_loja_cafezinhos.sql); máx. 3 metas pagas/mês; meta congelada na criação; card só conta com outra pessoa envolvida; meta manual só o Chefe.
+- Editor da sala (SalaEditor.tsx, botão '🪚 Arrumar sala' no escritório, some ≤860px): móveis temáticos, piso, paredes, desfazer, voltar ao original; salva em rooms/escritorio e o jogo troca na hora (syncRoom). Limite 12 mesas + chefia; mesa ocupada/da chefia não sai.
+- Quem edita: rank ≥ 3 ou carpinteiro (tabela carpenters, até 4h, dado por rank ≥ 3; can_edit_office no servidor).
+- Cadeira inteira vai junto com a mesa (puxada pra trás quando vazia).
+- Backup do WIP antigo do main: `git stash list` → 'backup WIP loja antes do merge 84e5dac' (versão velha da mesma loja; pode descartar quando quiser).
+- Não testado com 2 contas reais: crédito diário, fases de meta e carpinteiro em produção.
