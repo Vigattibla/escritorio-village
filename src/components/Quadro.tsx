@@ -10,7 +10,7 @@ import { Bell } from './Avisos'
 import Icon, { Ph } from './Icon'
 import MiniAvatar from './MiniAvatar'
 import Side, { Live } from './Side'
-import { currentGoal, goalProgress } from './v4'
+import { CHANNELS, currentGoal, goalProgress } from './v4'
 
 type Group = 'etapa' | 'raias' | 'pessoa'
 type Due = '' | 'late' | 'today' | 'week' | 'none'
@@ -273,7 +273,7 @@ export default function Quadro() {
           <div className="stat"><small>Tarefas da semana</small><b>{weekN}</b></div>
           <div className="stat"><small>Para aprovar</small><b>{apprN}</b></div>
           {lateN > 0 && <div className="stat warn"><small>Atrasadas</small><b>{lateN}</b></div>}
-          {goalPct !== null && <button className="stat" onClick={() => setUi({ view: 'metas' })}><small>Meta do mês</small><b>{goalPct}<span>%</span></b></button>}
+          {goalPct !== null && <div className="stat link" onClick={() => setUi({ view: 'metas' })} title="Abrir metas"><small>Meta do mês</small><b>{goalPct}<span>%</span></b></div>}
         </div>
       </div>
       {!proj && <Live />}
@@ -283,15 +283,19 @@ export default function Quadro() {
           <button className={group === 'raias' ? 'on' : ''} onClick={() => setGroup('raias')} title="Uma linha por pessoa, separada por etapa"><Icon n="rows" />Raias</button>
           <button className={group === 'pessoa' ? 'on' : ''} onClick={() => setGroup('pessoa')} title="Uma coluna por pessoa"><Ph n="users-three" size={18} fill={group === 'pessoa'} />Pessoas</button>
         </div>
-      </div>
-      <div className="qfilters">
+        <span className="grow" />
+        {(apprN > 0 || qApprove) && (
+          <button className={'qchip appr' + (qApprove ? ' on' : '')} onClick={() => setUi({ qApprove: !qApprove })} title="Tarefas esperando a sua aprovação">
+            <Icon n="check" size={14} />Para eu aprovar<i>{apprN}</i>
+          </button>
+        )}
         <label className={'qchip' + (project ? ' on' : '')}>
           <Icon n="folder" size={14} />
           <select
             value={project} aria-label="Projeto"
             onChange={e => e.target.value === '+' ? setUi({ projectEdit: 'new' }) : setUi({ project: e.target.value })}
           >
-            <option value="">Todos os projetos</option>
+            <option value="">Projeto</option>
             {projList.map(p => <option key={p.id} value={p.id}>{p.name}{p.archived ? ' (arquivado)' : ''}</option>)}
             <option value={NONE}>Sem projeto</option>
             {canCreateProject() && <option value="+">＋ Novo projeto…</option>}
@@ -301,18 +305,13 @@ export default function Quadro() {
         <label className={'qchip' + (due ? ' on' : '')}>
           <Icon n="calendar" size={14} />
           <select value={due} onChange={e => setDue(e.target.value as Due)} aria-label="Prazo">
-            <option value="">Qualquer prazo</option>
+            <option value="">Prazo</option>
             <option value="late">Atrasadas</option>
             <option value="today">Vencem hoje</option>
             <option value="week">Até 7 dias</option>
             <option value="none">Sem prazo</option>
           </select>
         </label>
-        {(apprN > 0 || qApprove) && (
-          <button className={'qchip appr' + (qApprove ? ' on' : '')} onClick={() => setUi({ qApprove: !qApprove })} title="Tarefas esperando a sua aprovação">
-            <Icon n="check" size={14} />Para eu aprovar<i>{apprN}</i>
-          </button>
-        )}
         <div className="qwho" aria-label="Filtrar por pessoa">
           {people.map(p => (
             <button key={p.id} className={who.includes(p.id) ? 'on' : ''} onClick={() => toggleWho(p.id)} title={`Só de ${p.name}`}>
@@ -427,6 +426,9 @@ function Card({ t, mode, meId, profiles, projects, showProj, notes, dragging, on
   const pct = t.checklist.length ? Math.round((ck / t.checklist.length) * 100) : 0
   const faces = [...(mode === 'etapa' ? [t.owner_id] : []), ...t.collaborators].map(id => profiles[id]).filter(Boolean)
   const prio = t.priority ? PRIO[t.priority] : null
+  const ch = t.channel ? CHANNELS[t.channel] : null
+  const okd = done && last?.ok === true
+  const note = !done && t.notes.trim().split('\n')[0]
 
   return (
     <>
@@ -441,16 +443,19 @@ function Card({ t, mode, meId, profiles, projects, showProj, notes, dragging, on
         onKeyDown={e => e.key === 'Enter' && open()}
         tabIndex={0}
       >
-        {(mode === 'pessoa' || (proj && showProj) || redo || (prio && !done) || dark) && (
+        {(mode === 'pessoa' || (proj && showProj) || redo || (prio && !done) || dark || ch || okd) && (
           <div className="tc-tags">
             {dark && <span className="tag lilac"><Icon n="check" size={13} />Você aprova</span>}
+            {okd && <span className="tag green"><Icon n="tick" size={13} />Aprovado</span>}
             {prio && !done && <span className={'tag ' + prio.cls} title="Prioridade"><Icon n="flag" size={13} />{prio.label}</span>}
+            {ch && <span className={'tag ' + ch.tag}><Ph n={ch.ic} size={13} fill />{ch.label}</span>}
             {mode === 'pessoa' && <span className={'tc-stage ' + t.status}>{STAGE_LABEL[t.status]}</span>}
             {proj && showProj && <span className="tc-proj" title={`Projeto ${proj.name}`}>{proj.name}</span>}
             {redo && <span className="tag red" title={last!.reason}>↺ reprovada</span>}
           </div>
         )}
         <div className="tc-title">{t.title}</div>
+        {note && <div className="tc-note">{note}</div>}
         {t.status === 'review' && appr && !dark && <div className="tc-wait"><Icon n="clock" size={13} />aguardando {first(profiles[appr])}</div>}
         {t.checklist.length > 0 && (
           <div className="tc-prog">
@@ -468,7 +473,6 @@ function Card({ t, mode, meId, profiles, projects, showProj, notes, dragging, on
           <span className="grow" />
           {(t.due || done) && <span className={'tc-due' + (late ? ' late' : done ? ' ok' : '')} title={dueTip}><Icon n={done ? 'tick' : 'clock'} size={13} />{t.due ? (hot ? 'Hoje' : shortDate(t.due)) : 'Feito'}</span>}
           {t.remind_at && !done && <span className="cnt-pill" title={'Lembrete ' + new Date(t.remind_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}><Icon n="alarm" size={13} /></span>}
-          {t.notes.trim() && <span className="cnt-pill" title="Tem descrição"><Icon n="list" size={13} /></span>}
           {t.attachments.length > 0 && <span className="cnt-pill" title="Anexos"><Icon n="clip" size={13} />{t.attachments.length}</span>}
           {notes > 0 && <span className="cnt-pill" title="Comentários"><Icon n="chat" size={13} />{notes}</span>}
         </div>

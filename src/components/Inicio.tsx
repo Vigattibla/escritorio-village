@@ -5,6 +5,8 @@ import { StatusTag } from './Agenda'
 import Icon, { Ph } from './Icon'
 import MiniAvatar from './MiniAvatar'
 import { Live } from './Side'
+import MoreMenu from './MoreMenu'
+import { StickerLayer } from './Stickers'
 import { CHANNELS, first } from './v4'
 
 const hello = () => { const h = new Date().getHours(); return h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite' }
@@ -31,8 +33,10 @@ export default function Inicio() {
         <div className="grow"><small>{date[0].toUpperCase() + date.slice(1)}</small><h2>{hello()}, {first(me)}</h2></div>
         <button className="iconbtn" onClick={() => setUi({ chatOpen: true })} aria-label="Chat"><Icon n="chat" size={20} />{msgs > 0 && <i>{msgs > 9 ? '9+' : msgs}</i>}</button>
         <Bell />
+        <MoreMenu />
       </div>
       <Live small />
+      <StickerLayer inline />
       <div className="mday">
         <button className="ink" onClick={() => setUi({ view: 'quadro', drawer: false })}><b>{dueToday}</b><small>vencem hoje</small></button>
         <button onClick={() => setUi({ view: 'quadro', drawer: false, qApprove: true })}><b>{approve}</b><small>para você aprovar</small></button>
@@ -46,8 +50,12 @@ export default function Inicio() {
           const ch = t.channel ? CHANNELS[t.channel] : null
           const by = s.profiles[t.created_by]
           const late = t.due && t.due < today
+          const hot = !!t.due && t.due <= today
+          const ck = t.checklist.filter(c => c.done).length
+          const pct = t.checklist.length ? Math.round((ck / t.checklist.length) * 100) : 0
+          const note = t.notes.trim().split('\n')[0]
           return (
-            <button key={t.id} className="panel mcard" onClick={() => setUi({ task: t.id })}>
+            <button key={t.id} className={'panel mcard' + (hot ? ' hot' : '')} onClick={() => setUi({ task: t.id })}>
               <div className="row gap">
                 {ch && <span className={'tag ' + ch.tag}><Ph n={ch.ic} size={13} fill />{ch.label}</span>}
                 {p && <span className="tag gray">{p.name}</span>}
@@ -55,8 +63,10 @@ export default function Inicio() {
                 <StatusTag t={t} />
               </div>
               <b>{t.title}</b>
+              {note && <p className="mc-note">{note}</p>}
+              {t.checklist.length > 0 && <div className="tc-prog"><div className="row">Checklist {ck}/{t.checklist.length}<b>{pct}%</b></div><div className="bar"><i style={{ width: `${pct}%` }} /></div></div>}
               <div className="row gap mc-ft">
-                {t.due && <span className={late ? 'late' : ''}><Ph n="calendar-dots" size={14} />{t.due === today ? 'hoje' : new Date(t.due + 'T12:00').toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' })}</span>}
+                {t.due && <span className={late ? 'late' : ''}><Ph n="calendar-dots" size={14} />{t.due === today ? 'Hoje' : late ? 'Atrasada' : new Date(t.due + 'T12:00').toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' })}</span>}
                 <span className="grow" />
                 {by && by.id !== me.id && <><small>de {first(by)}</small><MiniAvatar avatar={by.avatar} photo={by.photo} size={22} /></>}
               </div>

@@ -17,6 +17,7 @@ import Agenda from '../components/Agenda'
 import Metas, { CeleWatch } from '../components/Metas'
 import Fluxos from '../components/Fluxos'
 import Inicio from '../components/Inicio'
+import MoreMenu from '../components/MoreMenu'
 import Sheet from '../components/Sheet'
 import { StickerLayer, StickerPicker } from '../components/Stickers'
 import Creator from './Creator'
@@ -86,10 +87,9 @@ export default function Office() {
       <Ph n={it.ic} size={24} fill={page === it.id} />{it.label}
     </button>
   )
-  const more = items.filter(i => i.id === 'quadro' || i.id === 'fluxos' || i.id === 'equipe' || i.id === 'geral')
 
   return (
-    <div className="office">
+    <div className="office" data-page={page}>
       <aside className="nav">
         {backend.mode === 'demo' && <span className="nav-demo">demo</span>}
         <nav className="nav-list">
@@ -105,9 +105,8 @@ export default function Office() {
       <div className="page">
         {page !== 'inicio' && <div className="mbar">
           <b className="grow">{items.find(i => i.id === page)?.label ?? 'Escritório'}</b>
-          {more.filter(i => i.id !== page).map(i => <button key={i.id} className="icon-btn" onClick={() => goTo(i.id)} aria-label={i.label} title={i.label}><Ph n={i.ic} size={20} />{!!i.n && <i className="dot-n">{i.n > 9 ? '9+' : i.n}</i>}</button>)}
           <Bell />
-          <button className="icon-btn" onClick={() => signOut()} aria-label="Sair" title="Sair"><Icon n="logout" size={18} /></button>
+          <MoreMenu />
         </div>}
         {s.error && <div className="banner" onClick={() => setUi({ error: '' })}>{s.error} <small>(clique para fechar)</small></div>}
         {page !== 'quadro' && page !== 'agenda' && page !== 'metas' && page !== 'fluxos' && page !== 'inicio' && <div className="ptop"><h1 className="grow">{items.find(i => i.id === page)?.label}</h1><Bell /></div>}
@@ -142,7 +141,7 @@ export default function Office() {
       {s.projectEdit && <ProjectModal />}
       {s.aiOpen && <Distribuir />}
       <RequestModal />
-      <StickerLayer />
+      {(page === 'quadro' || page === 'inicio') && <StickerLayer />}
       <StickerPicker />
       <CeleWatch />
       <Sheet />

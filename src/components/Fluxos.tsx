@@ -2,12 +2,12 @@ import { useRef, useState } from 'react'
 import { rankOf } from '../game/ranks'
 import { addTask, dropRow, getState, me, putRow, run, setUi, useStore } from '../store'
 import type { Flow, FlowNode } from '../types'
-import { Bell } from './Avisos'
+import { StatusTag } from './Agenda'
 import Icon, { Ph } from './Icon'
 import MiniAvatar from './MiniAvatar'
 import { first } from './v4'
 
-const NW = 220, NH = 96
+const NW = 220, NH = 96, OX = 290 // OX: espaço do nó do objetivo, à esquerda
 const MODELOS: { name: string; objective: string; steps: [string, number[]][] }[] = [
   { name: 'Campanha de post', objective: 'Post publicado no prazo', steps: [['Briefing e oferta', []], ['Fotos', [0]], ['Texto do post', [0]], ['Arte final', [1, 2]], ['Publicar', [3]]] },
   { name: 'Evento no resort', objective: 'Evento redondo, do convite ao pós', steps: [['Data e orçamento', []], ['Divulgação', [0]], ['Reservas e lista', [0]], ['Checklist do dia', [1, 2]], ['Fotos e pós-evento', [3]]] },
@@ -34,6 +34,8 @@ export default function Fluxos() {
   const [pick, setPick] = useState<string | null>(null)
   const [models, setModels] = useState(false)
   const [drag, setDrag] = useState<{ id: string; dx: number; dy: number; x: number; y: number } | null>(null)
+  const [mode, setMode] = useState<'seq' | 'mapa'>('seq')
+  const [z, setZ] = useState(() => (matchMedia('(max-width: 900px)').matches ? 0.6 : 1))
   const box = useRef<HTMLDivElement>(null)
   const can = rankOf(me()) >= 2
   const people = Object.values(profiles).filter(p => p.avatar)
@@ -67,10 +69,11 @@ export default function Fluxos() {
 
   const onDown = (e: React.PointerEvent, n: FlowNode) => {
     if (!can || (e.target as HTMLElement).closest('button')) return
+    if (mode === 'seq') { setPick(p => (p === n.id ? null : n.id)); return }
     e.currentTarget.setPointerCapture(e.pointerId)
-    setDrag({ id: n.id, dx: e.clientX - n.x, dy: e.clientY - n.y, x: n.x, y: n.y })
+    setDrag({ id: n.id, dx: e.clientX / z - n.x, dy: e.clientY / z - n.y, x: n.x, y: n.y })
   }
-  const onMove = (e: React.PointerEvent) => drag && setDrag({ ...drag, x: Math.max(0, e.clientX - drag.dx), y: Math.max(0, e.clientY - drag.dy) })
+  const onMove = (e: React.PointerEvent) => drag && setDrag({ ...drag, x: Math.max(0, e.clientX / z - drag.dx), y: Math.max(0, e.clientY / z - drag.dy) })
   const onUp = (n: FlowNode) => {
     if (!drag) return
     const moved = Math.abs(drag.x - n.x) + Math.abs(drag.y - n.y) > 4
@@ -78,84 +81,115 @@ export default function Fluxos() {
     else setPick(p => (p === n.id ? null : n.id))
     setDrag(null)
   }
-  const pos = (n: FlowNode) => (drag?.id === n.id ? { x: drag.x, y: drag.y } : { x: n.x, y: n.y })
-  const W = f ? Math.max(900, ...f.nodes.map(n => pos(n).x + NW + 80)) : 900
+  const seq: Record<string, { x: number; y: number }> = {}
+  if (f && mode === 'seq') {
+    const depth: Record<string, number> = {}
+    const d = (n: FlowNode, seen: string[] = []): number => {
+      if (depth[n.id] != null) return depth[n.id]
+      const prev = n.after.map(a => f.nodes.find(x => x.id === a)).filter((x): x is FlowNode => !!x && !seen.includes(x.id))
+      return (depth[n.id] = prev.length ? Math.max(...prev.map(p => d(p, [...seen, n.id]))) + 1 : 0)
+    }
+    const rows: Record<number, number> = {}
+    const cols = f.nodes.map(n => d(n))
+    const tall = Math.max(1, ...cols.map(c => cols.filter(x => x === c).length))
+    f.nodes.forEach((n, i) => {
+      const c = cols[i], r = (rows[c] = (rows[c] ?? -1) + 1), inCol = cols.filter(x => x === c).length
+      seq[n.id] = { x: 60 + c * 290, y: 60 + (r + (tall - inCol) / 2) * 150 }
+    })
+  }
+  const pos = (n: FlowNode) => (mode === 'seq' ? seq[n.id] : drag?.id === n.id ? { x: drag.x, y: drag.y } : { x: n.x, y: n.y })
+  const W = f ? Math.max(900, ...f.nodes.map(n => pos(n).x + OX + NW + 80)) : 900
   const H = f ? Math.max(520, ...f.nodes.map(n => pos(n).y + NH + 80)) : 520
   const node = f && pick ? f.nodes.find(n => n.id === pick) : undefined
+  const roots = f ? f.nodes.filter(n => !n.after.some(a => f.nodes.some(x => x.id === a))) : []
+  const goalY = roots.length ? roots.reduce((s, n) => s + pos(n).y, 0) / roots.length : 60
 
   return (
     <div className="quadro fluxos">
-      <div className="qbar">
-        {list.length > 0 && (
-          <label className="qchip on"><Ph n="tree-structure" size={15} />
-            <select value={f?.id ?? ''} onChange={e => { setUi({ flow: e.target.value }); setPick(null) }} aria-label="Fluxo">
-              {list.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}
-            </select>
-          </label>
-        )}
-        <span className="grow" /><Bell />
-        {can && <div className="pop-wrap">
-          <button className="btn soft" onClick={() => setModels(v => !v)}><Ph n="squares-four" size={18} />Modelos</button>
-          {models && <div className="menu-pop">
-            <button onClick={() => create()}><Ph n="note-blank" size={18} /><div><b>Em branco</b><small>Começar do zero</small></div></button>
-            {MODELOS.map(m => <button key={m.name} onClick={() => create(m)}><Ph n="flow-arrow" size={18} /><div><b>{m.name}</b><small>{m.steps.length} passos · {m.objective}</small></div></button>)}
-          </div>}
-        </div>}
-        {can && f && <button className="btn accent" disabled={!pending.length} onClick={() => run(send())} title={pending.length ? 'Cria uma tarefa para cada passo com responsável' : 'Escolha quem faz cada passo'}>
-          <Ph n="paper-plane-tilt" size={18} fill />{pending.length ? `Enviar ${pending.length} tarefa${pending.length > 1 ? 's' : ''}` : 'Tudo enviado'}</button>}
-      </div>
-
       {!f ? (
         <div className="panel empty-goal"><Ph n="flow-arrow" size={36} /><b>Nenhum fluxo ainda</b>
           <small className="muted">{can ? 'Monte a estratégia em passos, escolha quem faz cada um e envie tudo como tarefas.' : 'Quando a coordenação montar um fluxo, ele aparece aqui.'}</small>
-          {can && <button className="btn primary" onClick={() => setModels(true)}><Ph n="plus" size={18} fill />Criar fluxo</button>}</div>
+          {can && <div className="row gap"><button className="btn primary" onClick={() => create()}><Ph n="plus" size={18} fill />Em branco</button>{MODELOS.map(m => <button key={m.name} className="btn soft" onClick={() => create(m)}><Ph n="flow-arrow" size={18} />{m.name}</button>)}</div>}</div>
       ) : (
         <>
           <div className="fl-head">
             {can ? <input key={f.id + f.name} className="fl-name" defaultValue={f.name} maxLength={80} onBlur={e => e.target.value.trim() && e.target.value !== f.name && save({ ...f, name: e.target.value.trim() })} onKeyDown={e => e.key === 'Enter' && e.currentTarget.blur()} aria-label="Nome do fluxo" /> : <h1>{f.name}</h1>}
             <span className="pill"><Ph n="tree-structure" size={14} />Estratégia</span>
+            <div className="seg" role="tablist" aria-label="Visão">
+              <button className={mode === 'seq' ? 'on' : ''} onClick={() => setMode('seq')} title="Passos alinhados pela ordem"><Ph n="flow-arrow" size={18} fill={mode === 'seq'} />Sequência</button>
+              <button className={mode === 'mapa' ? 'on' : ''} onClick={() => setMode('mapa')} title="Arraste os passos livremente"><Ph n="git-fork" size={18} fill={mode === 'mapa'} />Mapa</button>
+            </div>
+            {list.length > 1 && (
+              <label className="qchip"><Ph n="tree-structure" size={15} />
+                <select value={f.id} onChange={e => { setUi({ flow: e.target.value }); setPick(null) }} aria-label="Trocar de fluxo">
+                  {list.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}
+                </select>
+              </label>
+            )}
             <span className="grow" />
-            <div className="faces">{[...new Set(f.nodes.map(n => n.owner).filter(Boolean) as string[])].map(id => <MiniAvatar key={id} avatar={profiles[id]?.avatar ?? null} photo={profiles[id]?.photo ?? null} size={26} />)}</div>
-            {can && <button className="btn soft sm" onClick={addNode}><Icon n="plus" size={14} />Passo</button>}
+            <div className="faces">{[...new Set(f.nodes.map(n => n.owner).filter(Boolean) as string[])].map(id => <MiniAvatar key={id} avatar={profiles[id]?.avatar ?? null} photo={profiles[id]?.photo ?? null} size={30} />)}</div>
+            {can && <div className="pop-wrap">
+              <button className="btn soft" onClick={() => setModels(v => !v)}><Ph n="squares-four" size={18} />Modelos</button>
+              {models && <div className="menu-pop">
+                <button onClick={() => create()}><Ph n="note-blank" size={18} /><div><b>Em branco</b><small>Começar do zero</small></div></button>
+                {MODELOS.map(m => <button key={m.name} onClick={() => create(m)}><Ph n="flow-arrow" size={18} /><div><b>{m.name}</b><small>{m.steps.length} passos · {m.objective}</small></div></button>)}
+              </div>}
+            </div>}
+            {can && <button className="btn accent" disabled={!pending.length} onClick={() => run(send())} title={pending.length ? 'Cria uma tarefa para cada passo com responsável' : 'Escolha quem faz cada passo'}>
+              <Ph n="paper-plane-tilt" size={18} fill />{pending.length ? `Enviar ${pending.length} tarefa${pending.length > 1 ? 's' : ''}` : 'Tudo enviado'}</button>}
             {can && <button className="icon-btn" title="Apagar fluxo" aria-label="Apagar fluxo" onClick={() => { if (confirm(`Apagar o fluxo “${f.name}”? As tarefas já enviadas continuam.`)) { run(dropRow('flows', f.id)); setUi({ flow: null }) } }}><Icon n="trash" /></button>}
           </div>
-          {can ? <input key={f.id + f.objective} className="fl-obj" defaultValue={f.objective} maxLength={160} placeholder="Objetivo (ex.: vender 30 pacotes até 15/12)" onBlur={e => e.target.value !== f.objective && save({ ...f, objective: e.target.value })} onKeyDown={e => e.key === 'Enter' && e.currentTarget.blur()} /> : f.objective && <p className="fl-obj">{f.objective}</p>}
           <div className="fl-wrap">
+            <div className="cv-box">
+              {can && <div className="cv-tools">
+                <button className="on" title="Selecionar" aria-label="Selecionar"><Ph n="cursor" size={20} fill /></button>
+                <button onClick={addNode} title="Novo passo" aria-label="Novo passo"><Ph n="note-blank" size={20} /></button>
+              </div>}
+              <div className="cv-zoom">
+                <button onClick={() => setZ(v => Math.max(0.5, +(v - 0.1).toFixed(1)))} aria-label="Diminuir zoom"><Ph n="caret-left" size={14} /></button>
+                <button onClick={() => setZ(1)} title="Voltar a 100%">{Math.round(z * 100)}%</button>
+                <button onClick={() => setZ(v => Math.min(1.5, +(v + 0.1).toFixed(1)))} aria-label="Aumentar zoom"><Ph n="caret-right" size={14} /></button>
+              </div>
             <div className="canvas" ref={box}>
-              <div className="canvas-in" style={{ width: W, height: H }}>
+              <div className="canvas-in" style={{ width: W, height: H, zoom: z }}>
                 <svg className="links" width={W} height={H}>
                   <defs><marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 10 5 0 10z" fill="#141519" /></marker></defs>
                   <g fill="none" stroke="#141519" strokeWidth={1.8} strokeDasharray="2 6" strokeLinecap="round" markerEnd="url(#ah)">
+                    {roots.map(n => { const p = pos(n), y1 = goalY + NH / 2, y2 = p.y + NH / 2, x1 = 60 + 230, x2 = p.x + OX - 6, mx = (x1 + x2) / 2; return <path key={'g' + n.id} d={`M${x1} ${y1} C${mx} ${y1} ${mx} ${y2} ${x2} ${y2}`} /> })}
                     {f.nodes.flatMap(n => n.after.map(a => {
                       const s = f.nodes.find(x => x.id === a)
                       if (!s) return null
                       const p1 = pos(s), p2 = pos(n)
-                      const x1 = p1.x + NW, y1 = p1.y + NH / 2, x2 = p2.x - 6, y2 = p2.y + NH / 2, mx = (x1 + x2) / 2
+                      const x1 = p1.x + OX + NW, y1 = p1.y + NH / 2, x2 = p2.x + OX - 6, y2 = p2.y + NH / 2, mx = (x1 + x2) / 2
                       return <path key={a + n.id} d={`M${x1} ${y1} C${mx} ${y1} ${mx} ${y2} ${x2} ${y2}`} />
                     }))}
                   </g>
                 </svg>
-                {f.nodes.map(n => {
+                <div className="fn goal-n" style={{ left: 60, top: goalY }}>
+                  <div className="top-r"><span className="num"><Ph n="star" size={14} fill /></span><h4>Objetivo</h4></div>
+                  {can ? <textarea key={f.id + f.objective} className="fl-obj" defaultValue={f.objective} maxLength={160} rows={2} placeholder="Ex.: vender 30 pacotes até 15/12" onBlur={e => e.target.value !== f.objective && save({ ...f, objective: e.target.value })} /> : <small>{f.objective || 'Sem objetivo definido'}</small>}
+                </div>
+                {f.nodes.map((n, i) => {
                   const p = pos(n)
                   const o = n.owner ? profiles[n.owner] : undefined
                   const t = n.task_id ? tasks[n.task_id] : undefined
-                  const last = !f.nodes.some(x => x.after.includes(n.id))
                   return (
                     <div
-                      key={n.id} className={'fn' + (pick === n.id ? ' on' : '') + (last ? ' goal-n' : '') + (drag?.id === n.id ? ' drag' : '') + (t ? ' sent' : '')}
-                      style={{ left: p.x, top: p.y }} onPointerDown={e => onDown(e, n)} onPointerMove={onMove} onPointerUp={() => onUp(n)}
+                      key={n.id} className={'fn' + (pick === n.id ? ' on' : '') + (mode === 'mapa' && can ? ' movable' : '') + (drag?.id === n.id ? ' drag' : '') + (t ? ' sent' : '')}
+                      style={{ left: p.x + OX, top: p.y }} onPointerDown={e => onDown(e, n)} onPointerMove={onMove} onPointerUp={() => onUp(n)}
                       onClick={() => !can && t && setUi({ task: t.id })}
                     >
-                      <b>{n.title}</b>
-                      <div className="fn-meta">
-                        {o ? <><MiniAvatar avatar={o.avatar} photo={o.photo} size={22} /><span>{first(o)}</span></> : <span className="muted">quem faz?</span>}
+                      <div className="top-r"><span className="num">{i + 1}</span><h4>{n.title}</h4>{t && <StatusTag t={t} />}</div>
+                      <div className={'fn-meta' + (o ? '' : ' empty')}>
+                        {o ? <><MiniAvatar avatar={o.avatar} photo={o.photo} size={24} /><span>{first(o)}</span></> : <><i className="fn-add">+</i><span>Escolher quem faz</span></>}
                         {n.due && <span className="fn-due"><Icon n="clock" size={12} />{new Date(n.due + 'T12:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }).replace('.', '')}</span>}
                       </div>
-                      {t && <button className="fn-task" onClick={() => setUi({ task: t.id })}><Ph n={t.status === 'done' ? 'check-circle' : 'paper-plane-tilt'} size={13} fill />{t.status === 'done' ? 'feita' : 'enviada'}</button>}
+                      {t && <button className="fn-task" onClick={() => setUi({ task: t.id })}><Icon n="locate" size={12} />Abrir tarefa</button>}
                     </div>
                   )
                 })}
               </div>
+            </div>
             </div>
             {node && can && (
               <div className="panel picker">

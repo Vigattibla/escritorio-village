@@ -37,11 +37,15 @@ export function Live({ small = false }: { small?: boolean }) {
         <div className="live-h">
           <span className="pulse" /><h3>Escritório agora</h3><small>{here.length} de {people.length} na sala</small>
           <div className="who-tabs">
-            {here.map((id, n) => (
-              <button key={id} className={id === focus ? 'on' : ''} onClick={() => cut(n)}>
-                {id === meId ? 'Você' : first(profiles[id])}
-              </button>
-            ))}
+            {[meId, ...people.map(p => p.id).filter(id => id !== meId)].map(id => {
+              const n = here.indexOf(id)
+              return (
+                <button key={id} className={id === focus ? 'on' : n < 0 ? 'off' : ''} onClick={() => n >= 0 && cut(n)} disabled={n < 0} title={n < 0 ? 'Fora da sala' : undefined}>
+                  <MiniAvatar avatar={profiles[id]?.avatar ?? null} photo={profiles[id]?.photo ?? null} size={24} dim={n < 0} />
+                  {id === meId ? 'Você' : first(profiles[id])}
+                </button>
+              )
+            })}
           </div>
         </div>
       )}
@@ -193,9 +197,10 @@ export function ChatPanel() {
   const profiles = useStore(s => s.profiles)
   const n = useStore(s => unread(s, 'geral'))
   const [text, setText] = useState('')
-  const end = useRef<HTMLDivElement>(null)
+  const box = useRef<HTMLDivElement>(null)
   const last = msgs.filter(m => m.channel === 'geral').slice(-4)
-  useEffect(() => { end.current?.scrollIntoView({ block: 'nearest' }) }, [last.length])
+  // rola só a caixinha das mensagens; scrollIntoView arrastava a coluna inteira para baixo
+  useEffect(() => { const b = box.current; if (b) b.scrollTop = b.scrollHeight }, [last.length])
   const submit = (e: React.FormEvent) => { e.preventDefault(); if (!text.trim()) return; run(send('geral', text)); setText('') }
   return (
     <div className="panel pchat">
@@ -203,7 +208,7 @@ export function ChatPanel() {
         {n > 0 && <span className="unread">{n} {n > 1 ? 'novas' : 'nova'}</span>}
         <button className="icon-btn" onClick={() => setUi({ chatOpen: true, channel: 'geral' })} title="Abrir chat" aria-label="Abrir chat"><Ph n="corners-out" size={16} /></button>
       </div>
-      <div className="pmsgs">
+      <div className="pmsgs" ref={box}>
         {last.length === 0 && <small className="muted">Ninguém falou nada ainda.</small>}
         {last.map(m => {
           const p = profiles[m.sender_id]
@@ -215,7 +220,6 @@ export function ChatPanel() {
             </div>
           )
         })}
-        <div ref={end} />
       </div>
       <form className="cin" onSubmit={submit}>
         <Ph n="smiley" size={18} />

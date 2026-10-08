@@ -9,7 +9,7 @@ import { first, hm, KIND_KEYS, KINDS } from './v4'
 export const canStick = () => rankOf(me()) >= 2
 
 /** Adesivos colados na minha tela: arrasto para tirar da frente, fecho quando quiser. */
-export function StickerLayer() {
+export function StickerLayer({ inline = false }: { inline?: boolean }) {
   const meId = useStore(s => s.meId)
   const rows = useStore(s => s.rows.stickers)
   const profiles = useStore(s => s.profiles)
@@ -19,14 +19,14 @@ export function StickerLayer() {
   const W = window.innerWidth, H = window.innerHeight
   const clamp = (v: number) => Math.min(0.95, Math.max(0.02, v))
   return (
-    <div className="stk-layer">
+    <div className={inline ? 'stk-inline' : 'stk-layer'}>
       {mine.map((s, i) => {
         const k = KINDS[s.kind] ?? KINDS.recorde
         const x = drag?.id === s.id ? drag.x : s.x, y = drag?.id === s.id ? drag.y : s.y
         return (
           <div
-            key={s.id} className={'sticker' + (drag?.id === s.id ? ' drag' : '')} style={{ left: `clamp(8px, calc(${x * 100}% - 110px), calc(100% - 236px))`, top: `clamp(8px, calc(${y * 100}% - 40px), calc(100% - 180px))`, background: k.bg, '--r': `${(i % 3) * 4 - 6}deg` } as React.CSSProperties}
-            onPointerDown={e => { if ((e.target as HTMLElement).closest('button')) return; e.currentTarget.setPointerCapture(e.pointerId); setDrag({ id: s.id, ox: e.clientX / W - s.x, oy: e.clientY / H - s.y, x: s.x, y: s.y }) }}
+            key={s.id} className={'sticker' + (drag?.id === s.id ? ' drag' : '')} style={inline ? { background: k.bg } : { left: `clamp(8px, calc(${x * 100}% - 110px), calc(100% - 236px))`, top: `clamp(8px, calc(${y * 100}% - 40px), calc(100% - 180px))`, background: k.bg, '--r': `${(i % 3) * 4 - 6}deg` } as React.CSSProperties}
+            onPointerDown={e => { if (inline || (e.target as HTMLElement).closest('button')) return; e.currentTarget.setPointerCapture(e.pointerId); setDrag({ id: s.id, ox: e.clientX / W - s.x, oy: e.clientY / H - s.y, x: s.x, y: s.y }) }}
             onPointerMove={e => drag?.id === s.id && setDrag({ ...drag, x: clamp(e.clientX / W - drag.ox), y: clamp(e.clientY / H - drag.oy) })}
             onPointerUp={() => { if (drag && (drag.x !== s.x || drag.y !== s.y)) run(putRow('stickers', { ...s, x: drag.x, y: drag.y })); setDrag(null) }}
           >
