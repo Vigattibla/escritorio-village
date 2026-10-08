@@ -23,6 +23,12 @@ export class SupabaseBackend implements Backend {
     this.sb = createClient(url, key)
   }
 
+  /** token da sessão, pra chamar as funções (Drive) */
+  async token() {
+    const { data } = await this.sb.auth.getSession()
+    return data.session?.access_token ?? ''
+  }
+
   async currentUserId() {
     const { data } = await this.sb.auth.getSession()
     return data.session?.user.id ?? null

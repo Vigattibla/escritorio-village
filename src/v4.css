@@ -767,3 +767,52 @@ button.panel { width: 100%; border: 0; text-align: left; font: inherit; color: i
 .tinfo small { display: flex; align-items: center; gap: 4px; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tinfo small .ph { flex: none; color: var(--muted); }
 .tdone { flex: none; display: inline-flex; align-items: center; gap: 3px; padding: 2px 7px; border-radius: 999px; background: rgba(47, 191, 113, .12); color: #1E8A51; font: 700 11px Inter; }
+
+/* ---------- Arquivos (Google Drive do Village) ---------- */
+.arquivos { position: relative; padding-bottom: 32px; }
+.ar-head { flex-wrap: wrap; }
+.ar-path { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; flex: 1 1 280px; min-width: 0; }
+.ar-path span { display: inline-flex; align-items: center; gap: 4px; min-width: 0; color: var(--muted); }
+.ar-path h1 { font: 700 26px Poppins; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ar-path button { border: 0; background: none; padding: 4px 6px; border-radius: 8px; font: 600 15px Inter; color: var(--muted); }
+.ar-path button:hover { background: var(--hover); color: var(--ink); }
+.ar-find { display: flex; align-items: center; gap: 6px; flex: 0 1 240px; padding: 0 12px; background: #fff; border-radius: 999px; box-shadow: var(--sh); color: var(--muted); }
+.ar-find input { border: 0; box-shadow: none !important; padding: 10px 0; background: none; }
+.ar-err { margin: 16px 32px 0; display: flex; align-items: center; gap: 10px; color: var(--t-red-i); background: var(--t-red); box-shadow: none; }
+.ar-send { margin: 16px 32px 0; display: grid; gap: 6px; }
+.ar-sending { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: #fff; border-radius: var(--r-sm); box-shadow: var(--sh); min-width: 0; }
+.ar-sending b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; min-width: 0; }
+.ar-sending.bad { color: var(--t-red-i); }
+.ar-sending small { flex: none; color: var(--muted); }
+.ar-bar { flex: 0 0 140px; height: 6px; border-radius: 3px; background: var(--t-gray); overflow: hidden; }
+.ar-bar i { display: block; height: 100%; background: var(--ink); transition: width .2s; }
+.ar-folders { margin: 20px 32px 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+.ar-folder { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border: 0; border-radius: var(--r-sm); background: #fff; box-shadow: var(--sh); text-align: left; min-width: 0; color: #A86A00; transition: box-shadow .2s var(--ease), transform .2s var(--ease); }
+.ar-folder b { color: var(--ink); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ar-folder:hover, .ar-file:hover { box-shadow: var(--sh-hi); transform: translateY(-1px); }
+.ar-grid { margin: 20px 32px 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 14px; }
+.ar-file { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px 6px; padding: 8px 8px 10px; background: #fff; border-radius: var(--r-md); box-shadow: var(--sh); transition: box-shadow .2s var(--ease), transform .2s var(--ease); }
+.ar-th { grid-column: 1 / -1; aspect-ratio: 4 / 3; display: grid; place-items: center; border: 0; padding: 0; border-radius: var(--r-sm); background: var(--bg); color: var(--muted); overflow: hidden; }
+.ar-th img { width: 100%; height: 100%; object-fit: cover; }
+.ar-meta { display: grid; min-width: 0; padding-left: 4px; }
+.ar-meta b { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ar-meta small { font-size: 12px; }
+.ar-more { margin: 20px auto 0; display: flex; }
+.arquivos.over::after { content: ''; position: absolute; inset: 12px; border: 2px dashed var(--ink); border-radius: var(--r-lg); pointer-events: none; }
+.ar-drop { position: absolute; left: 50%; top: 40%; transform: translate(-50%, -50%); display: grid; justify-items: center; gap: 8px; padding: 24px 32px; background: #fff; border-radius: var(--r-lg); box-shadow: var(--sh-hi); pointer-events: none; text-align: center; }
+.ar-view { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 24px; background: rgba(20, 21, 25, .72); animation: popin .2s; }
+.ar-view-box { display: grid; gap: 10px; max-width: min(1200px, 100%); max-height: 100%; min-width: 0; }
+.ar-view-box > img, .ar-view-box > .ph { max-width: 100%; max-height: calc(100vh - 140px); object-fit: contain; border-radius: var(--r-md); justify-self: center; color: #fff; }
+.ar-view-bar { display: flex; align-items: center; gap: 10px; padding: 8px 8px 8px 16px; background: #fff; border-radius: 999px; min-width: 0; }
+.ar-view-bar b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+@media (max-width: 900px) {
+  .ar-head { padding: 16px 16px 0; }
+  .ar-path h1 { font-size: 22px; }
+  .ar-find { flex: 1 1 100%; order: 3; }
+  .ar-head .btn { flex: 1; justify-content: center; }
+  .ar-err, .ar-send, .ar-folders, .ar-grid { margin-left: 16px; margin-right: 16px; }
+  .ar-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .ar-folders { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ar-bar { flex-basis: 70px; }
+  .ar-view { padding: 12px; }
+}

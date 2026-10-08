@@ -9,7 +9,7 @@ import { ROW_TABLES } from './types'
 export type Phase = 'loading' | 'auth' | 'creator' | 'office'
 export type Tab = 'mesa' | 'aprovar' | 'avisos' | 'equipe' | 'chat' | 'geral'
 /** quadro = trabalho do dia a dia (estilo Trello); escritório = visualização em pixel */
-export type View = 'quadro' | 'escritorio' | 'agenda' | 'metas' | 'fluxos' | 'inicio'
+export type View = 'quadro' | 'escritorio' | 'agenda' | 'metas' | 'fluxos' | 'inicio' | 'arquivos'
 export interface Go { tab?: Tab; viewing?: string; channel?: string; task?: string }
 export interface Notice { id: string; text: string; at: number; from?: string; go?: Go }
 

@@ -13,6 +13,7 @@ export default function MoreMenu() {
   const items: [PhName, string, () => void, number?][] = [
     ['kanban', 'Quadro', () => setUi({ view: 'quadro', drawer: false }), pend],
     ['flow-arrow', 'Fluxos', () => setUi({ view: 'fluxos', drawer: false })],
+    ['folder-simple', 'Arquivos', () => setUi({ view: 'arquivos', drawer: false })],
     ['chat-circle-dots', 'Chat da equipe', () => setUi({ chatOpen: true })],
     ['users-three', 'Equipe', () => setUi({ view: 'quadro', tab: 'equipe', drawer: true })],
   ]

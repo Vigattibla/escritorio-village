@@ -16,6 +16,7 @@ import Team from '../components/Team'
 import Agenda from '../components/Agenda'
 import Metas, { CeleWatch } from '../components/Metas'
 import Fluxos from '../components/Fluxos'
+import Arquivos from '../components/Arquivos'
 import Inicio from '../components/Inicio'
 import MoreMenu from '../components/MoreMenu'
 import Sheet from '../components/Sheet'
@@ -55,6 +56,7 @@ export default function Office() {
     { id: 'agenda', label: 'Agenda', ic: 'calendar-dots' },
     { id: 'metas', label: 'Metas', ic: 'target' },
     { id: 'fluxos', label: 'Fluxos', ic: 'flow-arrow' },
+    { id: 'arquivos', label: 'Arquivos', ic: 'folder-simple' },
     { id: 'escritorio', label: 'Escritório', ic: 'desk' },
     { id: 'equipe', label: 'Equipe', ic: 'users-three' },
   ]
@@ -109,13 +111,14 @@ export default function Office() {
           <MoreMenu />
         </div>}
         {s.error && <div className="banner" onClick={() => setUi({ error: '' })}>{s.error} <small>(clique para fechar)</small></div>}
-        {page !== 'quadro' && page !== 'agenda' && page !== 'metas' && page !== 'fluxos' && page !== 'inicio' && <div className="ptop"><h1 className="grow">{items.find(i => i.id === page)?.label}</h1><Bell /></div>}
+        {page !== 'quadro' && page !== 'agenda' && page !== 'metas' && page !== 'fluxos' && page !== 'arquivos' && page !== 'inicio' && <div className="ptop"><h1 className="grow">{items.find(i => i.id === page)?.label}</h1><Bell /></div>}
         <main className="main">
           {page === 'quadro' && <Quadro />}
           {page === 'inicio' && <Inicio />}
           {page === 'agenda' && <Agenda />}
           {page === 'metas' && <Metas />}
           {page === 'fluxos' && <Fluxos />}
+          {page === 'arquivos' && <Arquivos />}
           {office && <>
             <Game />
             <aside className="side">

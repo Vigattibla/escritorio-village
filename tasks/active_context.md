@@ -11,6 +11,8 @@
 
 - 07/10 (v4): F0+F1 feitos e commitados local (68f8a6b), NÃO publicados: barra preta Phosphor (bottom tabbar no celular), paleta quente, cartão com prioridade/checklist/rostos/contadores (hot = vence hoje, dark = você aprova), criar tarefa estilo Trello (título + ícones quem faz/prioridade/prazo/lembrete → etiquetas), TaskDetail edita prioridade/lembrete/checklist, lembretes client-side a cada 20s (ev:lembretes:uid), PWA instalável (manifest + ícones, sem service worker). Migração 202610072359_tarefas_f1.sql.
 
+- 08/10: Quadro — caixa de novo cartão não vaza mais da coluna (ec471db, publicado). Backup diário criptografado (backup.yml + scripts/backup.mjs; abrir com scripts/abrir-backup.sh; chave privada em D:\Backups\escritorio-village). Primeiro backup rodou e abriu ok. Anexos do Storage fora do backup. Loja (Almoxarifado) em andamento, não commitada: sprite.ts, types.ts, office/props.ts, shop/catalog.ts.
+
 ## Próximo
 0. Usuário aprovar e push (migrate aplica a migração F1). Depois: F2+ do mockup v4.
 1. Decidir Auth: confirmar e-mail (hoje ligado) e Site URL (padrão localhost:3000 → trocar). Testar com 2 contas reais.
@@ -107,3 +109,4 @@ Pendente: push (precisa da migration 202610080900_v4_agenda_metas.sql e do secre
 - Conhecido: no celular, bolinha arrastada pro topo → janela pode passar da borda de cima.
 - Próximo (plano aprovado): 4) lembretes inteligentes no Seu dia; 5) visão do chefe mobile; 6) cafezinhos + Almoxarifado.
 - Ideia futura do usuário: importar calendário (e outros) automaticamente com IA interpretando e criando eventos/tarefas.
+- 08/10: Drive — aba Arquivos + função `drive` + backup pro Drive prontos no código; falta o usuário criar o OAuth no Google Cloud e colar os secrets no Supabase. Depois: anexar do Drive no TaskDetail.

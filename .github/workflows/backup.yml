@@ -28,6 +28,17 @@ jobs:
             backup.sql.enc
             chave.bin.enc
           retention-days: 90
+      # cópia no Google Drive do Village (pasta Escritório Village/Backups); se o Drive falhar, o artefato acima já garante
+      - name: Copiar pro Drive
+        continue-on-error: true
+        env:
+          TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          FN: ${{ vars.VITE_SUPABASE_URL }}/functions/v1/drive
+        run: |
+          d=$(date -u +%Y-%m-%d)
+          for f in backup.sql.enc chave.bin.enc; do
+            curl -fsS -X POST "$FN?a=backup&name=$d-$f" -H "x-backup-token: $TOKEN" -H 'Content-Type: application/octet-stream' --data-binary "@$f"; echo
+          done
       # um acesso por dia: o plano grátis do Supabase pausa depois de 7 dias parado
       - run: |
           curl -fsS -o /dev/null "${{ vars.VITE_SUPABASE_URL }}/rest/v1/" -H "apikey: ${{ vars.VITE_SUPABASE_ANON_KEY }}" || true
