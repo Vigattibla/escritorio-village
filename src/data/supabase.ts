@@ -132,7 +132,11 @@ export class SupabaseBackend implements Backend {
     // antes do SQL v7 essas colunas não existem: só manda quando têm algo
     const { project_id, criteria, reviews, ...base } = t
     const row = project_id || criteria.length || reviews.length ? t : base
-    const { error } = await this.sb.from('tasks').upsert(row)
+    // upsert num card criado por outra pessoa cai na regra de insert (autor = eu) e o banco barra: atualiza primeiro
+    const up = await this.sb.from('tasks').update(row).eq('id', t.id).select('id')
+    if (up.error) throw pt(up.error)
+    if (up.data.length) return
+    const { error } = await this.sb.from('tasks').insert(row)
     if (error) throw pt(error)
   }
 
