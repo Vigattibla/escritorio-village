@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { isChief, rankName } from '../game/ranks'
 import {
-  acceptRequest, addNote, approverOf, attachFiles, canApprove, canEditTask, canMove, canReassign, declineRequest, reassign, fileUrl, removeAttachment, removeNote, removeTask, run,
+  acceptRequest, addNote, approverOf, attachFiles, canApprove, canAskReview, CHEFIA, canEditTask, canMove, canReassign, declineRequest, reassign, fileUrl, removeAttachment, removeNote, removeTask, run,
   setCriteria, setProject, setStatus, setUi, stageList, stageOf, updateTask, useStore,
 } from '../store'
 import type { Attachment, Channel, CheckItem, Priority, Task } from '../types'
@@ -183,7 +183,7 @@ export default function TaskDetail() {
         )}
         {t.status === 'review' && (approve
           ? <div className="rvpanel"><h3>Sua aprovação</h3><ReviewBox t={t} /></div>
-          : <div className="rvbanner wait">⏳ Esperando a aprovação de <b>{appr ? name(appr) : 'alguém'}</b>.</div>)}
+          : <div className="rvbanner wait">⏳ Esperando a aprovação {appr === CHEFIA ? <>de <b>um cargo acima</b></> : <>de <b>{appr ? name(appr) : 'alguém'}</b></>}.</div>)}
 
         <div className="task-body td2-body">
           <div className="td2-main">
@@ -263,7 +263,7 @@ export default function TaskDetail() {
                     {edit && <button className="icon" onClick={() => run(setCriteria(t.id, t.criteria.filter((_, j) => j !== i)))} title="Tirar critério">✕</button>}
                   </li>
                 ))}
-                {!proj?.criteria.length && !t.criteria.length && <li className="muted">Nenhum critério{proj ? '' : ' · sem projeto não passa por aprovação'}.</li>}
+                {!proj?.criteria.length && !t.criteria.length && <li className="muted">Nenhum critério{proj ? '' : ' · sem projeto, a aprovação é opcional'}.</li>}
               </ul>
               {edit && (
                 <input value={crit} maxLength={140} placeholder="+ critério só desta tarefa (Enter)" onChange={e => setCrit(e.target.value)}
@@ -323,6 +323,7 @@ export default function TaskDetail() {
                   {Object.values(projects).filter(p => !p.archived || p.id === t.project_id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                 </select>
               </label>
+              {!proj && appr && <div className="prop"><span>Aprova</span><small>{appr === CHEFIA ? 'Cargo acima' : name(appr)}</small></div>}
               {proj && <div className="prop"><span>Aprova</span><small>{name(proj.master_id)}{appr ? '' : ' (você)'}</small></div>}
               <label className="prop"><span>Canal</span>
                 <select value={t.channel ?? ''} disabled={!edit} onChange={e => run(updateTask(t.id, { channel: (e.target.value || null) as Channel | null, ...(!e.target.value ? { publish_at: null } : {}) }))}>
@@ -375,6 +376,7 @@ export default function TaskDetail() {
           {move && t.status === 'todo' && <button className="btn primary sm" onClick={() => run(setStatus(t.id, 'doing'))}>▶ Começar</button>}
           {move && t.status === 'doing' && <button className="btn ghost sm" onClick={() => run(setStatus(t.id, 'todo'))}>⏸ Pausar</button>}
           {move && (t.status === 'todo' || t.status === 'doing') && <button className="btn primary sm" onClick={() => run(setStatus(t.id, 'done'))}>{toReview ? '↑ Enviar para aprovação' : '✓ Concluir'}</button>}
+          {move && (t.status === 'todo' || t.status === 'doing') && canAskReview(t) && <button className="btn ghost sm" onClick={() => run(setStatus(t.id, 'review'))} title={t.created_by !== t.owner_id ? 'Quem pediu aprova' : 'Um cargo acima aprova'}>↑ Pedir aprovação</button>}
           {own && t.status === 'review' && <button className="btn ghost sm" onClick={() => run(setStatus(t.id, 'doing'))}>↩ Retirar da aprovação</button>}
           {move && t.status === 'done' && <button className="btn ghost sm" onClick={() => run(setStatus(t.id, 'todo'))}>Reabrir</button>}
           <span className="grow" />

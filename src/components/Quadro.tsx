@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { canAssign, rankName, rankOf } from '../game/ranks'
 import { dayKey } from '../game/xp'
 import {
-  acceptRequest, addTask, canUseAI, approverOf, canApprove, canCreateProject, canEditProject, canEditTask, canMove, canReassign, declineRequest, involved,
+  acceptRequest, addTask, canUseAI, approverOf, canApprove, canAskReview, CHEFIA, canCreateProject, canEditProject, canEditTask, canMove, canReassign, declineRequest, involved,
   canEditStages, placeTask, reassign, removeStage, run, saveStages, setStatus, setUi, stageList, stageOf, STAGE_KINDS, teamOf, toApprove, useStore,
 } from '../store'
 import type { DriveLink, Priority, Profile, Project, Stage, StageKind, Task, TaskStatus } from '../types'
@@ -23,7 +23,7 @@ interface List { key: string; title: string; hint?: string; head?: ReactNode; ca
 interface Col { id: string; label: string; kind: TaskStatus; hint?: string; stage?: Stage }
 
 const KIND_LABEL = Object.fromEntries(STAGE_KINDS.map(k => [k.kind, k.label])) as Record<StageKind, string>
-const KIND_HINT: Partial<Record<TaskStatus, string>> = { review: 'Esperando o mestre do projeto', done: 'Últimos 7 dias' }
+const KIND_HINT: Partial<Record<TaskStatus, string>> = { review: 'Esperando quem aprova', done: 'Últimos 7 dias' }
 function colsOf(stages: Stage[]): Col[] {
   return [
     { id: 'inbox', label: 'Pedidos', kind: 'inbox', hint: 'Esperando a pessoa aceitar' },
@@ -189,7 +189,7 @@ export default function Quadro() {
     if (st === t.status) return stage && stage !== stageOf(t, stages) ? canMove(t) : st !== 'done' && canEditTask(t)
     if (st === 'inbox') return false
     if (t.status === 'review') return st === 'done' ? canApprove(t) : t.owner_id === meId
-    if (st === 'review') return !!approverOf(t) && canMove(t)
+    if (st === 'review') return (!!approverOf(t) || canAskReview(t)) && canMove(t)
     return canMove(t)
   }
   const accepts = (l: List) => {
@@ -469,7 +469,7 @@ function Card({ t, mode, meId, profiles, projects, showProj, notes, dragging, on
         )}
         <div className="tc-title">{t.title}</div>
         {note && <div className="tc-note">{note}</div>}
-        {t.status === 'review' && appr && !dark && <div className="tc-wait"><Icon n="clock" size={13} />aguardando {first(profiles[appr])}</div>}
+        {t.status === 'review' && appr && !dark && <div className="tc-wait"><Icon n="clock" size={13} />aguardando {appr === CHEFIA ? 'chefia' : first(profiles[appr])}</div>}
         {t.checklist.length > 0 && (
           <div className="tc-prog">
             <div className="row">Checklist {ck}/{t.checklist.length}<b>{pct}%</b></div>

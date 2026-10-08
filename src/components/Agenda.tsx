@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { dayKey } from '../game/xp'
-import { addTask, approverOf, canApprove, getState, putRow, review, run, setUi, updateTask, useStore } from '../store'
+import { addTask, approverOf, canApprove, CHEFIA, getState, putRow, review, run, setUi, updateTask, useStore } from '../store'
 import type { CalEvent, Channel, Task } from '../types'
 import { Bell } from './Avisos'
 import Icon, { Ph } from './Icon'
@@ -279,7 +279,7 @@ function PostCard({ t, meId }: { t: Task; meId: string }) {
         <span>Canal</span><div>{ch ? <span className={'tag ' + ch.tag}><Ph n={ch.ic} size={12} />{ch.label}</span> : <span className="muted">—</span>}</div>
         <span>Status</span><div><StatusTag t={t} /></div>
         <span>Quem faz</span><div className="person"><MiniAvatar avatar={who?.avatar ?? null} photo={who?.photo ?? null} size={22} />{who?.name ?? '—'}</div>
-        <span>Aprova</span><div className="person">{ap ? <><MiniAvatar avatar={ap.avatar} photo={ap.photo} size={22} />{ap.name}</> : <span className="muted">—</span>}</div>
+        <span>Aprova</span><div className="person">{ap ? <><MiniAvatar avatar={ap.avatar} photo={ap.photo} size={22} />{ap.name}</> : appr === CHEFIA ? 'Cargo acima' : <span className="muted">—</span>}</div>
         {t.attachments.length > 0 && <><span>Arquivos</span><div className="person"><Ph n="paperclip" size={14} />{t.attachments.length}</div></>}
       </div>
       <Acts t={t} can={can} />

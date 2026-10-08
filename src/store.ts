@@ -94,7 +94,7 @@ export const inChannel = (ch: string, s: State = state) => !ch.startsWith('g:') 
 export const seesChannel = (ch: string, s: State = state) => { const g = groupOf(ch, s); return !ch.startsWith('g:') || !!g && (g.open || inChannel(ch, s)) }
 export const dmPeer = (ch: string, me: string) => ch.split(':').slice(1).find(id => id !== me) ?? me
 export const me = () => (state.meId ? state.profiles[state.meId] : undefined)
-export const nameOf = (id: string) => state.profiles[id]?.name ?? 'Alguém'
+export const nameOf = (id: string) => id === CHEFIA ? 'chefia' : state.profiles[id]?.name ?? 'Alguém'
 
 /** linhas antigas (antes do SQL v3) não têm os campos novos */
 const norm = (t: Task): Task => ({
@@ -123,14 +123,28 @@ export function canReassign(t: Task, to: string, uid = state.meId) {
   const r = rankOf(my)
   return r === 4 || (r > rankOf(state.profiles[t.owner_id]) && r > rankOf(state.profiles[to]))
 }
-/** Quem aprova a entrega: o mestre do projeto (se não for ele mesmo quem faz). Sem projeto, não passa por aprovação. */
-export function approverOf(t: Task): string | null {
-  const p = t.project_id ? state.projects[t.project_id] : undefined
-  return p && p.master_id !== t.owner_id ? p.master_id : null
+/** aprovador "qualquer cargo acima do responsável" (card sem projeto criado pelo próprio dono) */
+export const CHEFIA = 'chefia'
+/** Sem projeto, a entrega pode ir para aprovação se outra pessoa pediu ou se há cargo acima do responsável. */
+export function canAskReview(t: Task) {
+  if (t.project_id) return false
+  return t.created_by !== t.owner_id || !isChief(state.profiles[t.owner_id])
 }
-/** Aprova ou reprova: o mestre do projeto ou a Chefe. */
+/** Quem aprova: no projeto, o mestre (se não for ele quem faz). Sem projeto, só quando o card foi para Aprovação: quem pediu, senão a chefia. */
+export function approverOf(t: Task): string | null {
+  if (t.project_id) {
+    const p = state.projects[t.project_id]
+    return p && p.master_id !== t.owner_id ? p.master_id : null
+  }
+  if (t.status !== 'review') return null
+  return t.created_by && t.created_by !== t.owner_id ? t.created_by : CHEFIA
+}
+/** Aprova ou reprova: o aprovador ou a Chefe; "chefia" = qualquer cargo acima do responsável. */
 export function canApprove(t: Task, uid = state.meId) {
-  return !!uid && !!approverOf(t) && (approverOf(t) === uid || isChief(state.profiles[uid]))
+  const a = approverOf(t)
+  if (!uid || !a) return false
+  if (a === CHEFIA) return uid !== t.owner_id && (isChief(state.profiles[uid]) || rankOf(state.profiles[uid]) > rankOf(state.profiles[t.owner_id]))
+  return a === uid || isChief(state.profiles[uid])
 }
 /** Critérios que valem para a tarefa: os do projeto + os dela. */
 export const criteriaOf = (t: Task) => [...(t.project_id ? state.projects[t.project_id]?.criteria ?? [] : []), ...t.criteria]
@@ -204,7 +218,7 @@ function onTask(raw: Task) {
     else if (prev?.status === 'inbox' && t.status === 'todo') notify(`${who} aceitou seu pedido: “${t.title}”`, { from: t.owner_id, go })
   }
   if (prev && prev.owner_id !== my && t.owner_id === my) notify(`Uma tarefa passou para você: “${t.title}”`, { go: { task: t.id } })
-  if (prev && prev.status !== 'review' && t.status === 'review' && approverOf(t) === my && t.owner_id !== my)
+  if (prev && prev.status !== 'review' && t.status === 'review' && (approverOf(t) === my || (approverOf(t) === CHEFIA && canApprove(t, my))) && t.owner_id !== my)
     notify(`${nameOf(t.owner_id)} enviou para aprovação: “${t.title}” 📥`, { from: t.owner_id, go: { tab: 'aprovar' } })
   // decisão nova: avisa o time do projeto (menos quem decidiu)
   const r = t.reviews.at(-1)
@@ -449,7 +463,7 @@ export const DEFAULT_STAGES: Stage[] = [
 export const STAGE_KINDS: { kind: StageKind; label: string; hint: string }[] = [
   { kind: 'todo', label: 'A fazer', hint: 'Ainda não começou' },
   { kind: 'doing', label: 'Fazendo', hint: 'Em andamento' },
-  { kind: 'review', label: 'Aprovação', hint: 'Esperando o mestre do projeto aprovar' },
+  { kind: 'review', label: 'Aprovação', hint: 'Esperando quem aprova' },
   { kind: 'done', label: 'Feito', hint: 'Concluída (conta nas metas)' },
 ]
 // ---------- grupos do chat ----------
@@ -565,7 +579,7 @@ export async function review(id: string, ok: boolean, reason = '', failed: strin
   const t = state.tasks[id]
   const my = me()
   if (!t || !my) return
-  if (!canApprove(t)) throw new Error('Só o mestre do projeto (ou a Chefe) aprova essa entrega.')
+  if (!canApprove(t)) throw new Error(approverOf(t) === CHEFIA ? 'Só um cargo acima do responsável aprova essa entrega.' : 'Só quem aprova essa entrega (ou a Chefe) pode decidir.')
   reason = reason.trim()
   if (!ok && reason.length < 3) throw new Error('Explique por que está reprovando.')
   const r: Review = { by: my.id, at: new Date().toISOString(), ok, reason: reason.slice(0, 1000), failed }
