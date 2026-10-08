@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { dayKey } from '../game/xp'
-import { addTask, run, setUi, team, useStore } from '../store'
+import { addTask, hasCanais, run, setUi, team, useStore } from '../store'
 import type { Channel } from '../types'
 import Icon, { Ph } from './Icon'
 import MiniAvatar from './MiniAvatar'
@@ -23,6 +23,7 @@ export default function Sheet() {
   const [due, setDue] = useState<string | null>(plus(1))
   const [pick, setPick] = useState(false)
   const [channel, setChannel] = useState<Channel | null>(null)
+  const canais = useStore(s => hasCanais(s.sala, s))
   const [mine, setMine] = useState(true)
   if (!open) return null
   const owner = who || meId
@@ -66,6 +67,7 @@ export default function Sheet() {
           <button type="button" className={'qchip' + (pick ? ' on' : '')} onClick={() => setPick(true)}><Ph n="calendar-dots" size={14} />Escolher</button>
         </div>
         {pick && <input className="sh-field" type="date" value={due ?? ''} onChange={e => setDue(e.target.value || null)} />}
+        {canais && <>
         <div className="lbl">Canal (se for post)</div>
         <div className="opts">
           {CHANNEL_KEYS.map(c => (
@@ -74,6 +76,7 @@ export default function Sheet() {
             </button>
           ))}
         </div>
+        </>}
         {canMine && (
           <button type="button" className="remind" onClick={() => setMine(!mine)}>
             <Ph n="check-circle" size={20} fill /><div className="grow">Passa pela <b>sua aprovação</b><small>{myProj!.name}</small></div><span className={'toggle' + (mine ? ' on' : '')} />

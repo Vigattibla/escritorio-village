@@ -4,6 +4,7 @@ import {
   acceptRequest, addNote, approverOf, attachFiles, canApprove, canAskReview, canFinish, CHEFIA, canEditTask, canMove, canReassign, declineRequest, reassign, fileUrl, removeAttachment, removeNote, removeTask, run,
   setCriteria, setProject, setStatus, setUi, stageList, stageOf, updateTask, useStore,
 } from '../store'
+import { hasCanais } from '../store'
 import type { Attachment, Channel, CheckItem, Priority, Task } from '../types'
 import { CHANNEL_KEYS, CHANNELS } from './v4'
 import { FolderBox } from './DriveFolder'
@@ -325,12 +326,12 @@ export default function TaskDetail() {
               </label>
               {!proj && appr && <div className="prop"><span>Aprova</span><small>{appr === CHEFIA ? 'Cargo acima' : name(appr)}</small></div>}
               {proj && <div className="prop"><span>Aprova</span><small>{name(proj.master_id)}{appr ? '' : ' (você)'}</small></div>}
-              <label className="prop"><span>Canal</span>
+              {(hasCanais(t.dept || 'marketing') || t.channel) && <label className="prop"><span>Canal</span>
                 <select value={t.channel ?? ''} disabled={!edit} onChange={e => run(updateTask(t.id, { channel: (e.target.value || null) as Channel | null, ...(!e.target.value ? { publish_at: null } : {}) }))}>
                   <option value="">Não é post</option>
                   {CHANNEL_KEYS.map(c => <option key={c} value={c}>{CHANNELS[c].label}</option>)}
                 </select>
-              </label>
+              </label>}
               {t.channel && <label className="prop"><span>Publicar em</span>
                 <input type="datetime-local" value={localDT(t.publish_at)} disabled={!edit} onChange={e => run(updateTask(t.id, { publish_at: e.target.value ? new Date(e.target.value).toISOString() : null }))} />
               </label>}

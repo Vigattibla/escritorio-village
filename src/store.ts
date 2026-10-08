@@ -451,6 +451,17 @@ export async function setCurtains(id: string, open: boolean) {
   onRow('depts', { ...d, curtains_open: open })
   try { await backend.setCurtains(id, open) } catch (e) { onRow('depts', d); throw e }
 }
+/** a sala trabalha com publicação? (posts, canais). Marketing antigo sem a coluna conta como sim */
+export const hasCanais = (id: string = state.sala, s: State = state) => s.rows.depts[id]?.canais ?? id === DEPT0
+/** bandeira da porta (ícone Phosphor) e se a sala publica: mesma regra da porta */
+export async function setDeptLook(id: string, look: { flag?: string | null; canais?: boolean }) {
+  const d = state.rows.depts[id]
+  if (!d) return
+  const flag = look.flag !== undefined ? look.flag : d.flag ?? null
+  const canais = look.canais ?? hasCanais(id)
+  onRow('depts', { ...d, flag, canais })
+  try { await backend.setDeptLook(id, flag, canais) } catch (e) { onRow('depts', d); throw e }
+}
 /** o boneco passou por uma porta. A Chefe leva o quadro junto; quem visita só vê a sala */
 export function goTo(where: string) {
   if (where === state.here) return

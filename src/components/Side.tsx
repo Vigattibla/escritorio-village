@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { addTask, dmChannel, run, setUi, team, useStore } from '../store'
+import { addTask, dmChannel, hasCanais, run, setUi, team, useStore } from '../store'
 import { dayKey } from '../game/xp'
 import Icon, { Ph } from './Icon'
 import MiniAvatar from './MiniAvatar'
@@ -73,10 +73,12 @@ export function Live({ small = false }: { small?: boolean }) {
   )
 }
 
-/** Painel “Seu dia”: o que vence hoje, posts agendados e o próximo lembrete. */
+/** Painel “Seu dia”: o que vence hoje, a agenda (posts na sala que publica, eventos nas outras) e o próximo lembrete. */
 export function SeuDia() {
   const meId = useStore(s => s.meId)!
   const tasks = useStore(s => s.tasks)
+  const events = useStore(s => s.rows.events)
+  const canais = useStore(s => hasCanais(s.sala, s))
   const [adding, setAdding] = useState(false)
   const [txt, setTxt] = useState('')
   const [at, setAt] = useState('')
@@ -87,6 +89,7 @@ export function SeuDia() {
   const posts = Object.values(tasks).filter(t => t.publish_at && localDay(t.publish_at) === today && t.status !== 'declined' && (t.owner_id === meId || t.created_by === meId))
     .sort((a, b) => a.publish_at!.localeCompare(b.publish_at!))
   const nextPost = posts.find(t => t.publish_at! > new Date().toISOString()) ?? posts[0]
+  const evs = Object.values(events).filter(e => e.day === today).sort((a, b) => (a.time ?? '').localeCompare(b.time ?? ''))
   const rem = mine.filter(t => t.remind_at && t.remind_at > new Date().toISOString()).sort((a, b) => a.remind_at!.localeCompare(b.remind_at!))[0]
   const title = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })
   const save = (e: React.FormEvent) => {
@@ -106,11 +109,15 @@ export function SeuDia() {
         <div><b>{due.length ? `${due.length} ${due.length > 1 ? 'tarefas vencem' : 'tarefa vence'} hoje` : 'Nada vence hoje'}</b>
           <small>{hi ? `${hi} com prioridade alta` : `${mine.length} abertas com você`}</small></div>
       </button>
-      <button className="li" onClick={() => setUi({ view: 'agenda' })}>
+      {canais ? <button className="li" onClick={() => setUi({ view: 'agenda' })}>
         <span className="tile pink"><Ph n={nextPost?.channel ? CHANNELS[nextPost.channel].ic : 'instagram-logo'} size={18} /></span>
         <div><b>{posts.length ? `${posts.length} ${posts.length > 1 ? 'posts agendados' : 'post agendado'}` : 'Sem post hoje'}</b>
           <small>{nextPost ? `Próximo: ${nextPost.title}, ${hm(nextPost.publish_at!)}` : 'Veja a agenda da semana'}</small></div>
-      </button>
+      </button> : <button className="li" onClick={() => setUi({ view: 'agenda' })}>
+        <span className="tile pink"><Ph n="calendar-dots" size={18} /></span>
+        <div><b>{evs.length ? `${evs.length} ${evs.length > 1 ? 'eventos hoje' : 'evento hoje'}` : 'Nenhum evento hoje'}</b>
+          <small>{evs[0] ? `${evs[0].time ? evs[0].time.slice(0, 5) + ' · ' : ''}${evs[0].title}` : 'Veja a agenda da semana'}</small></div>
+      </button>}
       {rem && (
         <button className="li" onClick={() => setUi({ task: rem.id })}>
           <span className="tile amber"><Ph n="bell" size={18} /></span>

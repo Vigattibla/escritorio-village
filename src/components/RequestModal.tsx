@@ -29,7 +29,7 @@ export default function RequestModal() {
           <MiniAvatar avatar={p.avatar} photo={p.photo} name={p.name} size={44} />
           <div><h2>{direct ? 'Passar tarefa para' : 'Pedir algo para'} {p.name}</h2><div className="muted small">{direct ? 'Vai direto para a pasta da pessoa.' : 'Chega no computador da pessoa para aceitar ou recusar.'} Concluir rende +5 XP extra.</div></div>
         </header>
-        <label>O que você precisa?<input autoFocus required value={title} onChange={e => setTitle(e.target.value)} maxLength={140} placeholder="Ex.: Revisar o texto do post de sábado" /></label>
+        <label>O que você precisa?<input autoFocus required value={title} onChange={e => setTitle(e.target.value)} maxLength={140} placeholder="Ex.: Revisar a proposta de sábado" /></label>
         <label>Prazo (opcional)<input type="date" value={due} onChange={e => setDue(e.target.value)} /></label>
         <label>Detalhes (opcional)<textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3} maxLength={600} /></label>
         <footer className="row gap end">

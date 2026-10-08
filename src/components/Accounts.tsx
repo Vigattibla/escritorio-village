@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { makePassword, slugUser } from '../data/login'
 import { RANKS } from '../game/ranks'
-import { accountLogins, createAccount, deleteAccount, deptList, deptName, run, saveDept, setDept, setDoor, setPassword, updateAccount, useStore } from '../store'
+import { accountLogins, createAccount, deleteAccount, deptList, deptName, hasCanais, run, saveDept, setDept, setDeptLook, setDoor, setPassword, updateAccount, useStore } from '../store'
+import { FlagPicker } from './Bandeira'
 import { SLOTS } from '../office/andar'
 import { deptOf } from '../game/ranks'
 import type { AccountEdit, Dept, Profile } from '../types'
@@ -194,6 +195,8 @@ function Salas({ depts, people }: { depts: Dept[]; people: Profile[] }) {
             <small className="muted">{count} {count === 1 ? 'pessoa' : 'pessoas'}</small>
             {n.trim() && n !== d.name && <button type="button" className="btn ghost sm" onClick={() => run(saveDept({ id: d.id, name: n, color: d.color }))}>Renomear</button>}
             <button type="button" className="btn ghost sm" title="Fechada: só quem é da sala (e a Chefe) entra; os outros batem na porta" onClick={() => run(setDoor(d.id, d.door_open === false))}>{d.door_open === false ? '🔒 Porta fechada' : '🚪 Porta aberta'}</button>
+            <label className="acc-canais" title="Sala que publica: aparecem posts, canais (Feed, Reels…) e a meta de posts"><input type="checkbox" checked={hasCanais(d.id)} onChange={e => run(setDeptLook(d.id, { canais: e.target.checked }))} />Publica posts</label>
+            <div className="acc-flag"><small className="muted">Bandeira</small><FlagPicker d={d} /></div>
           </div>
         )
       })}

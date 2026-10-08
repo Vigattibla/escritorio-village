@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { dayKey } from '../game/xp'
-import { addTask, approverOf, canApprove, CHEFIA, getState, putRow, review, run, setUi, team as salaTeam, updateTask, useStore } from '../store'
+import { addTask, approverOf, canApprove, CHEFIA, getState, hasCanais, putRow, review, run, setUi, team as salaTeam, updateTask, useStore } from '../store'
 import type { CalEvent, Channel, Task } from '../types'
 import { Bell } from './Avisos'
 import Icon, { Ph } from './Icon'
@@ -37,6 +37,7 @@ export default function Agenda() {
   const tasks = useStore(s => s.tasks)
   const events = useStore(s => s.rows.events)
   const profiles = useStore(s => s.profiles)
+  const canais = useStore(s => hasCanais(s.sala, s))
   const [cur, setCur] = useState(() => new Date())
   const [mode, setMode] = useState<Mode>(() => (narrow() ? 'semana' : 'mes'))
   const [show, setShow] = useState({ post: true, prazo: true, evento: true })
@@ -183,14 +184,14 @@ export default function Agenda() {
           <div className="mseg">{(['semana', 'mes'] as Mode[]).map(m => <button key={m} className={mode === m ? 'on' : ''} onClick={() => setMode(m)}>{m === 'mes' ? 'Mês' : 'Semana'}</button>)}</div>
         </div>
         <div className="qbar">
-          <label className="qsearch"><Ph n="magnifying-glass" size={18} /><input type="search" placeholder="Buscar post, evento…" value={q} onChange={e => setQ(e.target.value)} /></label>
+          <label className="qsearch"><Ph n="magnifying-glass" size={18} /><input type="search" placeholder={canais ? 'Buscar post, evento…' : 'Buscar tarefa, evento…'} value={q} onChange={e => setQ(e.target.value)} /></label>
           <span className="grow" />
           <Bell />
-          <button className="iconbtn" onClick={() => setForm('evento')} title="Novo evento" aria-label="Novo evento"><Ph n="star" size={20} /></button>
-          <button className="btn accent" onClick={() => setForm('post')}><Ph n="plus" size={18} fill />Novo post</button>
+          {canais && <button className="iconbtn" onClick={() => setForm('evento')} title="Novo evento" aria-label="Novo evento"><Ph n="star" size={20} /></button>}
+          <button className="btn accent" onClick={() => setForm(canais ? 'post' : 'evento')}><Ph n="plus" size={18} fill />{canais ? 'Novo post' : 'Novo evento'}</button>
         </div>
         <div className="ag-head">
-          <div><h1>Agenda</h1><div className="sub">Posts, prazos e eventos da equipe</div></div>
+          <div><h1>Agenda</h1><div className="sub">{canais ? 'Posts, prazos e eventos da equipe' : 'Prazos e eventos da equipe'}</div></div>
           <div className="mnav">
             <button onClick={() => move(-1)} aria-label="Anterior"><Ph n="caret-left" size={18} /></button>
             <button className="mlabel" onClick={toToday} title="Voltar para hoje">{Label}</button>
@@ -202,15 +203,15 @@ export default function Agenda() {
           </div>
         </div>
         <div className="ag-filters">
-          <button className={'qchip' + (show.post ? ' on' : '')} onClick={() => setShow(s => ({ ...s, post: !s.post }))}><Ph n="megaphone" size={15} />Posts<i>{postN}</i></button>
+          {(canais || postN > 0) && <button className={'qchip' + (show.post ? ' on' : '')} onClick={() => setShow(s => ({ ...s, post: !s.post }))}><Ph n="megaphone" size={15} />Posts<i>{postN}</i></button>}
           <button className={'qchip' + (show.prazo ? ' on' : '')} onClick={() => setShow(s => ({ ...s, prazo: !s.prazo }))}><Ph n="flag-banner" size={15} />Prazos</button>
           <button className={'qchip' + (show.evento ? ' on' : '')} onClick={() => setShow(s => ({ ...s, evento: !s.evento }))}><Ph n="star" size={15} />Eventos</button>
-          <span className="sep" />
+          {canais && <><span className="sep" />
           {CHANNEL_KEYS.map(c => (
             <button key={c} className={'tag ' + CHANNELS[c].tag + (off.includes(c) ? ' off' : '')} onClick={() => setOff(o => (o.includes(c) ? o.filter(x => x !== c) : [...o, c]))}>
               <Ph n={CHANNELS[c].ic} size={13} />{CHANNELS[c].label}
             </button>
-          ))}
+          ))}</>}
           <span className="grow" />
           <div className="faces">{team.slice(0, 5).map(p => <MiniAvatar key={p.id} avatar={p.avatar} photo={p.photo} name={p.name} size={30} />)}</div>
         </div>
@@ -228,7 +229,7 @@ export default function Agenda() {
           <div className="panel">
             <div className="eyebrow">{day === today ? 'Hoje' : longDay(day)}</div>
             <p className="muted small">{byDay(day).length ? 'Escolha um item para ver os detalhes.' : 'Nada marcado neste dia.'}</p>
-            <div className="row gap"><button className="btn soft sm" onClick={() => setForm('post')}><Ph n="plus" size={14} />Post neste dia</button><button className="btn ghost sm" onClick={() => setForm('evento')}><Ph n="star" size={14} />Evento</button></div>
+            <div className="row gap">{canais && <button className="btn soft sm" onClick={() => setForm('post')}><Ph n="plus" size={14} />Post neste dia</button>}<button className={'btn sm ' + (canais ? 'ghost' : 'soft')} onClick={() => setForm('evento')}><Ph n={canais ? 'star' : 'plus'} size={14} />{canais ? 'Evento' : 'Evento neste dia'}</button></div>
           </div>
         )}
         {others.length > 0 && (

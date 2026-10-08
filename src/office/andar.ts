@@ -1,5 +1,6 @@
 /** O andar: 2 salas em cima, corredor, 2 salas embaixo, frente a frente; paredes de vidro pro corredor, com cortina. */
 import { MH, MW, OUT, rect as r, T, type C2D } from './base'
+import { drawBanner } from './bandeira'
 import { kd, PISOS, solidGrid, type Sala } from './sala'
 
 export const HALL = 'andar'
@@ -41,7 +42,7 @@ export const inkOn = (hex: string) => {
 }
 
 /** porta na parede de cima do corredor (tile tx, 2 de largura); bandeira com a cor da sala do lado */
-export function drawDoor(c: C2D, tx: number, st: DoorState, color: string) {
+export function drawDoor(c: C2D, tx: number, st: DoorState, color: string, flag?: string | null) {
   const x = tx * T, y = 5, w = 2 * T, h = 2 * T - y
   const empty = st === 'vazia'
   r(c, OUT, x + 1, y, w - 2, h)
@@ -63,16 +64,11 @@ export function drawDoor(c: C2D, tx: number, st: DoorState, color: string) {
     if (empty) { r(c, '#8a8f98', ix + 3, iy + 3, iw - 6, 1); r(c, '#8a8f98', ix + 3, iy + ih - 4, iw - 6, 1) }
   }
   if (empty) return
-  // bandeira: mastro + flâmula na cor da sala
-  const fx = x + w + 1, fy = 6
-  r(c, OUT, fx, fy, 1, 22)
-  r(c, '#c9c2b4', fx, fy, 1, 1)
-  for (let k = 0; k < 9; k++) { const len = 10 - Math.abs(k - 4) * 2; r(c, OUT, fx + 1, fy + 1 + k, len + 1, 1) }
-  for (let k = 1; k < 8; k++) { const len = 9 - Math.abs(k - 4) * 2; r(c, k < 4 ? color : darker(color, 0.82), fx + 1, fy + 1 + k, len, 1) }
+  drawBanner(c, x + w + 4, 7, color, flag)
 }
 
 /** porta de saída na parede de baixo da sala (tile tx, 2 de largura) */
-export function drawExit(c: C2D, tx: number, st: DoorState) {
+export function drawExit(c: C2D, tx: number, st: DoorState, color = '#a3a8b3', flag?: string | null) {
   const x = tx * T, y = (MH - 1) * T, open = st === 'aberta'
   r(c, OUT, x, y, 2 * T, T)
   r(c, st === 'vazia' ? '#a3a8b3' : '#6b4a33', x + 1, y + 1, 2 * T - 2, T - 1)
@@ -81,6 +77,7 @@ export function drawExit(c: C2D, tx: number, st: DoorState) {
   else { r(c, '#b07a4f', x + 3, y + 3, 2 * T - 6, T - 3); r(c, '#c99566', x + 3, y + 3, 2 * T - 6, 1); r(c, '#FBC222', x + 2 * T - 9, y + 8, 2, 2) }
   // capacho
   r(c, OUT, x + 4, y - 6, 2 * T - 8, 5); r(c, '#8a6a4a', x + 5, y - 5, 2 * T - 10, 3); r(c, '#a8835c', x + 7, y - 4, 2 * T - 14, 1)
+  drawBanner(c, x + 2 * T + 4, y + 2, color, flag)
 }
 
 // ---------- vidro e cortina ----------

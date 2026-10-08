@@ -107,6 +107,11 @@ export class SupabaseBackend implements Backend {
     if (error) throw pt(error)
   }
 
+  async setDeptLook(dept: string, flag: string | null, canais: boolean) {
+    const { error } = await this.sb.rpc('set_dept_look', { p_dept: dept, p_flag: flag, p_canais: canais })
+    if (error) throw pt(error)
+  }
+
   async createAccount(user: string, password: string, name: string, rank: number) {
     const { data, error } = await this.sb.rpc('admin_create_user', { p_user: user, p_pass: password, p_name: name, p_rank: rank })
     if (error) throw pt(error)

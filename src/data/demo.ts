@@ -78,7 +78,7 @@ export class DemoBackend implements Backend {
   async loadAll(): Promise<Snapshot> {
     if (!localStorage.getItem(K.seeded)) seed()
     if (!localStorage.getItem(K.row + 'depts'))
-      write(K.row + 'depts', { marketing: { id: 'marketing', name: 'Marketing', color: '#0B235D', floor: 1, slot: 0, created_at: new Date(0).toISOString() } })
+      write(K.row + 'depts', { marketing: { id: 'marketing', name: 'Marketing', color: '#0B235D', floor: 1, slot: 0, canais: true, flag: 'megaphone', created_at: new Date(0).toISOString() } })
     return {
       profiles: Object.values(read<Record<string, Profile>>(K.prof, {})),
       tasks: Object.values(read<Record<string, Task>>(K.task, {})),
@@ -127,6 +127,14 @@ export class DemoBackend implements Backend {
     if (!d) throw new Error('Essa sala não existe.')
     if (!(me?.is_admin || me?.rank === 4 || ((me?.rank ?? 1) >= 3 && (me?.dept || 'marketing') === dept))) throw new Error('Só o gerente da sala, a Chefe ou o adm mexem na cortina.')
     await this.upsertRow('depts', { ...d, curtains_open: open })
+  }
+
+  async setDeptLook(dept: string, flag: string | null, canais: boolean) {
+    const me = read<Record<string, Profile>>(K.prof, {})[sessionStorage.getItem(K.session) ?? '']
+    const d = read<Record<string, Dept>>(K.row + 'depts', {})[dept]
+    if (!d) throw new Error('Essa sala não existe.')
+    if (!(me?.is_admin || me?.rank === 4 || ((me?.rank ?? 1) >= 3 && (me?.dept || 'marketing') === dept))) throw new Error('Só o gerente da sala, a Chefe ou o adm mudam a sala.')
+    await this.upsertRow('depts', { ...d, flag, canais })
   }
 
   async setDept(target: string, dept: string, desk: number) {

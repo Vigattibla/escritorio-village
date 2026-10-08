@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { rankOf } from '../game/ranks'
-import { dropRow, me, putRow, run, useStore } from '../store'
+import { dropRow, hasCanais, me, putRow, run, useStore } from '../store'
 import type { Goal } from '../types'
 import { Bell } from './Avisos'
 import { Ph } from './Icon'
@@ -31,7 +31,7 @@ export default function Metas() {
         {can && <button className="btn accent" onClick={() => setForm('new')}><Ph n="plus" size={18} fill />Nova meta</button>}
       </div>
       <div className="qhead"><div><h1>Metas</h1><div className="sub">O que a equipe quer bater no mês, e o que ganha quando bater. Cada pessoa recebe cafezinhos de até {MAX_GOALS} metas por mês.</div></div></div>
-      {!all.length && <div className="panel empty-goal"><Ph n="target" size={36} /><b>Nenhuma meta ainda</b><small className="muted">{can ? 'Crie a primeira: posts do mês, tarefas feitas ou uma contagem sua.' : 'Quando a coordenação criar uma meta, ela aparece aqui.'}</small></div>}
+      {!all.length && <div className="panel empty-goal"><Ph n="target" size={36} /><b>Nenhuma meta ainda</b><small className="muted">{can ? 'Crie a primeira: tarefas feitas no mês, posts publicados ou uma contagem sua.' : 'Quando a coordenação criar uma meta, ela aparece aqui.'}</small></div>}
       {months.map(m => (
         <section key={m} className="msec-g">
           <h4>{monthName(m)}{m === monthKey() && <span className="tag green">este mês</span>}</h4>
@@ -79,7 +79,8 @@ export default function Metas() {
 function GoalForm({ g, onClose }: { g: Goal | null; onClose: () => void }) {
   const meId = useStore(s => s.meId)!
   const [title, setTitle] = useState(g?.title ?? '')
-  const [metric, setMetric] = useState<Goal['metric']>(g?.metric ?? 'posts')
+  const canais = useStore(s => hasCanais(s.sala, s))
+  const [metric, setMetric] = useState<Goal['metric']>(g?.metric ?? (canais ? 'posts' : 'tasks'))
   const [target, setTarget] = useState(String(g?.target ?? 12))
   const [month, setMonth] = useState(g?.month ?? monthKey())
   const [reward, setReward] = useState(g?.reward ?? '')
@@ -93,9 +94,9 @@ function GoalForm({ g, onClose }: { g: Goal | null; onClose: () => void }) {
     <div className="modal-bg" onMouseDown={e => e.target === e.currentTarget && onClose()} onKeyDown={e => e.key === 'Escape' && onClose()}>
       <form className="modal" onSubmit={submit}>
         <h2>{g ? 'Editar meta' : 'Nova meta'}</h2>
-        <label>Meta<input autoFocus required maxLength={80} value={title} onChange={e => setTitle(e.target.value)} placeholder="Ex.: Publicar 40 posts" /></label>
+        <label>Meta<input autoFocus required maxLength={80} value={title} onChange={e => setTitle(e.target.value)} placeholder={canais ? 'Ex.: Publicar 40 posts' : 'Ex.: Fechar 30 tarefas no mês'} /></label>
         <div className="opts">
-          {(Object.keys(METRIC) as Goal['metric'][]).map(k => <button type="button" key={k} disabled={!!g} className={'qchip' + (metric === k ? ' on' : '')} onClick={() => setMetric(k)}>{METRIC[k]}</button>)}
+          {(Object.keys(METRIC) as Goal['metric'][]).filter(k => k !== 'posts' || canais || g?.metric === 'posts').map(k => <button type="button" key={k} disabled={!!g} className={'qchip' + (metric === k ? ' on' : '')} onClick={() => setMetric(k)}>{METRIC[k]}</button>)}
         </div>
         <small className="muted">{metric === 'posts' ? 'Conta sozinho: cada post da agenda marcado como feito no mês.' : metric === 'tasks' ? 'Conta sozinho: cada tarefa feita no mês.' : 'A chefia aumenta a contagem na mão (+1).'}{g ? ' Alvo, medida e mês não mudam depois de criada.' : ' Depois de criada, alvo, medida e mês ficam travados. O que já estiver feito hoje não paga.'}</small>
         <div className="row gap"><label className="grow">Alvo<input type="number" min={1} required disabled={!!g} value={target} onChange={e => setTarget(e.target.value)} /></label><label className="grow">Mês<input type="month" required disabled={!!g} value={month} onChange={e => setMonth(e.target.value)} /></label></div>

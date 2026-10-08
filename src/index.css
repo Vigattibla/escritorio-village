@@ -1073,3 +1073,13 @@ input:focus, textarea:focus { border-color: var(--yellow); box-shadow: 0 0 0 3px
 .game-door > button:not(.x) { height: 30px; border: 1px solid var(--line); border-radius: 7px; background: #fff; font-weight: 600; font-size: 13px; color: var(--text); cursor: pointer; }
 .game-door > button.primary { background: var(--navy); border-color: var(--navy); color: #fff; }
 .acc-sala.vazia .acc-sala-dot { width: 22px; height: 22px; border-radius: 6px; background: #c3c7cf; flex: none; }
+
+/* bandeira da porta */
+.flagpick { display: flex; flex-wrap: wrap; gap: 4px; }
+.flagpick button { width: 26px; height: 26px; display: grid; place-items: center; padding: 0; border: 1px solid var(--line); border-radius: 7px; background: #fff; color: var(--text); cursor: pointer; }
+.flagpick button:hover { background: var(--hover); }
+.flagpick button.on { border-color: var(--navy); box-shadow: 0 0 0 1px var(--navy); }
+.flagpick button i { width: 11px; height: 14px; clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 72%, 0 100%); }
+.acc-sala { flex-wrap: wrap; }
+.acc-canais { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; white-space: nowrap; }
+.acc-flag { flex-basis: 100%; display: flex; align-items: center; gap: 10px; padding-left: 32px; }

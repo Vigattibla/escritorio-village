@@ -3,6 +3,7 @@ import { drawAvatar, onPhotoLoad, SPRITE_H } from '../chibi/sprite'
 import { backend } from '../data'
 import { deptOf, managerOf } from '../game/ranks'
 import { drawCurtain, drawDoor, drawExit, HALL, inkOn, SLOTS } from '../office/andar'
+import { FlagPicker } from './Bandeira'
 import { addMark, boardMarks, takeErrands, type Errand } from '../office/errands'
 import { drawAnim, plateFill, PLATE_CV } from '../office/anim'
 import { drawChair } from '../office/props'
@@ -367,7 +368,7 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
         if (hid[r.slot]) { ctx.fillStyle = 'rgba(20,22,36,.88)'; ctx.fillRect(T, 2 * T, (MW - 2) * T, (MH - 3) * T) }
         if (d && !curtainsOpen(d.id, s)) drawCurtain(ctx, r.top, r.door, d.color)
         const st = !d ? 'vazia' : doorOpen(d.id, s) ? 'aberta' : 'fechada'
-        if (r.top) drawExit(ctx, r.door, st); else drawDoor(ctx, r.door, st, d?.color ?? '#a3a8b3')
+        if (r.top) drawExit(ctx, r.door, st, d?.color, d?.flag); else drawDoor(ctx, r.door, st, d?.color ?? '#a3a8b3', d?.flag)
         ctx.restore()
       }
 
@@ -535,6 +536,7 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
             {!canEnter(dd.id, s) && <button className="primary" onClick={() => run(knock(dd.id).then(() => { bubbles.set(s.meId!, { text: 'Toc, toc! Avisei quem está lá dentro.', until: Date.now() + 3500 }); setDoorUi(null) }))}>Bater na porta</button>}
             {canDoor(dd.id, s) && <button onClick={() => run(setDoor(dd.id, !doorOpen(dd.id, s)))}>{doorOpen(dd.id, s) ? 'Fechar a porta' : 'Abrir a porta'}</button>}
             {canDoor(dd.id, s) && <button onClick={() => run(setCurtains(dd.id, !curtainsOpen(dd.id, s)))}>{curtainsOpen(dd.id, s) ? 'Fechar a cortina' : 'Abrir a cortina'}</button>}
+            {canDoor(dd.id, s) && <><span className="muted small">Bandeira da porta</span><FlagPicker d={dd} /></>}
           </> : <>
             <b><i style={{ background: '#a3a8b3' }} />Sala vazia</b>
             <span className="muted">Sem setor atribuído — não dá pra entrar.</span>

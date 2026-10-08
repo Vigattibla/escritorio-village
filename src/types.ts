@@ -140,8 +140,9 @@ export interface Stage { id: string; label: string; kind: StageKind; pos: number
 /** grupo do chat: canal 'g:<id>'; aberto = qualquer um entra, fechado = só quem foi convidado */
 export interface Group { id: string; name: string; icon: string; open: boolean; members: string[]; created_by: string; created_at: string }
 /** sala do andar: id = rooms.id do layout dela; floor/slot = posição no andar */
-/** door_open: porta aberta (qualquer um entra pelo corredor); fechada só quem é da sala e a Chefe · curtains_open: cortina do vidro aberta (quem passa vê dentro) */
-export interface Dept { id: string; name: string; color: string; floor: number; slot: number; door_open?: boolean; curtains_open?: boolean; created_at: string }
+/** flag: ícone da bandeira na porta · canais: a sala publica (posts, canais, agenda de publicação)
+ *  door_open: porta aberta (qualquer um entra pelo corredor); fechada só quem é da sala e a Chefe · curtains_open: cortina do vidro aberta (quem passa vê dentro) */
+export interface Dept { id: string; name: string; color: string; floor: number; slot: number; door_open?: boolean; curtains_open?: boolean; flag?: string | null; canais?: boolean; created_at: string }
 /** layout de cada sala (id = id da sala; 'escritorio' = layout antigo do Marketing); data = Sala do editor */
 export interface Room { id: string; data: unknown; created_by: string; created_at: string }
 /** carpinteiro: pode editar o escritório até `until` */
@@ -262,6 +263,7 @@ export interface Backend {
   setDept(target: string, dept: string, desk: number): Promise<void>
   setDoor(dept: string, open: boolean): Promise<void>
   setCurtains(dept: string, open: boolean): Promise<void>
+  setDeptLook(dept: string, flag: string | null, canais: boolean): Promise<void>
   /** só o adm: cria a conta já com perfil e cargo */
   createAccount(user: string, password: string, name: string, rank: number): Promise<Profile>
   /** só o adm */
