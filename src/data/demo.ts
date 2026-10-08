@@ -1,6 +1,7 @@
 import { toEmail, validUser } from './login'
 import { dayKey } from '../game/xp'
 import type { RowTable, Rows, AccountEdit, AiContext, AiProposal, AiStage, Avatar, Backend, Handlers, Message, Pos, Profile, Project, Snapshot, Task, TaskNote } from '../types'
+import { ROW_TABLES } from '../types'
 
 // Modo demonstração: tudo no localStorage deste navegador. Abas diferentes = pessoas diferentes
 // (a sessão fica no sessionStorage), sincronizadas por BroadcastChannel.
@@ -80,10 +81,7 @@ export class DemoBackend implements Backend {
       notes: read<TaskNote[]>(K.note, []),
       projects: Object.values(read<Record<string, Project>>(K.proj, {})),
       rows: {
-        events: Object.values(read<Record<string, Rows['events']>>(K.row + 'events', {})),
-        goals: Object.values(read<Record<string, Rows['goals']>>(K.row + 'goals', {})),
-        stickers: Object.values(read<Record<string, Rows['stickers']>>(K.row + 'stickers', {})),
-        flows: Object.values(read<Record<string, Rows['flows']>>(K.row + 'flows', {})),
+        ...(Object.fromEntries(ROW_TABLES.map(k => [k, Object.values(read<Record<string, unknown>>(K.row + k, {}))])) as Snapshot['rows']),
       },
     }
   }

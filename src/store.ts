@@ -3,7 +3,8 @@ import { backend } from './data'
 import { canAssign, isChief, rankName, rankOf } from './game/ranks'
 import { dayKey, taskXp } from './game/xp'
 import { MAX_DESKS } from './office/world'
-import type { RowTable, Rows, Sticker, AccountEdit, AiContext, AiItem, AiProposal, AiStage, Attachment, Avatar, Message, Pos, Profile, Project, Review, Task, TaskNote, TaskStatus } from './types'
+import type { RowTable, Rows, Stage, StageKind, Sticker, AccountEdit, AiContext, AiItem, AiProposal, AiStage, Attachment, Avatar, Message, Pos, Profile, Project, Review, Task, TaskNote, TaskStatus } from './types'
+import { ROW_TABLES } from './types'
 
 export type Phase = 'loading' | 'auth' | 'creator' | 'office'
 export type Tab = 'mesa' | 'aprovar' | 'avisos' | 'equipe' | 'chat' | 'geral'
@@ -61,7 +62,7 @@ export interface State {
 
 
 const initial: State = {
-  phase: 'loading', meId: null, accountName: '', error: '', profiles: {}, tasks: {}, messages: [], notes: [], projects: {}, rows: { events: {}, goals: {}, stickers: {}, flows: {} }, online: new Set(),
+  phase: 'loading', meId: null, accountName: '', error: '', profiles: {}, tasks: {}, messages: [], notes: [], projects: {}, rows: { events: {}, goals: {}, stickers: {}, flows: {}, stages: {} }, online: new Set(),
   tab: 'mesa', viewing: null, channel: 'geral', reads: {}, requestTo: null, task: null, editing: false, notices: [], pipOpen: false, view: 'quadro' as View, drawer: false,
   project: '', projectEdit: null, aiOpen: false, chatOpen: false, bellOpen: false, qApprove: false, flow: null, sheet: false, stickTo: null,
 }
@@ -93,7 +94,7 @@ const norm = (t: Task): Task => ({
   ...t, start: t.start ?? null, collaborators: t.collaborators ?? [], attachments: t.attachments ?? [],
   project_id: t.project_id ?? null, criteria: t.criteria ?? [], reviews: t.reviews ?? [],
   priority: t.priority ?? null, checklist: t.checklist ?? [], remind_at: t.remind_at ?? null,
-  channel: t.channel ?? null, publish_at: t.publish_at ?? null,
+  channel: t.channel ?? null, publish_at: t.publish_at ?? null, stage: t.stage ?? null,
 })
 export const involved = (t: Task, uid: string) => t.owner_id === uid || t.created_by === uid || t.collaborators.includes(uid)
 /** Mexe nos detalhes: dono, autor, colaborador, cargo acima do dono ou Chefe. */
@@ -326,10 +327,7 @@ export async function enter(uid: string) {
     notes: snap.notes,
     projects: Object.fromEntries((snap.projects ?? []).map(p => [p.id, { ...p, criteria: p.criteria ?? [] }])),
     rows: {
-      events: Object.fromEntries((snap.rows?.events ?? []).map(r => [r.id, r])),
-      goals: Object.fromEntries((snap.rows?.goals ?? []).map(r => [r.id, r])),
-      stickers: Object.fromEntries((snap.rows?.stickers ?? []).map(r => [r.id, r])),
-      flows: Object.fromEntries((snap.rows?.flows ?? []).map(r => [r.id, r])),
+      ...(Object.fromEntries(ROW_TABLES.map(k => [k, Object.fromEntries((snap.rows?.[k] ?? []).map(r => [r.id, r]))])) as State['rows']),
     },
     messages: snap.messages.filter(m => isMyChannel(m.channel, uid)),
     phase: mine?.avatar ? 'office' : 'creator',
@@ -413,7 +411,7 @@ async function putTask(t: Task) {
  * Na própria pasta ou de quem tem cargo menor: entra direto (na etapa pedida).
  * Senão (ou se `status` = 'inbox') vira pedido para a pessoa aceitar.
  */
-export async function addTask(owner: string, title: string, due: string | null = null, notes = '', status: TaskStatus = 'todo', project: string | null = null, extra: Pick<Partial<Task>, 'priority' | 'remind_at' | 'channel' | 'publish_at' | 'notes'> = {}) {
+export async function addTask(owner: string, title: string, due: string | null = null, notes = '', status: TaskStatus = 'todo', project: string | null = null, extra: Pick<Partial<Task>, 'priority' | 'remind_at' | 'channel' | 'publish_at' | 'notes' | 'stage'> = {}) {
   const direct = canAssign(me(), state.profiles[owner])
   if (status === 'review' || status === 'done') status = 'todo' // entrega passa pela etapa certa
   const t: Task = {
@@ -421,7 +419,7 @@ export async function addTask(owner: string, title: string, due: string | null =
     start: null, due, collaborators: [], attachments: [], position: Date.now(), created_at: new Date().toISOString(),
     done_at: null, project_id: project || null, criteria: [], reviews: [],
     priority: extra.priority ?? null, checklist: [], remind_at: extra.remind_at ?? null,
-    channel: extra.channel ?? null, publish_at: extra.publish_at ?? null,
+    channel: extra.channel ?? null, publish_at: extra.publish_at ?? null, stage: extra.stage ?? null,
   }
   await putTask(t)
   return t
@@ -430,13 +428,63 @@ export async function addTask(owner: string, title: string, due: string | null =
 /** XP conta ao entregar (aprovação ou feito). Reenvio depois de reprovar não paga de novo. */
 const paid = (s: TaskStatus) => s === 'done' || s === 'review'
 
-export async function setStatus(id: string, status: TaskStatus, position = Date.now()) {
+/** Etapas do quadro: as padrão até alguém da coordenação mexer; depois, as gravadas. */
+export const DEFAULT_STAGES: Stage[] = [
+  { id: 'todo', label: 'A fazer', kind: 'todo', pos: 1, created_by: '', created_at: '' },
+  { id: 'doing', label: 'Fazendo', kind: 'doing', pos: 2, created_by: '', created_at: '' },
+  { id: 'review', label: 'Aprovação', kind: 'review', pos: 3, created_by: '', created_at: '' },
+  { id: 'done', label: 'Feito', kind: 'done', pos: 4, created_by: '', created_at: '' },
+]
+export const STAGE_KINDS: { kind: StageKind; label: string; hint: string }[] = [
+  { kind: 'todo', label: 'A fazer', hint: 'Ainda não começou' },
+  { kind: 'doing', label: 'Fazendo', hint: 'Em andamento' },
+  { kind: 'review', label: 'Aprovação', hint: 'Esperando o mestre do projeto aprovar' },
+  { kind: 'done', label: 'Feito', hint: 'Concluída (conta nas metas)' },
+]
+export function stageList(rows = state.rows.stages): Stage[] {
+  const l = Object.values(rows)
+  return (l.length ? l : DEFAULT_STAGES).slice().sort((a, b) => a.pos - b.pos)
+}
+/** coluna da tarefa: a etapa dela, se ainda existir e for do mesmo tipo; senão a primeira do tipo */
+export function stageOf(t: Task, list = stageList()): string | null {
+  const s = t.stage ? list.find(x => x.id === t.stage) : undefined
+  if (s && s.kind === t.status) return s.id
+  return (list.find(x => x.id === t.status) ?? list.find(x => x.kind === t.status))?.id ?? null
+}
+export const canEditStages = (p = me()) => rankOf(p) >= 2
+/** grava a lista inteira (a primeira edição tira as etapas padrão do papel) */
+export async function saveStages(next: Stage[]) {
+  const now = new Date().toISOString()
+  const had = state.rows.stages
+  for (const [i, s] of next.entries()) {
+    const r: Stage = { ...s, pos: i + 1, created_by: s.created_by || state.meId!, created_at: s.created_at || now }
+    const old = had[r.id]
+    if (!old || old.label !== r.label || old.kind !== r.kind || old.pos !== r.pos) await putRow('stages', r)
+  }
+}
+export async function removeStage(id: string) {
+  const list = stageList()
+  const s = list.find(x => x.id === id)
+  if (!s) return
+  if (!list.some(x => x.kind === s.kind && x.id !== id)) throw new Error(`“${s.label}” é a única etapa do tipo ${STAGE_KINDS.find(k => k.kind === s.kind)!.label}. Renomeie em vez de excluir.`)
+  if (!Object.keys(state.rows.stages).length) await saveStages(list)
+  await dropRow('stages', id)
+}
+
+export async function setStatus(id: string, status: TaskStatus, position = Date.now(), stage: string | null = null) {
   const t = state.tasks[id]
   const my = me()
   if (!t || !my) return
   // quem não aprova, ao concluir, manda para aprovação
-  if (status === 'done' && approverOf(t) && !canApprove(t)) status = 'review'
-  if (t.status === status) return
+  if (status === 'done' && approverOf(t) && !canApprove(t)) { status = 'review'; stage = null }
+  if (t.status === status) {
+    // mesma etapa-tipo, coluna diferente (ex.: Fazendo → Revisão interna)
+    if (stage !== (t.stage ?? null) && stageOf({ ...t, stage }) !== stageOf(t)) {
+      if (!canMove(t)) throw new Error('Só quem é responsável (ou um cargo acima) muda a etapa dessa tarefa.')
+      await putTask({ ...t, stage, position })
+    }
+    return
+  }
   if (t.status === 'review') {
     // dono pode retirar; aprovador só aprova por aqui (reprovar pede justificativa)
     const withdraw = t.owner_id === my.id && status !== 'done'
@@ -445,7 +493,7 @@ export async function setStatus(id: string, status: TaskStatus, position = Date.
   } else if (!canMove(t)) throw new Error('Só quem é responsável (ou um cargo acima) muda a etapa dessa tarefa.')
   const review: Review[] = t.status === 'review' && status === 'done' && canApprove(t) && t.owner_id !== my.id
     ? [{ by: my.id, at: new Date().toISOString(), ok: true, reason: '', failed: [] }] : []
-  await putTask({ ...t, status, position, done_at: status === 'done' ? new Date().toISOString() : null, reviews: [...t.reviews, ...review] })
+  await putTask({ ...t, status, stage, position, done_at: status === 'done' ? new Date().toISOString() : null, reviews: [...t.reviews, ...review] })
   if (t.owner_id !== my.id) return // XP é de quem faz
   const redo = t.reviews.at(-1)?.ok === false
   const delta = paid(status) && !paid(t.status) ? (redo ? 0 : taskXp(t))

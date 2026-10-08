@@ -3,9 +3,9 @@ import { canAssign, rankName, rankOf } from '../game/ranks'
 import { dayKey } from '../game/xp'
 import {
   acceptRequest, addTask, canUseAI, approverOf, canApprove, canCreateProject, canEditProject, canEditTask, canMove, canReassign, declineRequest, involved,
-  placeTask, reassign, run, setStatus, setUi, teamOf, toApprove, useStore,
+  canEditStages, placeTask, reassign, removeStage, run, saveStages, setStatus, setUi, stageList, stageOf, STAGE_KINDS, teamOf, toApprove, useStore,
 } from '../store'
-import type { Priority, Profile, Project, Task, TaskStatus } from '../types'
+import type { Priority, Profile, Project, Stage, StageKind, Task, TaskStatus } from '../types'
 import { Bell } from './Avisos'
 import Icon, { Ph } from './Icon'
 import MiniAvatar from './MiniAvatar'
@@ -16,15 +16,18 @@ import { CHANNELS, currentGoal, goalProgress } from './v4'
 type Group = 'etapa' | 'raias' | 'pessoa'
 type Due = '' | 'late' | 'today' | 'week' | 'none'
 
-interface List { key: string; title: string; hint?: string; head?: ReactNode; cards: Task[]; status?: TaskStatus; owner?: string; canAdd: boolean }
+interface List { key: string; title: string; hint?: string; head?: ReactNode; cards: Task[]; status?: TaskStatus; stage?: string; owner?: string; canAdd: boolean }
+/** coluna do quadro: Pedidos (fixa) + as etapas da equipe */
+interface Col { id: string; label: string; kind: TaskStatus; hint?: string; stage?: Stage }
 
-export const STAGES: { id: TaskStatus; label: string; hint?: string }[] = [
-  { id: 'inbox', label: 'Pedidos', hint: 'Esperando a pessoa aceitar' },
-  { id: 'todo', label: 'A fazer' },
-  { id: 'doing', label: 'Fazendo' },
-  { id: 'review', label: 'Aprovação', hint: 'Esperando o mestre do projeto' },
-  { id: 'done', label: 'Feito', hint: 'Últimos 7 dias' },
-]
+const KIND_LABEL = Object.fromEntries(STAGE_KINDS.map(k => [k.kind, k.label])) as Record<StageKind, string>
+const KIND_HINT: Partial<Record<TaskStatus, string>> = { review: 'Esperando o mestre do projeto', done: 'Últimos 7 dias' }
+function colsOf(stages: Stage[]): Col[] {
+  return [
+    { id: 'inbox', label: 'Pedidos', kind: 'inbox', hint: 'Esperando a pessoa aceitar' },
+    ...stages.map(s => ({ id: s.id, label: s.label, kind: s.kind, stage: s, hint: KIND_HINT[s.kind] ?? (s.label !== KIND_LABEL[s.kind] ? `Conta como ${KIND_LABEL[s.kind]}` : undefined) })),
+  ]
+}
 const STAGE_LABEL: Record<TaskStatus, string> = { inbox: 'Pedido', todo: 'A fazer', doing: 'Fazendo', review: 'Em aprovação', done: 'Feito', declined: 'Recusado' }
 const STAGE_ORDER: Record<TaskStatus, number> = { doing: 0, review: 1, todo: 2, inbox: 3, done: 4, declined: 5 }
 const DONE_DAYS = 7
@@ -64,6 +67,10 @@ export default function Quadro() {
   const profiles = useStore(s => s.profiles)
   const tasksMap = useStore(s => s.tasks)
   const goalsMap = useStore(s => s.rows.goals)
+  const stageRows = useStore(s => s.rows.stages)
+  const stages = useMemo(() => stageList(stageRows), [stageRows])
+  const cols = useMemo(() => colsOf(stages), [stages])
+  const inCol = (t: Task, c: Col) => t.status === c.kind && (c.kind === 'inbox' || stageOf(t, stages) === c.id)
   const projects = useStore(s => s.projects)
   const project = useStore(s => s.project)
   const notes = useStore(s => s.notes)
@@ -148,10 +155,10 @@ export default function Quadro() {
   )
 
   const lists: List[] = group === 'etapa'
-    ? STAGES.map(s => ({
-        key: s.id, title: s.label, hint: s.hint, status: s.id, canAdd: s.id === 'todo' || s.id === 'doing',
+    ? cols.map(c => ({
+        key: c.id, title: c.label, hint: c.hint, status: c.kind, stage: c.stage?.id, canAdd: c.kind === 'todo' || c.kind === 'doing',
         head: <span className="qdot" />,
-        cards: shown.filter(t => t.status === s.id).sort(sortFor(s.id)),
+        cards: shown.filter(t => inCol(t, c)).sort(sortFor(c.kind)),
       }))
     : group === 'pessoa'
       ? lanePeople
@@ -167,17 +174,17 @@ export default function Quadro() {
   const lanes = group !== 'raias' ? [] : lanePeople
     .map(p => ({
       p,
-      cells: STAGES.map<List>(s => ({
-        key: `${p.id}:${s.id}`, title: s.label, owner: p.id, status: s.id, canAdd: s.id === 'todo',
-        cards: shown.filter(t => t.owner_id === p.id && t.status === s.id).sort(sortFor(s.id)),
+      cells: cols.map<List>(c => ({
+        key: `${p.id}:${c.id}`, title: c.label, owner: p.id, status: c.kind, stage: c.stage?.id, canAdd: c.kind === 'todo',
+        cards: shown.filter(t => t.owner_id === p.id && inCol(t, c)).sort(sortFor(c.kind)),
       })),
     }))
     .filter(l => l.p.id === meId || extra.includes(l.p.id) || !(mine || term || due || proj) || l.cells.some(c => c.cards.length > 0))
 
   const dragged = drag ? tasksMap[drag] : undefined
   /** a etapa aceita o cartão? (aprovação só com aprovador; sair da aprovação: dono retira, aprovador aprova) */
-  const stageOk = (t: Task, st: TaskStatus) => {
-    if (st === t.status) return st !== 'done' && canEditTask(t)
+  const stageOk = (t: Task, st: TaskStatus, stage?: string) => {
+    if (st === t.status) return stage && stage !== stageOf(t, stages) ? canMove(t) : st !== 'done' && canEditTask(t)
     if (st === 'inbox') return false
     if (t.status === 'review') return st === 'done' ? canApprove(t) : t.owner_id === meId
     if (st === 'review') return !!approverOf(t) && canMove(t)
@@ -187,7 +194,7 @@ export default function Quadro() {
     const t = dragged
     if (!t) return false
     if (l.owner && t.owner_id !== l.owner && !canReassign(t, l.owner)) return false
-    return l.status ? stageOk(t, l.status) : !!l.owner
+    return l.status ? stageOk(t, l.status, l.stage) : !!l.owner
   }
   /** posição entre os vizinhos (sem contar o próprio cartão arrastado) */
   const posAt = (cards: Task[], index: number) => {
@@ -205,7 +212,7 @@ export default function Quadro() {
     const pos = l.status ? posAt(l.cards, index) : Date.now()
     run((async () => {
       if (l.owner && t.owner_id !== l.owner) await reassign(t.id, l.owner, pos)
-      if (l.status && t.status !== l.status) await setStatus(t.id, l.status, pos)
+      if (l.status && (t.status !== l.status || (l.stage && stageOf(t, stages) !== l.stage))) await setStatus(t.id, l.status, pos, l.stage ?? null)
       else if (l.status && (!l.owner || t.owner_id === l.owner)) await placeTask(t.id, pos)
     })())
   }
@@ -327,13 +334,13 @@ export default function Quadro() {
       {proj && <ProjectBar p={proj} profiles={profiles} tasks={Object.values(tasksMap).filter(t => t.project_id === proj.id)} />}
 
       {group === 'raias' ? (
-        <div className="qlanes">
+        <div className="qlanes" style={{ '--ncol': cols.length } as React.CSSProperties}>
           <div className="qlane qlane-top">
             <div className="qlane-who" />
-            {STAGES.map(s => (
-              <div key={s.id} className={'qlane-st st-' + s.id}>
+            {cols.map(s => (
+              <div key={s.id} className={'qlane-st st-' + s.kind}>
                 <span><i className="qdot" />{s.label}</span>
-                <span className="qcount">{lanes.reduce((n, l) => n + l.cells.find(c => c.status === s.id)!.cards.length, 0)}</span>
+                <span className="qcount">{lanes.reduce((n, l) => n + l.cells.find(c => c.key === `${l.p.id}:${s.id}`)!.cards.length, 0)}</span>
               </div>
             ))}
           </div>
@@ -363,8 +370,10 @@ export default function Quadro() {
               {l.head}
               <div className="grow"><b>{l.title}</b>{l.hint && <small>{l.hint}</small>}</div>
               <span className="qcount">{l.cards.length}</span>
+              {group === 'etapa' && l.stage && canEditStages() && <StageMenu s={stages.find(x => x.id === l.stage)!} list={stages} count={l.cards.length} />}
             </header>
           )))}
+          {group === 'etapa' && canEditStages() && <NewStage list={stages} />}
         </div>
       )}
     </div>
@@ -523,7 +532,7 @@ function Composer({ list, meId, profiles, people, project, onClose }: {
     const name = title.trim()
     if (!name) return
     if (!owner) { setPop('owner'); return }
-    run(addTask(owner, name, due || null, '', list.status ?? 'todo', project, { priority: prio, remind_at: remind ? new Date(remind).toISOString() : null }))
+    run(addTask(owner, name, due || null, '', list.status ?? 'todo', project, { priority: prio, remind_at: remind ? new Date(remind).toISOString() : null, stage: list.stage ?? null }))
     setTitle(''); setPrio(null); setDue(''); setRemind(''); setPop(null)
     ref.current?.focus()
   }
@@ -611,6 +620,71 @@ function Composer({ list, meId, profiles, people, project, onClose }: {
           </button>
         ))}
       </div>
+    </form>
+  )
+}
+
+/** Menu da etapa: renomear, mudar de lugar, excluir (o tipo fica fixo: é o que as metas e aprovações entendem). */
+function StageMenu({ s, list, count }: { s: Stage; list: Stage[]; count: number }) {
+  const [open, setOpen] = useState(false)
+  const [name, setName] = useState<string | null>(null)
+  const i = list.findIndex(x => x.id === s.id)
+  const move = (d: number) => { const n = list.slice(); n.splice(i, 1); n.splice(i + d, 0, s); run(saveStages(n)); setOpen(false) }
+  const rename = () => {
+    const label = (name ?? '').trim().slice(0, 40)
+    setName(null); setOpen(false)
+    if (label && label !== s.label) run(saveStages(list.map(x => (x.id === s.id ? { ...x, label } : x))))
+  }
+  const del = () => {
+    setOpen(false)
+    const to = list.find(x => x.id === s.kind && x.id !== s.id) ?? list.find(x => x.kind === s.kind && x.id !== s.id)
+    if (!to) return run(removeStage(s.id))
+    if (confirm(`Excluir a etapa “${s.label}”?${count ? `\n\n${count === 1 ? 'A tarefa dela vai' : `As ${count} tarefas dela vão`} para “${to.label}”.` : ''}`)) run(removeStage(s.id))
+  }
+  return (
+    <div className="pop-wrap">
+      <button className="icon-btn sm" onClick={() => setOpen(v => !v)} aria-label={`Opções da etapa ${s.label}`} title="Editar etapa"><Icon n="dots" size={18} /></button>
+      {open && (
+        <div className="menu-pop stage-pop" onKeyDown={e => e.key === 'Escape' && setOpen(false)}>
+          <form className="stage-name" onSubmit={e => { e.preventDefault(); rename() }}>
+            <input autoFocus value={name ?? s.label} maxLength={40} onChange={e => setName(e.target.value)} aria-label="Nome da etapa" />
+            <button className="btn primary sm" disabled={name === null || !name.trim() || name.trim() === s.label}>Salvar</button>
+          </form>
+          <small className="muted stage-kind">Funciona como <b>{KIND_LABEL[s.kind]}</b></small>
+          <button disabled={i === 0} onClick={() => move(-1)}><Ph n="caret-left" size={16} /><div><b>Mover para a esquerda</b></div></button>
+          <button disabled={i === list.length - 1} onClick={() => move(1)}><Ph n="caret-right" size={16} /><div><b>Mover para a direita</b></div></button>
+          <button className="danger" onClick={del}><Icon n="trash" size={16} /><div><b>Excluir etapa</b><small>{count ? `${count} tarefa${count > 1 ? 's' : ''} muda${count > 1 ? 'm' : ''} de coluna` : 'Está vazia'}</small></div></button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** Coluna fantasma no fim do quadro: cria uma etapa nova. */
+function NewStage({ list }: { list: Stage[] }) {
+  const [open, setOpen] = useState(false)
+  const [name, setName] = useState('')
+  const [kind, setKind] = useState<StageKind>('doing')
+  const create = () => {
+    const label = name.trim().slice(0, 40)
+    if (!label) return
+    const s: Stage = { id: crypto.randomUUID(), label, kind, pos: 0, created_by: '', created_at: '' }
+    // entra logo depois da última etapa do mesmo tipo
+    const at = list.map(x => x.kind).lastIndexOf(kind)
+    const n = list.slice(); n.splice(at < 0 ? n.length : at + 1, 0, s)
+    run(saveStages(n)); setName(''); setOpen(false)
+  }
+  if (!open) return <button className="qlist qnew" onClick={() => setOpen(true)}><Ph n="plus" size={18} />Nova etapa</button>
+  return (
+    <form className="qlist qnew-form" onSubmit={e => { e.preventDefault(); create() }}>
+      <b>Nova etapa</b>
+      <input autoFocus value={name} maxLength={40} placeholder="Ex.: Revisão interna" onChange={e => setName(e.target.value)} onKeyDown={e => e.key === 'Escape' && setOpen(false)} aria-label="Nome da etapa" />
+      <small className="muted">Funciona como</small>
+      <div className="qnew-kinds">
+        {STAGE_KINDS.map(k => <button type="button" key={k.kind} className={'qchip st-' + k.kind + (kind === k.kind ? ' on' : '')} onClick={() => setKind(k.kind)} title={k.hint}><i className="qdot" />{k.label}</button>)}
+      </div>
+      <small className="muted">{STAGE_KINDS.find(k => k.kind === kind)!.hint}</small>
+      <div className="row gap"><button className="btn primary sm" disabled={!name.trim()}>Criar etapa</button><button type="button" className="btn ghost sm" onClick={() => setOpen(false)}>Cancelar</button></div>
     </form>
   )
 }

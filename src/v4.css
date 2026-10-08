@@ -656,3 +656,20 @@ button.panel { width: 100%; border: 0; text-align: left; font: inherit; color: i
 .seq-card b { font-size: 15px; }
 .seq-add { padding-left: 50px; grid-template-columns: 1fr !important; }
 .cv-hint { position: absolute; right: 14px; top: 14px; z-index: 5; display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 99px; background: rgba(255,255,255,.92); box-shadow: var(--sh); font: 600 12px Inter; color: var(--muted); pointer-events: none; }
+
+/* Quadro · etapas editáveis */
+.qlist-head .pop-wrap { margin-right: -4px; }
+.stage-pop { width: 260px; }
+.stage-pop button:disabled { opacity: .4; cursor: default; }
+.stage-pop button.danger { color: #C0392B; }
+.stage-pop button div small { display: block; color: var(--muted); font-size: 12px; font-weight: 500; }
+.stage-name { display: flex; gap: 6px; padding: 2px 2px 6px; }
+.stage-name input { flex: 1; min-width: 0; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; font: 600 14px Inter; }
+.stage-kind { padding: 2px 10px 6px; display: block; border-bottom: 1px solid var(--line); margin-bottom: 4px; }
+.qnew { flex: none; width: 220px; min-height: 64px; display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 8px; border: 2px dashed var(--line); background: transparent; color: var(--muted); font: 600 14px Inter; cursor: pointer; transition: border-color .2s, color .2s, transform .3s var(--ease); }
+.qnew:hover { border-color: var(--ink); color: var(--ink); transform: translateY(-2px); }
+.qnew-form { flex: none; width: 280px; display: grid; gap: 8px; padding: 14px; background: #fff; box-shadow: var(--sh); }
+.qnew-form input { padding: 9px 11px; border: 1px solid var(--line); border-radius: 10px; font: 600 14px Inter; }
+.qnew-kinds { display: flex; flex-wrap: wrap; gap: 6px; }
+.qnew-kinds .qchip { cursor: pointer; }
+.qnew-kinds .qchip .qdot { width: 8px; height: 8px; border-radius: 50%; background: var(--sc, var(--muted)); display: inline-block; }

@@ -1,6 +1,7 @@
 import { createClient, type RealtimeChannel, type SupabaseClient } from '@supabase/supabase-js'
 import { slugUser, toEmail } from './login'
 import type { RowTable, Rows, AccountEdit, AiContext, AiProposal, AiStage, Backend, Handlers, Message, Pos, Profile, Project, Snapshot, Task, TaskNote } from '../types'
+import { ROW_TABLES } from '../types'
 
 function pt(e: { message: string }): Error {
   const m = e.message
@@ -60,7 +61,7 @@ export class SupabaseBackend implements Backend {
       this.sb.from('task_notes').select('*').order('created_at').limit(3000),
       this.sb.from('projects').select('*').order('created_at'),
     ])
-    const tables: RowTable[] = ['events', 'goals', 'stickers', 'flows']
+    const tables = ROW_TABLES
     const extra = await Promise.all(tables.map(k => this.sb.from(k).select('*').order('created_at')))
     // tabelas da v4: antes da migração não existem, o escritório abre sem elas
     const rows = Object.fromEntries(tables.map((k, i) => [k, extra[i].error ? [] : extra[i].data])) as Snapshot['rows']
@@ -238,7 +239,7 @@ export class SupabaseBackend implements Backend {
         if (pl.eventType === 'DELETE') h.projectDeleted((pl.old as { id: string }).id)
         else h.project(pl.new as Project)
       })
-    for (const k of ['events', 'goals', 'stickers', 'flows'] as RowTable[])
+    for (const k of ROW_TABLES)
       db.on('postgres_changes', { event: '*', schema: 'public', table: k }, pl => {
         if (pl.eventType === 'DELETE') h.rowDeleted(k, (pl.old as { id: string }).id)
         else h.row(k, pl.new as Rows[typeof k])

@@ -84,6 +84,8 @@ export interface Task {
   /** post: canal e horário de publicar (vai para a Agenda) */
   channel: Channel | null
   publish_at: string | null
+  /** etapa personalizada do quadro (null = primeira etapa do tipo do status) */
+  stage?: string | null
 }
 
 export type Channel = 'feed' | 'reels' | 'stories' | 'facebook' | 'site'
@@ -105,8 +107,13 @@ export interface Sticker { id: string; to_id: string; by_id: string; kind: Stick
 export interface FlowNode { id: string; title: string; owner: string | null; due: string | null; x: number; y: number; after: string[]; task_id: string | null }
 export interface Flow { id: string; name: string; objective: string; nodes: FlowNode[]; created_by: string; created_at: string }
 
-export interface Rows { events: CalEvent; goals: Goal; stickers: Sticker; flows: Flow }
+/** etapa do quadro (coluna). kind = como o sistema entende a etapa: aprovação, feito… */
+export type StageKind = 'todo' | 'doing' | 'review' | 'done'
+export interface Stage { id: string; label: string; kind: StageKind; pos: number; created_by: string; created_at: string }
+
+export interface Rows { events: CalEvent; goals: Goal; stickers: Sticker; flows: Flow; stages: Stage }
 export type RowTable = keyof Rows
+export const ROW_TABLES: RowTable[] = ['events', 'goals', 'stickers', 'flows', 'stages']
 
 export type Priority = 'alta' | 'media' | 'baixa'
 export interface CheckItem {
