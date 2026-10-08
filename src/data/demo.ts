@@ -1,4 +1,5 @@
 import { toEmail, validUser } from './login'
+import { dayKey } from '../game/xp'
 import type { RowTable, Rows, AccountEdit, AiContext, AiProposal, AiStage, Avatar, Backend, Handlers, Message, Pos, Profile, Project, Snapshot, Task, TaskNote } from '../types'
 
 // Modo demonstração: tudo no localStorage deste navegador. Abas diferentes = pessoas diferentes
@@ -91,7 +92,8 @@ export class DemoBackend implements Backend {
     const all = read<Record<string, Profile>>(K.prof, {})
     // como no servidor: cargo e adm não vêm do cliente; o primeiro a entrar sem adm vira adm
     const adm = Object.values(all).some(x => x.is_admin && x.id !== p.id)
-    p = { ...p, rank: all[p.id]?.rank ?? 1, is_admin: all[p.id]?.is_admin ?? !adm }
+    // demo: quem entra primeiro já é Coordenação, pra ver Metas, Fluxos e aprovações
+    p = { ...p, rank: all[p.id]?.rank ?? (adm ? 1 : 3), is_admin: all[p.id]?.is_admin ?? !adm }
     all[p.id] = p
     write(K.prof, all)
     this.post({ t: 'profile', p })
@@ -365,7 +367,7 @@ export class DemoBackend implements Backend {
 // ---- equipe de exemplo ----
 function seed() {
   const now = new Date()
-  const dayAhead = (d: number) => new Date(now.getTime() + d * 864e5).toISOString().slice(0, 10)
+  const dayAhead = (d: number) => dayKey(new Date(now.getTime() + d * 864e5))
   const iso = (minAgo: number) => new Date(now.getTime() - minAgo * 60000).toISOString()
   const av = (a: Partial<Avatar>): Avatar => ({
     skin: '#f6c9a3', hair: 'curto', hairColor: '#2b1d16', outfit: 'camiseta', top: '#0B235D', bottom: '#2c3e66',
@@ -410,7 +412,8 @@ function seed() {
     post('demo-ana', 'Site · Página Casa de Campo', 'doing', 'site', 9, 14),
     ...[-6, -5, -3, -2, -1].map((d, i) => ({ ...post(i % 2 ? 'demo-ana' : 'demo-bruno', ['Feed · Tour pela piscina', 'Stories · Bom dia', 'Reels · Oficina de pipa', 'Feed · Depoimento', 'Stories · Pôr do sol'][i], 'done', i % 2 ? 'stories' : 'feed', d, 10), done_at: at(d, 11) })),
   )
-  const month = now.toISOString().slice(0, 7)
+  const month = dayKey(now).slice(0, 7)
+  const msgsMine: Message[] = []
   const rows = {
     events: [
       { id: crypto.randomUUID(), title: 'Feriado · Dia das Crianças', day: dayAhead(5), time: null, created_by: 'demo-carla', created_at: iso(500) },
@@ -430,19 +433,47 @@ function seed() {
       ],
     }],
   }
+  // quem está entrando já encontra trabalho: tarefas suas, um projeto seu e entregas esperando sua aprovação
+  const me = sessionStorage.getItem(K.session)
+  const projects = [proj]
+  if (me) {
+    const mine: Project = {
+      id: crypto.randomUUID(), name: 'Day Use Verão', master_id: me, color: '#3fa66b', archived: false, created_by: me, created_at: iso(9400),
+      criteria: ['Preço conferido com a reserva', 'Foto aprovada'],
+    }
+    projects.push(mine)
+    const ck = (...l: [string, boolean][]) => l.map(([text, done]) => ({ id: crypto.randomUUID(), text, done }))
+    tasks.push(
+      { ...task(me, 'Fechar tabela de preços do Day Use', 'doing', 95, me, mine.id), priority: 'alta', due: dayAhead(0), notes: 'Adulto, criança até 12 e pacote família.',
+        checklist: ck(['Adulto', true], ['Criança', true], ['Pacote família', false]) },
+      { ...task(me, 'Revisar texto do site', 'todo', 85, 'demo-carla'), priority: 'media', due: dayAhead(0), collaborators: ['demo-ana'] },
+      { ...task(me, 'Briefing das fotos de verão', 'todo', 75, me, mine.id), due: dayAhead(2) },
+      { ...task(me, 'Responder parceria com agência de turismo', 'inbox', 30, 'demo-bruno'), notes: 'Querem 10% de comissão no Day Use. Ver se faz sentido.' },
+      { ...post(me, 'Stories · Bastidores do Day Use', 'todo', 'stories', 2, 11), project_id: mine.id },
+      { ...task(me, 'Planilha de hóspedes de setembro', 'done', 500), done_at: iso(400) },
+      { ...task('demo-bruno', 'Arte do Day Use: carrossel 3 cards', 'review', 45, me, mine.id), notes: 'Mandei as 3 versões no anexo, a 2 é a minha preferida.' },
+      { ...task('demo-ana', 'Lista de quiosques livres no sábado', 'review', 65, me, mine.id) },
+      { ...task('demo-bruno', 'Vídeo curto da piscina', 'doing', 55, me, mine.id), due: dayAhead(1), collaborators: [me] },
+    )
+    msgsMine.push(
+      { id: crypto.randomUUID(), channel: 'geral', sender_id: 'demo-bruno', body: 'Subi o carrossel do Day Use pra sua aprovação.', created_at: iso(44) },
+      { id: crypto.randomUUID(), channel: 'geral', sender_id: 'demo-ana', body: 'Os quiosques 2 e 5 estão livres no sábado.', created_at: iso(15) },
+    )
+  }
   for (const [k, list] of Object.entries(rows)) write(K.row + k, Object.fromEntries(list.map(r => [r.id, r])))
   const notes: TaskNote[] = [
     { id: crypto.randomUUID(), task_id: tasks[0].id, author_id: 'demo-carla', body: 'O chalé 7 confirmou por WhatsApp agora há pouco.', created_at: iso(50) },
   ]
   const msgs: Message[] = [
+    ...msgsMine,
     { id: crypto.randomUUID(), channel: 'geral', sender_id: 'demo-ana', body: 'Bom dia, time! ☀️', created_at: iso(180) },
     { id: crypto.randomUUID(), channel: 'geral', sender_id: 'demo-bruno', body: 'A arte do feed sai até as 16h 👀', created_at: iso(150) },
     { id: crypto.randomUUID(), channel: 'geral', sender_id: 'demo-carla', body: 'Quem puder, dá uma olhada no checklist de sábado depois.', created_at: iso(40) },
   ]
   write(K.prof, Object.fromEntries(people.map(p => [p.id, p])))
   write(K.task, Object.fromEntries(tasks.map(t => [t.id, t])))
-  write(K.msg, msgs)
+  write(K.msg, msgs.sort((a, b) => a.created_at.localeCompare(b.created_at)))
   write(K.note, notes)
-  write(K.proj, { [proj.id]: proj })
+  write(K.proj, Object.fromEntries(projects.map(p => [p.id, p])))
   localStorage.setItem(K.seeded, '1')
 }
