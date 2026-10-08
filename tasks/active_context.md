@@ -98,3 +98,12 @@ Corrigido em todas as telas, desktop e celular. Quadro: filtros numa linha só, 
 Pendente: push (precisa da migration 202610080900_v4_agenda_metas.sql e do secret SUPABASE_ACCESS_TOKEN).
 
 - 2026-10-07: coluna da direita do Quadro refeita (Seu dia com lembrete no cabeçalho, Meta compacta com barra, chat agrupado ocupando o resto). Commit efa4d5e publicado (run 37719134491).
+
+## 2026-10-08 — fase 2 (parte 1) NO AR (deploy 37788439366, 4ac2866)
+- Etapas personalizadas no Quadro (tabela `stages`, tipo fixo todo/doing/review/done; migração 202610081000).
+- Grupos no chat (`groups`, RPC `group_join`, canal `g:<uuid>`, aberto ou só convidados; migração 202610081100).
+- Chat flutuante: `FloatChat.tsx` — bolinha arrastável que encosta na borda, pula + espiadinha na mensagem nova; janela principal e conversas soltas (`Chat fixed=`) arrastáveis/redimensionáveis; posições em localStorage `ev:bubble`, `ev:cwin`, `ev:floats`, `ev:cwin-size:*`. `floatChans` (store) conta conversa solta como vista.
+- Lateral: mini chat trocado por `TeamNow` (quem está aqui, no que mexe, feitas hoje; toque abre DM).
+- Conhecido: no celular, bolinha arrastada pro topo → janela pode passar da borda de cima.
+- Próximo (plano aprovado): 4) lembretes inteligentes no Seu dia; 5) visão do chefe mobile; 6) cafezinhos + Almoxarifado.
+- Ideia futura do usuário: importar calendário (e outros) automaticamente com IA interpretando e criando eventos/tarefas.

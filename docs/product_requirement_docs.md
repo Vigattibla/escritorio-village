@@ -22,3 +22,4 @@ Escritório virtual da equipe Village Resort, estilo Gather + Trello: cada pesso
 ## Futuro
 - IA (resumo do dia, sugestões de tarefas).
 - Reuniões dentro do escritório (sala com vídeo/áudio por proximidade).
+- Importação automática de calendário e afins: a IA lê o calendário/arquivo, interpreta e cria eventos e tarefas.
