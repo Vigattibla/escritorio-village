@@ -1,7 +1,10 @@
 import { toEmail, validUser } from './login'
 import { dayKey } from '../game/xp'
-import type { Group, RowTable, Rows, AccountEdit, AiContext, AiProposal, AiStage, Avatar, Backend, Handlers, Message, Pos, Profile, Project, Snapshot, Task, TaskNote } from '../types'
+import type { CoffeeLine, Goal, Wallet, Group, RowTable, Rows, AccountEdit, AiContext, AiProposal, AiStage, Avatar, Backend, Handlers, Message, Pos, Profile, Project, Snapshot, Task, TaskNote } from '../types'
 import { ROW_TABLES } from '../types'
+import { counts, DAY, MAX_GOALS, payouts, WELCOME } from '../shop/economy'
+import { ITEM } from '../shop/catalog'
+import { localDay } from '../components/v4'
 
 // Modo demonstração: tudo no localStorage deste navegador. Abas diferentes = pessoas diferentes
 // (a sessão fica no sessionStorage), sincronizadas por BroadcastChannel.
@@ -290,6 +293,54 @@ export class DemoBackend implements Backend {
     all[r.id] = r
     write(K.row + k, all)
     this.post({ t: 'row', k, r })
+  }
+
+  // carteira da demo: mesmas regras do claim_coffee do servidor, guardada por pessoa
+  private coffee(): CoffeeLine[] { return read<CoffeeLine[]>('ev:coffee:' + sessionStorage.getItem(K.session), []) }
+  private credit(log: CoffeeLine[], amount: number, reason: CoffeeLine['reason'], ref: string, out: CoffeeLine[]) {
+    if (log.some(l => l.reason === reason && l.ref === ref)) return
+    const l = { amount, reason, ref, created_at: new Date().toISOString() }
+    log.unshift(l); out.push(l)
+  }
+
+  async wallet(): Promise<Wallet> {
+    const log = this.coffee()
+    return { balance: log.reduce((n, l) => n + l.amount, 0), owned: log.filter(l => l.reason === 'compra').map(l => l.ref), log }
+  }
+
+  async claimCoffee(): Promise<CoffeeLine[]> {
+    const me = sessionStorage.getItem(K.session)
+    if (!me) return []
+    const log = this.coffee(), out: CoffeeLine[] = []
+    this.credit(log, WELCOME, 'boasvindas', 'boasvindas', out)
+    this.credit(log, DAY, 'dia', localDay(new Date().toISOString()), out)
+    const tasks = Object.values(read<Record<string, Task>>(K.task, {}))
+    const projects = read<Record<string, Project>>(K.proj, {})
+    const goals = Object.values(read<Record<string, Goal>>(K.row + 'goals', {})).sort((a, b) => a.created_at.localeCompare(b.created_at))
+    const done = (g: Goal, upto: number) => tasks.filter(t => t.status === 'done' && t.done_at && new Date(t.done_at).getTime() < upto
+      && localDay(t.done_at).startsWith(g.month) && (g.metric !== 'posts' || !!t.channel) && counts(t, projects)).length
+    for (const g of goals) {
+      const paidGoals = new Set(log.filter(l => (l.reason === 'fase' || l.reason === 'meta') && l.ref.startsWith(g.month + ':')).map(l => l.ref.split(':')[1]))
+      if (!paidGoals.has(g.id) && paidGoals.size >= MAX_GOALS) continue
+      const v = g.metric === 'manual' ? g.value : done(g, Infinity)
+      const d = new Date(g.created_at); const midnight = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1).getTime()
+      const b = g.metric === 'manual' ? g.base ?? 0 : done(g, midnight)
+      for (const p of payouts(g, v, b)) this.credit(log, p.amount, p.reason, p.reason === 'fase' ? `${g.month}:${g.id}:${p.i}` : `${g.month}:${g.id}`, out)
+    }
+    write('ev:coffee:' + me, log)
+    return out
+  }
+
+  async buyItem(id: string) {
+    const me = sessionStorage.getItem(K.session)
+    const it = ITEM[id]
+    if (!me || !it) throw new Error('Item não existe.')
+    const log = this.coffee()
+    if (log.some(l => l.reason === 'compra' && l.ref === id)) return
+    const bal = log.reduce((n, l) => n + l.amount, 0)
+    if (bal < it.price) throw new Error(`Faltam ${it.price - bal} cafezinhos.`)
+    this.credit(log, -it.price, 'compra', id, [])
+    write('ev:coffee:' + me, log)
   }
 
   async joinGroup(id: string, join: boolean) {

@@ -7,6 +7,7 @@ import { Ph } from './Icon'
 import MiniAvatar from './MiniAvatar'
 import { Ring, Steps } from './Side'
 import { currentGoal, daysLeft, first, goalProgress, monthKey } from './v4'
+import { FINAL, goalTotal, MAX_GOALS, PHASE, steps } from '../shop/economy'
 
 const METRIC: Record<Goal['metric'], string> = { posts: 'Posts publicados', tasks: 'Tarefas feitas', manual: 'Contagem manual' }
 const monthName = (m: string) => new Date(m + '-02').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }).replace(' de ', ' ')
@@ -15,11 +16,13 @@ export default function Metas() {
   const goals = useStore(s => s.rows.goals)
   const tasks = useStore(s => s.tasks)
   const profiles = useStore(s => s.profiles)
+  const projects = useStore(s => s.projects)
   const [form, setForm] = useState<Goal | 'new' | null>(null)
   const [cele, setCele] = useState<Goal | null>(null)
   const list = useMemo(() => Object.values(tasks), [tasks])
   const all = Object.values(goals).sort((a, b) => b.month.localeCompare(a.month) || a.created_at.localeCompare(b.created_at))
   const can = rankOf(me()) >= 2
+  const chefe = rankOf(me()) >= 4
   const months = [...new Set(all.map(g => g.month))]
 
   return (
@@ -27,14 +30,14 @@ export default function Metas() {
       <div className="qbar"><span className="grow" /><Bell />
         {can && <button className="btn accent" onClick={() => setForm('new')}><Ph n="plus" size={18} fill />Nova meta</button>}
       </div>
-      <div className="qhead"><div><h1>Metas</h1><div className="sub">O que a equipe quer bater no mês, e o que ganha quando bater</div></div></div>
+      <div className="qhead"><div><h1>Metas</h1><div className="sub">O que a equipe quer bater no mês, e o que ganha quando bater. Cada pessoa recebe cafezinhos de até {MAX_GOALS} metas por mês.</div></div></div>
       {!all.length && <div className="panel empty-goal"><Ph n="target" size={36} /><b>Nenhuma meta ainda</b><small className="muted">{can ? 'Crie a primeira: posts do mês, tarefas feitas ou uma contagem sua.' : 'Quando a coordenação criar uma meta, ela aparece aqui.'}</small></div>}
       {months.map(m => (
         <section key={m} className="msec-g">
           <h4>{monthName(m)}{m === monthKey() && <span className="tag green">este mês</span>}</h4>
           <div className="glist">
             {all.filter(g => g.month === m).map(g => {
-              const pr = goalProgress(g, list)
+              const pr = goalProgress(g, list, projects)
               const tops = Object.entries(pr.by).sort((a, b) => b[1] - a[1])
               return (
                 <div key={g.id} className={'panel gcard big' + (pr.hit ? ' hit' : '')}>
@@ -46,7 +49,8 @@ export default function Metas() {
                     {can && <button className="icon-btn on-dark" onClick={() => setForm(g)} aria-label="Editar meta"><Ph n="pencil-simple-line" size={16} /></button>}
                   </div>
                   <Steps pct={pr.pct} target={g.target} />
-                  {g.metric === 'manual' && can && (
+                  <div className="g-coffee"><Ph n="coffee" size={14} fill />{steps(g.target).length > 1 ? `+${PHASE} a cada fase · +${FINAL} no final` : `+${FINAL} ao bater`} · {goalTotal(g.target)} cafezinhos pra cada um</div>
+                  {g.metric === 'manual' && chefe && (
                     <div className="row gap manual">
                       <button className="btn soft sm" onClick={() => run(putRow('goals', { ...g, value: Math.max(0, g.value - 1) }))}>−1</button>
                       <button className="btn accent sm" onClick={() => run(putRow('goals', { ...g, value: g.value + 1 }))}>+1</button>
@@ -81,7 +85,8 @@ function GoalForm({ g, onClose }: { g: Goal | null; onClose: () => void }) {
   const [reward, setReward] = useState(g?.reward ?? '')
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
-    run(putRow('goals', { id: g?.id ?? crypto.randomUUID(), title: title.trim(), metric, target: Math.max(1, Number(target) || 1), month, reward: reward.trim(), value: g?.value ?? 0, created_by: g?.created_by ?? meId, created_at: g?.created_at ?? new Date().toISOString() }))
+    // depois de criada, alvo/medida/mês ficam travados (o servidor recusa mudança)
+    run(putRow('goals', g ? { ...g, title: title.trim(), reward: reward.trim() } : { id: crypto.randomUUID(), title: title.trim(), metric, target: Math.max(1, Number(target) || 1), month, reward: reward.trim(), value: 0, created_by: meId, created_at: new Date().toISOString() }))
     onClose()
   }
   return (
@@ -90,10 +95,10 @@ function GoalForm({ g, onClose }: { g: Goal | null; onClose: () => void }) {
         <h2>{g ? 'Editar meta' : 'Nova meta'}</h2>
         <label>Meta<input autoFocus required maxLength={80} value={title} onChange={e => setTitle(e.target.value)} placeholder="Ex.: Publicar 40 posts" /></label>
         <div className="opts">
-          {(Object.keys(METRIC) as Goal['metric'][]).map(k => <button type="button" key={k} className={'qchip' + (metric === k ? ' on' : '')} onClick={() => setMetric(k)}>{METRIC[k]}</button>)}
+          {(Object.keys(METRIC) as Goal['metric'][]).map(k => <button type="button" key={k} disabled={!!g} className={'qchip' + (metric === k ? ' on' : '')} onClick={() => setMetric(k)}>{METRIC[k]}</button>)}
         </div>
-        <small className="muted">{metric === 'posts' ? 'Conta sozinho: cada post da agenda marcado como feito no mês.' : metric === 'tasks' ? 'Conta sozinho: cada tarefa feita no mês.' : 'Você aumenta a contagem na mão (+1).'}</small>
-        <div className="row gap"><label className="grow">Alvo<input type="number" min={1} required value={target} onChange={e => setTarget(e.target.value)} /></label><label className="grow">Mês<input type="month" required value={month} onChange={e => setMonth(e.target.value)} /></label></div>
+        <small className="muted">{metric === 'posts' ? 'Conta sozinho: cada post da agenda marcado como feito no mês.' : metric === 'tasks' ? 'Conta sozinho: cada tarefa feita no mês.' : 'A chefia aumenta a contagem na mão (+1).'}{g ? ' Alvo, medida e mês não mudam depois de criada.' : ' Depois de criada, alvo, medida e mês ficam travados. O que já estiver feito hoje não paga.'}</small>
+        <div className="row gap"><label className="grow">Alvo<input type="number" min={1} required disabled={!!g} value={target} onChange={e => setTarget(e.target.value)} /></label><label className="grow">Mês<input type="month" required disabled={!!g} value={month} onChange={e => setMonth(e.target.value)} /></label></div>
         <label>Recompensa (opcional)<input maxLength={120} value={reward} onChange={e => setReward(e.target.value)} placeholder="Ex.: Almoço da equipe no restaurante" /></label>
         <footer className="row gap end">
           {g && <button type="button" className="btn ghost danger" onClick={() => { run(dropRow('goals', g.id)); onClose() }}>Apagar</button>}
@@ -126,9 +131,10 @@ export function Cele({ g, onClose }: { g: Goal; onClose: () => void }) {
 export function CeleWatch() {
   const goals = useStore(s => s.rows.goals)
   const tasks = useStore(s => s.tasks)
+  const projects = useStore(s => s.projects)
   const [show, setShow] = useState<Goal | null>(null)
   const g = currentGoal(Object.values(goals))
-  const hit = !!g && goalProgress(g, Object.values(tasks)).hit
+  const hit = !!g && goalProgress(g, Object.values(tasks), projects).hit
   useEffect(() => {
     if (!g || !hit) return
     const k = 'ev:cele:' + g.id

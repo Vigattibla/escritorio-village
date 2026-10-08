@@ -1,6 +1,6 @@
 import { createClient, type RealtimeChannel, type SupabaseClient } from '@supabase/supabase-js'
 import { slugUser, toEmail } from './login'
-import type { RowTable, Rows, AccountEdit, AiContext, AiProposal, AiStage, Backend, Handlers, Message, Pos, Profile, Project, Snapshot, Task, TaskNote } from '../types'
+import type { CoffeeLine, Wallet, RowTable, Rows, AccountEdit, AiContext, AiProposal, AiStage, Backend, Handlers, Message, Pos, Profile, Project, Snapshot, Task, TaskNote } from '../types'
 import { ROW_TABLES } from '../types'
 
 function pt(e: { message: string }): Error {
@@ -147,6 +147,25 @@ export class SupabaseBackend implements Backend {
 
   async upsertRow<K extends RowTable>(table: K, r: Rows[K]) {
     const { error } = await this.sb.from(table).upsert(r)
+    if (error) throw pt(error)
+  }
+
+  /** carteira: saldo = soma do extrato; itens = compras (o crédito é só do servidor) */
+  async wallet(): Promise<Wallet> {
+    const { data, error } = await this.sb.from('coffee_log').select('amount,reason,ref,created_at').order('created_at', { ascending: false }).limit(2000)
+    if (error) { if (/does not exist|schema cache/i.test(error.message)) return { balance: 0, owned: [], log: [] }; throw pt(error) }
+    const log = (data ?? []) as CoffeeLine[]
+    return { balance: log.reduce((n, l) => n + l.amount, 0), owned: log.filter(l => l.reason === 'compra').map(l => l.ref), log }
+  }
+
+  async claimCoffee(): Promise<CoffeeLine[]> {
+    const { data, error } = await this.sb.rpc('claim_coffee')
+    if (error) { if (/does not exist|schema cache/i.test(error.message)) return []; throw pt(error) }
+    return (data ?? []) as CoffeeLine[]
+  }
+
+  async buyItem(item: string) {
+    const { error } = await this.sb.rpc('buy_item', { item })
     if (error) throw pt(error)
   }
 

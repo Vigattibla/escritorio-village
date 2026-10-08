@@ -14,6 +14,7 @@ export default function MoreMenu() {
     ['kanban', 'Quadro', () => setUi({ view: 'quadro', drawer: false }), pend],
     ['flow-arrow', 'Fluxos', () => setUi({ view: 'fluxos', drawer: false })],
     ['folder-simple', 'Arquivos', () => setUi({ view: 'arquivos', drawer: false })],
+    ['coffee', 'Almoxarifado', () => setUi({ view: 'loja', drawer: false })],
     ['chat-circle-dots', 'Chat da equipe', () => setUi({ chatOpen: true })],
     ['users-three', 'Equipe', () => setUi({ view: 'quadro', tab: 'equipe', drawer: true })],
   ]

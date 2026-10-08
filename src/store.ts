@@ -2,15 +2,18 @@ import { useSyncExternalStore } from 'react'
 import { backend } from './data'
 import { canAssign, isChief, rankName, rankOf } from './game/ranks'
 import { dayKey, taskXp } from './game/xp'
-import { MAX_DESKS } from './office/world'
-import type { Group, RowTable, Rows, Stage, StageKind, Sticker, AccountEdit, AiContext, AiItem, AiProposal, AiStage, Attachment, Avatar, Message, Pos, Profile, Project, Review, Task, TaskNote, TaskStatus } from './types'
+import { MAX_DESKS } from './office/base'
+import { parseSala } from './office/sala'
+import { ITEM, type Slot } from './shop/catalog'
+import { REASON } from './shop/economy'
+import type { Group, RowTable, Rows, Stage, StageKind, Sticker, AccountEdit, AiContext, AiItem, AiProposal, AiStage, Attachment, Avatar, CoffeeLine, Gear, Message, Pos, Profile, Project, Review, Task, TaskNote, TaskStatus, Wallet } from './types'
 import { ROW_TABLES } from './types'
 
 export type Phase = 'loading' | 'auth' | 'creator' | 'office'
 export type Tab = 'mesa' | 'aprovar' | 'avisos' | 'equipe' | 'chat' | 'geral'
 /** quadro = trabalho do dia a dia (estilo Trello); escritório = visualização em pixel */
-export type View = 'quadro' | 'escritorio' | 'agenda' | 'metas' | 'fluxos' | 'inicio' | 'arquivos'
-export interface Go { tab?: Tab; viewing?: string; channel?: string; task?: string }
+export type View = 'quadro' | 'escritorio' | 'agenda' | 'metas' | 'fluxos' | 'inicio' | 'arquivos' | 'loja'
+export interface Go { view?: View; tab?: Tab; viewing?: string; channel?: string; task?: string }
 export interface Notice { id: string; text: string; at: number; from?: string; go?: Go }
 
 export interface State {
@@ -38,6 +41,8 @@ export interface State {
   notices: Notice[]
   pipOpen: boolean
   view: View
+  /** cafezinhos: saldo, itens e extrato (só o servidor credita) */
+  wallet: Wallet | null
   /** no quadro, painel lateral (equipe/chat/geral) aberto */
   drawer: boolean
   /** projeto aberto no quadro ('' = todos) */
@@ -62,8 +67,8 @@ export interface State {
 
 
 const initial: State = {
-  phase: 'loading', meId: null, accountName: '', error: '', profiles: {}, tasks: {}, messages: [], notes: [], projects: {}, rows: { events: {}, goals: {}, stickers: {}, flows: {}, stages: {}, groups: {} }, online: new Set(),
-  tab: 'mesa', viewing: null, channel: 'geral', reads: {}, requestTo: null, task: null, editing: false, notices: [], pipOpen: false, view: 'quadro' as View, drawer: false,
+  phase: 'loading', meId: null, accountName: '', error: '', profiles: {}, tasks: {}, messages: [], notes: [], projects: {}, rows: { events: {}, goals: {}, stickers: {}, flows: {}, stages: {}, groups: {}, rooms: {}, carpenters: {} }, online: new Set(),
+  tab: 'mesa', viewing: null, channel: 'geral', reads: {}, requestTo: null, task: null, editing: false, notices: [], pipOpen: false, view: 'quadro' as View, wallet: null, drawer: false,
   project: '', projectEdit: null, aiOpen: false, chatOpen: false, bellOpen: false, qApprove: false, flow: null, sheet: false, stickTo: null,
 }
 
@@ -311,6 +316,7 @@ let disconnect: (() => void) | null = null
 
 // ---------- lembretes ----------
 let remindTimer = 0
+let coffeeTimer = 0
 /** Avisa uma vez cada lembrete vencido das minhas tarefas (o "já avisei" fica no navegador). */
 function checkReminders() {
   const my = state.meId
@@ -361,6 +367,9 @@ export async function enter(uid: string) {
     viewing: uid,
   })
   clearInterval(remindTimer)
+  clearInterval(coffeeTimer)
+  void claim()
+  coffeeTimer = window.setInterval(() => void claim(), 10 * 60000)
   checkReminders()
   remindTimer = window.setInterval(checkReminders, 20000)
   disconnect?.()
@@ -377,6 +386,7 @@ export async function enter(uid: string) {
 
 export async function signOut() {
   clearInterval(remindTimer)
+  clearInterval(coffeeTimer)
   disconnect?.()
   disconnect = null
   await backend.signOut()
@@ -407,7 +417,9 @@ export async function saveProfile(d: { name: string; role: string; avatar: Avata
   let desk = prev?.desk ?? -1
   if (desk < 0) {
     const taken = new Set(Object.values(state.profiles).map(p => p.desk))
-    desk = [...Array(MAX_DESKS).keys()].find(i => !taken.has(i)) ?? Object.keys(state.profiles).length % MAX_DESKS
+    // só mesas que existem na sala atual
+    const free = parseSala(state.rows.rooms['escritorio']?.data).objs.filter(o => o.k === 'mesa' && o.d !== undefined).map(o => o.d!).sort((a, b) => a - b)
+    desk = free.find(i => !taken.has(i)) ?? free[Object.keys(state.profiles).length % Math.max(1, free.length)] ?? Object.keys(state.profiles).length % MAX_DESKS
   }
   const p: Profile = {
     id: uid, xp: prev?.xp ?? 0, desk, rank: prev?.rank ?? 1, created_at: prev?.created_at ?? new Date().toISOString(),
@@ -779,3 +791,56 @@ export async function send(channel: string, body: string) {
 export function run(p: Promise<unknown>) {
   p.catch(e => set({ error: (e as Error).message }))
 }
+
+// ---------- cafezinhos ----------
+export async function refreshWallet() {
+  try { set({ wallet: await backend.wallet() }) } catch { /* sem carteira por ora */ }
+}
+
+function coffeeText(l: CoffeeLine) {
+  if (l.reason === 'boasvindas') return `🎁 +${l.amount} cafezinhos de boas-vindas! Já dá pra comprar algo no Almoxarifado.`
+  if (l.reason === 'dia') return `☕ +${l.amount} cafezinhos — bom dia! Você bateu o ponto.`
+  const g = state.rows.goals[l.ref.split(':')[1]]
+  if (l.reason === 'meta') return `🎯 Meta batida${g ? `: “${g.title}”` : ''}! +${l.amount} cafezinhos.`
+  return `🎯 ${REASON.fase}${g ? ` “${g.title}”` : ''} alcançada! +${l.amount} cafezinhos.`
+}
+
+/** pede ao servidor o que falta creditar (dia, boas-vindas, fases) e avisa o que entrou */
+async function claim() {
+  if (!state.meId) return
+  try {
+    const got = await backend.claimCoffee()
+    for (const l of got.slice().reverse()) notify(coffeeText(l), { go: { view: 'loja' } })
+  } catch { /* tenta de novo no próximo ciclo */ }
+  await refreshWallet()
+}
+
+/** compra no servidor; quem confere o saldo e o preço é ele */
+export async function buyItem(id: string) {
+  await backend.buyItem(id)
+  await refreshWallet()
+}
+
+/** o que a pessoa já tem: comprado ou dado de graça no criador */
+export const owns = (id: string, w = state.wallet) => !!w?.owned.includes(id)
+
+/** veste/usa o item (ou tira, se art = null). Cabelo e roupa ficam no avatar, o resto no gear. */
+export async function equip(slot: Slot, art: string | null) {
+  const p = me()
+  if (!p?.avatar) return
+  if (art && !owns(`${slot}:${art}`)) throw new Error('Esse item ainda não é seu.')
+  let avatar: Avatar = p.avatar
+  if (slot === 'cabelo' || slot === 'roupa') {
+    if (!art) return
+    avatar = slot === 'cabelo' ? { ...avatar, hair: art as Avatar['hair'] } : { ...avatar, outfit: art as Avatar['outfit'] }
+  } else {
+    const gear: Gear = { ...avatar.gear }
+    if (art) gear[slot] = art
+    else delete gear[slot]
+    avatar = { ...avatar, gear }
+  }
+  const saved = await backend.upsertProfile({ ...p, avatar })
+  set({ profiles: { ...state.profiles, [p.id]: saved } })
+}
+
+export const itemName = (id: string) => ITEM[id]?.name ?? id

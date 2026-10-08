@@ -1,6 +1,11 @@
 export type Dir = 'down' | 'up' | 'left' | 'right'
-export type Outfit = 'camiseta' | 'moletom' | 'social' | 'vestido' | 'terno'
-export type HairStyle = 'curto' | 'longo' | 'coque' | 'cacheado' | 'raspado'
+/** básicos: camiseta, moletom, social, vestido, terno; o resto vem do Almoxarifado */
+export type Outfit = string
+/** básicos: curto, longo, coque, cacheado, raspado; o resto vem do Almoxarifado */
+export type HairStyle = string
+/** o que vai além da roupa: cabeça, rosto, mesa e companhia (valor = arte do item) */
+export type GearSlot = 'chapeu' | 'rosto' | 'mesa' | 'cadeira' | 'notebook' | 'enfeite' | 'chao' | 'animacao' | 'plaquinha'
+export type Gear = Partial<Record<GearSlot, string>>
 
 export interface Avatar {
   skin: string
@@ -12,7 +17,13 @@ export interface Avatar {
   shoes: string
   face: 'pixel' | 'foto'
   pixelPhoto: boolean
+  /** itens do Almoxarifado em uso */
+  gear?: Gear
 }
+
+/** cafezinhos: extrato só da própria pessoa; itens comprados = linhas 'compra' */
+export interface CoffeeLine { amount: number; reason: 'dia' | 'boasvindas' | 'fase' | 'meta' | 'compra'; ref: string; created_at: string }
+export interface Wallet { balance: number; owned: string[]; log: CoffeeLine[] }
 
 export interface Profile {
   id: string
@@ -104,6 +115,8 @@ export interface CalEvent { id: string; title: string; day: string; time: string
 export interface Goal {
   id: string; title: string; target: number; metric: 'posts' | 'tasks' | 'manual'; month: string
   reward: string; value: number; created_by: string; created_at: string
+  /** progresso já existente na criação (não paga) */
+  base?: number
 }
 
 export type StickerKind = 'mandou-bem' | 'destaque' | 'pausa' | 'parabens' | 'top' | 'recorde'
@@ -120,9 +133,13 @@ export interface Stage { id: string; label: string; kind: StageKind; pos: number
 
 /** grupo do chat: canal 'g:<id>'; aberto = qualquer um entra, fechado = só quem foi convidado */
 export interface Group { id: string; name: string; icon: string; open: boolean; members: string[]; created_by: string; created_at: string }
-export interface Rows { events: CalEvent; goals: Goal; stickers: Sticker; flows: Flow; stages: Stage; groups: Group }
+/** layout do escritório (id 'escritorio'); data = Sala do editor */
+export interface Room { id: string; data: unknown; created_by: string; created_at: string }
+/** carpinteiro: pode editar o escritório até `until` */
+export interface Carpenter { id: string; until: string; created_by: string; created_at: string }
+export interface Rows { events: CalEvent; goals: Goal; stickers: Sticker; flows: Flow; stages: Stage; groups: Group; rooms: Room; carpenters: Carpenter }
 export type RowTable = keyof Rows
-export const ROW_TABLES: RowTable[] = ['events', 'goals', 'stickers', 'flows', 'stages', 'groups']
+export const ROW_TABLES: RowTable[] = ['events', 'goals', 'stickers', 'flows', 'stages', 'groups', 'rooms', 'carpenters']
 
 export type Priority = 'alta' | 'media' | 'baixa'
 export interface CheckItem {
@@ -256,6 +273,10 @@ export interface Backend {
   deleteRow(table: RowTable, id: string): Promise<void>
   /** entra (só em grupo aberto) ou sai de um grupo do chat */
   joinGroup(id: string, join: boolean): Promise<void>
+  wallet(): Promise<Wallet>
+  /** credita o cafezinho do dia e as metas batidas que faltam; devolve o que entrou agora */
+  claimCoffee(): Promise<CoffeeLine[]>
+  buyItem(id: string): Promise<void>
   /** IA do Gerente: manda o pedido e espera a proposta (servidor: a ponte no PC roda o Claude) */
   askAI(prompt: string, ctx: AiContext, onStage: (s: AiStage) => void, signal: AbortSignal): Promise<AiProposal>
   /** a ponte do PC deu sinal de vida há pouco? */

@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import Board from '../components/Board'
 import FloatChat from '../components/FloatChat'
 import Game from '../components/Game'
@@ -15,6 +15,8 @@ import RequestModal from '../components/RequestModal'
 import Team from '../components/Team'
 import Agenda from '../components/Agenda'
 import Metas, { CeleWatch } from '../components/Metas'
+import Loja from '../components/Loja'
+import SalaEditor, { canEditOffice } from '../components/SalaEditor'
 import Fluxos from '../components/Fluxos'
 import Arquivos from '../components/Arquivos'
 import Inicio from '../components/Inicio'
@@ -31,6 +33,7 @@ const narrow = () => window.matchMedia('(max-width: 900px)').matches
 
 export default function Office() {
   const s = useStore(x => x)
+  const [arrumando, setArrumando] = useState(false)
   const me = s.profiles[s.meId!]
   const tasks = Object.values(s.tasks)
   const pend = tasks.filter(t => t.owner_id === me?.id && t.status === 'inbox').length
@@ -45,6 +48,7 @@ export default function Office() {
   if (!me) return null
 
   const chief = isChief(me)
+  const canEdit = canEditOffice(me, s.rows.carpenters)
   // painel do escritório: eu primeiro, depois quem está na sala, depois quem está fora
   const people = Object.values(s.profiles).filter(p => p.avatar).sort((a, b) =>
     Number(b.id === me.id) - Number(a.id === me.id) || Number(s.online.has(b.id)) - Number(s.online.has(a.id)) || a.name.localeCompare(b.name))
@@ -58,6 +62,7 @@ export default function Office() {
     { id: 'fluxos', label: 'Fluxos', ic: 'flow-arrow' },
     { id: 'arquivos', label: 'Arquivos', ic: 'folder-simple' },
     { id: 'escritorio', label: 'Escritório', ic: 'desk' },
+    { id: 'loja', label: 'Almoxarifado', ic: 'coffee' },
     { id: 'equipe', label: 'Equipe', ic: 'users-three' },
   ]
   if (chief) items.push({ id: 'geral', label: 'Geral', ic: 'squares-four', n: tasks.filter(t => t.status === 'inbox').length })
@@ -111,7 +116,7 @@ export default function Office() {
           <MoreMenu />
         </div>}
         {s.error && <div className="banner" onClick={() => setUi({ error: '' })}>{s.error} <small>(clique para fechar)</small></div>}
-        {page !== 'quadro' && page !== 'agenda' && page !== 'metas' && page !== 'fluxos' && page !== 'arquivos' && page !== 'inicio' && <div className="ptop"><h1 className="grow">{items.find(i => i.id === page)?.label}</h1><Bell /></div>}
+        {page !== 'quadro' && page !== 'agenda' && page !== 'metas' && page !== 'fluxos' && page !== 'arquivos' && page !== 'inicio' && page !== 'loja' && <div className="ptop"><h1 className="grow">{items.find(i => i.id === page)?.label}</h1><Bell /></div>}
         <main className="main">
           {page === 'quadro' && <Quadro />}
           {page === 'inicio' && <Inicio />}
@@ -119,8 +124,10 @@ export default function Office() {
           {page === 'metas' && <Metas />}
           {page === 'fluxos' && <Fluxos />}
           {page === 'arquivos' && <Arquivos />}
-          {office && <>
-            <Game />
+          {page === 'loja' && <Loja />}
+          {office && arrumando && <SalaEditor onClose={() => setArrumando(false)} />}
+          {office && !arrumando && <>
+            <div className="game-wrap"><Game />{canEdit && <button className="btn primary sm game-edit" onClick={() => setArrumando(true)}>🪚 Arrumar sala</button>}</div>
             <aside className="side">
               <nav className="who-strip" aria-label="Ver a mesa de">
                 {people.map(p => {

@@ -3,7 +3,10 @@ import { drawAvatar, onPhotoLoad, SPRITE_H } from '../chibi/sprite'
 import { backend } from '../data'
 import { managerOf } from '../game/ranks'
 import { addMark, boardMarks, takeErrands, type Errand } from '../office/errands'
-import { blocked, BOARD_SPOT, BOSS_DESK, deskAtTile, deskOf, drawBoardMarks, drawCarry, drawDesk, DESKS, findPath, MAX_DESKS, MH, MW, pathToSeat, renderBackground, SHELF_SPOT, T } from '../office/world'
+import { drawAnim, plateFill, PLATE_CV } from '../office/anim'
+import { drawChair } from '../office/props'
+import { drawFurniture, kd, parseSala } from '../office/sala'
+import { blocked, boardSpot, BOSS_DESK, deskAtTile, deskIds, deskOf, drawBoardMarks, drawCarry, drawDesk, findPath, furniture, hasDesk, layoutVersion, MAX_DESKS, MH, MW, pathToSeat, renderBackground, setLayout, shelfSpot, T, wallObjs } from '../office/world'
 import { bubbles, getState, positions, setUi } from '../store'
 import type { Dir, Pos, Profile, Task } from '../types'
 import Icon from './Icon'
@@ -22,8 +25,19 @@ interface Shown { x: number; y: number; dir: Dir; moving: boolean; anim: number 
 interface Hover { id: string; sx: number; sy: number }
 
 /** Mesa de alguém: o Gerente vai para a mesa dele, o resto usa a sorteada */
-const deskIdx = (p: Profile) =>
-  managerOf(getState().profiles)?.id === p.id ? BOSS_DESK : p.desk >= 0 && p.desk < MAX_DESKS ? p.desk : 0
+const deskIdx = (p: Profile) => {
+  if (managerOf(getState().profiles)?.id === p.id && hasDesk(BOSS_DESK)) return BOSS_DESK
+  if (p.desk >= 0 && p.desk < MAX_DESKS && hasDesk(p.desk)) return p.desk
+  return deskIds().find(i => i !== BOSS_DESK) ?? 0
+}
+/** a sala salva (rooms/escritorio) manda nas posições; troca quando alguém salva */
+let roomSeen: unknown = undefined
+export function syncRoom() {
+  const r = getState().rows.rooms['escritorio']
+  if (r === roomSeen) return
+  roomSeen = r
+  setLayout(parseSala(r?.data))
+}
 function seatOf(p: Profile) {
   const s = deskOf(deskIdx(p)).seat
   return { x: s.x, y: s.y }
@@ -58,7 +72,8 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
   useEffect(() => {
     const canvas = cv.current!, box = wrap.current!
     const ctx = canvas.getContext('2d')!
-    const bg = renderBackground()
+    syncRoom()
+    let bg = renderBackground(), bgVer = layoutVersion()
     const meId = getState().meId!
     const keys = new Set<string>()
     const shown = new Map<string, Shown>()
@@ -154,8 +169,8 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
       if (!j) {
         const e = waiting.get(id)?.shift()
         if (!e) return false
-        const spot = e.kind === 'write' ? BOARD_SPOT : SHELF_SPOT
-        const route = findPath(o.x, o.y, spot.tx, spot.ty)
+        const spot = e.kind === 'write' ? boardSpot() : shelfSpot()
+        const route = spot && findPath(o.x, o.y, spot.tx, spot.ty)
         if (!route) return false
         j = { e, phase: 'go', path: route, until: 0, carry: e.kind === 'store' }
         jobs.set(id, j)
@@ -246,6 +261,8 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
 
     const render = (t: number) => {
       const s = getState(), z = zoomRef.current
+      syncRoom()
+      if (bgVer !== layoutVersion()) { bg = renderBackground(); bgVer = layoutVersion() }
       const f = (cine && focusRef.current && shown.get(focusRef.current)) || meS
       const vw = W / z, vh = H / z
       const mapW = MW * T, mapH = MH * T
@@ -260,18 +277,28 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
       ctx.setTransform(dpr * z, 0, 0, dpr * z, -cam.x * dpr * z, -cam.y * dpr * z)
       ctx.imageSmoothingEnabled = false
       ctx.drawImage(bg, 0, 0)
+      for (const o of wallObjs()) drawFurniture(ctx, o, t)
       drawBoardMarks(ctx, boardMarks, writing(performance.now()))
 
       const tasks = Object.values(s.tasks)
       const byDesk = new Map<number, Profile>()
       for (const p of Object.values(s.profiles)) if (p.avatar && !byDesk.has(deskIdx(p))) byDesk.set(deskIdx(p), p)
       const items: { key: number; draw: () => void }[] = []
-      for (let i = 0; i < DESKS; i++) {
-        const owner = byDesk.get(i)
+      for (const i of deskIds()) {
+        const owner = byDesk.get(i), d = deskOf(i), gear = owner?.avatar?.gear
         const pile = owner ? tasks.filter(x => x.owner_id === owner.id && OPEN.has(x.status)).length : 0
         const inbox = owner ? tasks.some(x => x.owner_id === owner.id && x.status === 'inbox') : false
         const busy = !!owner && s.online.has(owner.id) && !!doingOf(tasks, owner.id)
-        items.push({ key: deskOf(i).ty * T + 15, draw: () => drawDesk(ctx, i, { pile, inbox, busy, owned: !!owner, t }) })
+        items.push({ key: d.ty * T + 15, draw: () => drawDesk(ctx, i, { pile, inbox, busy, owned: !!owner, t }, gear) })
+        // cadeira vai com a mesa; sem ninguém sentado ela fica puxada pra trás
+        const o = owner && shown.get(owner.id)
+        const seated = !!o && Math.hypot(o.x - d.seat.x, o.y - d.seat.y) < 2
+        const cy = d.seat.y - (seated ? 0 : 9)
+        items.push({ key: cy - 0.5, draw: () => drawChair(ctx, gear?.cadeira, d.seat.x, cy, i === BOSS_DESK) })
+      }
+      for (const o of furniture()) {
+        const k = kd(o)
+        items.push({ key: k.passa ? o.y * T : (o.y + k.h) * T - 1, draw: () => drawFurniture(ctx, o, t) })
       }
       for (const [id, o] of shown) {
         const p = s.profiles[id]
@@ -288,6 +315,7 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
             drawAvatar(ctx, p.avatar!, p.photo, Math.round(o.x - 8), Math.round(o.y - SPRITE_H + 1), o.dir, frameOf(o))
             if (away) ctx.filter = 'none'
             if (job?.carry && o.dir !== 'up') drawCarry(ctx, Math.round(o.x + (o.dir === 'left' ? -9 : 2)), Math.round(o.y - 11))
+            if (!away) drawAnim(ctx, p.avatar!.gear?.animacao, Math.round(o.x), Math.round(o.y - SPRITE_H + 1), t)
           },
         })
       }
@@ -296,7 +324,7 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
       // rótulos em espaço de tela (texto nítido)
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
       const now = Date.now()
-      {
+      if (hasDesk(BOSS_DESK)) {
         // placa da mesa do Gerente
         const d = deskOf(BOSS_DESK)
         const bx = (d.seat.x - cam.x) * z, by = ((d.ty + 1) * T + 2 - cam.y) * z
@@ -320,11 +348,15 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
         const lw = ctx.measureText(label).width
         const pad = 6, total = lw + pad * 2 + 10
         const lx = Math.round(sx - total / 2), ly = Math.round(sy - 18)
-        ctx.fillStyle = id === meId ? 'rgba(11,35,93,.92)' : 'rgba(20,24,40,.78)'
+        const pk = p.avatar.gear?.plaquinha, pl = pk ? PLATE_CV[pk] : undefined
+        ctx.fillStyle = plateFill(ctx, pk, lx, total, t) ?? (id === meId ? 'rgba(11,35,93,.92)' : 'rgba(20,24,40,.78)')
+        if (pl?.glow) { ctx.shadowColor = pl.glow; ctx.shadowBlur = 6 }
         roundRect(ctx, lx, ly, total, 17, 8.5); ctx.fill()
+        ctx.shadowBlur = 0
+        if (id === meId && pl) { ctx.strokeStyle = '#0B235D'; ctx.lineWidth = 1.5; ctx.stroke() }
         ctx.fillStyle = away ? '#8a90a3' : '#45d483'
         ctx.beginPath(); ctx.arc(lx + pad + 3, ly + 8.5, 3, 0, Math.PI * 2); ctx.fill()
-        ctx.fillStyle = '#fff'
+        ctx.fillStyle = pl?.fg ?? '#fff'
         ctx.textBaseline = 'middle'
         ctx.fillText(label, lx + pad + 10, ly + 9)
         if (away) {

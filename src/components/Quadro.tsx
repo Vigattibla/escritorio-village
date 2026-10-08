@@ -149,7 +149,7 @@ export default function Quadro() {
   const weekDone = inProj.filter(t => t.status === 'done' && t.done_at && dayKey(t.done_at) >= since).length
   const weekN = weekDone + open.filter(t => t.due && t.due <= week).length
   const goal = currentGoal(Object.values(goalsMap))
-  const goalPct = goal ? goalProgress(goal, Object.values(tasksMap)).pct : null
+  const goalPct = goal ? goalProgress(goal, Object.values(tasksMap), projects).pct : null
   const sortFor = (st: TaskStatus) => (st === 'done' ? byDone : byPos)
   const lanePeople = people.filter(p => !who.length || who.includes(p.id))
   const personHead = (p: Profile, size = 28) => (

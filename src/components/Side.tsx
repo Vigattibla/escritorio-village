@@ -134,6 +134,7 @@ export function MetaCard({ onOpen, compact = false }: { onOpen?: () => void; com
   const goals = useStore(s => s.rows.goals)
   const tasks = useStore(s => s.tasks)
   const profiles = useStore(s => s.profiles)
+  const projects = useStore(s => s.projects)
   const g = currentGoal(Object.values(goals))
   const list = useMemo(() => Object.values(tasks), [tasks])
   if (!g) return (
@@ -141,7 +142,7 @@ export function MetaCard({ onOpen, compact = false }: { onOpen?: () => void; com
       <div className="eyebrow">Meta da equipe</div><b>Nenhuma meta neste mês</b><small>Abrir Metas</small>
     </button>
   )
-  const pr = goalProgress(g, list)
+  const pr = goalProgress(g, list, projects)
   const month = new Date(g.month + '-02').toLocaleDateString('pt-BR', { month: 'long' })
   const tops = Object.entries(pr.by).sort((a, b) => b[1] - a[1]).slice(0, 3)
   return (
@@ -183,7 +184,7 @@ export function Steps({ pct, target }: { pct: number; target: number }) {
       <div className="rail2" /><div className="fill" style={{ width: pct + '%' }} />
       {[25, 50, 75].map(q => (
         <span key={q} className={pct >= q ? 'ok' : ''} style={{ left: q + '%' }}>
-          {pct >= q ? <Ph n="check" size={12} fill /> : Math.round((target * q) / 100)}
+          {pct >= q ? <Ph n="check" size={12} fill /> : Math.ceil((target * q) / 100)}
         </span>
       ))}
       <span className={'end' + (pct >= 100 ? ' ok' : '')} style={{ left: '100%' }}><Ph n="gift" size={14} fill /></span>

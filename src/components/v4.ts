@@ -1,4 +1,5 @@
-import type { Channel, Goal, Profile, StickerKind, Task } from '../types'
+import type { Channel, Goal, Profile, Project, StickerKind, Task } from '../types'
+import { counts } from '../shop/economy'
 import type { PhName } from './ph'
 
 /** Canais de publicação: rótulo, ícone e cor da etiqueta */
@@ -32,9 +33,10 @@ export const daysLeft = (month: string) => {
 export const hm = (iso: string) => new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
 export const localDay = (iso: string) => { const d = new Date(iso); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` }
 
-/** Progresso da meta: posts = tarefas com canal feitas no mês; tarefas = feitas no mês; manual = valor */
-export function goalProgress(g: Goal, tasks: Task[]) {
-  const done = tasks.filter(t => t.status === 'done' && t.done_at && localDay(t.done_at).startsWith(g.month) && (g.metric !== 'posts' || !!t.channel))
+/** Progresso da meta: posts = tarefas com canal feitas no mês; tarefas = feitas no mês; manual = valor.
+ *  Só conta tarefa com outra pessoa envolvida (mesma regra do servidor). */
+export function goalProgress(g: Goal, tasks: Task[], projects: Record<string, Project>) {
+  const done = tasks.filter(t => t.status === 'done' && t.done_at && localDay(t.done_at).startsWith(g.month) && (g.metric !== 'posts' || !!t.channel) && counts(t, projects))
   const value = g.metric === 'manual' ? g.value : done.length
   const by: Record<string, number> = {}
   if (g.metric !== 'manual') for (const t of done) by[t.owner_id] = (by[t.owner_id] ?? 0) + 1
