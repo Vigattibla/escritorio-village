@@ -7,56 +7,59 @@ import type { PhName } from './ph'
 
 const hhmm = (iso: string) => new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
 
-export default function Chat() {
+/** fixed: janelinha solta de uma conversa só (sem a lista de canais) */
+export default function Chat({ fixed, onPop, onGone }: { fixed?: string; onPop?: (ch: string) => void; onGone?: () => void } = {}) {
   const s = useStore(x => x)
+  const ch = fixed ?? s.channel
   const meId = s.meId!
   const [text, setText] = useState('')
   /** formulário de grupo aberto: 'new' ou o grupo em edição */
   const [form, setForm] = useState<Group | 'new' | null>(null)
   const end = useRef<HTMLDivElement>(null)
-  const msgs = s.messages.filter(m => m.channel === s.channel)
+  const msgs = s.messages.filter(m => m.channel === ch)
   const peers = Object.values(s.profiles).filter(p => p.id !== meId && p.avatar)
-  const group = groupOf(s.channel, s)
-  const joined = inChannel(s.channel, s)
+  const group = groupOf(ch, s)
+  const joined = inChannel(ch, s)
   const groups = Object.values(s.rows.groups)
     .filter(g => g.open || g.members.includes(meId))
     .sort((a, b) => +b.members.includes(meId) - +a.members.includes(meId) || a.name.localeCompare(b.name))
-  const title = s.channel === 'geral' ? '# Geral' : group ? group.name : s.channel.startsWith('g:') ? 'Grupo' : s.profiles[dmPeer(s.channel, meId)]?.name ?? 'Conversa'
+  const title = ch === 'geral' ? '# Geral' : group ? group.name : ch.startsWith('g:') ? 'Grupo' : s.profiles[dmPeer(ch, meId)]?.name ?? 'Conversa'
 
-  useEffect(() => { end.current?.scrollIntoView({ block: 'end' }) }, [msgs.length, s.channel])
-  useEffect(() => { markRead(s.channel) }, [s.channel, msgs.length])
+  useEffect(() => { end.current?.scrollIntoView({ block: 'end' }) }, [msgs.length, ch])
+  useEffect(() => { markRead(ch) }, [ch, msgs.length])
   // grupo apagado ou fui tirado de um fechado: volta pro Geral
-  useEffect(() => { if (s.channel.startsWith('g:') && (!group || (!group.open && !joined))) setUi({ channel: 'geral' }) }, [s.channel, group, joined])
+  useEffect(() => { if (ch.startsWith('g:') && (!group || (!group.open && !joined))) (fixed ? onGone?.() : setUi({ channel: 'geral' })) }, [ch, group, joined])
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
-    run(send(s.channel, text))
+    run(send(ch, text))
     setText('')
   }
 
   const chan = (id: string, label: React.ReactNode) => {
     const n = unread(s, id)
     return (
-      <button key={id} className={'chan' + (s.channel === id ? ' on' : '')} onClick={() => setUi({ channel: id })}>
+      <button key={id} className={'chan' + (ch === id ? ' on' : '')} onClick={() => setUi({ channel: id })}>
         {label}{n > 0 && <span className="badge">{n}</span>}
       </button>
     )
   }
 
   return (
-    <div className="chat">
-      <nav className="chans">
+    <div className={'chat' + (fixed ? ' solo' : '')}>
+      {!fixed && <nav className="chans">
         {chan('geral', <span># Geral</span>)}
         <div className="chans-sec"><span>Grupos</span><button className="icon-btn xs" onClick={() => setForm('new')} title="Novo grupo" aria-label="Novo grupo"><Ph n="plus" size={14} /></button></div>
         {groups.map(g => chan(groupChannel(g.id), <><Ph n={g.icon as PhName} size={18} /><span className={g.members.includes(meId) ? '' : 'out'}>{g.name}</span></>))}
         {groups.length === 0 && <button className="chan ghost" onClick={() => setForm('new')}><Ph n="plus" size={16} /><span>Criar grupo</span></button>}
         <div className="chans-sec"><span>Pessoas</span></div>
         {peers.map(p => chan(dmChannel(meId, p.id), <><MiniAvatar avatar={p.avatar} photo={p.photo} size={20} dim={!s.online.has(p.id)} /><span>{p.name}</span></>))}
-      </nav>
+      </nav>}
       {form ? <GroupForm g={form === 'new' ? null : form} close={() => setForm(null)} /> : <>
       <div className="msgs">
         <div className="chat-title">
           {group ? <span className="gtitle"><Ph n={group.icon as PhName} size={18} />{group.name}<small className="muted">{group.open ? 'Aberto' : 'Só convidados'} · {group.members.length} {group.members.length === 1 ? 'pessoa' : 'pessoas'}</small></span> : title}
+          {onPop && !fixed && <button className="icon-btn xs pop-out" onClick={() => onPop(ch)} title="Soltar esta conversa numa janelinha" aria-label="Soltar conversa"><Ph n="corners-out" size={15} /></button>}
           {group && joined && (
             <span className="gacts">
               {canEditGroup(group) && <button className="icon-btn xs" onClick={() => setForm(group)} title="Editar grupo" aria-label="Editar grupo"><Ph n="gear-six" size={15} /></button>}

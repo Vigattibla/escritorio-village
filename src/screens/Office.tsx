@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import Board from '../components/Board'
-import Chat from '../components/Chat'
+import FloatChat from '../components/FloatChat'
 import Game from '../components/Game'
 import MiniAvatar from '../components/MiniAvatar'
 import { Bell, Toast } from '../components/Avisos'
@@ -150,17 +150,7 @@ export default function Office() {
         <button className="tfab" onClick={() => setUi({ sheet: true })} aria-label="Nova tarefa"><Ph n="plus" size={26} fill /></button>
         <Tab it={tabs[2]} /><Tab it={tabs[3]} />
       </nav>
-      <button className={'fab' + (s.chatOpen ? ' on' : '')} onClick={() => setUi({ chatOpen: !s.chatOpen })} title="Chat da equipe" aria-label={`Chat${msgs ? ` (${msgs} novas)` : ''}`}>
-        <Icon n={s.chatOpen ? 'x' : 'chat'} size={22} />{!s.chatOpen && msgs > 0 && <i className="dot-n">{msgs > 9 ? '9+' : msgs}</i>}
-      </button>
-      {s.chatOpen && (
-        <section className="dock" aria-label="Chat">
-          <header className="pop-head"><Icon n="chat" /><b className="grow">Chat</b>
-            <button className="icon-btn" onClick={() => setUi({ chatOpen: false })} aria-label="Fechar"><Icon n="x" /></button>
-          </header>
-          <Chat />
-        </section>
-      )}
+      <FloatChat unread={msgs} />
       <Toast />
       {s.editing && <div className="overlay"><Creator /></div>}
     </div>

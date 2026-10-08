@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { addTask, run, send, setUi, unread, useStore } from '../store'
+import { useEffect, useMemo, useState } from 'react'
+import { addTask, dmChannel, run, setUi, useStore } from '../store'
 import { dayKey } from '../game/xp'
 import Icon, { Ph } from './Icon'
 import MiniAvatar from './MiniAvatar'
@@ -192,42 +192,40 @@ export function Steps({ pct, target }: { pct: number; target: number }) {
 }
 
 /** Chat da equipe em miniatura (canal Geral); o completo abre no balão. */
-export function ChatPanel() {
+/** Agora na equipe: quem está aqui, no que cada um está mexendo e quanto já saiu hoje. Toque abre conversa. */
+export function TeamNow() {
   const meId = useStore(s => s.meId)!
-  const msgs = useStore(s => s.messages)
   const profiles = useStore(s => s.profiles)
-  const n = useStore(s => unread(s, 'geral'))
-  const [text, setText] = useState('')
-  const box = useRef<HTMLDivElement>(null)
-  const last = msgs.filter(m => m.channel === 'geral').slice(-4)
-  // rola só a caixinha das mensagens; scrollIntoView arrastava a coluna inteira para baixo
-  useEffect(() => { const b = box.current; if (b) b.scrollTop = b.scrollHeight }, [last.length])
-  const submit = (e: React.FormEvent) => { e.preventDefault(); if (!text.trim()) return; run(send('geral', text)); setText('') }
+  const tasks = useStore(s => s.tasks)
+  const online = useStore(s => s.online)
+  const today = localDay(new Date().toISOString())
+  const people = Object.values(profiles).filter(p => p.avatar && p.id !== meId).map(p => {
+    const mine = Object.values(tasks).filter(t => t.owner_id === p.id)
+    const doing = mine.filter(t => t.status === 'doing').sort((a, b) => b.position - a.position)[0]
+    const done = mine.filter(t => t.done_at && localDay(t.done_at) === today).length
+    return { p, doing, done, on: online.has(p.id) }
+  }).sort((a, b) => +b.on - +a.on || +!!b.doing - +!!a.doing || a.p.name.localeCompare(b.p.name))
+  const here = people.filter(x => x.on).length
+  const doneAll = people.reduce((n, x) => n + x.done, 0)
   return (
-    <div className="panel pchat">
-      <div className="ch-hd"><div className="eyebrow">Chat da equipe</div>
-        {n > 0 && <span className="unread">{n} {n > 1 ? 'novas' : 'nova'}</span>}
-        <button className="icon-btn" onClick={() => setUi({ chatOpen: true, channel: 'geral' })} title="Abrir chat" aria-label="Abrir chat"><Ph n="corners-out" size={16} /></button>
+    <div className="panel pteam">
+      <div className="ch-hd"><div className="eyebrow">Agora na equipe</div>
+        <span className="muted tsum">{here} aqui · {doneAll} {doneAll === 1 ? 'feita' : 'feitas'} hoje</span>
       </div>
-      <div className="pmsgs" ref={box}>
-        {last.length === 0 && <small className="muted">Ninguém falou nada ainda.</small>}
-        {last.map((m, i) => {
-          const p = profiles[m.sender_id]
-          const mine = m.sender_id === meId
-          const same = i > 0 && last[i - 1].sender_id === m.sender_id // seguida da mesma pessoa: sem repetir rosto e nome
-          return (
-            <div key={m.id} className={'msg' + (mine ? ' mine' : '') + (same ? ' same' : '')}>
-              {!mine && (same ? <span className="av-gap" /> : <MiniAvatar avatar={p?.avatar ?? null} photo={p?.photo ?? null} size={30} />)}
-              <div>{!same && <b>{mine ? 'Você' : first(p)} <time>{hm(m.created_at)}</time></b>}<p>{m.body}</p></div>
-            </div>
-          )
-        })}
-      </div>
-      <form className="cin" onSubmit={submit}>
-        <Ph n="smiley" size={18} />
-        <input placeholder="Escrever para a equipe…" value={text} maxLength={500} onChange={e => setText(e.target.value)} />
-        <button aria-label="Enviar" disabled={!text.trim()}><Ph n="paper-plane-tilt" size={16} fill /></button>
-      </form>
+      {people.length === 0 && <small className="muted">Ninguém mais entrou ainda.</small>}
+      <ul className="tlist">
+        {people.map(({ p, doing, done, on }) => (
+          <li key={p.id}>
+            <button className={'tperson' + (on ? ' on' : '')} onClick={() => setUi({ chatOpen: true, channel: dmChannel(meId, p.id) })} title={`Conversar com ${first(p)}`}>
+              <span className="tav"><MiniAvatar avatar={p.avatar} photo={p.photo} size={32} dim={!on} /><i /></span>
+              <span className="tinfo"><b>{first(p)}</b>
+                <small className={doing ? '' : 'muted'}>{doing ? <><Ph n="pencil-simple-line" size={12} />{doing.title}</> : on ? 'Livre agora' : 'Fora'}</small>
+              </span>
+              {done > 0 && <span className="tdone" title={`${done} feitas hoje`}><Ph n="check" size={12} />{done}</span>}
+            </button>
+          </li>
+        ))}
+      </ul>
     </div>
   )
 }
@@ -237,7 +235,7 @@ export default function Side() {
     <aside className="qside">
       <SeuDia />
       <MetaCard />
-      <ChatPanel />
+      <TeamNow />
     </aside>
   )
 }

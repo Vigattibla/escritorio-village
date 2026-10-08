@@ -152,6 +152,8 @@ export function teamOf(pid: string) {
 export const toApprove = (s: State) => Object.values(s.tasks).filter(t => t.status === 'review' && canApprove(t, s.meId))
 /** O chat está na tela? */
 const chatShown = () => state.chatOpen
+/** conversas destacadas em janelinhas soltas (contam como vistas) */
+export const floatChans = new Set<string>()
 
 export function unread(s: State, ch: string) {
   if (!inChannel(ch, s)) return 0
@@ -280,7 +282,7 @@ function onMessage(m: Message) {
   set({ messages: [...state.messages, m].slice(-600) })
   if (m.sender_id === my) return
   bubbles.set(m.sender_id, { text: m.body, until: Date.now() + 6000 })
-  const viewing = chatShown() && state.channel === m.channel && !document.hidden
+  const viewing = ((chatShown() && state.channel === m.channel) || floatChans.has(m.channel)) && !document.hidden
   if (viewing) return markRead(m.channel)
   if (!inChannel(m.channel)) return
   const where = m.channel === 'geral' ? ' (Geral)' : m.channel.startsWith('g:') ? ` (${groupOf(m.channel)?.name ?? 'grupo'})` : ''
