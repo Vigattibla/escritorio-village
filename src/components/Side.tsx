@@ -53,7 +53,7 @@ export function Live({ small = false }: { small?: boolean }) {
         <Game cine focus={focus} />
         <div className="vig" />
         <div className={'dip' + (dip ? ' on' : '')} />
-        <span className="live-pill"><span className="pulse" />AO VIVO</span>
+        <span className={'live-pill' + (paused ? ' paused' : '')}>{paused ? <><Ph n="pause" size={11} fill />CÂMERA PARADA</> : <><span className="pulse" />AO VIVO</>}</span>
         {p && (
           <div className={'cap' + (dip ? ' out' : '')} key={focus}>
             <MiniAvatar avatar={p.avatar} photo={p.photo} size={30} />
@@ -62,7 +62,7 @@ export function Live({ small = false }: { small?: boolean }) {
         )}
         {!small && (
           <div className="cine-ctl">
-            <button onClick={() => setPaused(x => !x)} aria-label={paused ? 'Continuar' : 'Pausar'}>
+            <button className={paused ? 'on' : ''} onClick={() => setPaused(x => !x)} aria-label={paused ? 'Voltar a passar entre as pessoas' : 'Parar a câmera nesta pessoa'} title={paused ? 'Voltar a passar entre as pessoas' : 'Parar a câmera nesta pessoa'}>
               {paused ? <Icon n="play" size={14} /> : <Ph n="pause" size={16} fill />}
             </button>
             <button onClick={() => setUi({ view: 'escritorio', drawer: false, viewing: focus })}><Ph n="corners-out" size={16} />Abrir escritório</button>

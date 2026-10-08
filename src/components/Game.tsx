@@ -281,12 +281,13 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
         const away = id !== meId && !s.online.has(id) && !job
         items.push({
           key: o.y, draw: () => {
-            ctx.globalAlpha = away ? 0.55 : 1
             ctx.fillStyle = 'rgba(0,0,0,.18)'
             ctx.beginPath(); ctx.ellipse(o.x, o.y, 6, 2, 0, 0, Math.PI * 2); ctx.fill()
+            // fora da sala: boneco opaco e desbotado (transparente deixava a cadeira aparecer pela cabeça)
+            if (away) ctx.filter = 'saturate(.3) brightness(.9)'
             drawAvatar(ctx, p.avatar!, p.photo, Math.round(o.x - 8), Math.round(o.y - SPRITE_H + 1), o.dir, frameOf(o))
+            if (away) ctx.filter = 'none'
             if (job?.carry && o.dir !== 'up') drawCarry(ctx, Math.round(o.x + (o.dir === 'left' ? -9 : 2)), Math.round(o.y - 11))
-            ctx.globalAlpha = 1
           },
         })
       }

@@ -70,7 +70,6 @@ export default function Fluxos() {
 
   const onDown = (e: React.PointerEvent, n: FlowNode) => {
     if (!can || (e.target as HTMLElement).closest('button')) return
-    if (mode === 'seq') { setPick(p => (p === n.id ? null : n.id)); return }
     e.currentTarget.setPointerCapture(e.pointerId)
     setDrag({ id: n.id, dx: e.clientX / z - n.x, dy: e.clientY / z - n.y, x: n.x, y: n.y })
   }
@@ -82,23 +81,18 @@ export default function Fluxos() {
     else setPick(p => (p === n.id ? null : n.id))
     setDrag(null)
   }
-  const seq: Record<string, { x: number; y: number }> = {}
-  if (f && mode === 'seq') {
+  // Sequência: etapas pela ordem de dependência (passos sem vínculo entre si ficam na mesma etapa)
+  const steps: FlowNode[][] = []
+  if (f) {
     const depth: Record<string, number> = {}
     const d = (n: FlowNode, seen: string[] = []): number => {
       if (depth[n.id] != null) return depth[n.id]
       const prev = n.after.map(a => f.nodes.find(x => x.id === a)).filter((x): x is FlowNode => !!x && !seen.includes(x.id))
       return (depth[n.id] = prev.length ? Math.max(...prev.map(p => d(p, [...seen, n.id]))) + 1 : 0)
     }
-    const rows: Record<number, number> = {}
-    const cols = f.nodes.map(n => d(n))
-    const tall = Math.max(1, ...cols.map(c => cols.filter(x => x === c).length))
-    f.nodes.forEach((n, i) => {
-      const c = cols[i], r = (rows[c] = (rows[c] ?? -1) + 1), inCol = cols.filter(x => x === c).length
-      seq[n.id] = { x: 60 + c * 290, y: 60 + (r + (tall - inCol) / 2) * 150 }
-    })
+    f.nodes.forEach(n => (steps[d(n)] ??= []).push(n))
   }
-  const pos = (n: FlowNode) => (mode === 'seq' ? seq[n.id] : drag?.id === n.id ? { x: drag.x, y: drag.y } : { x: n.x, y: n.y })
+  const pos = (n: FlowNode) => (drag?.id === n.id ? { x: drag.x, y: drag.y } : { x: n.x, y: n.y })
   const W = f ? Math.max(900, ...f.nodes.map(n => pos(n).x + OX + NW + 80)) : 900
   const H = f ? Math.max(520, ...f.nodes.map(n => pos(n).y + NH + 80)) : 520
   const node = f && pick ? f.nodes.find(n => n.id === pick) : undefined
@@ -142,7 +136,38 @@ export default function Fluxos() {
             {can && <button className="icon-btn" title="Apagar fluxo" aria-label="Apagar fluxo" onClick={() => { if (confirm(`Apagar o fluxo “${f.name}”? As tarefas já enviadas continuam.`)) { run(dropRow('flows', f.id)); setUi({ flow: null }) } }}><Icon n="trash" /></button>}
           </div>
           <div className="fl-wrap">
+            {mode === 'seq' ? (
+              <ol className="seq">
+                <li className="seq-goal"><span className="seq-dot"><Ph n="star" size={14} fill /></span><div><small>Objetivo</small><b>{f.objective || 'Sem objetivo definido'}</b></div></li>
+                {steps.map((row, k) => (
+                  <li key={k} className="seq-step">
+                    <span className="seq-dot">{k + 1}</span>
+                    <div className="seq-row">
+                      <small>Etapa {k + 1}{row.length > 1 ? ` · ${row.length} passos ao mesmo tempo` : ''}</small>
+                      <div className="seq-cards">
+                        {row.map(n => {
+                          const o = n.owner ? profiles[n.owner] : undefined
+                          const t = n.task_id ? tasks[n.task_id] : undefined
+                          return (
+                            <button key={n.id} className={'seq-card' + (pick === n.id ? ' on' : '') + (t ? ' sent' : '')} onClick={() => (can ? setPick(p => (p === n.id ? null : n.id)) : t && setUi({ task: t.id }))}>
+                              <b>{n.title}</b>
+                              <span className="fn-meta">
+                                {o ? <><MiniAvatar avatar={o.avatar} photo={o.photo} size={22} /><span>{first(o)}</span></> : <span className="muted">Sem responsável</span>}
+                                {n.due && <span className="fn-due"><Icon n="clock" size={12} />{new Date(n.due + 'T12:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }).replace('.', '')}</span>}
+                                {t && <StatusTag t={t} />}
+                              </span>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  </li>
+                ))}
+                {can && <li className="seq-add"><button className="btn soft" onClick={addNode}><Ph n="plus" size={16} />Novo passo</button></li>}
+              </ol>
+            ) : (
             <div className="cv-box">
+              {can && <span className="cv-hint"><Ph n="cursor" size={14} />Arraste os passos para onde quiser</span>}
               {can && <div className="cv-tools">
                 <button className="on" title="Selecionar" aria-label="Selecionar"><Ph n="cursor" size={20} fill /></button>
                 <button onClick={addNode} title="Novo passo" aria-label="Novo passo"><Ph n="note-blank" size={20} /></button>
@@ -177,7 +202,7 @@ export default function Fluxos() {
                   const t = n.task_id ? tasks[n.task_id] : undefined
                   return (
                     <div
-                      key={n.id} className={'fn' + (pick === n.id ? ' on' : '') + (mode === 'mapa' && can ? ' movable' : '') + (drag?.id === n.id ? ' drag' : '') + (t ? ' sent' : '')}
+                      key={n.id} className={'fn' + (pick === n.id ? ' on' : '') + (can ? ' movable' : '') + (drag?.id === n.id ? ' drag' : '') + (t ? ' sent' : '')}
                       style={{ left: p.x + OX, top: p.y }} onPointerDown={e => onDown(e, n)} onPointerMove={onMove} onPointerUp={() => onUp(n)}
                       onClick={() => !can && t && setUi({ task: t.id })}
                     >
@@ -193,6 +218,7 @@ export default function Fluxos() {
               </div>
             </div>
             </div>
+            )}
             {node && can && (
               <div className="panel picker">
                 <header className="row"><b className="grow">Passo</b><button className="icon-btn" onClick={() => setPick(null)} aria-label="Fechar"><Icon n="x" size={14} /></button></header>
