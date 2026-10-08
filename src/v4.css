@@ -907,3 +907,5 @@ button.panel { width: 100%; border: 0; text-align: left; font: inherit; color: i
   .td2-chat .thread { max-height: 320px; }
 }
 .prop .add-person.swap { max-width: 44px; }
+.cmp-tools { display: flex; gap: 0; flex: 1 0 100%; justify-content: flex-end; order: -1; }
+.cmp-tools .cmp-tool { width: 28px; height: 28px; }

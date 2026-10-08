@@ -617,15 +617,17 @@ function Composer({ list, meId, profiles, people, project, onClose }: {
       )}
 
       <div className="cmp-actions">
-        <button className="btn primary sm" disabled={!title.trim()}>Adicionar cartão</button>
+        <button className="btn primary sm" disabled={!title.trim()} title="Adicionar cartão">Adicionar</button>
         <button type="button" className="icon-btn" onClick={onClose} aria-label="Fechar" title="Fechar (Esc)"><Icon n="x" /></button>
         <span className="grow" />
-        {tools.map(t => (
-          <button key={t.k} type="button" className={'cmp-tool' + (t.on ? ' set' : '') + (pop === t.k ? ' on' : '')} onClick={() => toggle(t.k)} title={t.tip} aria-label={t.tip} aria-expanded={pop === t.k}>
-            <Icon n={t.ic} size={16} />
-          </button>
-        ))}
-        {driveOn && <button type="button" className={'cmp-tool' + (drive ? ' set' : '')} onClick={() => setPicking(true)} title="Pasta no Drive" aria-label="Pasta no Drive"><Icon n="folder" size={16} /></button>}
+        <div className="cmp-tools">
+          {tools.map(t => (
+            <button key={t.k} type="button" className={'cmp-tool' + (t.on ? ' set' : '') + (pop === t.k ? ' on' : '')} onClick={() => toggle(t.k)} title={t.tip} aria-label={t.tip} aria-expanded={pop === t.k}>
+              <Icon n={t.ic} size={16} />
+            </button>
+          ))}
+          {driveOn && <button type="button" className={'cmp-tool' + (drive ? ' set' : '')} onClick={() => setPicking(true)} title="Pasta no Drive" aria-label="Pasta no Drive"><Icon n="folder" size={16} /></button>}
+        </div>
       </div>
       {picking && <FolderPicker start={drive ?? projDrive} onClose={() => { setPicking(false); ref.current?.focus() }} onPick={l => { setDrive(l); setPicking(false); ref.current?.focus() }} />}
     </form>
