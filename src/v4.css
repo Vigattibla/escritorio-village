@@ -327,6 +327,7 @@ button.panel { width: 100%; border: 0; text-align: left; font: inherit; color: i
   .qgrid { grid-template-columns: minmax(0, 1fr); overflow-y: auto; }
   .qgrid > .quadro { overflow: visible; }
   .qside { padding: 0 32px 96px; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); align-items: start; overflow: visible; }
+  .qside > .gcard { order: 1; }
   .qgrid .qlists, .qgrid .month, .qgrid .wk, .qgrid .alist { padding-bottom: 24px; margin-bottom: 24px; }
 }
 @media (max-width: 900px) {

@@ -14,6 +14,7 @@
 - 08/10: Quadro — caixa de novo cartão não vaza mais da coluna (ec471db, publicado). Backup diário criptografado (backup.yml + scripts/backup.mjs; abrir com scripts/abrir-backup.sh; chave privada em D:\Backups\escritorio-village). Primeiro backup rodou e abriu ok. Anexos do Storage fora do backup. Loja (Almoxarifado) publicada em 84e5dac (ver seção 08/10 loja).
 
 ## Próximo
+- (08/10, pedido do usuário) Andar de vidro no ar (ae18d1a) + correções do Quadro (d698de5). Fila: 1) nomenclatura genérica/por setor; 2) bandeira da porta; 3) POLIMENTO GERAL do andar: salas menores, ambientação/decoração melhor, porta e placa da porta mais bonitas, boxes de contato (popups) — "o mais bonito possível".
 0. Usuário aprovar e push (migrate aplica a migração F1). Depois: F2+ do mockup v4.
 1. Decidir Auth: confirmar e-mail (hoje ligado) e Site URL (padrão localhost:3000 → trocar). Testar com 2 contas reais.
 2. Rodar v2+v3 SQL (sem v3, salvar tarefa quebra: colunas start/collaborators/attachments); Site URL + Redirect = URL do Pages; usuário apaga a própria conta e recria (vira Chefe).
