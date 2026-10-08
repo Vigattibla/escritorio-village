@@ -1,3 +1,4 @@
+import { PH, type PhName } from './ph'
 /** Ícones de traço (desenhos do Lucide, licença ISC). */
 const P = {
   board: <><rect width="18" height="18" x="3" y="3" rx="2" /><path d="M8 7v7M12 7v4M16 7v9" /></>,
@@ -27,6 +28,9 @@ const P = {
   minus: <path d="M5 12h14" />,
   locate: <><path d="M2 12h3M19 12h3M12 2v3M12 19v3" /><circle cx="12" cy="12" r="7" /><circle cx="12" cy="12" r="3" /></>,
   tick: <path d="M20 6 9 17l-5-5" />,
+  flag: <path d="M4 22V4M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1" />,
+  list: <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />,
+  alarm: <><circle cx="12" cy="13" r="8" /><path d="M12 9v4l2 2M5 3 2 6M22 6l-3-3" /></>,
 }
 export type IconName = keyof typeof P
 
@@ -36,4 +40,9 @@ export default function Icon({ n, size = 16 }: { n: IconName; size?: number }) {
       {P[n]}
     </svg>
   )
+}
+
+/** Ícone de área (Phosphor): duotone parado, cheio quando ativo. */
+export function Ph({ n, size = 20, fill = false }: { n: PhName; size?: number; fill?: boolean }) {
+  return <svg className="ph" width={size} height={size} viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" dangerouslySetInnerHTML={{ __html: PH[n][fill ? 1 : 0] }} />
 }

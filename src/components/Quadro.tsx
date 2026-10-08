@@ -5,8 +5,9 @@ import {
   acceptRequest, addTask, canUseAI, approverOf, canApprove, canCreateProject, canEditProject, canEditTask, canMove, canReassign, declineRequest, involved,
   placeTask, reassign, run, setStatus, setUi, teamOf, toApprove, useStore,
 } from '../store'
-import type { Profile, Project, Task, TaskStatus } from '../types'
-import Icon from './Icon'
+import type { Priority, Profile, Project, Task, TaskStatus } from '../types'
+import { Bell } from './Avisos'
+import Icon, { Ph } from './Icon'
 import MiniAvatar from './MiniAvatar'
 
 type Group = 'etapa' | 'raias' | 'pessoa'
@@ -14,12 +15,12 @@ type Due = '' | 'late' | 'today' | 'week' | 'none'
 
 interface List { key: string; title: string; hint?: string; head?: ReactNode; cards: Task[]; status?: TaskStatus; owner?: string; canAdd: boolean }
 
-export const STAGES: { id: TaskStatus; label: string; icon: string; hint?: string }[] = [
-  { id: 'inbox', label: 'Pedidos', icon: '📨', hint: 'Esperando a pessoa aceitar' },
-  { id: 'todo', label: 'A fazer', icon: '📋' },
-  { id: 'doing', label: 'Fazendo', icon: '⚡' },
-  { id: 'review', label: 'Aprovação', icon: '⏳', hint: 'Esperando o mestre do projeto' },
-  { id: 'done', label: 'Feito', icon: '✅', hint: 'Últimos 7 dias' },
+export const STAGES: { id: TaskStatus; label: string; hint?: string }[] = [
+  { id: 'inbox', label: 'Pedidos', hint: 'Esperando a pessoa aceitar' },
+  { id: 'todo', label: 'A fazer' },
+  { id: 'doing', label: 'Fazendo' },
+  { id: 'review', label: 'Aprovação', hint: 'Esperando o mestre do projeto' },
+  { id: 'done', label: 'Feito', hint: 'Últimos 7 dias' },
 ]
 const STAGE_LABEL: Record<TaskStatus, string> = { inbox: 'Pedido', todo: 'A fazer', doing: 'Fazendo', review: 'Em aprovação', done: 'Feito', declined: 'Recusado' }
 const STAGE_ORDER: Record<TaskStatus, number> = { doing: 0, review: 1, todo: 2, inbox: 3, done: 4, declined: 5 }
@@ -35,6 +36,13 @@ function save(k: string, v: unknown) {
 }
 const addDays = (n: number) => { const d = new Date(); d.setDate(d.getDate() + n); return dayKey(d) }
 const shortDate = (d: string) => new Date(d + 'T12:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }).replace('.', '')
+/** semana corrente, segunda a domingo: "5–11 out" */
+function weekLabel() {
+  const d = new Date(); d.setDate(d.getDate() - ((d.getDay() + 6) % 7))
+  const e = new Date(d); e.setDate(d.getDate() + 6)
+  const m = (x: Date) => x.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '')
+  return d.getMonth() === e.getMonth() ? `${d.getDate()}–${e.getDate()} ${m(e)}` : `${d.getDate()} ${m(d)} – ${e.getDate()} ${m(e)}`
+}
 const first = (p: Profile | undefined) => p?.name.split(' ')[0] ?? 'Alguém'
 const byPos = (a: Task, b: Task) => a.position - b.position
 const byDone = (a: Task, b: Task) => (b.done_at ?? '').localeCompare(a.done_at ?? '')
@@ -121,6 +129,11 @@ export default function Quadro() {
     }
     return true
   })
+  // números do topo: respeitam o projeto aberto, não os outros filtros
+  const inProj = Object.values(tasksMap).filter(t => t.status !== 'declined' && (project === NONE ? !t.project_id : !project || t.project_id === project))
+  const open = inProj.filter(t => t.status !== 'done')
+  const lateN = open.filter(t => t.due && t.due < today).length
+  const weekDone = inProj.filter(t => t.status === 'done' && t.done_at && dayKey(t.done_at) >= since).length
   const sortFor = (st: TaskStatus) => (st === 'done' ? byDone : byPos)
   const lanePeople = people.filter(p => !who.length || who.includes(p.id))
   const personHead = (p: Profile, size = 28) => (
@@ -130,7 +143,7 @@ export default function Quadro() {
   const lists: List[] = group === 'etapa'
     ? STAGES.map(s => ({
         key: s.id, title: s.label, hint: s.hint, status: s.id, canAdd: s.id === 'todo' || s.id === 'doing',
-        head: <span className="qst-ic">{s.icon}</span>,
+        head: <span className="qdot" />,
         cards: shown.filter(t => t.status === s.id).sort(sortFor(s.id)),
       }))
     : group === 'pessoa'
@@ -231,21 +244,37 @@ export default function Quadro() {
   return (
     <div className="quadro">
       <div className="qbar">
-        <div className="qviews" role="tablist" aria-label="Visão">
-          <button className={group === 'etapa' ? 'on' : ''} onClick={() => setGroup('etapa')} title="Colunas por etapa"><Icon n="cols" />Etapas</button>
-          <button className={group === 'raias' ? 'on' : ''} onClick={() => setGroup('raias')} title="Uma linha por pessoa, separada por etapa"><Icon n="rows" />Raias</button>
-          <button className={group === 'pessoa' ? 'on' : ''} onClick={() => setGroup('pessoa')} title="Uma coluna por pessoa"><Icon n="users" />Pessoas</button>
-        </div>
-        <span className="grow" />
         <label className="qsearch">
-          <Icon n="search" size={15} />
+          <Ph n="magnifying-glass" size={18} />
           <input
-            ref={search} type="search" placeholder="Buscar" value={q} aria-label="Buscar cartões (atalho /)"
+            ref={search} type="search" placeholder="Buscar tarefa…" value={q} aria-label="Buscar cartões (atalho /)"
             onChange={e => setQ(e.target.value)} onKeyDown={e => { if (e.key === 'Escape') { setQ(''); e.currentTarget.blur() } }}
           />
+          <kbd>/</kbd>
         </label>
-        {canUseAI() && <button className="btn ghost sm" onClick={() => setUi({ aiOpen: true })} title="O Claude propõe quem faz o quê"><Icon n="sparkles" />Distribuir com IA</button>}
-        <button className="btn primary sm" onClick={() => setAdding(defAdd)} title="Nova tarefa (atalho N)"><Icon n="plus" />Nova tarefa</button>
+        <span className="grow" />
+        {canUseAI() && <button className="btn soft" onClick={() => setUi({ aiOpen: true })} title="O Claude propõe quem faz o quê"><Ph n="sparkle" size={18} />Distribuir com IA</button>}
+        <Bell />
+        <button className="btn accent" onClick={() => setAdding(defAdd)} title="Nova tarefa (atalho N)"><Ph n="plus" size={18} fill />Nova tarefa</button>
+      </div>
+      <div className="qhead">
+        <div>
+          <h1>{proj ? proj.name : 'Quadro da equipe'}</h1>
+          <div className="sub"><Icon n="folder" size={14} />{proj ? 'Projeto' : project === NONE ? 'Sem projeto' : 'Todos os projetos'} · Semana {weekLabel()}</div>
+        </div>
+        <div className="stats">
+          <div className="stat"><small>Abertas</small><b>{open.length}</b></div>
+          <div className="stat"><small>Para aprovar</small><b>{apprN}</b></div>
+          <div className={'stat' + (lateN ? ' warn' : '')}><small>Atrasadas</small><b>{lateN}</b></div>
+          <div className="stat"><small>Feitas · 7 dias</small><b>{weekDone}</b></div>
+        </div>
+      </div>
+      <div className="qtabs">
+        <div className="seg" role="tablist" aria-label="Visão">
+          <button className={group === 'etapa' ? 'on' : ''} onClick={() => setGroup('etapa')} title="Colunas por etapa"><Ph n="kanban" size={18} fill={group === 'etapa'} />Etapas</button>
+          <button className={group === 'raias' ? 'on' : ''} onClick={() => setGroup('raias')} title="Uma linha por pessoa, separada por etapa"><Icon n="rows" />Raias</button>
+          <button className={group === 'pessoa' ? 'on' : ''} onClick={() => setGroup('pessoa')} title="Uma coluna por pessoa"><Ph n="users-three" size={18} fill={group === 'pessoa'} />Pessoas</button>
+        </div>
       </div>
       <div className="qfilters">
         <label className={'qchip' + (project ? ' on' : '')}>
@@ -294,7 +323,7 @@ export default function Quadro() {
             <div className="qlane-who" />
             {STAGES.map(s => (
               <div key={s.id} className={'qlane-st st-' + s.id}>
-                <span>{s.icon} {s.label}</span>
+                <span><i className="qdot" />{s.label}</span>
                 <span className="qcount">{lanes.reduce((n, l) => n + l.cells.find(c => c.status === s.id)!.cards.length, 0)}</span>
               </div>
             ))}
@@ -361,17 +390,22 @@ function ProjectBar({ p, profiles, tasks }: { p: Project; profiles: Record<strin
   )
 }
 
+const PRIO: Record<Priority, { label: string; cls: string }> = {
+  alta: { label: 'Alta', cls: 'red' }, media: { label: 'Média', cls: 'amber' }, baixa: { label: 'Baixa', cls: 'gray' },
+}
+
 function Card({ t, mode, meId, profiles, projects, showProj, notes, dragging, onDrag, drop }: {
   t: Task; mode: Group; meId: string; profiles: Record<string, Profile>; projects: Record<string, Project>; showProj: boolean; notes: number
   dragging: boolean; onDrag: (id: string | null) => void; drop: boolean
 }) {
   const today = dayKey(new Date())
   const done = t.status === 'done'
-  const dueCls = done ? 'ok' : !t.due ? '' : t.due < today ? 'late' : t.due <= addDays(1) ? 'soon' : ''
-  const dueTip = done ? 'Concluída' : t.due && t.due < today ? 'Atrasada' : t.due === today ? 'Vence hoje' : 'Prazo'
+  const late = !done && !!t.due && t.due < today
+  const hot = !done && t.due === today
+  const dark = t.status === 'review' && canApprove(t)
+  const dueTip = done ? 'Concluída' : late ? 'Atrasada' : hot ? 'Vence hoje' : 'Prazo'
   const req = t.created_by !== t.owner_id && !t.project_id
   const ownReq = t.status === 'inbox' && t.owner_id === meId
-  const owner = profiles[t.owner_id]
   const proj = t.project_id ? projects[t.project_id] : undefined
   const appr = approverOf(t)
   const last = t.reviews.at(-1)
@@ -379,12 +413,16 @@ function Card({ t, mode, meId, profiles, projects, showProj, notes, dragging, on
   const open = () => setUi({ task: t.id })
   const stop = (f: () => void) => (e: React.MouseEvent) => { e.stopPropagation(); f() }
   const sendsToReview = !!appr && !canApprove(t)
+  const ck = t.checklist.filter(c => c.done).length
+  const pct = t.checklist.length ? Math.round((ck / t.checklist.length) * 100) : 0
+  const faces = [...(mode === 'etapa' ? [t.owner_id] : []), ...t.collaborators].map(id => profiles[id]).filter(Boolean)
+  const prio = t.priority ? PRIO[t.priority] : null
 
   return (
     <>
       {drop && <div className="tdrop" />}
       <article
-        className={'tcard' + (dragging ? ' dragging' : '') + (done ? ' done' : '') + (redo ? ' redo' : '')}
+        className={'tcard' + (dragging ? ' dragging' : '') + (done ? ' done' : '') + (redo ? ' redo' : '') + (dark ? ' dark' : hot ? ' hot' : '')}
         style={proj ? { '--pc': proj.color } as React.CSSProperties : undefined}
         draggable={canEditTask(t) || canApprove(t)}
         onDragStart={e => { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', t.id); onDrag(t.id) }}
@@ -393,28 +431,36 @@ function Card({ t, mode, meId, profiles, projects, showProj, notes, dragging, on
         onKeyDown={e => e.key === 'Enter' && open()}
         tabIndex={0}
       >
-        {(mode === 'pessoa' || (proj && showProj) || redo) && (
+        {(mode === 'pessoa' || (proj && showProj) || redo || (prio && !done) || dark) && (
           <div className="tc-tags">
+            {dark && <span className="tag lilac"><Icon n="check" size={13} />Você aprova</span>}
+            {prio && !done && <span className={'tag ' + prio.cls} title="Prioridade"><Icon n="flag" size={13} />{prio.label}</span>}
             {mode === 'pessoa' && <span className={'tc-stage ' + t.status}>{STAGE_LABEL[t.status]}</span>}
             {proj && showProj && <span className="tc-proj" title={`Projeto ${proj.name}`}>{proj.name}</span>}
-            {redo && <span className="tc-redo" title={last!.reason}>↺ reprovada</span>}
+            {redo && <span className="tag red" title={last!.reason}>↺ reprovada</span>}
           </div>
         )}
         <div className="tc-title">{t.title}</div>
-        {t.status === 'review' && appr && <div className="tc-wait">⏳ aguardando {appr === meId ? 'você' : first(profiles[appr])}</div>}
+        {t.status === 'review' && appr && !dark && <div className="tc-wait"><Icon n="clock" size={13} />aguardando {first(profiles[appr])}</div>}
+        {t.checklist.length > 0 && (
+          <div className="tc-prog">
+            <div className="row">Checklist {ck}/{t.checklist.length}<b>{pct}%</b></div>
+            <div className="bar"><i style={{ width: `${pct}%` }} /></div>
+          </div>
+        )}
         <div className="tc-meta">
-          {(t.due || done) && <span className={'tc-due ' + dueCls} title={dueTip}>{done ? '✓' : '🕑'} {t.due ? shortDate(t.due) : 'Feito'}</span>}
-          {t.notes.trim() && <span title="Tem descrição">☰</span>}
-          {notes > 0 && <span title="Comentários">💬 {notes}</span>}
-          {t.attachments.length > 0 && <span title="Anexos">📎 {t.attachments.length}</span>}
-          {t.collaborators.length > 0 && <span title={'Colabora: ' + t.collaborators.map(c => profiles[c]?.name).join(', ')}>🤝 {t.collaborators.length}</span>}
+          {faces.length > 0 && (
+            <span className="tc-faces" title={faces.map(p => p.name).join(', ')}>
+              {faces.slice(0, 4).map(p => <MiniAvatar key={p.id} avatar={p.avatar} photo={p.photo} size={24} />)}
+            </span>
+          )}
           {req && <span className="tc-from" title={`Pedido por ${profiles[t.created_by]?.name ?? 'alguém'}`}>↩ {t.created_by === meId ? 'você' : first(profiles[t.created_by])}</span>}
           <span className="grow" />
-          {mode !== 'etapa'
-            ? null
-            : <span className={'tc-owner' + (t.owner_id === meId ? ' me' : '')} title={`Responsável: ${owner?.name ?? '—'}`}>
-                <MiniAvatar avatar={owner?.avatar ?? null} photo={owner?.photo ?? null} size={20} />{t.owner_id === meId ? 'Você' : first(owner)}
-              </span>}
+          {(t.due || done) && <span className={'tc-due' + (late ? ' late' : done ? ' ok' : '')} title={dueTip}><Icon n={done ? 'tick' : 'clock'} size={13} />{t.due ? (hot ? 'Hoje' : shortDate(t.due)) : 'Feito'}</span>}
+          {t.remind_at && !done && <span className="cnt-pill" title={'Lembrete ' + new Date(t.remind_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}><Icon n="alarm" size={13} /></span>}
+          {t.notes.trim() && <span className="cnt-pill" title="Tem descrição"><Icon n="list" size={13} /></span>}
+          {t.attachments.length > 0 && <span className="cnt-pill" title="Anexos"><Icon n="clip" size={13} />{t.attachments.length}</span>}
+          {notes > 0 && <span className="cnt-pill" title="Comentários"><Icon n="chat" size={13} />{notes}</span>}
         </div>
         {ownReq && (
           <div className="tc-ask">
@@ -433,6 +479,12 @@ function Card({ t, mode, meId, profiles, projects, showProj, notes, dragging, on
   )
 }
 
+/** sexta-feira que vem (hoje, se já for sexta) */
+const friday = () => { const d = new Date(); d.setDate(d.getDate() + ((5 - d.getDay() + 7) % 7)); return dayKey(d) }
+
+type Tool = 'owner' | 'prio' | 'due' | 'remind'
+
+/** Criar tarefa no jeito Trello: um cartão com o título; o resto em ícones que abrem um painelzinho. */
 function Composer({ list, meId, profiles, people, project, onClose }: {
   list: List; meId: string; profiles: Record<string, Profile>; people: Profile[]; project: string | null; onClose: () => void
 }) {
@@ -440,45 +492,108 @@ function Composer({ list, meId, profiles, people, project, onClose }: {
   const [title, setTitle] = useState('')
   const [owner, setOwner] = useState(list.owner ?? (ask ? '' : meId))
   const [due, setDue] = useState('')
+  const [prio, setPrio] = useState<Priority | null>(null)
+  const [remind, setRemind] = useState('')
+  const [pop, setPop] = useState<Tool | null>(ask && !list.owner ? 'owner' : null)
   const ref = useRef<HTMLTextAreaElement>(null)
   useEffect(() => ref.current?.focus(), [])
+  const today = dayKey(new Date())
   const asRequest = !!owner && (ask || !canAssign(profiles[meId], profiles[owner]))
+  const quick = [{ l: 'Hoje', d: today }, { l: 'Amanhã', d: addDays(1) }, { l: 'Sexta', d: friday() }]
+  const remindLabel = remind && new Date(remind).toLocaleString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }).replace('.', '')
+  const toggle = (k: Tool) => setPop(p => (p === k ? null : k))
+  const pick = (f: () => void) => { f(); setPop(null); ref.current?.focus() }
   const submit = () => {
     const name = title.trim()
-    if (!name || !owner) return
-    run(addTask(owner, name, due || null, '', list.status ?? 'todo', project))
-    setTitle('')
+    if (!name) return
+    if (!owner) { setPop('owner'); return }
+    run(addTask(owner, name, due || null, '', list.status ?? 'todo', project, { priority: prio, remind_at: remind ? new Date(remind).toISOString() : null }))
+    setTitle(''); setPrio(null); setDue(''); setRemind(''); setPop(null)
     ref.current?.focus()
   }
+  const tools: { k: Tool; ic: 'user' | 'flag' | 'calendar' | 'alarm'; tip: string; on: boolean }[] = [
+    ...(!list.owner ? [{ k: 'owner' as Tool, ic: 'user' as const, tip: 'Quem faz', on: !!owner && owner !== meId }] : []),
+    { k: 'prio', ic: 'flag', tip: 'Prioridade', on: !!prio },
+    { k: 'due', ic: 'calendar', tip: 'Prazo', on: !!due },
+    { k: 'remind', ic: 'alarm', tip: 'Lembrete', on: !!remind },
+  ]
+  const ownerP = owner ? profiles[owner] : undefined
 
   return (
-    <form className="composer tcard" onSubmit={e => { e.preventDefault(); submit() }} onKeyDown={e => e.key === 'Escape' && onClose()}>
-      <textarea
-        ref={ref} rows={2} maxLength={200} placeholder="Digite um título…" value={title}
-        onChange={e => setTitle(e.target.value)}
-        onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit() } }}
-      />
-      <div className="composer-opts">
-        {!list.owner && (
-          <label className="pill" title="Quem faz">
-            <Icon n="user" size={14} />
-            <select value={owner} onChange={e => setOwner(e.target.value)} aria-label="Responsável" required>
-              {ask && <option value="">Pedir para…</option>}
-              {people.filter(p => !ask || p.id !== meId).map(p => <option key={p.id} value={p.id}>{p.id === meId ? 'Eu' : p.name}</option>)}
-            </select>
-          </label>
+    <form
+      className="composer" onSubmit={e => { e.preventDefault(); submit() }}
+      onKeyDown={e => { if (e.key === 'Escape') { e.stopPropagation(); if (pop) setPop(null); else onClose() } }}
+    >
+      <div className={'tcard cmp-card' + (due === today ? ' hot' : '')}>
+        {(prio || due || remind) && (
+          <div className="tc-tags">
+            {prio && <button type="button" className={'tag ' + PRIO[prio].cls} onClick={() => toggle('prio')}><Icon n="flag" size={13} />{PRIO[prio].label}</button>}
+            {due && <button type="button" className="tag gray" onClick={() => toggle('due')}><Icon n="clock" size={13} />{due === today ? 'Hoje' : shortDate(due)}</button>}
+            {remind && <button type="button" className="tag lilac" onClick={() => toggle('remind')}><Icon n="alarm" size={13} />{remindLabel}</button>}
+          </div>
         )}
-        <label className="pill" title="Prazo">
-          <Icon n="calendar" size={14} />
-          <input type="date" value={due} min={dayKey(new Date())} onChange={e => setDue(e.target.value)} aria-label="Prazo" />
-        </label>
+        <textarea
+          ref={ref} rows={2} maxLength={200} placeholder="Digite um título para esta tarefa…" value={title}
+          onChange={e => setTitle(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit() } }}
+        />
+        {ownerP && owner !== meId && (
+          <div className="tc-meta">
+            <span className="tc-faces"><MiniAvatar avatar={ownerP.avatar} photo={ownerP.photo} size={24} /></span>
+            <span>{asRequest ? `pedido para ${first(ownerP)}` : `para ${first(ownerP)}`}</span>
+          </div>
+        )}
       </div>
-      {asRequest && <small className="muted">Vai como pedido: {first(profiles[owner])} precisa aceitar.</small>}
-      {!asRequest && !!owner && owner !== meId && <small className="muted">Vai direto para {first(profiles[owner])}.</small>}
-      <div className="row gap">
-        <button className="btn primary sm" disabled={!title.trim() || !owner}>Adicionar</button>
-        <button type="button" className="icon-btn" onClick={onClose} aria-label="Fechar"><Icon n="x" /></button>
-        <small className="muted grow right">Enter adiciona · Esc fecha</small>
+
+      {pop && (
+        <div className="cmp-pop" role="dialog" aria-label={tools.find(t => t.k === pop)?.tip}>
+          <header><b>{tools.find(t => t.k === pop)?.tip}</b><button type="button" className="icon-btn" onClick={() => setPop(null)} aria-label="Fechar"><Icon n="x" size={14} /></button></header>
+          {pop === 'owner' && (
+            <div className="cmp-people">
+              {people.filter(p => !ask || p.id !== meId).map(p => (
+                <button key={p.id} type="button" className={owner === p.id ? 'on' : ''} onClick={() => pick(() => setOwner(p.id))}>
+                  <MiniAvatar avatar={p.avatar} photo={p.photo} size={28} /><span>{p.id === meId ? 'Eu' : p.name}</span>
+                  {owner === p.id && <Icon n="tick" size={14} />}
+                </button>
+              ))}
+            </div>
+          )}
+          {pop === 'prio' && (
+            <div className="cmp-opts">
+              {(Object.keys(PRIO) as Priority[]).map(k => (
+                <button key={k} type="button" className={'tag ' + PRIO[k].cls + (prio === k ? ' on' : '')} onClick={() => pick(() => setPrio(k))}><Icon n="flag" size={13} />{PRIO[k].label}</button>
+              ))}
+              {prio && <button type="button" className="cmp-clear" onClick={() => pick(() => setPrio(null))}>Tirar</button>}
+            </div>
+          )}
+          {pop === 'due' && (
+            <>
+              <div className="cmp-opts">
+                {quick.map(q => <button key={q.l} type="button" className={'tag gray' + (due === q.d ? ' on' : '')} onClick={() => pick(() => setDue(q.d))}>{q.l}</button>)}
+              </div>
+              <input type="date" value={due} min={today} onChange={e => setDue(e.target.value)} aria-label="Escolher data" />
+              {due && <button type="button" className="cmp-clear" onClick={() => pick(() => setDue(''))}>Tirar prazo</button>}
+            </>
+          )}
+          {pop === 'remind' && (
+            <>
+              <small className="muted">Avisa quem faz neste horário.</small>
+              <input type="datetime-local" value={remind} onChange={e => setRemind(e.target.value)} aria-label="Lembrete" />
+              {remind && <button type="button" className="cmp-clear" onClick={() => pick(() => setRemind(''))}>Tirar lembrete</button>}
+            </>
+          )}
+        </div>
+      )}
+
+      <div className="cmp-actions">
+        <button className="btn primary sm" disabled={!title.trim()}>Adicionar cartão</button>
+        <button type="button" className="icon-btn" onClick={onClose} aria-label="Fechar" title="Fechar (Esc)"><Icon n="x" /></button>
+        <span className="grow" />
+        {tools.map(t => (
+          <button key={t.k} type="button" className={'cmp-tool' + (t.on ? ' set' : '') + (pop === t.k ? ' on' : '')} onClick={() => toggle(t.k)} title={t.tip} aria-label={t.tip} aria-expanded={pop === t.k}>
+            <Icon n={t.ic} size={16} />
+          </button>
+        ))}
       </div>
     </form>
   )

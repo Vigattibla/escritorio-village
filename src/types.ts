@@ -77,6 +77,17 @@ export interface Task {
   /** critérios extras só desta tarefa (somam com os do projeto) */
   criteria: string[]
   reviews: Review[]
+  priority: Priority | null
+  checklist: CheckItem[]
+  /** lembrete para o dono (ISO) */
+  remind_at: string | null
+}
+
+export type Priority = 'alta' | 'media' | 'baixa'
+export interface CheckItem {
+  id: string
+  text: string
+  done: boolean
 }
 
 export interface Attachment {

@@ -359,17 +359,19 @@ function seed() {
   const task = (owner: string, title: string, status: Task['status'], minAgo: number, by = owner, project_id: string | null = null): Task => ({
     id: crypto.randomUUID(), owner_id: owner, created_by: by, title, notes: '', status, start: null, due: null, collaborators: [], attachments: [], position: minAgo,
     created_at: iso(minAgo), done_at: status === 'done' ? iso(Math.max(1, minAgo - 30)) : null, project_id, criteria: [], reviews: [],
+    priority: null, checklist: [], remind_at: null,
   })
   const tasks = [
-    { ...task('demo-ana', 'Confirmar reservas do fim de semana', 'doing', 120), notes: 'Ligar para quem ainda não pagou o sinal. Conferir chalés 3 e 7.', collaborators: ['demo-carla'] },
-    task('demo-ana', 'Responder e-mails das agências', 'todo', 100),
+    { ...task('demo-ana', 'Confirmar reservas do fim de semana', 'doing', 120), notes: 'Ligar para quem ainda não pagou o sinal. Conferir chalés 3 e 7.', collaborators: ['demo-carla'], priority: 'alta', due: dayAhead(0),
+      checklist: [{ id: crypto.randomUUID(), text: 'Chalé 3', done: true }, { id: crypto.randomUUID(), text: 'Chalé 7', done: true }, { id: crypto.randomUUID(), text: 'Suíte Orquídea', done: true }, { id: crypto.randomUUID(), text: 'Chalé 12', done: false }, { id: crypto.randomUUID(), text: 'Suíte Tulipa', done: false }] },
+    { ...task('demo-ana', 'Responder e-mails das agências', 'todo', 100), priority: 'baixa', remind_at: new Date(now.getTime() + 90e3).toISOString() },
     task('demo-ana', 'Imprimir check-ins de sexta', 'todo', 90, 'demo-carla'),
     task('demo-bruno', 'Foto da recepção pro site', 'inbox', 70, 'demo-ana'),
     task('demo-bruno', 'Arte do feed: Semana das Crianças', 'review', 200, 'demo-carla', proj.id),
     task('demo-ana', 'Inscrições das oficinas na recepção', 'doing', 110, 'demo-carla', proj.id),
     task('demo-bruno', 'Agendar stories da piscina', 'todo', 150),
     task('demo-bruno', 'Selecionar fotos do chalé', 'done', 300),
-    task('demo-carla', 'Checklist do evento de sábado', 'todo', 80),
+    { ...task('demo-carla', 'Checklist do evento de sábado', 'todo', 80), priority: 'media', due: dayAhead(-1), checklist: [{ id: crypto.randomUUID(), text: 'Som', done: true }, { id: crypto.randomUUID(), text: 'Mesas', done: false }, { id: crypto.randomUUID(), text: 'Decoração', done: false }] },
     { ...task('demo-carla', 'Orçamento da decoração', 'doing', 60), notes: 'Três orçamentos: flores, balões e iluminação.', collaborators: ['demo-bruno'], due: dayAhead(2) },
   ]
   const notes: TaskNote[] = [

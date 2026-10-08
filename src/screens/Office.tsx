@@ -1,11 +1,12 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import Board from '../components/Board'
 import Chat from '../components/Chat'
 import Game from '../components/Game'
 import MiniAvatar from '../components/MiniAvatar'
 import DeskView from '../components/DeskView'
 import { Bell, Toast } from '../components/Avisos'
-import Icon, { type IconName } from '../components/Icon'
+import Icon, { Ph } from '../components/Icon'
+import type { PhName } from '../components/ph'
 import Overview from '../components/Overview'
 import ProjectModal from '../components/ProjectModal'
 import Distribuir from '../components/Distribuir'
@@ -23,7 +24,6 @@ type Page = 'quadro' | 'escritorio' | Tab
 export default function Office() {
   const s = useStore(x => x)
   const me = s.profiles[s.meId!]
-  const [navOpen, setNavOpen] = useState(false)
   const tasks = Object.values(s.tasks)
   const pend = tasks.filter(t => t.owner_id === me?.id && t.status === 'inbox').length
   const chans = new Set(s.messages.map(m => m.channel))
@@ -41,14 +41,13 @@ export default function Office() {
   const office = s.view === 'escritorio'
   const page: Page = office ? 'escritorio' : s.drawer ? s.tab : 'quadro'
   // minha mesa = filtro "Só minhas"; aprovação = coluna do quadro; avisos = sino; chat = botão flutuante
-  const items: { id: Page; label: string; ic: IconName; n?: number; tip?: string }[] = [
-    { id: 'quadro', label: 'Quadro', ic: 'board', n: pend, tip: pend ? `${pend} pedido(s) esperando você aceitar` : undefined },
-    { id: 'escritorio', label: 'Escritório', ic: 'office' },
-    { id: 'equipe', label: 'Equipe', ic: 'users' },
+  const items: { id: Page; label: string; ic: PhName; n?: number; tip?: string }[] = [
+    { id: 'quadro', label: 'Quadro', ic: 'kanban', n: pend, tip: pend ? `${pend} pedido(s) esperando você aceitar` : undefined },
+    { id: 'escritorio', label: 'Escritório', ic: 'desk' },
+    { id: 'equipe', label: 'Equipe', ic: 'users-three' },
   ]
-  if (chief) items.push({ id: 'geral', label: 'Visão geral', ic: 'chart', n: tasks.filter(t => t.status === 'inbox').length })
+  if (chief) items.push({ id: 'geral', label: 'Geral', ic: 'squares-four', n: tasks.filter(t => t.status === 'inbox').length })
   const goTo = (id: Page) => {
-    setNavOpen(false)
     if (id === 'quadro') setUi({ view: 'quadro', drawer: false })
     else if (id === 'escritorio') setUi({ view: 'escritorio', drawer: false })
     else setUi({ view: 'quadro', tab: id, drawer: true })
@@ -58,40 +57,38 @@ export default function Office() {
     {tab === 'equipe' && <Team />}
     {tab === 'geral' && chief && <Overview />}
   </>
-  const NavItem = ({ it }: { it: (typeof items)[number] }) => (
-    <button className={'nav-item' + (page === it.id ? ' on' : '')} onClick={() => goTo(it.id)} title={it.tip}>
-      <span className="nav-ic"><Icon n={it.ic} size={17} /></span><span className="grow">{it.label}</span>
-      {!!it.n && <i className="nav-n">{it.n}</i>}
-    </button>
-  )
+  const NavItem = ({ it }: { it: (typeof items)[number] }) => {
+    const on = page === it.id
+    return (
+      <button className={'nav-item' + (on ? ' on' : '')} onClick={() => goTo(it.id)} title={it.tip ?? it.label} aria-current={on ? 'page' : undefined}>
+        <span className="nav-ic"><Ph n={it.ic} size={24} fill={on} />{!!it.n && <i className="nav-n">{it.n > 9 ? '9+' : it.n}</i>}</span>
+        <span className="nav-tip">{it.label}</span>
+      </button>
+    )
+  }
 
   return (
-    <div className={'office' + (navOpen ? ' nav-open' : '')}>
+    <div className="office">
       <aside className="nav">
-        <div className="nav-ws">
-          <span className="grow">Escritório Village</span>
-          {backend.mode === 'demo' && <span className="tag">demo</span>}
-          <Bell />
-        </div>
+        {backend.mode === 'demo' && <span className="nav-demo">demo</span>}
         <nav className="nav-list">
           {items.map(it => <NavItem key={it.id} it={it} />)}
         </nav>
         <div className="nav-me">
-          <button className="nav-item" onClick={() => setUi({ editing: true })} title="Editar personagem">
-            <MiniAvatar avatar={me.avatar} photo={me.photo} size={24} />
-            <span className="grow nav-who"><b>{me.name}</b><small>{me.role || rankName(me)}</small></span>
+          <button className="nav-item" onClick={() => signOut()} title="Sair"><span className="nav-ic"><Icon n="logout" size={20} /></span><span className="nav-tip">Sair</span></button>
+          <button className="nav-av" onClick={() => setUi({ editing: true })} title={`${me.name} · ${me.role || rankName(me)} — editar personagem`}>
+            <MiniAvatar avatar={me.avatar} photo={me.photo} size={36} />
           </button>
-          <button className="nav-item muted" onClick={() => signOut()}><span className="nav-ic"><Icon n="logout" size={17} /></span>Sair</button>
         </div>
       </aside>
-      {navOpen && <div className="nav-bg" onClick={() => setNavOpen(false)} />}
       <div className="page">
         <div className="mbar">
-          <button className="icon-btn" onClick={() => setNavOpen(true)} aria-label="Menu"><Icon n="menu" size={20} /></button>
           <b className="grow">{items.find(i => i.id === page)?.label ?? 'Escritório'}</b>
           <Bell />
+          <button className="icon-btn" onClick={() => signOut()} aria-label="Sair" title="Sair"><Icon n="logout" size={18} /></button>
         </div>
         {s.error && <div className="banner" onClick={() => setUi({ error: '' })}>{s.error} <small>(clique para fechar)</small></div>}
+        {page !== 'quadro' && <div className="ptop"><h1 className="grow">{items.find(i => i.id === page)?.label}</h1><Bell /></div>}
         <main className="main">
           {page === 'quadro' && <Quadro />}
           {office && <>

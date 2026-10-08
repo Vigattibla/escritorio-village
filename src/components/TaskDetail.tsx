@@ -4,11 +4,13 @@ import {
   acceptRequest, addNote, approverOf, attachFiles, canApprove, canEditTask, canMove, canReassign, declineRequest, reassign, fileUrl, removeAttachment, removeNote, removeTask, run,
   setCriteria, setProject, setStatus, setUi, updateTask, useStore,
 } from '../store'
-import type { Attachment, Task } from '../types'
+import type { Attachment, CheckItem, Priority, Task } from '../types'
 import MiniAvatar from './MiniAvatar'
 import { ReviewBox, ReviewHistory } from './Revisao'
 
 const STATUS: Record<Task['status'], string> = { inbox: 'pedido aguardando', todo: 'a fazer', doing: 'fazendo', review: 'em aprovação ⏳', done: 'feita ✅', declined: 'recusada' }
+/** ISO → valor de input datetime-local (hora local) */
+const localDT = (iso: string | null) => { if (!iso) return ''; const d = new Date(iso); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 16) }
 const size = (n: number) => (n < 1048576 ? `${Math.max(1, Math.round(n / 1024))} KB` : `${(n / 1048576).toFixed(1).replace('.', ',')} MB`)
 const when = (iso: string) => new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
 const isImg = (a: Attachment) => a.type.startsWith('image/')
@@ -68,6 +70,7 @@ export default function TaskDetail() {
   const allNotes = useStore(s => s.notes)
   const projects = useStore(s => s.projects)
   const [crit, setCrit] = useState('')
+  const [item, setItem] = useState('')
   const [zoom, setZoom] = useState<string | null>(null)
   const [sending, setSending] = useState(0)
   const [note, setNote] = useState('')
@@ -99,6 +102,8 @@ export default function TaskDetail() {
   const approve = canApprove(t)
   const toReview = !!appr && !approve
   const last = t.reviews.at(-1)
+  const setList = (checklist: CheckItem[]) => run(updateTask(t.id, { checklist }))
+  const addItem = () => { if (item.trim()) { setList([...t.checklist, { id: crypto.randomUUID(), text: item.trim(), done: false }]); setItem('') } }
   const addCrit = () => { if (crit.trim()) { run(setCriteria(t.id, [...t.criteria, crit])); setCrit('') } }
   const free = Object.values(profiles).filter(p => p.id !== t.owner_id && !t.collaborators.includes(p.id)).sort((a, b) => a.name.localeCompare(b.name))
 
@@ -175,6 +180,37 @@ export default function TaskDetail() {
             <label className="grow">Prazo
               <input type="date" value={t.due ?? ''} disabled={!edit} min={t.start ?? undefined} onChange={e => run(updateTask(t.id, { due: e.target.value || null }))} />
             </label>
+          </div>
+
+          <div className="row gap wrap">
+            <label className="grow">Prioridade
+              <select value={t.priority ?? ''} disabled={!edit} onChange={e => run(updateTask(t.id, { priority: (e.target.value || null) as Priority | null }))}>
+                <option value="">Sem prioridade</option>
+                <option value="alta">Alta</option>
+                <option value="media">Média</option>
+                <option value="baixa">Baixa</option>
+              </select>
+            </label>
+            <label className="grow">Lembrete
+              <input type="datetime-local" value={localDT(t.remind_at)} disabled={!edit} onChange={e => run(updateTask(t.id, { remind_at: e.target.value ? new Date(e.target.value).toISOString() : null }))} />
+            </label>
+          </div>
+
+          <div className="field">
+            <h3>Checklist{t.checklist.length > 0 && <span className="muted small"> · {t.checklist.filter(c => c.done).length}/{t.checklist.length}</span>}</h3>
+            <ul className="checklist">
+              {t.checklist.map(c => (
+                <li key={c.id} className={c.done ? 'done' : ''}>
+                  <label><input type="checkbox" checked={c.done} disabled={!edit} onChange={() => setList(t.checklist.map(x => (x.id === c.id ? { ...x, done: !x.done } : x)))} />{c.text}</label>
+                  {edit && <button className="icon" onClick={() => setList(t.checklist.filter(x => x.id !== c.id))} title="Tirar item">✕</button>}
+                </li>
+              ))}
+              {!t.checklist.length && !edit && <li className="muted">Sem checklist.</li>}
+            </ul>
+            {edit && (
+              <input value={item} maxLength={140} placeholder="+ item (Enter)" onChange={e => setItem(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addItem() } }} />
+            )}
           </div>
 
           <div className="field">

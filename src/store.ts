@@ -88,6 +88,7 @@ export const nameOf = (id: string) => state.profiles[id]?.name ?? 'Alguém'
 const norm = (t: Task): Task => ({
   ...t, start: t.start ?? null, collaborators: t.collaborators ?? [], attachments: t.attachments ?? [],
   project_id: t.project_id ?? null, criteria: t.criteria ?? [], reviews: t.reviews ?? [],
+  priority: t.priority ?? null, checklist: t.checklist ?? [], remind_at: t.remind_at ?? null,
 })
 export const involved = (t: Task, uid: string) => t.owner_id === uid || t.created_by === uid || t.collaborators.includes(uid)
 /** Mexe nos detalhes: dono, autor, colaborador, cargo acima do dono ou Chefe. */
@@ -249,6 +250,27 @@ function onMessage(m: Message) {
 let booted = false
 let disconnect: (() => void) | null = null
 
+// ---------- lembretes ----------
+let remindTimer = 0
+/** Avisa uma vez cada lembrete vencido das minhas tarefas (o "já avisei" fica no navegador). */
+function checkReminders() {
+  const my = state.meId
+  if (!my) return
+  const key = `ev:lembretes:${my}`
+  let seen: Record<string, string> = {}
+  try { seen = JSON.parse(localStorage.getItem(key) ?? '{}') } catch { /* nada salvo */ }
+  const now = Date.now()
+  let changed = false
+  for (const t of Object.values(state.tasks)) {
+    if (!t.remind_at || t.owner_id !== my || t.status === 'done' || t.status === 'declined') continue
+    if (new Date(t.remind_at).getTime() > now || seen[t.id] === t.remind_at) continue
+    seen[t.id] = t.remind_at
+    changed = true
+    notify(`⏰ Lembrete: “${t.title}”`, { go: { task: t.id } })
+  }
+  if (changed) try { localStorage.setItem(key, JSON.stringify(seen)) } catch { /* sem espaço */ }
+}
+
 export async function boot() {
   if (booted) return
   booted = true
@@ -276,6 +298,9 @@ export async function enter(uid: string) {
     phase: mine?.avatar ? 'office' : 'creator',
     viewing: uid,
   })
+  clearInterval(remindTimer)
+  checkReminders()
+  remindTimer = window.setInterval(checkReminders, 20000)
   disconnect?.()
   disconnect = backend.connect(uid, {
     profile: onProfile, profileDeleted: onProfileDeleted, task: onTask, taskDeleted: onTaskDeleted, message: onMessage, note: onNote, noteDeleted: onNoteDeleted,
@@ -289,6 +314,7 @@ export async function enter(uid: string) {
 }
 
 export async function signOut() {
+  clearInterval(remindTimer)
   disconnect?.()
   disconnect = null
   await backend.signOut()
@@ -350,13 +376,14 @@ async function putTask(t: Task) {
  * Na própria pasta ou de quem tem cargo menor: entra direto (na etapa pedida).
  * Senão (ou se `status` = 'inbox') vira pedido para a pessoa aceitar.
  */
-export async function addTask(owner: string, title: string, due: string | null = null, notes = '', status: TaskStatus = 'todo', project: string | null = null) {
+export async function addTask(owner: string, title: string, due: string | null = null, notes = '', status: TaskStatus = 'todo', project: string | null = null, extra: Pick<Partial<Task>, 'priority' | 'remind_at'> = {}) {
   const direct = canAssign(me(), state.profiles[owner])
   if (status === 'review' || status === 'done') status = 'todo' // entrega passa pela etapa certa
   const t: Task = {
     id: crypto.randomUUID(), owner_id: owner, created_by: state.meId!, title: title.trim(), notes, status: direct && status !== 'inbox' ? status : 'inbox',
     start: null, due, collaborators: [], attachments: [], position: Date.now(), created_at: new Date().toISOString(),
     done_at: null, project_id: project || null, criteria: [], reviews: [],
+    priority: extra.priority ?? null, checklist: [], remind_at: extra.remind_at ?? null,
   }
   await putTask(t)
   return t
@@ -553,7 +580,7 @@ export async function removeTask(id: string) {
   await Promise.allSettled(t.attachments.map(a => backend.deleteFile(a.path)))
 }
 
-type Details = Partial<Pick<Task, 'title' | 'notes' | 'start' | 'due' | 'collaborators'>>
+type Details = Partial<Pick<Task, 'title' | 'notes' | 'start' | 'due' | 'collaborators' | 'priority' | 'checklist' | 'remind_at'>>
 export async function updateTask(id: string, patch: Details) {
   const t = state.tasks[id]
   if (!t) return
