@@ -1,6 +1,6 @@
 import { toEmail, validUser } from './login'
 import { dayKey } from '../game/xp'
-import type { RowTable, Rows, AccountEdit, AiContext, AiProposal, AiStage, Avatar, Backend, Handlers, Message, Pos, Profile, Project, Snapshot, Task, TaskNote } from '../types'
+import type { Group, RowTable, Rows, AccountEdit, AiContext, AiProposal, AiStage, Avatar, Backend, Handlers, Message, Pos, Profile, Project, Snapshot, Task, TaskNote } from '../types'
 import { ROW_TABLES } from '../types'
 
 // Modo demonstração: tudo no localStorage deste navegador. Abas diferentes = pessoas diferentes
@@ -290,6 +290,15 @@ export class DemoBackend implements Backend {
     all[r.id] = r
     write(K.row + k, all)
     this.post({ t: 'row', k, r })
+  }
+
+  async joinGroup(id: string, join: boolean) {
+    const all = read<Record<string, Group>>(K.row + 'groups', {})
+    const g = all[id], me = sessionStorage.getItem(K.session)
+    if (!g || !me) return
+    if (join && !g.open) throw new Error('Esse grupo é só para convidados.')
+    const members = join ? [...new Set([...g.members, me])] : g.members.filter(x => x !== me)
+    await this.upsertRow('groups', { ...g, members })
   }
 
   async deleteRow(k: RowTable, id: string) {

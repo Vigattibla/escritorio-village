@@ -140,6 +140,11 @@ export class SupabaseBackend implements Backend {
     if (error) throw pt(error)
   }
 
+  async joinGroup(gid: string, join: boolean) {
+    const { error } = await this.sb.rpc('group_join', { gid, p_join: join })
+    if (error) throw pt(error)
+  }
+
   async deleteRow(table: RowTable, id: string) {
     const { error } = await this.sb.from(table).delete().eq('id', id)
     if (error) throw pt(error)

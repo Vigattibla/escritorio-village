@@ -111,9 +111,11 @@ export interface Flow { id: string; name: string; objective: string; nodes: Flow
 export type StageKind = 'todo' | 'doing' | 'review' | 'done'
 export interface Stage { id: string; label: string; kind: StageKind; pos: number; created_by: string; created_at: string }
 
-export interface Rows { events: CalEvent; goals: Goal; stickers: Sticker; flows: Flow; stages: Stage }
+/** grupo do chat: canal 'g:<id>'; aberto = qualquer um entra, fechado = só quem foi convidado */
+export interface Group { id: string; name: string; icon: string; open: boolean; members: string[]; created_by: string; created_at: string }
+export interface Rows { events: CalEvent; goals: Goal; stickers: Sticker; flows: Flow; stages: Stage; groups: Group }
 export type RowTable = keyof Rows
-export const ROW_TABLES: RowTable[] = ['events', 'goals', 'stickers', 'flows', 'stages']
+export const ROW_TABLES: RowTable[] = ['events', 'goals', 'stickers', 'flows', 'stages', 'groups']
 
 export type Priority = 'alta' | 'media' | 'baixa'
 export interface CheckItem {
@@ -245,6 +247,8 @@ export interface Backend {
   /** agenda, metas, adesivos e fluxos */
   upsertRow<K extends RowTable>(table: K, r: Rows[K]): Promise<void>
   deleteRow(table: RowTable, id: string): Promise<void>
+  /** entra (só em grupo aberto) ou sai de um grupo do chat */
+  joinGroup(id: string, join: boolean): Promise<void>
   /** IA do Gerente: manda o pedido e espera a proposta (servidor: a ponte no PC roda o Claude) */
   askAI(prompt: string, ctx: AiContext, onStage: (s: AiStage) => void, signal: AbortSignal): Promise<AiProposal>
   /** a ponte do PC deu sinal de vida há pouco? */

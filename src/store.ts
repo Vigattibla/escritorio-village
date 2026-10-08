@@ -3,7 +3,7 @@ import { backend } from './data'
 import { canAssign, isChief, rankName, rankOf } from './game/ranks'
 import { dayKey, taskXp } from './game/xp'
 import { MAX_DESKS } from './office/world'
-import type { RowTable, Rows, Stage, StageKind, Sticker, AccountEdit, AiContext, AiItem, AiProposal, AiStage, Attachment, Avatar, Message, Pos, Profile, Project, Review, Task, TaskNote, TaskStatus } from './types'
+import type { Group, RowTable, Rows, Stage, StageKind, Sticker, AccountEdit, AiContext, AiItem, AiProposal, AiStage, Attachment, Avatar, Message, Pos, Profile, Project, Review, Task, TaskNote, TaskStatus } from './types'
 import { ROW_TABLES } from './types'
 
 export type Phase = 'loading' | 'auth' | 'creator' | 'office'
@@ -62,7 +62,7 @@ export interface State {
 
 
 const initial: State = {
-  phase: 'loading', meId: null, accountName: '', error: '', profiles: {}, tasks: {}, messages: [], notes: [], projects: {}, rows: { events: {}, goals: {}, stickers: {}, flows: {}, stages: {} }, online: new Set(),
+  phase: 'loading', meId: null, accountName: '', error: '', profiles: {}, tasks: {}, messages: [], notes: [], projects: {}, rows: { events: {}, goals: {}, stickers: {}, flows: {}, stages: {}, groups: {} }, online: new Set(),
   tab: 'mesa', viewing: null, channel: 'geral', reads: {}, requestTo: null, task: null, editing: false, notices: [], pipOpen: false, view: 'quadro' as View, drawer: false,
   project: '', projectEdit: null, aiOpen: false, chatOpen: false, bellOpen: false, qApprove: false, flow: null, sheet: false, stickTo: null,
 }
@@ -84,7 +84,14 @@ export const positions = new Map<string, Pos>()
 export const bubbles = new Map<string, { text: string; until: number }>()
 
 export const dmChannel = (a: string, b: string) => 'dm:' + [a, b].sort().join(':')
-export const isMyChannel = (ch: string, me: string) => ch === 'geral' || (ch.startsWith('dm:') && ch.split(':').includes(me))
+/** canais que chegam até mim (grupo: o banco já filtra pelo RLS; quem não é membro não recebe aviso) */
+export const isMyChannel = (ch: string, me: string) => ch === 'geral' || ch.startsWith('g:') || (ch.startsWith('dm:') && ch.split(':').includes(me))
+export const groupChannel = (id: string) => 'g:' + id
+export const groupOf = (ch: string, s: State = state) => (ch.startsWith('g:') ? s.rows.groups[ch.slice(2)] : undefined)
+/** faço parte do canal? (geral e conversa: sempre; grupo: só membro) */
+export const inChannel = (ch: string, s: State = state) => !ch.startsWith('g:') || !!(s.meId && groupOf(ch, s)?.members.includes(s.meId))
+/** posso abrir o canal? (grupo aberto: qualquer um espia antes de entrar) */
+export const seesChannel = (ch: string, s: State = state) => { const g = groupOf(ch, s); return !ch.startsWith('g:') || !!g && (g.open || inChannel(ch, s)) }
 export const dmPeer = (ch: string, me: string) => ch.split(':').slice(1).find(id => id !== me) ?? me
 export const me = () => (state.meId ? state.profiles[state.meId] : undefined)
 export const nameOf = (id: string) => state.profiles[id]?.name ?? 'Alguém'
@@ -147,6 +154,7 @@ export const toApprove = (s: State) => Object.values(s.tasks).filter(t => t.stat
 const chatShown = () => state.chatOpen
 
 export function unread(s: State, ch: string) {
+  if (!inChannel(ch, s)) return 0
   const since = s.reads[ch] ?? ''
   return s.messages.filter(m => m.channel === ch && m.sender_id !== s.meId && m.created_at > since).length
 }
@@ -274,7 +282,8 @@ function onMessage(m: Message) {
   bubbles.set(m.sender_id, { text: m.body, until: Date.now() + 6000 })
   const viewing = chatShown() && state.channel === m.channel && !document.hidden
   if (viewing) return markRead(m.channel)
-  const where = m.channel === 'geral' ? ' (Geral)' : ''
+  if (!inChannel(m.channel)) return
+  const where = m.channel === 'geral' ? ' (Geral)' : m.channel.startsWith('g:') ? ` (${groupOf(m.channel)?.name ?? 'grupo'})` : ''
   notify(`${nameOf(m.sender_id)}${where}: ${m.body.slice(0, 90)}`, { from: m.sender_id, go: { tab: 'chat', channel: m.channel } })
 }
 
@@ -441,6 +450,35 @@ export const STAGE_KINDS: { kind: StageKind; label: string; hint: string }[] = [
   { kind: 'review', label: 'Aprovação', hint: 'Esperando o mestre do projeto aprovar' },
   { kind: 'done', label: 'Feito', hint: 'Concluída (conta nas metas)' },
 ]
+// ---------- grupos do chat ----------
+export const GROUP_ICONS = ['chat-circle-dots', 'megaphone', 'film-strip', 'images', 'instagram-logo', 'calendar-blank', 'target', 'trophy', 'star', 'folder-simple', 'gift', 'house', 'coffee', 'confetti', 'globe-simple', 'smiley'] as const
+export const canEditGroup = (g: Group, p = me()) => !!p && (g.created_by === p.id || rankOf(p) >= 3)
+
+export async function saveGroup(g: Pick<Group, 'name' | 'icon' | 'open' | 'members'> & { id?: string }) {
+  const my = state.meId!
+  const old = g.id ? state.rows.groups[g.id] : undefined
+  const name = g.name.trim().slice(0, 40)
+  if (!name) throw new Error('Dê um nome ao grupo.')
+  const r: Group = {
+    id: old?.id ?? crypto.randomUUID(), name, icon: g.icon, open: g.open,
+    members: [...new Set([...(old ? [] : [my]), ...g.members])],
+    created_by: old?.created_by ?? my, created_at: old?.created_at ?? new Date().toISOString(),
+  }
+  await putRow('groups', r)
+  return r
+}
+export async function joinGroup(id: string, join: boolean) {
+  const g = state.rows.groups[id], my = state.meId
+  if (!g || !my) return
+  onRow('groups', { ...g, members: join ? [...new Set([...g.members, my])] : g.members.filter(x => x !== my) })
+  await backend.joinGroup(id, join)
+  if (!join && state.channel === groupChannel(id) && !g.open) set({ channel: 'geral' })
+}
+export async function deleteGroup(id: string) {
+  if (state.channel === groupChannel(id)) set({ channel: 'geral' })
+  await dropRow('groups', id)
+}
+
 export function stageList(rows = state.rows.stages): Stage[] {
   const l = Object.values(rows)
   return (l.length ? l : DEFAULT_STAGES).slice().sort((a, b) => a.pos - b.pos)
