@@ -42,7 +42,10 @@ function walk(o: Shown, path: { x: number; y: number }[], dt: number) {
   return true
 }
 
-export default function Game() {
+/** cine: recorte do escritório no Quadro — câmera passeia por quem está, sem controles; clique abre o escritório */
+export default function Game({ cine = false, focus = null }: { cine?: boolean; focus?: string | null }) {
+  const focusRef = useRef(focus)
+  useEffect(() => { focusRef.current = focus }, [focus])
   const wrap = useRef<HTMLDivElement>(null)
   const cv = useRef<HTMLCanvasElement>(null)
   const [zoom, setZoom] = useState(() => Number(localStorage.getItem('ev:zoom')) || 3)
@@ -50,7 +53,7 @@ export default function Game() {
   const [hover, setHover] = useState<Hover | null>(null)
   const goSeat = useRef<() => void>(() => {})
 
-  useEffect(() => { zoomRef.current = zoom; localStorage.setItem('ev:zoom', String(zoom)) }, [zoom])
+  useEffect(() => { zoomRef.current = cine ? 3 : zoom; if (!cine) localStorage.setItem('ev:zoom', String(zoom)) }, [zoom, cine])
 
   useEffect(() => {
     const canvas = cv.current!, box = wrap.current!
@@ -104,6 +107,7 @@ export default function Game() {
     }
     const onBlur = () => keys.clear()
     const onClick = (e: MouseEvent) => {
+      if (cine) return setUi({ view: 'escritorio', drawer: false, viewing: focusRef.current })
       const w = toWorld(e.clientX, e.clientY)
       const id = avatarAt(w.x, w.y)
       if (id) return setUi({ tab: 'mesa', viewing: id })
@@ -111,7 +115,7 @@ export default function Game() {
       const desk = deskAtTile(tx, ty)
       if (desk !== null) {
         const owner = Object.values(getState().profiles).find(p => p.avatar && deskIdx(p) === desk)
-        if (owner) setUi({ desk: owner.id, deskView: 'pasta', viewing: owner.id })
+        if (owner) setUi({ viewing: owner.id })
         if (owner?.id === meId) goSeat.current()
         return
       }
@@ -119,6 +123,7 @@ export default function Game() {
       if (p) { path = p; jobs.delete(meId) }
     }
     const onMove = (e: MouseEvent) => {
+      if (cine) { canvas.style.cursor = 'pointer'; return }
       const w = toWorld(e.clientX, e.clientY)
       const id = avatarAt(w.x, w.y)
       const r = canvas.getBoundingClientRect()
@@ -131,13 +136,15 @@ export default function Game() {
       setZoom(z => Math.min(ZMAX, Math.max(ZMIN, z + (e.deltaY < 0 ? 1 : -1))))
     }
 
-    window.addEventListener('keydown', onKey)
-    window.addEventListener('keyup', onKey)
-    window.addEventListener('blur', onBlur)
+    if (!cine) {
+      window.addEventListener('keydown', onKey)
+      window.addEventListener('keyup', onKey)
+      window.addEventListener('blur', onBlur)
+    }
     canvas.addEventListener('click', onClick)
     canvas.addEventListener('mousemove', onMove)
     canvas.addEventListener('mouseleave', onLeave)
-    canvas.addEventListener('wheel', onWheel, { passive: false })
+    if (!cine) canvas.addEventListener('wheel', onWheel, { passive: false })
     const offPhotos: (() => void)[] = []
     const watched = new Set<string>()
 
@@ -239,11 +246,12 @@ export default function Game() {
 
     const render = (t: number) => {
       const s = getState(), z = zoomRef.current
+      const f = (cine && focusRef.current && shown.get(focusRef.current)) || meS
       const vw = W / z, vh = H / z
       const mapW = MW * T, mapH = MH * T
       cam = {
-        x: vw >= mapW ? (mapW - vw) / 2 : Math.min(mapW - vw, Math.max(0, meS.x - vw / 2)),
-        y: vh >= mapH ? (mapH - vh) / 2 : Math.min(mapH - vh, Math.max(0, meS.y - 12 - vh / 2)),
+        x: vw >= mapW ? (mapW - vw) / 2 : Math.min(mapW - vw, Math.max(0, f.x - vw / 2)),
+        y: vh >= mapH ? (mapH - vh) / 2 : Math.min(mapH - vh, Math.max(0, f.y - 12 - vh / 2)),
       }
       cam.x = Math.round(cam.x * z) / z; cam.y = Math.round(cam.y * z) / z
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
@@ -364,15 +372,16 @@ export default function Game() {
       canvas.removeEventListener('mouseleave', onLeave)
       canvas.removeEventListener('wheel', onWheel)
     }
-  }, [])
+  }, [cine])
 
   const s = getState()
   const hp = hover ? s.profiles[hover.id] : null
   const doing = hp ? doingOf(Object.values(s.tasks), hp.id) : null
 
   return (
-    <div className="game" ref={wrap}>
+    <div className={'game' + (cine ? ' cine' : '')} ref={wrap}>
       <canvas ref={cv} />
+      {!cine && <>
       {hp && hover && (
         <div className="game-tip" style={{ left: hover.sx + 14, top: hover.sy + 10 }}>
           <b>{hp.name}</b>{hp.role && <span> · {hp.role}</span>}
@@ -387,6 +396,7 @@ export default function Game() {
         <button className="sq" onClick={() => setZoom(z => Math.min(ZMAX, z + 1))} aria-label="Aproximar" title="Aproximar"><Icon n="plus" size={15} /></button>
       </div>
       <div className="game-help">Clique no chão para andar (ou WASD/setas) · clique numa pessoa ou mesa para ver as tarefas</div>
+      </>}
     </div>
   )
 }

@@ -81,7 +81,32 @@ export interface Task {
   checklist: CheckItem[]
   /** lembrete para o dono (ISO) */
   remind_at: string | null
+  /** post: canal e horário de publicar (vai para a Agenda) */
+  channel: Channel | null
+  publish_at: string | null
 }
+
+export type Channel = 'feed' | 'reels' | 'stories' | 'facebook' | 'site'
+
+/** evento da agenda (não é tarefa) */
+export interface CalEvent { id: string; title: string; day: string; time: string | null; created_by: string; created_at: string }
+
+/** meta do mês: posts = posts publicados (tarefa com canal feita), tasks = tarefas feitas, manual = valor digitado */
+export interface Goal {
+  id: string; title: string; target: number; metric: 'posts' | 'tasks' | 'manual'; month: string
+  reward: string; value: number; created_by: string; created_at: string
+}
+
+export type StickerKind = 'mandou-bem' | 'destaque' | 'pausa' | 'parabens' | 'top' | 'recorde'
+/** adesivo que o gerente cola na tela de alguém (x/y = fração da tela) */
+export interface Sticker { id: string; to_id: string; by_id: string; kind: StickerKind; text: string; x: number; y: number; created_at: string }
+
+/** passo de um fluxo: vira tarefa ao enviar */
+export interface FlowNode { id: string; title: string; owner: string | null; due: string | null; x: number; y: number; after: string[]; task_id: string | null }
+export interface Flow { id: string; name: string; objective: string; nodes: FlowNode[]; created_by: string; created_at: string }
+
+export interface Rows { events: CalEvent; goals: Goal; stickers: Sticker; flows: Flow }
+export type RowTable = keyof Rows
 
 export type Priority = 'alta' | 'media' | 'baixa'
 export interface CheckItem {
@@ -151,6 +176,7 @@ export interface Snapshot {
   messages: Message[]
   notes: TaskNote[]
   projects: Project[]
+  rows: { [K in RowTable]: Rows[K][] }
 }
 
 export interface AccountEdit { name: string; role: string; rank: number; is_admin: boolean; user: string }
@@ -165,6 +191,8 @@ export interface Handlers {
   noteDeleted(id: string): void
   project(p: Project): void
   projectDeleted(id: string): void
+  row<K extends RowTable>(table: K, r: Rows[K]): void
+  rowDeleted(table: RowTable, id: string): void
   pos(id: string, p: Pos): void
   online(ids: string[]): void
 }
@@ -207,6 +235,9 @@ export interface Backend {
   deleteNote(id: string): Promise<void>
   upsertProject(p: Project): Promise<void>
   deleteProject(id: string): Promise<void>
+  /** agenda, metas, adesivos e fluxos */
+  upsertRow<K extends RowTable>(table: K, r: Rows[K]): Promise<void>
+  deleteRow(table: RowTable, id: string): Promise<void>
   /** IA do Gerente: manda o pedido e espera a proposta (servidor: a ponte no PC roda o Claude) */
   askAI(prompt: string, ctx: AiContext, onStage: (s: AiStage) => void, signal: AbortSignal): Promise<AiProposal>
   /** a ponte do PC deu sinal de vida há pouco? */

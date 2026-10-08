@@ -1,6 +1,6 @@
 import { createClient, type RealtimeChannel, type SupabaseClient } from '@supabase/supabase-js'
 import { slugUser, toEmail } from './login'
-import type { AccountEdit, AiContext, AiProposal, AiStage, Backend, Handlers, Message, Pos, Profile, Project, Snapshot, Task, TaskNote } from '../types'
+import type { RowTable, Rows, AccountEdit, AiContext, AiProposal, AiStage, Backend, Handlers, Message, Pos, Profile, Project, Snapshot, Task, TaskNote } from '../types'
 
 function pt(e: { message: string }): Error {
   const m = e.message
@@ -60,13 +60,17 @@ export class SupabaseBackend implements Backend {
       this.sb.from('task_notes').select('*').order('created_at').limit(3000),
       this.sb.from('projects').select('*').order('created_at'),
     ])
+    const tables: RowTable[] = ['events', 'goals', 'stickers', 'flows']
+    const extra = await Promise.all(tables.map(k => this.sb.from(k).select('*').order('created_at')))
+    // tabelas da v4: antes da migração não existem, o escritório abre sem elas
+    const rows = Object.fromEntries(tables.map((k, i) => [k, extra[i].error ? [] : extra[i].data])) as Snapshot['rows']
     const err = p.error ?? t.error ?? m.error
     if (err) throw pt(err)
     // task_notes só existe depois do SQL v3; sem ela o escritório abre igual
     const notes = n.error ? [] : (n.data as TaskNote[])
     // projects só existe depois do SQL v7
     const projects = pj.error ? [] : (pj.data as Project[])
-    return { profiles: p.data as Profile[], tasks: t.data as Task[], messages: (m.data as Message[]).reverse(), notes, projects }
+    return { profiles: p.data as Profile[], tasks: t.data as Task[], messages: (m.data as Message[]).reverse(), notes, projects, rows }
   }
 
   async upsertProfile(p: Profile) {
@@ -127,6 +131,16 @@ export class SupabaseBackend implements Backend {
 
   async upsertProject(p: Project) {
     const { error } = await this.sb.from('projects').upsert(p)
+    if (error) throw pt(error)
+  }
+
+  async upsertRow<K extends RowTable>(table: K, r: Rows[K]) {
+    const { error } = await this.sb.from(table).upsert(r)
+    if (error) throw pt(error)
+  }
+
+  async deleteRow(table: RowTable, id: string) {
+    const { error } = await this.sb.from(table).delete().eq('id', id)
     if (error) throw pt(error)
   }
 
@@ -224,7 +238,12 @@ export class SupabaseBackend implements Backend {
         if (pl.eventType === 'DELETE') h.projectDeleted((pl.old as { id: string }).id)
         else h.project(pl.new as Project)
       })
-      .subscribe()
+    for (const k of ['events', 'goals', 'stickers', 'flows'] as RowTable[])
+      db.on('postgres_changes', { event: '*', schema: 'public', table: k }, pl => {
+        if (pl.eventType === 'DELETE') h.rowDeleted(k, (pl.old as { id: string }).id)
+        else h.row(k, pl.new as Rows[typeof k])
+      })
+    db.subscribe()
 
     const office = this.sb.channel('office', { config: { presence: { key: userId }, broadcast: { self: false } } })
     office

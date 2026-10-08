@@ -4,7 +4,8 @@ import {
   acceptRequest, addNote, approverOf, attachFiles, canApprove, canEditTask, canMove, canReassign, declineRequest, reassign, fileUrl, removeAttachment, removeNote, removeTask, run,
   setCriteria, setProject, setStatus, setUi, updateTask, useStore,
 } from '../store'
-import type { Attachment, CheckItem, Priority, Task } from '../types'
+import type { Attachment, Channel, CheckItem, Priority, Task } from '../types'
+import { CHANNEL_KEYS, CHANNELS } from './v4'
 import MiniAvatar from './MiniAvatar'
 import { ReviewBox, ReviewHistory } from './Revisao'
 
@@ -194,6 +195,17 @@ export default function TaskDetail() {
             <label className="grow">Lembrete
               <input type="datetime-local" value={localDT(t.remind_at)} disabled={!edit} onChange={e => run(updateTask(t.id, { remind_at: e.target.value ? new Date(e.target.value).toISOString() : null }))} />
             </label>
+          </div>
+          <div className="row gap wrap">
+            <label className="grow">Canal (post)
+              <select value={t.channel ?? ''} disabled={!edit} onChange={e => run(updateTask(t.id, { channel: (e.target.value || null) as Channel | null, ...(!e.target.value ? { publish_at: null } : {}) }))}>
+                <option value="">Não é post</option>
+                {CHANNEL_KEYS.map(c => <option key={c} value={c}>{CHANNELS[c].label}</option>)}
+              </select>
+            </label>
+            {t.channel && <label className="grow">Publicar em
+              <input type="datetime-local" value={localDT(t.publish_at)} disabled={!edit} onChange={e => run(updateTask(t.id, { publish_at: e.target.value ? new Date(e.target.value).toISOString() : null }))} />
+            </label>}
           </div>
 
           <div className="field">

@@ -3,14 +3,13 @@ import { backend } from './data'
 import { canAssign, isChief, rankName, rankOf } from './game/ranks'
 import { dayKey, taskXp } from './game/xp'
 import { MAX_DESKS } from './office/world'
-import type { AccountEdit, AiContext, AiItem, AiProposal, AiStage, Attachment, Avatar, Message, Pos, Profile, Project, Review, Task, TaskNote, TaskStatus } from './types'
+import type { RowTable, Rows, Sticker, AccountEdit, AiContext, AiItem, AiProposal, AiStage, Attachment, Avatar, Message, Pos, Profile, Project, Review, Task, TaskNote, TaskStatus } from './types'
 
 export type Phase = 'loading' | 'auth' | 'creator' | 'office'
 export type Tab = 'mesa' | 'aprovar' | 'avisos' | 'equipe' | 'chat' | 'geral'
-export type DeskView = 'pasta' | 'pc'
 /** quadro = trabalho do dia a dia (estilo Trello); escritório = visualização em pixel */
-export type View = 'quadro' | 'escritorio'
-export interface Go { tab?: Tab; viewing?: string; channel?: string; desk?: string; deskView?: DeskView; task?: string }
+export type View = 'quadro' | 'escritorio' | 'agenda' | 'metas' | 'fluxos' | 'inicio'
+export interface Go { tab?: Tab; viewing?: string; channel?: string; task?: string }
 export interface Notice { id: string; text: string; at: number; from?: string; go?: Go }
 
 export interface State {
@@ -24,15 +23,14 @@ export interface State {
   /** fio de comentários de todas as tarefas */
   notes: TaskNote[]
   projects: Record<string, Project>
+  /** agenda, metas, adesivos, fluxos */
+  rows: { [K in RowTable]: Record<string, Rows[K]> }
   online: Set<string>
   tab: Tab
   viewing: string | null
   channel: string
   reads: Record<string, string>
   requestTo: string | null
-  /** mesa aberta em tela cheia (id do dono) */
-  desk: string | null
-  deskView: DeskView
   /** tarefa aberta nos detalhes */
   task: string | null
   editing: boolean
@@ -53,13 +51,19 @@ export interface State {
   bellOpen: boolean
   /** quadro filtrado só no que espera minha aprovação */
   qApprove: boolean
+  /** fluxo aberto na tela Fluxos */
+  flow: string | null
+  /** criar tarefa em folha (celular / botão Nova tarefa) */
+  sheet: boolean
+  /** colar adesivo: id de quem recebe ('' = escolher) ou null */
+  stickTo: string | null
 }
 
 
 const initial: State = {
-  phase: 'loading', meId: null, accountName: '', error: '', profiles: {}, tasks: {}, messages: [], notes: [], projects: {}, online: new Set(),
-  tab: 'mesa', viewing: null, channel: 'geral', reads: {}, requestTo: null, desk: null, deskView: 'pasta', task: null, editing: false, notices: [], pipOpen: false, view: 'quadro' as View, drawer: false,
-  project: '', projectEdit: null, aiOpen: false, chatOpen: false, bellOpen: false, qApprove: false,
+  phase: 'loading', meId: null, accountName: '', error: '', profiles: {}, tasks: {}, messages: [], notes: [], projects: {}, rows: { events: {}, goals: {}, stickers: {}, flows: {} }, online: new Set(),
+  tab: 'mesa', viewing: null, channel: 'geral', reads: {}, requestTo: null, task: null, editing: false, notices: [], pipOpen: false, view: 'quadro' as View, drawer: false,
+  project: '', projectEdit: null, aiOpen: false, chatOpen: false, bellOpen: false, qApprove: false, flow: null, sheet: false, stickTo: null,
 }
 
 let state = initial
@@ -89,6 +93,7 @@ const norm = (t: Task): Task => ({
   ...t, start: t.start ?? null, collaborators: t.collaborators ?? [], attachments: t.attachments ?? [],
   project_id: t.project_id ?? null, criteria: t.criteria ?? [], reviews: t.reviews ?? [],
   priority: t.priority ?? null, checklist: t.checklist ?? [], remind_at: t.remind_at ?? null,
+  channel: t.channel ?? null, publish_at: t.publish_at ?? null,
 })
 export const involved = (t: Task, uid: string) => t.owner_id === uid || t.created_by === uid || t.collaborators.includes(uid)
 /** Mexe nos detalhes: dono, autor, colaborador, cargo acima do dono ou Chefe. */
@@ -176,13 +181,13 @@ function onTask(raw: Task) {
   const my = state.meId
   if (!my) return
   if (!prev && t.owner_id === my && t.created_by !== my) {
-    if (t.status === 'inbox') notify(`${nameOf(t.created_by)} te pediu: “${t.title}”`, { from: t.created_by, go: { desk: my, deskView: 'pc' } })
-    else notify(`${nameOf(t.created_by)} colocou na sua pasta: “${t.title}”`, { from: t.created_by, go: { desk: my, deskView: 'pasta' } })
+    if (t.status === 'inbox') notify(`${nameOf(t.created_by)} te pediu: “${t.title}”`, { from: t.created_by, go: { task: t.id } })
+    else notify(`${nameOf(t.created_by)} colocou na sua pasta: “${t.title}”`, { from: t.created_by, go: { task: t.id } })
   }
   if (t.collaborators.includes(my) && !prev?.collaborators.includes(my) && t.owner_id !== my)
     notify(`${nameOf(t.owner_id)} te chamou para colaborar: “${t.title}” 🤝`, { from: t.owner_id, go: { task: t.id } })
   if (t.created_by === my && t.owner_id !== my && t.status !== prev?.status) {
-    const who = nameOf(t.owner_id), go: Go = { desk: my, deskView: 'pc' }
+    const who = nameOf(t.owner_id), go: Go = { task: t.id }
     if (t.status === 'done') notify(`${who} concluiu seu pedido: “${t.title}” ✅`, { from: t.owner_id, go })
     else if (t.status === 'declined') notify(`${who} recusou seu pedido: “${t.title}”`, { from: t.owner_id, go })
     else if (prev?.status === 'inbox' && t.status === 'todo') notify(`${who} aceitou seu pedido: “${t.title}”`, { from: t.owner_id, go })
@@ -198,6 +203,32 @@ function onTask(raw: Task) {
     notify(r.ok ? `✅ ${dono} foi aprovada por ${nameOf(r.by)}: “${t.title}” (${proj})`
       : `❌ ${dono} foi reprovada por ${nameOf(r.by)}: “${t.title}” (${proj}) — ${r.reason.slice(0, 90)}`, { from: r.by, go: { task: t.id } })
   }
+}
+
+function onRow<K extends RowTable>(k: K, r: Rows[K]) {
+  const prev = state.rows[k][r.id]
+  set({ rows: { ...state.rows, [k]: { ...state.rows[k], [r.id]: r } } })
+  if (k === 'stickers' && !prev) {
+    const st = r as Sticker
+    if (st.to_id === state.meId && st.by_id !== state.meId) notify(`${nameOf(st.by_id)} colou um adesivo na sua tela: “${st.text}”`, { from: st.by_id })
+  }
+}
+
+function onRowDeleted(k: RowTable, id: string) {
+  const next = { ...state.rows[k] }
+  delete next[id]
+  set({ rows: { ...state.rows, [k]: next } })
+}
+
+/** grava e já mostra (o realtime confirma depois) */
+export async function putRow<K extends RowTable>(k: K, r: Rows[K]) {
+  onRow(k, r)
+  await backend.upsertRow(k, r)
+}
+
+export async function dropRow(k: RowTable, id: string) {
+  onRowDeleted(k, id)
+  await backend.deleteRow(k, id)
 }
 
 function onProject(p: Project) {
@@ -294,6 +325,12 @@ export async function enter(uid: string) {
     tasks: Object.fromEntries(snap.tasks.map(t => [t.id, norm(t)])),
     notes: snap.notes,
     projects: Object.fromEntries((snap.projects ?? []).map(p => [p.id, { ...p, criteria: p.criteria ?? [] }])),
+    rows: {
+      events: Object.fromEntries((snap.rows?.events ?? []).map(r => [r.id, r])),
+      goals: Object.fromEntries((snap.rows?.goals ?? []).map(r => [r.id, r])),
+      stickers: Object.fromEntries((snap.rows?.stickers ?? []).map(r => [r.id, r])),
+      flows: Object.fromEntries((snap.rows?.flows ?? []).map(r => [r.id, r])),
+    },
     messages: snap.messages.filter(m => isMyChannel(m.channel, uid)),
     phase: mine?.avatar ? 'office' : 'creator',
     viewing: uid,
@@ -304,7 +341,7 @@ export async function enter(uid: string) {
   disconnect?.()
   disconnect = backend.connect(uid, {
     profile: onProfile, profileDeleted: onProfileDeleted, task: onTask, taskDeleted: onTaskDeleted, message: onMessage, note: onNote, noteDeleted: onNoteDeleted,
-    project: onProject, projectDeleted: onProjectDeleted,
+    project: onProject, projectDeleted: onProjectDeleted, row: onRow, rowDeleted: onRowDeleted,
     pos: (id, p) => positions.set(id, p),
     online: ids => {
       const next = new Set(ids)
@@ -322,7 +359,7 @@ export async function signOut() {
   set({ ...initial, phase: 'auth' })
 }
 
-export function setUi(p: Partial<Pick<State, 'tab' | 'viewing' | 'channel' | 'requestTo' | 'editing' | 'pipOpen' | 'error' | 'desk' | 'deskView' | 'task' | 'view' | 'drawer' | 'project' | 'projectEdit' | 'aiOpen' | 'chatOpen' | 'bellOpen' | 'qApprove'>>) {
+export function setUi(p: Partial<Pick<State, 'tab' | 'viewing' | 'channel' | 'requestTo' | 'editing' | 'pipOpen' | 'error' | 'task' | 'view' | 'drawer' | 'project' | 'projectEdit' | 'aiOpen' | 'chatOpen' | 'bellOpen' | 'qApprove' | 'flow' | 'sheet' | 'stickTo'>>) {
   // chat, avisos e aprovação não são mais páginas: viram painel flutuante, sino e filtro do quadro
   if (p.tab === 'chat') { const { tab: _, ...rest } = p; p = { ...rest, chatOpen: true } }
   else if (p.tab === 'avisos') { const { tab: _, ...rest } = p; p = { ...rest, bellOpen: true } }
@@ -376,7 +413,7 @@ async function putTask(t: Task) {
  * Na própria pasta ou de quem tem cargo menor: entra direto (na etapa pedida).
  * Senão (ou se `status` = 'inbox') vira pedido para a pessoa aceitar.
  */
-export async function addTask(owner: string, title: string, due: string | null = null, notes = '', status: TaskStatus = 'todo', project: string | null = null, extra: Pick<Partial<Task>, 'priority' | 'remind_at'> = {}) {
+export async function addTask(owner: string, title: string, due: string | null = null, notes = '', status: TaskStatus = 'todo', project: string | null = null, extra: Pick<Partial<Task>, 'priority' | 'remind_at' | 'channel' | 'publish_at' | 'notes'> = {}) {
   const direct = canAssign(me(), state.profiles[owner])
   if (status === 'review' || status === 'done') status = 'todo' // entrega passa pela etapa certa
   const t: Task = {
@@ -384,6 +421,7 @@ export async function addTask(owner: string, title: string, due: string | null =
     start: null, due, collaborators: [], attachments: [], position: Date.now(), created_at: new Date().toISOString(),
     done_at: null, project_id: project || null, criteria: [], reviews: [],
     priority: extra.priority ?? null, checklist: [], remind_at: extra.remind_at ?? null,
+    channel: extra.channel ?? null, publish_at: extra.publish_at ?? null,
   }
   await putTask(t)
   return t
@@ -580,7 +618,7 @@ export async function removeTask(id: string) {
   await Promise.allSettled(t.attachments.map(a => backend.deleteFile(a.path)))
 }
 
-type Details = Partial<Pick<Task, 'title' | 'notes' | 'start' | 'due' | 'collaborators' | 'priority' | 'checklist' | 'remind_at'>>
+type Details = Partial<Pick<Task, 'title' | 'notes' | 'start' | 'due' | 'collaborators' | 'priority' | 'checklist' | 'remind_at' | 'channel' | 'publish_at'>>
 export async function updateTask(id: string, patch: Details) {
   const t = state.tasks[id]
   if (!t) return

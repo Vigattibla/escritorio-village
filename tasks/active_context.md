@@ -9,7 +9,10 @@
 - 07/10: crnk.me agora é Vercel; CNAME do user site removido → app em https://vigattibla.github.io/escritorio-village/ (testado, modo real).
 - 07/10: SQL v2+v3 rodado no Supabase (conferido via REST); Site URL + Redirect = github.io. Conta atual mantida (mais antiga vira Chefe).
 
+- 07/10 (v4): F0+F1 feitos e commitados local (68f8a6b), NÃO publicados: barra preta Phosphor (bottom tabbar no celular), paleta quente, cartão com prioridade/checklist/rostos/contadores (hot = vence hoje, dark = você aprova), criar tarefa estilo Trello (título + ícones quem faz/prioridade/prazo/lembrete → etiquetas), TaskDetail edita prioridade/lembrete/checklist, lembretes client-side a cada 20s (ev:lembretes:uid), PWA instalável (manifest + ícones, sem service worker). Migração 202610072359_tarefas_f1.sql.
+
 ## Próximo
+0. Usuário aprovar e push (migrate aplica a migração F1). Depois: F2+ do mockup v4.
 1. Decidir Auth: confirmar e-mail (hoje ligado) e Site URL (padrão localhost:3000 → trocar). Testar com 2 contas reais.
 2. Rodar v2+v3 SQL (sem v3, salvar tarefa quebra: colunas start/collaborators/attachments); Site URL + Redirect = URL do Pages; usuário apaga a própria conta e recria (vira Chefe).
 3. Depois: IA, reuniões, sons, mais mapas/decoração.
@@ -82,3 +85,10 @@
 - Datas corrigidas: Qua 7 / Qui 8 out; semana 5–11.
 - Ajustes 07/10 (noite): sala refeita em world.ts (assoalho em tábuas, parede alta com janelas/quadros/relógio, sombras, contorno 1px, estante e plantas encostadas na parede, cadeira do chefe vinho); balão do filme agora é pixel art no canvas (ícones 9x8 em v4_parts.py, some ao andar); pílulas do calendário ocupam a célula com reticências; chat da equipe no painel lateral + botão de chat no celular.
 - Decidido 07/10: barra lateral PRETA. Próximo: F0+F1 no app.
+
+## 07/10 (17) — mockup v4 inteiro no app (local, aguardando "sobe")
+- DeskView removido. Menu: Quadro · Agenda · Metas · Fluxos · Escritório · Equipe (+ Geral p/ chefe).
+- Quadro: "Escritório agora" em filme + coluna Seu dia / Meta / Chat. Adesivos (rank ≥ 2, botão na Equipe).
+- Agenda mês/semana/lista com posts (channel + publish_at), Metas com "Meta batida!", Fluxos em canvas.
+- Celular: Início + barra de baixo (Início, Agenda, +, Metas, Escritório) + folha "Nova tarefa".
+- CSS novo em src/v4.css (depois do index.css). Push exige rodar migration 202610080900_v4_agenda_metas.sql.

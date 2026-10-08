@@ -272,56 +272,14 @@ legend { font-size: 12px; font-weight: 700; color: var(--navy); padding: 0 4px; 
   .board-head { flex-wrap: wrap; }
 }
 
-/* mesa aberta */
-.desk-modal { width: 100%; max-width: 720px; max-height: calc(100vh - 32px); display: flex; flex-direction: column; background: #fff; border-radius: 16px; overflow: hidden; box-shadow: 0 20px 60px rgba(0, 0, 0, .3); animation: pop .2s ease-out; }
-.desk-top { display: flex; gap: 12px; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--line); }
-.desk-top h2 { margin: 0; font-family: 'Pixelify Sans', system-ui, sans-serif; font-size: 20px; color: var(--navy); }
-.desk-top .mini-av { background: #f1f2f6; border-radius: 10px; flex: none; }
-.desk-top .on { color: var(--green); font-weight: 600; }
-.desk-top .off { color: var(--muted); }
-.desk-scene { position: relative; flex: none; aspect-ratio: 200 / 72; background: #e9e4d8; }
-.desk-scene canvas { width: 100%; height: 100%; display: block; image-rendering: pixelated; }
-.desk-scene .hot { position: absolute; border: 0; background: transparent; padding: 0; cursor: pointer; display: flex; align-items: flex-end; justify-content: center; }
-.desk-scene .hot.pc { left: 26%; top: 2%; width: 33%; height: 80%; }
-.desk-scene .hot.pasta { left: 62%; top: 30%; width: 23%; height: 48%; }
-.desk-scene .hot span { transform: translateY(70%); background: var(--navy); color: #fff; font-size: 12px; font-weight: 700; padding: 4px 9px; border-radius: 8px; white-space: nowrap; box-shadow: 0 3px 0 rgba(0, 0, 0, .2); transition: transform .15s; }
-.desk-scene .hot.on span { background: var(--yellow); color: var(--navy); }
-.desk-scene .hot:hover span { transform: translateY(60%); }
-.desk-scene .hot .count { color: inherit; opacity: .8; }
-.desk-body { flex: 1; min-height: 0; overflow: auto; padding-top: 14px; }
-.desk-body .board { padding-top: 4px; }
-.pc-screen { margin: 4px 16px 16px; border: 3px solid var(--navy); border-radius: 12px; overflow: hidden; background: #f6f7fb; }
-.pc-bar { display: flex; gap: 5px; align-items: center; background: var(--navy); color: #fff; padding: 6px 10px; font-family: 'Pixelify Sans', system-ui, sans-serif; font-size: 14px; }
-.pc-bar i { width: 9px; height: 9px; border-radius: 2px; background: var(--yellow); }
-.pc-bar i:nth-child(2) { background: #8ecbf5; } .pc-bar i:nth-child(3) { background: #e5483a; }
-.pc-bar span { margin-left: 6px; }
-.pc-body { padding: 12px; display: grid; gap: 16px; }
-.pc-body h3 { margin: 0 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--navy); }
-.pc-body section { display: grid; gap: 6px; }
-.pc-body section > h3 { margin-bottom: 2px; }
-.mail { display: flex; gap: 10px; align-items: center; background: #fff; border: 1px solid var(--line); border-left: 4px solid var(--yellow); border-radius: 10px; padding: 9px 11px; }
-.mail .mini-av { background: #f1f2f6; border-radius: 8px; flex: none; }
-.mail p { margin: 3px 0 0; color: var(--muted); white-space: pre-wrap; }
-.mail.sent { border-left-color: var(--line); }
-.mail.sent.done { border-left-color: var(--green); }
-.mail.sent.declined { border-left-color: var(--red); opacity: .75; }
-.mail .col { flex: none; }
+/* etapa (chips) */
 .chip.st.inbox { background: #fff4d6; color: #8a6200; }
 .chip.st.todo, .chip.st.doing { background: #e3ecff; color: var(--navy); }
 .chip.st.done { background: #dff5e7; color: #1d7a45; }
 .chip.st.declined { background: #fde4e1; color: var(--red); }
-.pc-form { display: grid; gap: 8px; background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
-.pc-form h3, .pc-form p { margin: 0; }
-.pc-form .btn { justify-self: start; }
 .icon { border: 0; background: none; padding: 4px; border-radius: 6px; cursor: pointer; flex: none; }
 .icon:hover { background: #eef0f6; }
 .rank-sel { font-size: 12px; padding: 3px 6px; border-radius: 6px; }
-@media (max-width: 640px) {
-  .desk-modal { max-height: 100vh; border-radius: 0; }
-  .modal-bg:has(.desk-modal) { padding: 0; }
-  .desk-scene .hot span { font-size: 10px; padding: 3px 6px; }
-  .mail { flex-wrap: wrap; }
-}
 
 /* ---------- detalhes da tarefa ---------- */
 .card .open { cursor: pointer; }

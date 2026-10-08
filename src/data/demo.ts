@@ -1,11 +1,11 @@
 import { toEmail, validUser } from './login'
-import type { AccountEdit, AiContext, AiProposal, AiStage, Avatar, Backend, Handlers, Message, Pos, Profile, Project, Snapshot, Task, TaskNote } from '../types'
+import type { RowTable, Rows, AccountEdit, AiContext, AiProposal, AiStage, Avatar, Backend, Handlers, Message, Pos, Profile, Project, Snapshot, Task, TaskNote } from '../types'
 
 // Modo demonstração: tudo no localStorage deste navegador. Abas diferentes = pessoas diferentes
 // (a sessão fica no sessionStorage), sincronizadas por BroadcastChannel.
 
 interface Account { id: string; email: string; hash: string; name: string }
-const K = { acc: 'ev:accounts', prof: 'ev:profiles', task: 'ev:tasks', msg: 'ev:messages', note: 'ev:notes', proj: 'ev:projects', file: 'ev:file:', seeded: 'ev:seeded', session: 'ev:session' }
+const K = { acc: 'ev:accounts', prof: 'ev:profiles', task: 'ev:tasks', msg: 'ev:messages', note: 'ev:notes', proj: 'ev:projects', file: 'ev:file:', seeded: 'ev:seeded', row: 'ev:row:', session: 'ev:session' }
 
 function read<T>(k: string, fb: T): T {
   try { const v = localStorage.getItem(k); return v ? (JSON.parse(v) as T) : fb } catch { return fb }
@@ -27,6 +27,8 @@ type Wire =
   | { t: 'noteDel'; id: string }
   | { t: 'project'; p: Project }
   | { t: 'projectDel'; id: string }
+  | { t: 'row'; k: RowTable; r: Rows[RowTable] }
+  | { t: 'rowDel'; k: RowTable; id: string }
   | { t: 'pos'; id: string; p: Pos }
   | { t: 'hello'; id: string; p: Pos | null }
   | { t: 'bye'; id: string }
@@ -76,6 +78,12 @@ export class DemoBackend implements Backend {
       messages: read<Message[]>(K.msg, []),
       notes: read<TaskNote[]>(K.note, []),
       projects: Object.values(read<Record<string, Project>>(K.proj, {})),
+      rows: {
+        events: Object.values(read<Record<string, Rows['events']>>(K.row + 'events', {})),
+        goals: Object.values(read<Record<string, Rows['goals']>>(K.row + 'goals', {})),
+        stickers: Object.values(read<Record<string, Rows['stickers']>>(K.row + 'stickers', {})),
+        flows: Object.values(read<Record<string, Rows['flows']>>(K.row + 'flows', {})),
+      },
     }
   }
 
@@ -277,6 +285,20 @@ export class DemoBackend implements Backend {
 
   async aiOnline() { return true }
 
+  async upsertRow<K extends RowTable>(k: K, r: Rows[K]) {
+    const all = read<Record<string, Rows[K]>>(K.row + k, {})
+    all[r.id] = r
+    write(K.row + k, all)
+    this.post({ t: 'row', k, r })
+  }
+
+  async deleteRow(k: RowTable, id: string) {
+    const all = read<Record<string, unknown>>(K.row + k, {})
+    delete all[id]
+    write(K.row + k, all)
+    this.post({ t: 'rowDel', k, id })
+  }
+
   async deleteProject(id: string) {
     const all = read<Record<string, Project>>(K.proj, {})
     delete all[id]
@@ -306,6 +328,8 @@ export class DemoBackend implements Backend {
         case 'noteDel': h.noteDeleted(w.id); break
         case 'project': h.project(w.p); break
         case 'projectDel': h.projectDeleted(w.id); break
+        case 'row': h.row(w.k, w.r); break
+        case 'rowDel': h.rowDeleted(w.k, w.id); break
         case 'pos': seen.set(w.id, Date.now()); h.pos(w.id, w.p); break
         case 'hello': {
           const novo = !seen.has(w.id)
@@ -359,7 +383,7 @@ function seed() {
   const task = (owner: string, title: string, status: Task['status'], minAgo: number, by = owner, project_id: string | null = null): Task => ({
     id: crypto.randomUUID(), owner_id: owner, created_by: by, title, notes: '', status, start: null, due: null, collaborators: [], attachments: [], position: minAgo,
     created_at: iso(minAgo), done_at: status === 'done' ? iso(Math.max(1, minAgo - 30)) : null, project_id, criteria: [], reviews: [],
-    priority: null, checklist: [], remind_at: null,
+    priority: null, checklist: [], remind_at: null, channel: null, publish_at: null,
   })
   const tasks = [
     { ...task('demo-ana', 'Confirmar reservas do fim de semana', 'doing', 120), notes: 'Ligar para quem ainda não pagou o sinal. Conferir chalés 3 e 7.', collaborators: ['demo-carla'], priority: 'alta', due: dayAhead(0),
@@ -374,6 +398,39 @@ function seed() {
     { ...task('demo-carla', 'Checklist do evento de sábado', 'todo', 80), priority: 'media', due: dayAhead(-1), checklist: [{ id: crypto.randomUUID(), text: 'Som', done: true }, { id: crypto.randomUUID(), text: 'Mesas', done: false }, { id: crypto.randomUUID(), text: 'Decoração', done: false }] },
     { ...task('demo-carla', 'Orçamento da decoração', 'doing', 60), notes: 'Três orçamentos: flores, balões e iluminação.', collaborators: ['demo-bruno'], due: dayAhead(2) },
   ]
+  // posts da agenda: tarefa com canal e horário
+  const at = (d: number, h: number) => { const x = new Date(now); x.setDate(x.getDate() + d); x.setHours(h, 0, 0, 0); return x.toISOString() }
+  const post = (owner: string, title: string, status: Task['status'], channel: Task['channel'], d: number, h: number): Task =>
+    ({ ...task(owner, title, status, 400 - d, 'demo-carla'), channel, publish_at: at(d, h), due: dayAhead(d) })
+  tasks.push(
+    post('demo-bruno', 'Reels · Semana das Crianças', 'review', 'reels', 0, 16),
+    post('demo-ana', 'Feed · Promo Day Use', 'todo', 'feed', 1, 12),
+    post('demo-bruno', 'Stories · Café da manhã', 'todo', 'stories', 3, 9),
+    post('demo-bruno', 'Facebook · Pacote Réveillon', 'todo', 'facebook', 6, 10),
+    post('demo-ana', 'Site · Página Casa de Campo', 'doing', 'site', 9, 14),
+    ...[-6, -5, -3, -2, -1].map((d, i) => ({ ...post(i % 2 ? 'demo-ana' : 'demo-bruno', ['Feed · Tour pela piscina', 'Stories · Bom dia', 'Reels · Oficina de pipa', 'Feed · Depoimento', 'Stories · Pôr do sol'][i], 'done', i % 2 ? 'stories' : 'feed', d, 10), done_at: at(d, 11) })),
+  )
+  const month = now.toISOString().slice(0, 7)
+  const rows = {
+    events: [
+      { id: crypto.randomUUID(), title: 'Feriado · Dia das Crianças', day: dayAhead(5), time: null, created_by: 'demo-carla', created_at: iso(500) },
+      { id: crypto.randomUUID(), title: 'Reunião de pauta', day: dayAhead(2), time: '09:00', created_by: 'demo-carla', created_at: iso(500) },
+    ],
+    goals: [{ id: crypto.randomUUID(), title: 'Publicar 12 posts', target: 12, metric: 'posts', month, reward: 'Almoço da equipe no restaurante', value: 0, created_by: 'demo-carla', created_at: iso(600) }],
+    stickers: sessionStorage.getItem(K.session)
+      ? [{ id: crypto.randomUUID(), to_id: sessionStorage.getItem(K.session)!, by_id: 'demo-carla', kind: 'mandou-bem', text: 'Mandou bem no Reels!', x: 0.72, y: 0.78, created_at: iso(20) }]
+      : [],
+    flows: [{
+      id: crypto.randomUUID(), name: 'Campanha de Natal 2026', objective: 'Vender 30 pacotes de Natal até 15/12', created_by: 'demo-carla', created_at: iso(300),
+      nodes: [
+        { id: 'n1', title: 'Briefing e oferta', owner: 'demo-carla', due: dayAhead(6), x: 260, y: 200, after: [], task_id: null },
+        { id: 'n2', title: 'Fotos da ceia', owner: 'demo-bruno', due: dayAhead(13), x: 540, y: 90, after: ['n1'], task_id: null },
+        { id: 'n3', title: 'Arte + texto do post', owner: 'demo-ana', due: dayAhead(17), x: 540, y: 320, after: ['n1'], task_id: null },
+        { id: 'n4', title: 'Publicar Feed + Stories', owner: null, due: null, x: 820, y: 200, after: ['n2', 'n3'], task_id: null },
+      ],
+    }],
+  }
+  for (const [k, list] of Object.entries(rows)) write(K.row + k, Object.fromEntries(list.map(r => [r.id, r])))
   const notes: TaskNote[] = [
     { id: crypto.randomUUID(), task_id: tasks[0].id, author_id: 'demo-carla', body: 'O chalé 7 confirmou por WhatsApp agora há pouco.', created_at: iso(50) },
   ]

@@ -57,7 +57,6 @@ export default function Board({ ownerId, bare = false }: { ownerId?: string; bar
             {!mine && <> · <span className={online.has(owner.id) ? 'on' : 'off'}>{online.has(owner.id) ? 'no escritório' : 'fora'}</span></>}
           </div>
         </div>
-        <button className="icon-btn" onClick={() => setUi({ desk: owner.id, deskView: 'pasta' })} title="Abrir a mesa (pasta e computador)"><Icon n="folder" /></button>
         {!mine && <button className="icon-btn" onClick={() => setUi({ chatOpen: true, channel: dmChannel(meId, owner.id) })} title={`Mensagem para ${owner.name}`}><Icon n="chat" /></button>}
         {!mine && !assign && <button className="icon-btn" onClick={() => setUi({ requestTo: owner.id })} title="Pedir algo"><Icon n="send" /></button>}
       </header>}

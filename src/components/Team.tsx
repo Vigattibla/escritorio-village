@@ -2,6 +2,7 @@ import { RANKS, rankName, ranksFor } from '../game/ranks'
 import { dmChannel, run, setRank, setUi, useStore } from '../store'
 import Accounts from './Accounts'
 import MiniAvatar from './MiniAvatar'
+import { canStick } from './Stickers'
 
 export default function Team() {
   const meId = useStore(s => s.meId)!
@@ -40,9 +41,10 @@ export default function Team() {
               <div className="doing">{doing ? <>Fazendo: {doing.title}</> : <span className="muted">Sem tarefa em andamento</span>}</div>
             </div>
             <div className="col">
-              <button className="btn ghost sm" onClick={() => setUi({ desk: p.id, deskView: 'pasta', viewing: p.id })}>Mesa</button>
+              <button className="btn ghost sm" onClick={() => setUi({ view: 'escritorio', drawer: false, viewing: p.id })}>Tarefas</button>
               {p.id !== meId && <button className="btn ghost sm" onClick={() => setUi({ tab: 'chat', channel: dmChannel(meId, p.id) })}>Mensagem</button>}
-              {p.id !== meId && <button className="btn ghost sm" onClick={() => setUi({ desk: p.id, deskView: 'pc', viewing: p.id })}>Pedir</button>}
+              {p.id !== meId && <button className="btn ghost sm" onClick={() => setUi({ requestTo: p.id })}>Pedir</button>}
+              {p.id !== meId && canStick() && <button className="btn ghost sm" onClick={() => setUi({ stickTo: p.id })}>Colar adesivo</button>}
             </div>
           </div>
         )

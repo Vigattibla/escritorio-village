@@ -9,6 +9,8 @@ import type { Priority, Profile, Project, Task, TaskStatus } from '../types'
 import { Bell } from './Avisos'
 import Icon, { Ph } from './Icon'
 import MiniAvatar from './MiniAvatar'
+import Side, { Live } from './Side'
+import { currentGoal, goalProgress } from './v4'
 
 type Group = 'etapa' | 'raias' | 'pessoa'
 type Due = '' | 'late' | 'today' | 'week' | 'none'
@@ -60,6 +62,7 @@ export default function Quadro() {
   const meId = useStore(s => s.meId)!
   const profiles = useStore(s => s.profiles)
   const tasksMap = useStore(s => s.tasks)
+  const goalsMap = useStore(s => s.rows.goals)
   const projects = useStore(s => s.projects)
   const project = useStore(s => s.project)
   const notes = useStore(s => s.notes)
@@ -134,6 +137,9 @@ export default function Quadro() {
   const open = inProj.filter(t => t.status !== 'done')
   const lateN = open.filter(t => t.due && t.due < today).length
   const weekDone = inProj.filter(t => t.status === 'done' && t.done_at && dayKey(t.done_at) >= since).length
+  const weekN = weekDone + open.filter(t => t.due && t.due <= week).length
+  const goal = currentGoal(Object.values(goalsMap))
+  const goalPct = goal ? goalProgress(goal, Object.values(tasksMap)).pct : null
   const sortFor = (st: TaskStatus) => (st === 'done' ? byDone : byPos)
   const lanePeople = people.filter(p => !who.length || who.includes(p.id))
   const personHead = (p: Profile, size = 28) => (
@@ -242,6 +248,7 @@ export default function Quadro() {
   }
 
   return (
+    <div className="qgrid">
     <div className="quadro">
       <div className="qbar">
         <label className="qsearch">
@@ -263,12 +270,13 @@ export default function Quadro() {
           <div className="sub"><Icon n="folder" size={14} />{proj ? 'Projeto' : project === NONE ? 'Sem projeto' : 'Todos os projetos'} · Semana {weekLabel()}</div>
         </div>
         <div className="stats">
-          <div className="stat"><small>Abertas</small><b>{open.length}</b></div>
+          <div className="stat"><small>Tarefas da semana</small><b>{weekN}</b></div>
           <div className="stat"><small>Para aprovar</small><b>{apprN}</b></div>
-          <div className={'stat' + (lateN ? ' warn' : '')}><small>Atrasadas</small><b>{lateN}</b></div>
-          <div className="stat"><small>Feitas · 7 dias</small><b>{weekDone}</b></div>
+          {lateN > 0 && <div className="stat warn"><small>Atrasadas</small><b>{lateN}</b></div>}
+          {goalPct !== null && <button className="stat" onClick={() => setUi({ view: 'metas' })}><small>Meta do mês</small><b>{goalPct}<span>%</span></b></button>}
         </div>
       </div>
+      {!proj && <Live />}
       <div className="qtabs">
         <div className="seg" role="tablist" aria-label="Visão">
           <button className={group === 'etapa' ? 'on' : ''} onClick={() => setGroup('etapa')} title="Colunas por etapa"><Ph n="kanban" size={18} fill={group === 'etapa'} />Etapas</button>
@@ -358,6 +366,8 @@ export default function Quadro() {
           )))}
         </div>
       )}
+    </div>
+    <Side />
     </div>
   )
 }

@@ -3,7 +3,6 @@ import Board from '../components/Board'
 import Chat from '../components/Chat'
 import Game from '../components/Game'
 import MiniAvatar from '../components/MiniAvatar'
-import DeskView from '../components/DeskView'
 import { Bell, Toast } from '../components/Avisos'
 import Icon, { Ph } from '../components/Icon'
 import type { PhName } from '../components/ph'
@@ -14,12 +13,19 @@ import Quadro from '../components/Quadro'
 import TaskDetail from '../components/TaskDetail'
 import RequestModal from '../components/RequestModal'
 import Team from '../components/Team'
+import Agenda from '../components/Agenda'
+import Metas, { CeleWatch } from '../components/Metas'
+import Fluxos from '../components/Fluxos'
+import Inicio from '../components/Inicio'
+import Sheet from '../components/Sheet'
+import { StickerLayer, StickerPicker } from '../components/Stickers'
 import Creator from './Creator'
 import { backend } from '../data'
 import { isChief, rankName } from '../game/ranks'
-import { setUi, signOut, unread, useStore, type Tab } from '../store'
+import { setUi, signOut, unread, useStore, type Tab, type View } from '../store'
 
-type Page = 'quadro' | 'escritorio' | Tab
+type Page = View | Tab
+const narrow = () => window.matchMedia('(max-width: 900px)').matches
 
 export default function Office() {
   const s = useStore(x => x)
@@ -32,6 +38,8 @@ export default function Office() {
     const n = pend + msgs
     document.title = n ? `(${n}) Escritório Village` : 'Escritório Village'
   }, [pend, msgs])
+  // no celular a porta de entrada é o Início
+  useEffect(() => { if (narrow() && s.view === 'quadro' && !s.drawer) setUi({ view: 'inicio' }) }, []) // eslint-disable-line react-hooks/exhaustive-deps
   if (!me) return null
 
   const chief = isChief(me)
@@ -39,18 +47,20 @@ export default function Office() {
   const people = Object.values(s.profiles).filter(p => p.avatar).sort((a, b) =>
     Number(b.id === me.id) - Number(a.id === me.id) || Number(s.online.has(b.id)) - Number(s.online.has(a.id)) || a.name.localeCompare(b.name))
   const office = s.view === 'escritorio'
-  const page: Page = office ? 'escritorio' : s.drawer ? s.tab : 'quadro'
+  const page: Page = s.view !== 'quadro' ? s.view : s.drawer ? s.tab : 'quadro'
   // minha mesa = filtro "Só minhas"; aprovação = coluna do quadro; avisos = sino; chat = botão flutuante
   const items: { id: Page; label: string; ic: PhName; n?: number; tip?: string }[] = [
     { id: 'quadro', label: 'Quadro', ic: 'kanban', n: pend, tip: pend ? `${pend} pedido(s) esperando você aceitar` : undefined },
+    { id: 'agenda', label: 'Agenda', ic: 'calendar-dots' },
+    { id: 'metas', label: 'Metas', ic: 'target' },
+    { id: 'fluxos', label: 'Fluxos', ic: 'flow-arrow' },
     { id: 'escritorio', label: 'Escritório', ic: 'desk' },
     { id: 'equipe', label: 'Equipe', ic: 'users-three' },
   ]
   if (chief) items.push({ id: 'geral', label: 'Geral', ic: 'squares-four', n: tasks.filter(t => t.status === 'inbox').length })
   const goTo = (id: Page) => {
-    if (id === 'quadro') setUi({ view: 'quadro', drawer: false })
-    else if (id === 'escritorio') setUi({ view: 'escritorio', drawer: false })
-    else setUi({ view: 'quadro', tab: id, drawer: true })
+    if (id === 'mesa' || id === 'aprovar' || id === 'avisos' || id === 'equipe' || id === 'chat' || id === 'geral') setUi({ view: 'quadro', tab: id, drawer: true })
+    else setUi({ view: id, drawer: false })
   }
   const pane = (tab: Tab) => <>
     {tab === 'mesa' && <Board />}
@@ -67,6 +77,17 @@ export default function Office() {
     )
   }
 
+  const tabs: { id: Page; label: string; ic: PhName }[] = [
+    { id: 'inicio', label: 'Início', ic: 'house' }, { id: 'agenda', label: 'Agenda', ic: 'calendar-dots' },
+    { id: 'metas', label: 'Metas', ic: 'target' }, { id: 'escritorio', label: 'Escritório', ic: 'desk' },
+  ]
+  const Tab = ({ it }: { it: (typeof tabs)[number] }) => (
+    <button className={page === it.id ? 'on' : ''} onClick={() => goTo(it.id)} aria-current={page === it.id ? 'page' : undefined}>
+      <Ph n={it.ic} size={24} fill={page === it.id} />{it.label}
+    </button>
+  )
+  const more = items.filter(i => i.id === 'quadro' || i.id === 'fluxos' || i.id === 'equipe' || i.id === 'geral')
+
   return (
     <div className="office">
       <aside className="nav">
@@ -82,15 +103,20 @@ export default function Office() {
         </div>
       </aside>
       <div className="page">
-        <div className="mbar">
+        {page !== 'inicio' && <div className="mbar">
           <b className="grow">{items.find(i => i.id === page)?.label ?? 'Escritório'}</b>
+          {more.filter(i => i.id !== page).map(i => <button key={i.id} className="icon-btn" onClick={() => goTo(i.id)} aria-label={i.label} title={i.label}><Ph n={i.ic} size={20} />{!!i.n && <i className="dot-n">{i.n > 9 ? '9+' : i.n}</i>}</button>)}
           <Bell />
           <button className="icon-btn" onClick={() => signOut()} aria-label="Sair" title="Sair"><Icon n="logout" size={18} /></button>
-        </div>
+        </div>}
         {s.error && <div className="banner" onClick={() => setUi({ error: '' })}>{s.error} <small>(clique para fechar)</small></div>}
-        {page !== 'quadro' && <div className="ptop"><h1 className="grow">{items.find(i => i.id === page)?.label}</h1><Bell /></div>}
+        {page !== 'quadro' && page !== 'agenda' && page !== 'metas' && page !== 'fluxos' && page !== 'inicio' && <div className="ptop"><h1 className="grow">{items.find(i => i.id === page)?.label}</h1><Bell /></div>}
         <main className="main">
           {page === 'quadro' && <Quadro />}
+          {page === 'inicio' && <Inicio />}
+          {page === 'agenda' && <Agenda />}
+          {page === 'metas' && <Metas />}
+          {page === 'fluxos' && <Fluxos />}
           {office && <>
             <Game />
             <aside className="side">
@@ -109,14 +135,22 @@ export default function Office() {
               <div className="pane"><Board /></div>
             </aside>
           </>}
-          {page !== 'quadro' && page !== 'escritorio' && <div className="doc">{pane(page)}</div>}
+          {!s.drawer || s.view !== 'quadro' ? null : page !== 'quadro' && <div className="doc">{pane(page as Tab)}</div>}
         </main>
       </div>
-      {s.desk && <DeskView />}
       {s.task && <TaskDetail />}
       {s.projectEdit && <ProjectModal />}
       {s.aiOpen && <Distribuir />}
       <RequestModal />
+      <StickerLayer />
+      <StickerPicker />
+      <CeleWatch />
+      <Sheet />
+      <nav className="tabbar" aria-label="Seções">
+        <Tab it={tabs[0]} /><Tab it={tabs[1]} />
+        <button className="tfab" onClick={() => setUi({ sheet: true })} aria-label="Nova tarefa"><Ph n="plus" size={26} fill /></button>
+        <Tab it={tabs[2]} /><Tab it={tabs[3]} />
+      </nav>
       <button className={'fab' + (s.chatOpen ? ' on' : '')} onClick={() => setUi({ chatOpen: !s.chatOpen })} title="Chat da equipe" aria-label={`Chat${msgs ? ` (${msgs} novas)` : ''}`}>
         <Icon n={s.chatOpen ? 'x' : 'chat'} size={22} />{!s.chatOpen && msgs > 0 && <i className="dot-n">{msgs > 9 ? '9+' : msgs}</i>}
       </button>
