@@ -1035,14 +1035,14 @@ input:focus, textarea:focus { border-color: var(--yellow); box-shadow: 0 0 0 3px
 .checklist li.done label { color: var(--muted); text-decoration: line-through; }
 
 /* criar tarefa estilo Trello */
-.composer { display: grid; gap: 8px; margin-top: 12px; padding: 0; background: none; border: 0; box-shadow: none; }
+.composer { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; min-width: 0; margin-top: 12px; padding: 0; background: none; border: 0; box-shadow: none; }
 .composer .cmp-card { padding: 12px 14px; cursor: text; }
 .composer .cmp-card:hover { transform: none; box-shadow: var(--sh); }
-.composer .cmp-card textarea { width: 100%; padding: 0; border: 0; background: none; resize: none; font: 600 15px/1.35 Inter; color: inherit; }
+.composer .cmp-card textarea { width: 100%; padding: 0; border: 0; background: none; resize: none; field-sizing: content; min-height: 2.7em; overflow: hidden; font: 600 15px/1.35 Inter; color: inherit; }
 .composer .cmp-card textarea, .composer .cmp-card textarea:focus { box-shadow: none; border-radius: 0; outline: none; }
 .composer .cmp-card .tc-tags button { border: 0; cursor: pointer; }
 .composer .cmp-card .tc-meta { margin-top: 8px; }
-.cmp-actions { display: flex; align-items: center; gap: 4px; }
+.cmp-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; min-width: 0; }
 .cmp-tool { width: 32px; height: 32px; display: grid; place-items: center; border: 0; border-radius: 10px; background: none; color: var(--muted); cursor: pointer; transition: background .2s, color .2s; }
 .cmp-tool:hover { background: rgba(20, 21, 25, .06); color: var(--ink); }
 .cmp-tool.set { color: var(--ink); background: var(--yellow-soft); }
