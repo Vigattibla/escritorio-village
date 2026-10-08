@@ -96,3 +96,5 @@
 ## 2026-10-07 — revisão de layout contra o mockup v4 (commit 769b767, local)
 Corrigido em todas as telas, desktop e celular. Quadro: filtros numa linha só, colunas cabem na tela, card mostra canal, nota e "Aprovado". Celular: menu "mais" único. Fluxos: objetivo vira nó, Sequência/Mapa, zoom.
 Pendente: push (precisa da migration 202610080900_v4_agenda_metas.sql e do secret SUPABASE_ACCESS_TOKEN).
+
+- 2026-10-07: coluna da direita do Quadro refeita (Seu dia com lembrete no cabeçalho, Meta compacta com barra, chat agrupado ocupando o resto). Commit efa4d5e publicado (run 37719134491).
