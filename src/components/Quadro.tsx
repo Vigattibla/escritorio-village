@@ -9,6 +9,7 @@ import type { Priority, Profile, Project, Task, TaskStatus } from '../types'
 import { Bell } from './Avisos'
 import Icon, { Ph } from './Icon'
 import MiniAvatar from './MiniAvatar'
+import SegInd from './SegInd'
 import Side, { Live } from './Side'
 import { CHANNELS, currentGoal, goalProgress } from './v4'
 
@@ -279,6 +280,7 @@ export default function Quadro() {
       {!proj && <Live />}
       <div className="qtabs">
         <div className="seg" role="tablist" aria-label="Visão">
+          <SegInd />
           <button className={group === 'etapa' ? 'on' : ''} onClick={() => setGroup('etapa')} title="Colunas por etapa"><Ph n="kanban" size={18} fill={group === 'etapa'} />Etapas</button>
           <button className={group === 'raias' ? 'on' : ''} onClick={() => setGroup('raias')} title="Uma linha por pessoa, separada por etapa"><Icon n="rows" />Raias</button>
           <button className={group === 'pessoa' ? 'on' : ''} onClick={() => setGroup('pessoa')} title="Uma coluna por pessoa"><Ph n="users-three" size={18} fill={group === 'pessoa'} />Pessoas</button>

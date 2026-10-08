@@ -5,6 +5,7 @@ import type { Flow, FlowNode } from '../types'
 import { StatusTag } from './Agenda'
 import Icon, { Ph } from './Icon'
 import MiniAvatar from './MiniAvatar'
+import SegInd from './SegInd'
 import { first } from './v4'
 
 const NW = 220, NH = 96, OX = 290 // OX: espaço do nó do objetivo, à esquerda
@@ -116,6 +117,7 @@ export default function Fluxos() {
             {can ? <input key={f.id + f.name} className="fl-name" defaultValue={f.name} maxLength={80} onBlur={e => e.target.value.trim() && e.target.value !== f.name && save({ ...f, name: e.target.value.trim() })} onKeyDown={e => e.key === 'Enter' && e.currentTarget.blur()} aria-label="Nome do fluxo" /> : <h1>{f.name}</h1>}
             <span className="pill"><Ph n="tree-structure" size={14} />Estratégia</span>
             <div className="seg" role="tablist" aria-label="Visão">
+              <SegInd />
               <button className={mode === 'seq' ? 'on' : ''} onClick={() => setMode('seq')} title="Passos alinhados pela ordem"><Ph n="flow-arrow" size={18} fill={mode === 'seq'} />Sequência</button>
               <button className={mode === 'mapa' ? 'on' : ''} onClick={() => setMode('mapa')} title="Arraste os passos livremente"><Ph n="git-fork" size={18} fill={mode === 'mapa'} />Mapa</button>
             </div>

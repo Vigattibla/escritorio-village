@@ -5,6 +5,7 @@ import type { CalEvent, Channel, Task } from '../types'
 import { Bell } from './Avisos'
 import Icon, { Ph } from './Icon'
 import MiniAvatar from './MiniAvatar'
+import SegInd from './SegInd'
 import { CHANNEL_KEYS, CHANNELS, first, hm, localDay } from './v4'
 
 type Mode = 'mes' | 'semana' | 'lista'
@@ -196,6 +197,7 @@ export default function Agenda() {
             <button onClick={() => move(1)} aria-label="Próximo"><Ph n="caret-right" size={18} /></button>
           </div>
           <div className="seg">
+            <SegInd />
             {(['mes', 'semana', 'lista'] as Mode[]).map(m => <button key={m} className={mode === m ? 'on' : ''} onClick={() => setMode(m)}>{m === 'mes' ? 'Mês' : m === 'semana' ? 'Semana' : 'Lista'}</button>)}
           </div>
         </div>

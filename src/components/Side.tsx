@@ -100,7 +100,6 @@ export function SeuDia() {
     <div className="panel day">
       <div className="day-h">
         <div><div className="eyebrow">Seu dia</div><h2>{title[0].toUpperCase() + title.slice(1).replace('-feira', '')}</h2></div>
-        {!adding && <button className="icon-btn soft" onClick={() => setAdding(true)} title="Criar lembrete" aria-label="Criar lembrete"><Ph n="bell" size={17} /><Icon n="plus" size={11} /></button>}
       </div>
       <button className="li" onClick={() => setUi({ view: 'quadro', drawer: false })}>
         <span className="tile ink"><Icon n="check" /></span>
@@ -125,6 +124,7 @@ export function SeuDia() {
           <div className="row"><button className="btn primary sm" disabled={!txt.trim() || !at}>Salvar</button><button type="button" className="btn ghost sm" onClick={() => setAdding(false)}>Cancelar</button></div>
         </form>
       )}
+      {!adding && <button className="btn soft wide" onClick={() => setAdding(true)}><Ph n="bell" size={16} />Criar lembrete</button>}
     </div>
   )
 }
@@ -236,7 +236,7 @@ export default function Side() {
   return (
     <aside className="qside">
       <SeuDia />
-      <MetaCard compact />
+      <MetaCard />
       <ChatPanel />
     </aside>
   )
