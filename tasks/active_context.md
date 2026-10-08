@@ -120,3 +120,9 @@ Pendente: push (precisa da migration 202610080900_v4_agenda_metas.sql e do secre
 - Cadeira inteira vai junto com a mesa (puxada pra trás quando vazia).
 - Backup do WIP antigo do main: `git stash list` → 'backup WIP loja antes do merge 84e5dac' (versão velha da mesma loja; pode descartar quando quiser).
 - Não testado com 2 contas reais: crédito diário, fases de meta e carpinteiro em produção.
+
+## 08/10 — Salas do andar, fase 1 NO AR (e6d838d, deploy 37852664892)
+- Migration `202610091200_departamentos.sql`: tabela `depts` (andar/slot), `dept` em perfis/tarefas/projetos/eventos/metas/etapas/fluxos; RLS por sala; `outranks(a,b)` = Chefe ou cargo maior na mesma sala; `admin_set_dept` move pessoa + tarefas abertas; canal `sala:<id>`; layout `rooms[<sala>]` (Marketing herdou 'escritorio'); cafezinho/metas contam só a sala.
+- Store: `state.sala`; tarefas/projetos/linhas filtrados na entrada (`keepTask/keepProject/keepRow`); `team()`, `roomOf()`, `openSala()` (só Chefe), `setDept()`, `saveDept()`, `freeDesk()`. `<Office key={sala}>` remonta ao trocar.
+- UI: Contas → "Salas do andar" (criar/renomear/cor, máx. 4) + select Sala em Editar conta; Chefe troca de sala no menu do avatar (banner azul pra voltar); chat ganha "# <sala>" quando há 2+ salas.
+- Falta: fase 2 (tela do andar + visita na mesa), fase 3 (pedido entre salas, projeto compartilhado), fase 4 (andar 2/elevador). Segunda área: o adm cria e dá o nome.
