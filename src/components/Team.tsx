@@ -25,7 +25,7 @@ export default function Team() {
         const opts = ranksFor(profiles[meId], p)
         return (
           <div key={p.id} className="person">
-            <MiniAvatar avatar={p.avatar} photo={p.photo} size={44} dim={!here} />
+            <MiniAvatar avatar={p.avatar} photo={p.photo} name={p.name} size={44} dim={!here} />
             <div className="grow">
               <div className="row gap">
                 <b>{p.name}{p.id === meId && ' (você)'}</b>

@@ -153,7 +153,7 @@ export default function TaskDetail() {
   }
   const person = (uid: string, tag: string, del?: () => void) => (
     <span key={uid + tag} className="who">
-      <MiniAvatar avatar={profiles[uid]?.avatar ?? null} photo={profiles[uid]?.photo ?? null} size={22} />
+      <MiniAvatar avatar={profiles[uid]?.avatar ?? null} photo={profiles[uid]?.photo ?? null} name={profiles[uid]?.name} size={22} />
       {name(uid)}{tag && <small>{tag}</small>}
       {del && <button onClick={del} title="Tirar da tarefa">✕</button>}
     </span>
@@ -342,7 +342,7 @@ export default function TaskDetail() {
                 {notes.length === 0 && <p className="empty">Ninguém comentou ainda.</p>}
                 {notes.map(n => (
                   <div key={n.id} className={'note' + (n.author_id === meId ? ' me' : '')}>
-                    <MiniAvatar avatar={profiles[n.author_id]?.avatar ?? null} photo={profiles[n.author_id]?.photo ?? null} size={26} />
+                    <MiniAvatar avatar={profiles[n.author_id]?.avatar ?? null} photo={profiles[n.author_id]?.photo ?? null} name={profiles[n.author_id]?.name} size={26} />
                     <div className="grow">
                       <div className="muted small"><b>{name(n.author_id)}</b> · {when(n.created_at)}
                         {(n.author_id === meId || chief) && <button className="icon" onClick={() => run(removeNote(n.id))} title="Apagar nota">🗑</button>}

@@ -26,7 +26,7 @@ export function Toast() {
   if (!live) return null
   return (
     <button className="toast" onClick={() => go(n!)}>
-      {from ? <MiniAvatar avatar={from.avatar} photo={from.photo} size={28} /> : <span className="toast-dot" />}
+      {from ? <MiniAvatar avatar={from.avatar} photo={from.photo} name={from.name} size={28} /> : <span className="toast-dot" />}
       <span>{n!.text}</span>
     </button>
   )
@@ -70,7 +70,7 @@ export default function Avisos() {
           const p = n.from ? profiles[n.from] : null
           return (
             <li key={n.id} onClick={() => go(n)}>
-              {p ? <MiniAvatar avatar={p.avatar} photo={p.photo} size={28} /> : <span className="toast-dot" />}
+              {p ? <MiniAvatar avatar={p.avatar} photo={p.photo} name={p.name} size={28} /> : <span className="toast-dot" />}
               <span className="grow">{n.text}</span>
               <small>{ago(n.at)}</small>
             </li>

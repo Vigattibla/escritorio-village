@@ -26,7 +26,7 @@ export default function RequestModal() {
     <div className="modal-bg" onMouseDown={e => e.target === e.currentTarget && close()}>
       <form className="modal" onSubmit={submit}>
         <header className="row gap">
-          <MiniAvatar avatar={p.avatar} photo={p.photo} size={44} />
+          <MiniAvatar avatar={p.avatar} photo={p.photo} name={p.name} size={44} />
           <div><h2>{direct ? 'Passar tarefa para' : 'Pedir algo para'} {p.name}</h2><div className="muted small">{direct ? 'Vai direto para a pasta da pessoa.' : 'Chega no computador da pessoa para aceitar ou recusar.'} Concluir rende +5 XP extra.</div></div>
         </header>
         <label>O que você precisa?<input autoFocus required value={title} onChange={e => setTitle(e.target.value)} maxLength={140} placeholder="Ex.: Revisar o texto do post de sábado" /></label>

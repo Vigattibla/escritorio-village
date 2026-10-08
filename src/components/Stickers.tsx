@@ -76,7 +76,7 @@ export function StickerPicker() {
           <div className="pk-faces">
             {people.map(p => (
               <button type="button" key={p.id} className={target === p.id ? 'on' : ''} onClick={() => setWho(p.id)} title={p.name}>
-                <MiniAvatar avatar={p.avatar} photo={p.photo} size={30} />
+                <MiniAvatar avatar={p.avatar} photo={p.photo} name={p.name} size={30} />
               </button>
             ))}
           </div>

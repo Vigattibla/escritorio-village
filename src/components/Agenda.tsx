@@ -134,7 +134,7 @@ export default function Agenda() {
                   <div className="tc big">
                     <button className={'thumb ' + (ch?.tag ?? 'gray')} onClick={() => pick(i)}><span className="fmt">{ch?.label}{i.t.attachments.length ? ` · ${i.t.attachments.length} arquivo${i.t.attachments.length > 1 ? 's' : ''}` : ''}</span><Ph n={ch?.ic ?? 'film-strip'} size={30} /></button>
                     <b onClick={() => pick(i)}>{i.t.title}</b>
-                    <div className="row2"><StatusTag t={i.t} /><span className="grow" />{who && <MiniAvatar avatar={who.avatar} photo={who.photo} size={26} />}</div>
+                    <div className="row2"><StatusTag t={i.t} /><span className="grow" />{who && <MiniAvatar avatar={who.avatar} photo={who.photo} name={who.name} size={26} />}</div>
                     <Acts t={i.t} can />
                   </div>
                 ) : (
@@ -212,7 +212,7 @@ export default function Agenda() {
             </button>
           ))}
           <span className="grow" />
-          <div className="faces">{team.slice(0, 5).map(p => <MiniAvatar key={p.id} avatar={p.avatar} photo={p.photo} size={30} />)}</div>
+          <div className="faces">{team.slice(0, 5).map(p => <MiniAvatar key={p.id} avatar={p.avatar} photo={p.photo} name={p.name} size={30} />)}</div>
         </div>
         {mode === 'mes' ? month() : mode === 'semana' ? week() : list()}
       </div>
@@ -278,8 +278,8 @@ function PostCard({ t, meId }: { t: Task; meId: string }) {
       <div className="kv">
         <span>Canal</span><div>{ch ? <span className={'tag ' + ch.tag}><Ph n={ch.ic} size={12} />{ch.label}</span> : <span className="muted">—</span>}</div>
         <span>Status</span><div><StatusTag t={t} /></div>
-        <span>Quem faz</span><div className="person"><MiniAvatar avatar={who?.avatar ?? null} photo={who?.photo ?? null} size={22} />{who?.name ?? '—'}</div>
-        <span>Aprova</span><div className="person">{ap ? <><MiniAvatar avatar={ap.avatar} photo={ap.photo} size={22} />{ap.name}</> : appr === CHEFIA ? 'Cargo acima' : <span className="muted">—</span>}</div>
+        <span>Quem faz</span><div className="person"><MiniAvatar avatar={who?.avatar ?? null} photo={who?.photo ?? null} name={who?.name} size={22} />{who?.name ?? '—'}</div>
+        <span>Aprova</span><div className="person">{ap ? <><MiniAvatar avatar={ap.avatar} photo={ap.photo} name={ap.name} size={22} />{ap.name}</> : appr === CHEFIA ? 'Cargo acima' : <span className="muted">—</span>}</div>
         {t.attachments.length > 0 && <><span>Arquivos</span><div className="person"><Ph n="paperclip" size={14} />{t.attachments.length}</div></>}
       </div>
       <Acts t={t} can={can} />

@@ -153,7 +153,7 @@ export default function Quadro() {
   const sortFor = (st: TaskStatus) => (st === 'done' ? byDone : byPos)
   const lanePeople = people.filter(p => !who.length || who.includes(p.id))
   const personHead = (p: Profile, size = 28) => (
-    <span className="qhead-av"><MiniAvatar avatar={p.avatar} photo={p.photo} size={size} dim={!online.has(p.id)} />{online.has(p.id) && <i />}</span>
+    <span className="qhead-av"><MiniAvatar avatar={p.avatar} photo={p.photo} name={p.name} size={size} dim={!online.has(p.id)} />{online.has(p.id) && <i />}</span>
   )
 
   const lists: List[] = group === 'etapa'
@@ -326,7 +326,7 @@ export default function Quadro() {
         <div className="qwho" aria-label="Filtrar por pessoa">
           {people.map(p => (
             <button key={p.id} className={who.includes(p.id) ? 'on' : ''} onClick={() => toggleWho(p.id)} title={`Só de ${p.name}`}>
-              <MiniAvatar avatar={p.avatar} photo={p.photo} size={22} />
+              <MiniAvatar avatar={p.avatar} photo={p.photo} name={p.name} size={22} />
             </button>
           ))}
         </div>
@@ -397,7 +397,7 @@ function ProjectBar({ p, profiles, tasks }: { p: Project; profiles: Record<strin
       <span className="qproj-dot" />
       <div className="qproj-name"><b>{p.name}</b><small>{done}/{live.length} feitas · {pct}%</small><div className="bar"><i style={{ width: `${pct}%` }} /></div></div>
       <div className="qproj-master" title="Mestre do projeto: aprova as entregas">
-        <MiniAvatar avatar={m?.avatar ?? null} photo={m?.photo ?? null} size={28} />
+        <MiniAvatar avatar={m?.avatar ?? null} photo={m?.photo ?? null} name={m?.name} size={28} />
         <div><small>Mestre</small><b>{m?.name ?? '—'}</b></div>
       </div>
       {wait > 0 && <button className="qproj-wait" onClick={() => setUi({ tab: 'aprovar' })}>⏳ {wait} em aprovação</button>}
@@ -479,7 +479,7 @@ function Card({ t, mode, meId, profiles, projects, showProj, notes, dragging, on
         <div className="tc-meta">
           {faces.length > 0 && (
             <span className="tc-faces" title={faces.map(p => p.name).join(', ')}>
-              {faces.slice(0, 4).map(p => <MiniAvatar key={p.id} avatar={p.avatar} photo={p.photo} size={24} />)}
+              {faces.slice(0, 4).map(p => <MiniAvatar key={p.id} avatar={p.avatar} photo={p.photo} name={p.name} size={24} />)}
             </span>
           )}
           {req && <span className="tc-from" title={`Pedido por ${profiles[t.created_by]?.name ?? 'alguém'}`}>↩ {t.created_by === meId ? 'você' : first(profiles[t.created_by])}</span>}
@@ -570,7 +570,7 @@ function Composer({ list, meId, profiles, people, project, onClose }: {
         />
         {ownerP && owner !== meId && (
           <div className="tc-meta">
-            <span className="tc-faces"><MiniAvatar avatar={ownerP.avatar} photo={ownerP.photo} size={24} /></span>
+            <span className="tc-faces"><MiniAvatar avatar={ownerP.avatar} photo={ownerP.photo} name={ownerP.name} size={24} /></span>
             <span>{asRequest ? `pedido para ${first(ownerP)}` : `para ${first(ownerP)}`}</span>
           </div>
         )}
@@ -583,7 +583,7 @@ function Composer({ list, meId, profiles, people, project, onClose }: {
             <div className="cmp-people">
               {people.filter(p => !ask || p.id !== meId).map(p => (
                 <button key={p.id} type="button" className={owner === p.id ? 'on' : ''} onClick={() => pick(() => setOwner(p.id))}>
-                  <MiniAvatar avatar={p.avatar} photo={p.photo} size={28} /><span>{p.id === meId ? 'Eu' : p.name}</span>
+                  <MiniAvatar avatar={p.avatar} photo={p.photo} name={p.name} size={28} /><span>{p.id === meId ? 'Eu' : p.name}</span>
                   {owner === p.id && <Icon n="tick" size={14} />}
                 </button>
               ))}

@@ -996,3 +996,6 @@ button.panel { width: 100%; border: 0; text-align: left; font: inherit; color: i
 .me-pop-h { display: grid; padding: 6px 10px 8px; border-bottom: 1px solid var(--line); margin-bottom: 4px; }
 .me-pop-h b { font-size: 14px; } .me-pop-h small { color: var(--muted); font-size: 12px; }
 .me-pop-cf { color: var(--muted); font-weight: 600; white-space: nowrap; }
+
+/* quem ainda não montou o boneco */
+.mini-av.mini-ini { display: inline-grid; place-items: center; flex: none; border-radius: 50%; color: #fff; font-family: Inter, sans-serif; font-weight: 700; letter-spacing: -.02em; line-height: 1; user-select: none; }

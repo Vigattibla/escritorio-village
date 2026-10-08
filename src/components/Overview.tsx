@@ -51,7 +51,7 @@ export default function Overview() {
           const here = online.has(p.id)
           return (
             <button key={p.id} className={'ov-person' + (who === p.id ? ' on' : '')} onClick={() => setWho(who === p.id ? '' : p.id)} title="Filtrar a lista por essa pessoa">
-              <span className="av"><MiniAvatar avatar={p.avatar} photo={p.photo} size={34} /><i className={here ? 'on' : ''} /></span>
+              <span className="av"><MiniAvatar avatar={p.avatar} photo={p.photo} name={p.name} size={34} /><i className={here ? 'on' : ''} /></span>
               <span className="grow">
                 <b>{p.name}</b> <small className="muted">{p.role || rankName(p)}</small>
                 <span className="now">{doing.length ? '▶ ' + doing.map(t => t.title).join(' · ') : <em>nada em andamento</em>}</span>
@@ -74,7 +74,7 @@ export default function Overview() {
         {list.length === 0 && <p className="empty">Nada por aqui.</p>}
         {list.map(t => (
           <button key={t.id} className={'ov-task' + (late(t) ? ' late' : '')} onClick={() => setUi({ task: t.id })}>
-            <MiniAvatar avatar={profiles[t.owner_id]?.avatar ?? null} photo={profiles[t.owner_id]?.photo ?? null} size={26} />
+            <MiniAvatar avatar={profiles[t.owner_id]?.avatar ?? null} photo={profiles[t.owner_id]?.photo ?? null} name={profiles[t.owner_id]?.name} size={26} />
             <span className="grow">
               <span className="title">{t.title}</span>
               <span className="meta">

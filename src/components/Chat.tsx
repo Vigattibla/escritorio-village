@@ -53,7 +53,7 @@ export default function Chat({ fixed, onPop, onGone }: { fixed?: string; onPop?:
         {groups.map(g => chan(groupChannel(g.id), <><Ph n={g.icon as PhName} size={18} /><span className={g.members.includes(meId) ? '' : 'out'}>{g.name}</span></>))}
         {groups.length === 0 && <button className="chan ghost" onClick={() => setForm('new')}><Ph n="plus" size={16} /><span>Criar grupo</span></button>}
         <div className="chans-sec"><span>Pessoas</span></div>
-        {peers.map(p => chan(dmChannel(meId, p.id), <><MiniAvatar avatar={p.avatar} photo={p.photo} size={20} dim={!s.online.has(p.id)} /><span>{p.name}</span></>))}
+        {peers.map(p => chan(dmChannel(meId, p.id), <><MiniAvatar avatar={p.avatar} photo={p.photo} name={p.name} size={20} dim={!s.online.has(p.id)} /><span>{p.name}</span></>))}
       </nav>}
       {form ? <GroupForm g={form === 'new' ? null : form} close={() => setForm(null)} /> : <>
       <div className="msgs">
@@ -73,7 +73,7 @@ export default function Chat({ fixed, onPop, onGone }: { fixed?: string; onPop?:
           const grouped = i > 0 && msgs[i - 1].sender_id === m.sender_id && +new Date(m.created_at) - +new Date(msgs[i - 1].created_at) < 300000
           return (
             <div key={m.id} className={'msg' + (m.sender_id === meId ? ' mine' : '') + (grouped ? ' grouped' : '')}>
-              {!grouped ? <MiniAvatar avatar={p?.avatar ?? null} photo={p?.photo ?? null} size={30} /> : <span className="av-space" />}
+              {!grouped ? <MiniAvatar avatar={p?.avatar ?? null} photo={p?.photo ?? null} name={p?.name} size={30} /> : <span className="av-space" />}
               <div>
                 {!grouped && <div className="who"><b>{p?.name ?? 'Alguém'}</b> <span className="muted small">{hhmm(m.created_at)}</span></div>}
                 <div className="body">{m.body}</div>
@@ -127,7 +127,7 @@ function GroupForm({ g, close }: { g: Group | null; close: () => void }) {
         {people.map(p => (
           <label key={p.id} className={'gperson' + (members.includes(p.id) ? ' on' : '')}>
             <input type="checkbox" checked={members.includes(p.id)} disabled={p.id === meId && !g} onChange={() => toggle(p.id)} />
-            <MiniAvatar avatar={p.avatar} photo={p.photo} size={22} /><span>{p.id === meId ? 'Você' : p.name}</span>
+            <MiniAvatar avatar={p.avatar} photo={p.photo} name={p.name} size={22} /><span>{p.id === meId ? 'Você' : p.name}</span>
           </label>
         ))}
       </div>

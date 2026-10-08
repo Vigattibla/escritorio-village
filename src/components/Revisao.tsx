@@ -57,7 +57,7 @@ export function ReviewHistory({ t, max = 0 }: { t: Task; max?: number }) {
     <ul className="rvhist">
       {list.map((r, i) => (
         <li key={i} className={r.ok ? 'ok' : 'bad'}>
-          <MiniAvatar avatar={profiles[r.by]?.avatar ?? null} photo={profiles[r.by]?.photo ?? null} size={22} />
+          <MiniAvatar avatar={profiles[r.by]?.avatar ?? null} photo={profiles[r.by]?.photo ?? null} name={profiles[r.by]?.name} size={22} />
           <div className="grow">
             <div className="small"><b>{r.ok ? '✅ Aprovada' : '❌ Reprovada'}</b> por {profiles[r.by]?.name ?? 'alguém'} · <span className="muted">{when(r.at)}</span></div>
             {r.reason && <p>{r.reason}</p>}

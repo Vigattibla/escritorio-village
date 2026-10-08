@@ -54,7 +54,7 @@ export default function Sheet() {
             const here = p.id === meId || online.has(p.id)
             return (
               <button type="button" key={p.id} className={(owner === p.id ? 'on' : '') + (here ? '' : ' out')} onClick={() => setWho(p.id)}>
-                <MiniAvatar avatar={p.avatar} photo={p.photo} size={44} dim={!here} />
+                <MiniAvatar avatar={p.avatar} photo={p.photo} name={p.name} size={44} dim={!here} />
                 <b>{p.id === meId ? 'Eu' : first(p)}</b><small>{here ? `${openN(p.id)} tarefas` : 'fora'}</small>
               </button>
             )

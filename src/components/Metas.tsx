@@ -58,7 +58,7 @@ export default function Metas() {
                   )}
                   {tops.length > 0 && (
                     <div className="contrib">
-                      <div className="faces">{tops.slice(0, 5).map(([id]) => <MiniAvatar key={id} avatar={profiles[id]?.avatar ?? null} photo={profiles[id]?.photo ?? null} size={24} />)}</div>
+                      <div className="faces">{tops.slice(0, 5).map(([id]) => <MiniAvatar key={id} avatar={profiles[id]?.avatar ?? null} photo={profiles[id]?.photo ?? null} name={profiles[id]?.name} size={24} />)}</div>
                       {tops.map(([id, n]) => `${first(profiles[id])} ${n}`).join(' · ')}
                     </div>
                   )}

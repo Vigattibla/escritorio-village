@@ -104,7 +104,7 @@ export default function Office() {
         </nav>
         <div className="nav-me">
           <button className={'nav-av' + (page === 'loja' ? ' on' : '')} onClick={() => setMeOpen(!meOpen)} title={`${me.name} · ${me.role || rankName(me)}`} aria-expanded={meOpen}>
-            <MiniAvatar avatar={me.avatar} photo={me.photo} size={36} />
+            <MiniAvatar avatar={me.avatar} photo={me.photo} name={me.name} size={36} />
           </button>
           {meOpen && <>
             <div className="more-veil" onClick={() => setMeOpen(false)} />
@@ -142,7 +142,7 @@ export default function Office() {
                   const here = p.id === me.id || s.online.has(p.id)
                   return (
                     <button key={p.id} className={(s.viewing ?? me.id) === p.id ? 'on' : ''} onClick={() => setUi({ viewing: p.id })} title={`${p.id === me.id ? 'Minha mesa' : p.name} · ${here ? 'no escritório' : 'fora'}`}>
-                      <MiniAvatar avatar={p.avatar} photo={p.photo} size={30} dim={!here} />
+                      <MiniAvatar avatar={p.avatar} photo={p.photo} name={p.name} size={30} dim={!here} />
                       <i className={'dot ' + (here ? 'on' : 'off')} />
                       <small>{p.id === me.id ? 'Eu' : p.name.split(' ')[0]}</small>
                     </button>

@@ -123,7 +123,7 @@ export default function Fluxos() {
               </label>
             )}
             <span className="grow" />
-            <div className="faces">{[...new Set(f.nodes.map(n => n.owner).filter(Boolean) as string[])].map(id => <MiniAvatar key={id} avatar={profiles[id]?.avatar ?? null} photo={profiles[id]?.photo ?? null} size={30} />)}</div>
+            <div className="faces">{[...new Set(f.nodes.map(n => n.owner).filter(Boolean) as string[])].map(id => <MiniAvatar key={id} avatar={profiles[id]?.avatar ?? null} photo={profiles[id]?.photo ?? null} name={profiles[id]?.name} size={30} />)}</div>
             {can && <div className="pop-wrap">
               <button className="btn soft" onClick={() => setModels(v => !v)}><Ph n="squares-four" size={18} />Modelos</button>
               {models && <div className="menu-pop">
@@ -152,7 +152,7 @@ export default function Fluxos() {
                             <button key={n.id} className={'seq-card' + (pick === n.id ? ' on' : '') + (t ? ' sent' : '')} onClick={() => (can ? setPick(p => (p === n.id ? null : n.id)) : t && setUi({ task: t.id }))}>
                               <b>{n.title}</b>
                               <span className="fn-meta">
-                                {o ? <><MiniAvatar avatar={o.avatar} photo={o.photo} size={22} /><span>{first(o)}</span></> : <span className="muted">Sem responsável</span>}
+                                {o ? <><MiniAvatar avatar={o.avatar} photo={o.photo} name={o.name} size={22} /><span>{first(o)}</span></> : <span className="muted">Sem responsável</span>}
                                 {n.due && <span className="fn-due"><Icon n="clock" size={12} />{new Date(n.due + 'T12:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }).replace('.', '')}</span>}
                                 {t && <StatusTag t={t} />}
                               </span>
@@ -208,7 +208,7 @@ export default function Fluxos() {
                     >
                       <div className="top-r"><span className="num">{i + 1}</span><h4>{n.title}</h4>{t && <StatusTag t={t} />}</div>
                       <div className={'fn-meta' + (o ? '' : ' empty')}>
-                        {o ? <><MiniAvatar avatar={o.avatar} photo={o.photo} size={24} /><span>{first(o)}</span></> : <><i className="fn-add">+</i><span>Escolher quem faz</span></>}
+                        {o ? <><MiniAvatar avatar={o.avatar} photo={o.photo} name={o.name} size={24} /><span>{first(o)}</span></> : <><i className="fn-add">+</i><span>Escolher quem faz</span></>}
                         {n.due && <span className="fn-due"><Icon n="clock" size={12} />{new Date(n.due + 'T12:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }).replace('.', '')}</span>}
                       </div>
                       {t && <button className="fn-task" onClick={() => setUi({ task: t.id })}><Icon n="locate" size={12} />Abrir tarefa</button>}
@@ -227,7 +227,7 @@ export default function Fluxos() {
                 <div className="pk-people">
                   {people.map(p => (
                     <button key={p.id} className={node.owner === p.id ? 'on' : ''} onClick={() => setNode(node.id, { owner: node.owner === p.id ? null : p.id })} disabled={!!node.task_id}>
-                      <MiniAvatar avatar={p.avatar} photo={p.photo} size={26} /><span>{p.id === meId ? 'Eu' : first(p)}</span><small>{openN(p.id)} abertas</small>
+                      <MiniAvatar avatar={p.avatar} photo={p.photo} name={p.name} size={26} /><span>{p.id === meId ? 'Eu' : first(p)}</span><small>{openN(p.id)} abertas</small>
                     </button>
                   ))}
                 </div>

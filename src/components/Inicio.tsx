@@ -29,7 +29,7 @@ export default function Inicio() {
   return (
     <div className="inicio">
       <div className="mtop">
-        <button className="mav" onClick={() => setUi({ editing: true })} aria-label="Editar personagem"><MiniAvatar avatar={me.avatar} photo={me.photo} size={44} /></button>
+        <button className="mav" onClick={() => setUi({ editing: true })} aria-label="Editar personagem"><MiniAvatar avatar={me.avatar} photo={me.photo} name={me.name} size={44} /></button>
         <div className="grow"><small>{date[0].toUpperCase() + date.slice(1)}</small><h2>{hello()}, {first(me)}</h2></div>
         <button className="iconbtn" onClick={() => setUi({ chatOpen: true })} aria-label="Chat"><Icon n="chat" size={20} />{msgs > 0 && <i>{msgs > 9 ? '9+' : msgs}</i>}</button>
         <Bell />
@@ -68,7 +68,7 @@ export default function Inicio() {
               <div className="row gap mc-ft">
                 {t.due && <span className={late ? 'late' : ''}><Ph n="calendar-dots" size={14} />{t.due === today ? 'Hoje' : late ? 'Atrasada' : new Date(t.due + 'T12:00').toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' })}</span>}
                 <span className="grow" />
-                {by && by.id !== me.id && <><small>de {first(by)}</small><MiniAvatar avatar={by.avatar} photo={by.photo} size={22} /></>}
+                {by && by.id !== me.id && <><small>de {first(by)}</small><MiniAvatar avatar={by.avatar} photo={by.photo} name={by.name} size={22} /></>}
               </div>
             </button>
           )

@@ -34,7 +34,7 @@ export default function Aprovacoes() {
         {mineToDo.map(t => (
           <article key={t.id} className="apcard">
             <header onClick={() => open(t)}>
-              <MiniAvatar avatar={s.profiles[t.owner_id]?.avatar ?? null} photo={s.profiles[t.owner_id]?.photo ?? null} size={30} />
+              <MiniAvatar avatar={s.profiles[t.owner_id]?.avatar ?? null} photo={s.profiles[t.owner_id]?.photo ?? null} name={s.profiles[t.owner_id]?.name} size={30} />
               <div className="grow">
                 <b>{t.title}</b>
                 <small>{name(t.owner_id)} entregou · há {ago(new Date(t.position).toISOString())}</small>

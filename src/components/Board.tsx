@@ -49,7 +49,7 @@ export default function Board({ ownerId, bare = false }: { ownerId?: string; bar
   return (
     <div className={'board' + (bare ? ' bare' : '')}>
       {!bare && <header className="board-head">
-        <MiniAvatar avatar={owner.avatar} photo={owner.photo} size={40} />
+        <MiniAvatar avatar={owner.avatar} photo={owner.photo} name={owner.name} size={40} />
         <div className="grow">
           <h2>{mine ? 'Minha mesa' : owner.name}</h2>
           <div className="muted small">

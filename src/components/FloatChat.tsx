@@ -143,7 +143,7 @@ export default function FloatChat({ unread }: { unread: number }) {
   }
   const head = (ch: string) => {
     const t = channelTitle(ch, s)
-    return <span className="cwin-t">{t.who ? <MiniAvatar avatar={t.who.avatar} photo={t.who.photo} size={22} /> : <Ph n={t.icon!} size={18} />}<b>{t.label}</b></span>
+    return <span className="cwin-t">{t.who ? <MiniAvatar avatar={t.who.avatar} photo={t.who.photo} name={t.who.name} size={22} /> : <Ph n={t.icon!} size={18} />}<b>{t.label}</b></span>
   }
 
   return (
@@ -161,7 +161,7 @@ export default function FloatChat({ unread }: { unread: number }) {
         {!open && unread > 0 && <i className="bubble-n">{unread > 9 ? '9+' : unread}</i>}
         {peek && !open && (
           <span className="bubble-peek" onPointerDown={e => e.stopPropagation()} onClick={e => { e.stopPropagation(); setPeek(null); setUi({ chatOpen: true, channel: last!.channel }) }}>
-            <MiniAvatar avatar={s.profiles[peek.from]?.avatar ?? null} photo={s.profiles[peek.from]?.photo ?? null} size={26} />
+            <MiniAvatar avatar={s.profiles[peek.from]?.avatar ?? null} photo={s.profiles[peek.from]?.photo ?? null} name={s.profiles[peek.from]?.name} size={26} />
             <span><b>{s.profiles[peek.from]?.name ?? 'Alguém'}</b>{peek.body.slice(0, 80)}</span>
           </span>
         )}

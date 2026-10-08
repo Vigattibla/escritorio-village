@@ -41,7 +41,7 @@ export function Live({ small = false }: { small?: boolean }) {
               const n = here.indexOf(id)
               return (
                 <button key={id} className={id === focus ? 'on' : n < 0 ? 'off' : ''} onClick={() => n >= 0 && cut(n)} disabled={n < 0} title={n < 0 ? 'Fora da sala' : undefined}>
-                  <MiniAvatar avatar={profiles[id]?.avatar ?? null} photo={profiles[id]?.photo ?? null} size={24} dim={n < 0} />
+                  <MiniAvatar avatar={profiles[id]?.avatar ?? null} photo={profiles[id]?.photo ?? null} name={profiles[id]?.name} size={24} dim={n < 0} />
                   {id === meId ? 'Você' : first(profiles[id])}
                 </button>
               )
@@ -56,7 +56,7 @@ export function Live({ small = false }: { small?: boolean }) {
         <span className={'live-pill' + (paused ? ' paused' : '')}>{paused ? <><Ph n="pause" size={11} fill />CÂMERA PARADA</> : <><span className="pulse" />AO VIVO</>}</span>
         {p && (
           <div className={'cap' + (dip ? ' out' : '')} key={focus}>
-            <MiniAvatar avatar={p.avatar} photo={p.photo} size={30} />
+            <MiniAvatar avatar={p.avatar} photo={p.photo} name={p.name} size={30} />
             <div><b>{focus === meId ? 'Você' : p.name}</b><small>{doing ? `Fazendo: ${doing.title}` : p.role || 'Na sala'}</small></div>
           </div>
         )}
@@ -156,7 +156,7 @@ export function MetaCard({ onOpen, compact = false }: { onOpen?: () => void; com
       {compact ? <div className="gbar"><i style={{ width: pr.pct + '%' }} /></div> : <Steps pct={pr.pct} target={g.target} />}
       {tops.length > 0 && (
         <div className="contrib">
-          <div className="faces">{tops.map(([id]) => <MiniAvatar key={id} avatar={profiles[id]?.avatar ?? null} photo={profiles[id]?.photo ?? null} size={24} />)}</div>
+          <div className="faces">{tops.map(([id]) => <MiniAvatar key={id} avatar={profiles[id]?.avatar ?? null} photo={profiles[id]?.photo ?? null} name={profiles[id]?.name} size={24} />)}</div>
           <span>{tops.map(([id, n]) => `${first(profiles[id])} ${n}`).join(' · ')}</span>
         </div>
       )}
@@ -218,7 +218,7 @@ export function TeamNow() {
         {people.map(({ p, doing, done, on }) => (
           <li key={p.id}>
             <button className={'tperson' + (on ? ' on' : '')} onClick={() => setUi({ chatOpen: true, channel: dmChannel(meId, p.id) })} title={`Conversar com ${first(p)}`}>
-              <span className="tav"><MiniAvatar avatar={p.avatar} photo={p.photo} size={32} dim={!on} /><i /></span>
+              <span className="tav"><MiniAvatar avatar={p.avatar} photo={p.photo} name={p.name} size={32} dim={!on} /><i /></span>
               <span className="tinfo"><b>{first(p)}</b>
                 <small className={doing ? '' : 'muted'}>{doing ? <><Ph n="pencil-simple-line" size={12} />{doing.title}</> : on ? 'Livre agora' : 'Fora'}</small>
               </span>
