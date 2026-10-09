@@ -59,10 +59,10 @@ function Win({ id, at, onAt, title, onClose, children, solo, above }: {
   useEffect(() => {
     const n = el.current
     if (!n || narrow()) return
-    const sz = load<{ w: number; h: number } | null>('ev:cwin-size:' + id, null)
+    const sz = load<{ w: number; h: number } | null>('ev:cwin-size2:' + id, null)
     if (sz) { n.style.width = sz.w + 'px'; n.style.height = sz.h + 'px' }
     let t = 0
-    const ro = new ResizeObserver(() => { clearTimeout(t); t = window.setTimeout(() => save('ev:cwin-size:' + id, { w: n.offsetWidth, h: n.offsetHeight }), 300) })
+    const ro = new ResizeObserver(() => { clearTimeout(t); t = window.setTimeout(() => save('ev:cwin-size2:' + id, { w: n.offsetWidth, h: n.offsetHeight }), 300) })
     ro.observe(n)
     return () => { ro.disconnect(); clearTimeout(t) }
   }, [id])
@@ -153,11 +153,11 @@ export default function FloatChat({ unread }: { unread: number }) {
   const gente = Object.values(s.profiles).filter(p => p.id !== s.meId && p.avatar)
     .sort((a, b) => Number(s.online.has(b.id)) - Number(s.online.has(a.id)) || a.name.localeCompare(b.name)).slice(0, 8)
   // primeira vez: a janela abre do lado da bolinha
-  const winAt = wp ?? clamp({ x: right ? bp.x - 440 + B : bp.x, y: bp.y - 580 }, 440, 560)
+  const winAt = wp ?? clamp({ x: right ? bp.x - 700 + B : bp.x, y: bp.y - 640 }, 700, 620)
   const pop = (ch: string) => {
     if (floats.some(f => f.ch === ch)) return
     const n = floats.length
-    setFloats([...floats, { ch, ...clamp({ x: winAt.x - 346 - n * 28, y: winAt.y + 60 + n * 28 }, 330, 48) }])
+    setFloats([...floats, { ch, ...clamp({ x: winAt.x - 376 - n * 28, y: winAt.y + 60 + n * 28 }, 360, 48) }])
     if (s.channel === ch) setUi({ chatOpen: false, channel: 'geral' }) // a conversa saiu da janela principal
   }
   const head = (ch: string) => {

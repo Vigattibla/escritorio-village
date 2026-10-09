@@ -71,6 +71,7 @@ export default function Office() {
 
   const chief = isChief(me)
   const dev = usePref('dev')
+  const mini = usePref('navMini')
   const [tl, setTl] = useState(false)
   const depts = deptList(s)
   const canEdit = canEditOffice(me, s.rows.carpenters)
@@ -107,7 +108,7 @@ export default function Office() {
     // a janela do chat flutua por cima: aberta ganha só um fundo leve, o destaque fica na página
     const on = it.id !== 'chatwin' && page === it.id
     return (
-      <button className={'nav-item' + (on ? ' on' : '') + (it.id === 'chatwin' && s.chatOpen ? ' aberto' : '')} onClick={() => it.id === 'chatwin' ? setUi({ chatOpen: !s.chatOpen }) : goTo(it.id)} title={it.tip} aria-current={on && it.id !== 'chatwin' ? 'page' : undefined}>
+      <button className={'nav-item' + (on ? ' on' : '') + (it.id === 'chatwin' && s.chatOpen ? ' aberto' : '')} onClick={() => it.id === 'chatwin' ? setUi({ chatOpen: !s.chatOpen }) : goTo(it.id)} title={it.tip ?? it.label} aria-current={on && it.id !== 'chatwin' ? 'page' : undefined}>
         <TIcon n={it.ic} size={22} /><span className="nav-l">{it.label}</span>{!!it.n && <i className="nav-n">{it.n > 9 ? '9+' : it.n}</i>}
       </button>
     )
@@ -125,7 +126,8 @@ export default function Office() {
 
   return (
     <div className="office" data-page={page}>
-      <aside className="nav">
+      <aside className={'nav' + (mini ? ' mini' : '')}>
+        <button className="nav-fold" onClick={() => setPref('navMini', !mini)} title={mini ? 'Abrir a barra lateral' : 'Recolher a barra lateral (só ícones)'} aria-label={mini ? 'Abrir a barra lateral' : 'Recolher a barra lateral'} aria-expanded={!mini}><Ph n={mini ? 'caret-right' : 'caret-left'} size={14} /></button>
         <div className="tbrand">
           <Marca />
           <span className="grow"><b>{TENANT.short}</b><small>{TENANT.sub}</small></span>
@@ -133,7 +135,7 @@ export default function Office() {
         </div>
         <nav className="nav-list">
           {items.filter(it => !it.more).map(it => <NavItem key={it.id} it={it} />)}
-          <button className={'nav-sec' + (maisOn ? ' on' : '')} onClick={toggleMais} aria-expanded={maisOn}>Mais <Ph n={maisOn ? 'caret-left' : 'caret-right'} size={14} /></button>
+          <button className={'nav-sec' + (maisOn ? ' on' : '')} onClick={toggleMais} aria-expanded={maisOn} title="Mais"><span className="nav-sec-l">Mais</span> <Ph n={maisOn ? 'caret-left' : 'caret-right'} size={14} /></button>
           {maisOn && items.filter(it => it.more).map(it => <NavItem key={it.id} it={it} />)}
         </nav>
         <div className="nav-me">
@@ -159,7 +161,7 @@ export default function Office() {
             </div>
           </>}
         </div>
-        <div className="tfeito">feito com <Meo size={16} color="#2440FF" /><Wordmark size={14} /></div>
+        <div className="tfeito"><span className="tfeito-l">feito com</span> <Meo size={16} color="#2440FF" /><Wordmark size={14} /></div>
       </aside>
       <div className="page">
         {page !== 'inicio' && <div className="mbar">

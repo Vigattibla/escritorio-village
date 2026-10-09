@@ -11,7 +11,7 @@ import MiniAvatar from './MiniAvatar'
 import SegInd from './SegInd'
 import Relatorio, { segunda } from './Relatorio'
 import { setPref, usePref } from '../prefs'
-import Side, { Live } from './Side'
+import { Live } from './Side'
 import { CHANNELS, currentGoal, goalProgress } from './v4'
 
 type Group = 'etapa' | 'raias' | 'pessoa'
@@ -384,7 +384,6 @@ export default function Quadro() {
         </div>
       )}
     </div>
-    <Side />
     </div>
   )
 }
