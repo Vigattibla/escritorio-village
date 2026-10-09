@@ -304,4 +304,9 @@ export interface Backend {
   aiOnline(): Promise<boolean>
   connect(userId: string, h: Handlers): () => void
   sendPos(userId: string, p: Pos): void
+  /** timelapse: minha trilha do dia (pontos [s, x, y, ...]) */
+  saveTrail(userId: string, dia: string, pts: number[]): Promise<void>
+  loadTrails(dia: string): Promise<{ user_id: string; pts: number[] }[]>
+  /** apaga minhas trilhas antes de `antes` (guarda só 30 dias) */
+  pruneTrails(userId: string, antes: string): Promise<void>
 }

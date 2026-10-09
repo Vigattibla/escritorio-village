@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import Timelapse from '../components/Timelapse'
 import { setPref, usePref } from '../prefs'
 import Board from '../components/Board'
 import FloatChat from '../components/FloatChat'
@@ -70,6 +71,7 @@ export default function Office() {
 
   const chief = isChief(me)
   const dev = usePref('dev')
+  const [tl, setTl] = useState(false)
   const depts = deptList(s)
   const canEdit = canEditOffice(me, s.rows.carpenters)
   // painel do escritório: eu primeiro, depois quem está na sala, depois quem está fora
@@ -178,7 +180,9 @@ export default function Office() {
           {page === 'loja' && <Loja />}
           {office && arrumando && <SalaEditor onClose={() => setArrumando(false)} />}
           {office && !arrumando && <>
-            <div className="game-wrap"><Game />{canEdit && s.here === s.sala && <button className="btn primary sm game-edit" onClick={() => setArrumando(true)}>🪚 Arrumar sala</button>}</div>
+            <div className="game-wrap"><Game />{canEdit && s.here === s.sala && <button className="btn primary sm game-edit" onClick={() => setArrumando(true)}>🪚 Arrumar sala</button>}
+              <button className={'btn sm game-tl' + (new Date().getHours() >= 17 ? ' accent' : ' soft')} onClick={() => setTl(true)} title="Ver como todo mundo se movimentou hoje, acelerado"><Ph n="film-strip" size={16} />Timelapse do dia</button></div>
+            {tl && <Timelapse onClose={() => setTl(false)} />}
             <aside className="side">
               <nav className="who-strip" aria-label="Ver a mesa de">
                 {people.map(p => {

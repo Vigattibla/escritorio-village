@@ -332,6 +332,17 @@ export class DemoBackend implements Backend {
 
   async aiOnline() { return true }
 
+  async saveTrail(userId: string, dia: string, pts: number[]) { localStorage.setItem(`ev:demo:trilha:${dia}:${userId}`, JSON.stringify(pts)) }
+  async loadTrails(dia: string) {
+    const pre = `ev:demo:trilha:${dia}:`, out: { user_id: string; pts: number[] }[] = []
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i)!
+      if (k.startsWith(pre)) try { out.push({ user_id: k.slice(pre.length), pts: JSON.parse(localStorage.getItem(k)!) }) } catch { /* ignora */ }
+    }
+    return out
+  }
+  async pruneTrails() {}
+
   async upsertRow<K extends RowTable>(k: K, r: Rows[K]) {
     const all = read<Record<string, Rows[K]>>(K.row + k, {})
     all[r.id] = r

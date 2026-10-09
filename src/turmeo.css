@@ -323,3 +323,25 @@ button.tlogo.img:hover { box-shadow: inset 0 0 0 2px var(--acc2); }
   .rel-p { break-inside: avoid; border: 1px solid #e6dfd0; }
   .no-print { display: none !important; }
 }
+
+/* timelapse do dia */
+.game-tl { position: absolute; left: 12px; bottom: 12px; z-index: 3; }
+.tl { width: min(1180px, calc(100vw - 32px)); height: min(860px, calc(100vh - 32px)); display: flex; flex-direction: column; background: var(--creme); border-radius: 24px; box-shadow: 0 24px 60px rgba(16, 16, 20, .3); overflow: hidden; }
+.tl-top { display: flex; align-items: center; gap: 12px; padding: 16px 20px 12px; flex-wrap: wrap; }
+.tl-top h2 { margin: 0; font-size: 22px; font-weight: 800; }
+.tl-top .rel-sem b { text-transform: capitalize; }
+.tl-palco { position: relative; flex: 1; min-height: 0; margin: 0 20px; border-radius: 18px; overflow: hidden; background: #1d2238; }
+.tl-palco canvas { position: absolute; inset: 0; }
+.tl-hora { position: absolute; top: 12px; right: 12px; padding: 6px 14px; border-radius: 99px; background: rgba(16, 16, 20, .72); color: #fff; font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.tl-vazio { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; color: #fff; font-size: 16px; }
+.tl-ctrl { display: flex; align-items: center; gap: 12px; padding: 12px 20px 8px; }
+.tl-ctrl input[type=range] { flex: 1; accent-color: var(--acc); }
+.tl-play { width: 44px; height: 44px; flex: none; display: grid; place-items: center; border: 0; border-radius: 99px; background: var(--acc); color: #fff; cursor: pointer; }
+.tl-play:disabled { opacity: .4; cursor: default; }
+.tl-vel { display: inline-flex; gap: 4px; }
+.tl-gente { list-style: none; margin: 0; padding: 4px 20px 16px; display: flex; gap: 8px; overflow-x: auto; }
+.tl-gente li { display: flex; align-items: center; gap: 8px; flex: none; padding: 5px 12px 5px 5px; border-radius: 99px; background: #fff; box-shadow: inset 0 0 0 2px var(--c); }
+.tl-gente .mini-av { border-radius: 50%; background: var(--areia-3); }
+.tl-gente span { display: grid; line-height: 1.15; }
+.tl-gente b { font-size: 14px; }
+.tl-gente small { font-size: 12px; color: var(--muted); }

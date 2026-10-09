@@ -221,6 +221,20 @@ export class SupabaseBackend implements Backend {
     throw new Error('Cancelado.')
   }
 
+  async saveTrail(userId: string, dia: string, pts: number[]) {
+    const { error } = await this.sb.from('trilha').upsert({ user_id: userId, dia, pts, updated_at: new Date().toISOString() })
+    if (error) throw pt(error)
+  }
+
+  async loadTrails(dia: string) {
+    const { data, error } = await this.sb.from('trilha').select('user_id, pts').eq('dia', dia)
+    return error ? [] : (data as { user_id: string; pts: number[] }[])
+  }
+
+  async pruneTrails(userId: string, antes: string) {
+    await this.sb.from('trilha').delete().eq('user_id', userId).lt('dia', antes)
+  }
+
   async aiOnline() {
     const { data: { session } } = await this.sb.auth.getSession()
     if (!session) return false

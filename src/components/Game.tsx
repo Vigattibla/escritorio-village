@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { gravar } from '../office/trilha'
 import { drawAvatar, onPhotoLoad, SPRITE_H } from '../chibi/sprite'
 import { backend } from '../data'
 import { deptOf, managerOf } from '../game/ranks'
@@ -311,6 +312,7 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
       const mine: Pos = { x: Math.round(meS.x * 10) / 10, y: Math.round(meS.y * 10) / 10, dir: meS.dir, moving, room: here, f: 1 }
       const key = `${mine.x},${mine.y},${mine.dir},${moving},${here}`
       positions.set(meId, mine)
+      if (!cine) gravar(meId, mine.x, mine.y)
       if ((key !== sentKey && now - lastSent > 100) || now - lastSent > 2500) {
         backend.sendPos(meId, mine); lastSent = now; sentKey = key
       }
