@@ -23,6 +23,7 @@ import Fluxos from '../components/Fluxos'
 import Arquivos from '../components/Arquivos'
 import Vendas, { Lousa } from '../components/Vendas'
 import Caderno from '../components/Caderno'
+import Accounts from '../components/Accounts'
 import { vende } from '../game/vendas'
 import Inicio from '../components/Inicio'
 import InicioDesk from '../components/InicioDesk'
@@ -35,7 +36,7 @@ import Sheet from '../components/Sheet'
 import { StickerLayer, StickerPicker } from '../components/Stickers'
 import Creator from './Creator'
 import { backend } from '../data'
-import { isChief, rankName } from '../game/ranks'
+import { isChief, rankName, rankOf } from '../game/ranks'
 import { deptList, deptName, myDept, openSala, run, setUi, signOut, team, unread, useStore, type Tab, type View } from '../store'
 
 type Page = View | Tab
@@ -73,6 +74,7 @@ export default function Office() {
   const SV_PAGES: Page[] = ['vendas', 'placar', 'kit', 'arquivos', 'escritorio', 'loja']
   const VD_PAGES: Page[] = ['vendas', 'placar', 'kit']
   const dev = usePref('dev')
+  const [contas, setContas] = useState(false)
   // a porta de entrada é o Início (celular e computador); vendas abre em Vendas
   useEffect(() => { if (!sv && s.view === 'quadro' && !s.drawer) setUi({ view: 'inicio' }) }, []) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -170,6 +172,7 @@ export default function Office() {
               <div className="me-pop-h"><b>{me.name}</b><small>{me.role || rankName(me)}</small></div>
               <button onClick={() => { setMeOpen(false); setUi({ editing: true }) }}><Ph n="smiley" size={20} /><b className="grow">Meu personagem</b></button>
               <button onClick={() => { setMeOpen(false); goTo('loja') }}><Ph n="coffee" size={20} /><b className="grow">Almoxarifado</b>{s.wallet && <small className="me-pop-cf">☕ {s.wallet.balance}</small>}</button>
+              {(me.is_admin || rankOf(me) >= 3) && <button onClick={() => { setMeOpen(false); setContas(true) }}><Ph n="users-three" size={20} /><b className="grow">Contas da equipe</b></button>}
               <button onClick={() => setPref('dev', !dev)} aria-pressed={dev}><Ph n="gear-six" size={20} /><b className="grow">Modo desenvolvedor</b><i className={'tswitch' + (dev ? ' on' : '')} /></button>
               {dev && chief && depts.length > 1 && <div className="me-pop-salas">
                 <small>Salas do andar</small>
@@ -181,6 +184,12 @@ export default function Office() {
             </div>
           </>}
         </div>
+        {contas && <div className="modal-bg" onMouseDown={e => e.target === e.currentTarget && setContas(false)} onKeyDown={e => e.key === 'Escape' && setContas(false)}>
+          <div className="modal acc-modal">
+            <Accounts open />
+            <button type="button" className="btn ghost" onClick={() => setContas(false)}>Fechar</button>
+          </div>
+        </div>}
         <div className="tfeito"><span className="tfeito-l">feito com</span> <Meo size={16} color="#2440FF" /><Wordmark size={14} /></div>
       </aside>
       <div className="page">

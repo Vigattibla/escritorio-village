@@ -1,4 +1,4 @@
-import { RANKS, rankName, ranksFor } from '../game/ranks'
+import { RANKS, rankName, rankOf, ranksFor } from '../game/ranks'
 import { dmChannel, run, setRank, setUi, team, useStore } from '../store'
 import Accounts from './Accounts'
 import MiniAvatar from './MiniAvatar'
@@ -17,7 +17,7 @@ export default function Team() {
   return (
     <div className="team">
       <h2>Equipe <span className="count">{people.filter(p => online.has(p.id) || p.id === meId).length} no escritório</span></h2>
-      {profiles[meId]?.is_admin && <Accounts />}
+      {(profiles[meId]?.is_admin || rankOf(profiles[meId]) >= 3) && <Accounts />}
       {people.map(p => {
         const here = online.has(p.id) || p.id === meId
         const doing = tasks.filter(t => t.owner_id === p.id && t.status === 'doing').sort((a, b) => b.position - a.position)[0]

@@ -1,5 +1,6 @@
 import { toEmail, validUser } from './login'
 import { dayKey } from '../game/xp'
+import { deptOf, outranks, rankOf } from '../game/ranks'
 import type { CoffeeLine, Dept, Goal, Wallet, Group, RowTable, Rows, AccountEdit, AiContext, AiProposal, AiStage, Avatar, Backend, Handlers, Message, Pos, Profile, Project, Snapshot, Task, TaskNote } from '../types'
 import { ROW_TABLES } from '../types'
 import { counts, DAY, MAX_GOALS, payouts, WELCOME } from '../shop/economy'
@@ -158,8 +159,18 @@ export class DemoBackend implements Backend {
     if (!read<Record<string, Profile>>(K.prof, {})[sessionStorage.getItem(K.session) ?? '']?.is_admin) throw new Error('Só o adm mexe nas contas.')
   }
 
+  /** adm: tudo. Gerência/Chefe: só quem tem cargo menor na equipe dela (igual ao manages_account do banco) */
+  private manager(target?: string, rank?: number) {
+    const all = read<Record<string, Profile>>(K.prof, {}), me = all[sessionStorage.getItem(K.session) ?? '']
+    if (me?.is_admin) return me
+    const t = target ? all[target] : undefined
+    if (!me || rankOf(me) < 3 || (target && (!t || t.is_admin || t.id === me.id || !outranks(me, t)))) throw new Error('Você não pode mexer nessa conta.')
+    if (rank !== undefined && rank >= rankOf(me)) throw new Error('Você só dá cargos abaixo do seu.')
+    return me
+  }
+
   async createAccount(user: string, password: string, name: string, rank: number) {
-    this.chief()
+    const me = this.manager(undefined, rank)
     if (!validUser(user)) throw new Error('Usuário inválido: use letras, números, ponto ou traço.')
     if (password.length < 6) throw new Error('A senha precisa de pelo menos 6 caracteres.')
     const accs = read<Account[]>(K.acc, [])
@@ -168,13 +179,13 @@ export class DemoBackend implements Backend {
     const id = crypto.randomUUID()
     accs.push({ id, email, hash: await sha(password), name: name.trim() })
     write(K.acc, accs)
-    const p: Profile = { id, name: name.trim() || user, role: '', avatar: null, photo: null, xp: 0, desk: -1, rank, created_at: new Date().toISOString() }
+    const p: Profile = { id, name: name.trim() || user, role: '', avatar: null, photo: null, xp: 0, desk: -1, rank, created_at: new Date().toISOString(), ...(me.is_admin ? {} : { dept: deptOf(me) }) }
     await this.upsertProfileRaw(p)
     return p
   }
 
   async setPassword(target: string, password: string) {
-    this.chief()
+    this.manager(target)
     if (password.length < 6) throw new Error('A senha precisa de pelo menos 6 caracteres.')
     const accs = read<Account[]>(K.acc, [])
     const acc = accs.find(a => a.id === target)
@@ -184,12 +195,14 @@ export class DemoBackend implements Backend {
   }
 
   async accountLogins() {
-    this.chief()
-    return Object.fromEntries(read<Account[]>(K.acc, []).map(a => [a.id, a.email.split('@')[0]]))
+    const me = sessionStorage.getItem(K.session) ?? ''
+    const ok = (id: string) => { try { return id === me || !!this.manager(id) } catch { return false } }
+    return Object.fromEntries(read<Account[]>(K.acc, []).filter(a => ok(a.id)).map(a => [a.id, a.email.split('@')[0]]))
   }
 
   async updateAccount(target: string, a: AccountEdit) {
-    this.chief()
+    const me = target === sessionStorage.getItem(K.session) ? (this.chief(), null) : this.manager(target, a.rank)
+    if (me && !me.is_admin && a.is_admin) throw new Error('Só o adm dá acesso de adm.')
     const p = read<Record<string, Profile>>(K.prof, {})[target]
     if (!p) throw new Error('Conta não encontrada.')
     if (!a.name.trim()) throw new Error('O nome não pode ficar vazio.')

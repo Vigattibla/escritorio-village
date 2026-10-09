@@ -1126,3 +1126,4 @@ input:focus, textarea:focus { border-color: var(--yellow); box-shadow: 0 0 0 3px
 .cmp-hora input { flex: 1; }
 .sh-hora { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 13px; color: var(--muted); }
 .sh-hora input { flex: 1; min-width: 0; }
+.acc-modal { max-width: 720px; max-height: 90vh; overflow: auto; }

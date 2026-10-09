@@ -1,14 +1,14 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { makePassword, slugUser } from '../data/login'
-import { RANKS } from '../game/ranks'
+import { RANKS, outranks, rankOf } from '../game/ranks'
 import { accountLogins, createAccount, deleteAccount, deptList, deptName, hasCanais, run, saveDept, setDept, setDeptLook, setDoor, setPassword, updateAccount, useStore } from '../store'
 import { FlagPicker } from './Bandeira'
 import { SLOTS } from '../office/andar'
 import { deptOf } from '../game/ranks'
 import type { AccountEdit, Dept, Profile } from '../types'
 
-/** Só o adm: cria, edita e exclui contas. Ninguém se cadastra sozinho. */
-export default function Accounts() {
+/** adm: cria, edita e exclui contas. Gerência/Chefe: cria e edita a própria equipe (cargo abaixo do dela). Ninguém se cadastra sozinho. */
+export default function Accounts({ open }: { open?: boolean }) {
   const profiles = useStore(s => s.profiles)
   const meId = useStore(s => s.meId)
   const [name, setName] = useState('')
@@ -24,7 +24,11 @@ export default function Accounts() {
   const [killing, setKilling] = useState(false)
   const [heir, setHeir] = useState('')
   const depts = deptList({ rows: useStore(s => s.rows) })
-  const people = Object.values(profiles).sort((a, b) => a.name.localeCompare(b.name))
+  const me = profiles[meId ?? '']
+  const adm = !!me?.is_admin
+  const all = Object.values(profiles).sort((a, b) => a.name.localeCompare(b.name))
+  const people = adm ? all : all.filter(p => p.id !== me?.id && !p.is_admin && outranks(me, p))
+  const ranks = RANKS.map((r, i) => ({ r, i })).filter(({ i }) => i > 0 && (adm || i < rankOf(me)))
   const move = (dept: string) => {
     const name = profiles[who]?.name ?? 'A pessoa'
     setBusy(true); setMsg('')
@@ -40,11 +44,12 @@ export default function Accounts() {
     run(createAccount(login, pass, n, rank)
       .then(() => {
         setMsg(`Conta de ${n} criada. Passe para a pessoa: usuário "${login}" e a senha ${pass}`)
-        setName(''); setUser(''); setPass(makePassword()); setRank(1)
+        setName(''); setUser(''); setPass(makePassword()); setRank(1); loadLogins()
       })
       .finally(() => setBusy(false)))
   }
   const loadLogins = () => { accountLogins().then(setLogins, () => {}) }
+  useEffect(() => { if (open) loadLogins() }, []) // eslint-disable-line react-hooks/exhaustive-deps
   const pick = (id: string) => {
     const p = profiles[id]
     setWho(id); setNewPass(''); setKilling(false); setHeir(meId ?? ''); setMsg('')
@@ -75,8 +80,8 @@ export default function Accounts() {
   }
 
   return (
-    <details className="accounts" onToggle={e => { if ((e.target as HTMLDetailsElement).open) loadLogins() }}>
-      <summary>🔑 Contas da equipe (adm)</summary>
+    <details className="accounts" open={open} onToggle={e => { if ((e.target as HTMLDetailsElement).open) loadLogins() }}>
+      <summary>🔑 Contas da equipe {adm ? '(adm)' : `· sala ${deptName(deptOf(me))}`}</summary>
       <form onSubmit={create}>
         <h3>Nova conta</h3>
         <label>Nome<input required value={name} onChange={e => setName(e.target.value)} maxLength={40} placeholder="Maria Souza" /></label>
@@ -91,7 +96,7 @@ export default function Accounts() {
         </div>
         <label>Cargo
           <select value={rank} onChange={e => setRank(Number(e.target.value))}>
-            {RANKS.map((r, i) => i > 0 && <option key={i} value={i}>{r}</option>)}
+            {ranks.map(({ r, i }) => <option key={i} value={i}>{r}</option>)}
           </select>
         </label>
         <button className="btn primary" disabled={busy || login.length < 2}>{busy ? 'Criando…' : `Criar conta${login ? ` "${login}"` : ''}`}</button>
@@ -120,20 +125,20 @@ export default function Accounts() {
           <div className="row gap">
             <label className="grow">Cargo
               <select value={edit.rank} onChange={e => setEdit({ ...edit, rank: Number(e.target.value) })}>
-                {RANKS.map((r, i) => i > 0 && <option key={i} value={i}>{r}</option>)}
+                {ranks.map(({ r, i }) => <option key={i} value={i}>{r}</option>)}
               </select>
             </label>
-            <label className="grow">Sala
+            {adm && <label className="grow">Sala
               <select value={deptOf(profiles[who])} disabled={busy} onChange={e => move(e.target.value)}>
                 {depts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
               </select>
-            </label>
-            <label className="acc-check"><input type="checkbox" checked={edit.is_admin} disabled={who === meId}
-              onChange={e => setEdit({ ...edit, is_admin: e.target.checked })} /> Adm (mexe nas contas)</label>
+            </label>}
+            {adm && <label className="acc-check"><input type="checkbox" checked={edit.is_admin} disabled={who === meId}
+              onChange={e => setEdit({ ...edit, is_admin: e.target.checked })} /> Adm (mexe nas contas)</label>}
           </div>
           <div className="row gap">
             <button className="btn primary" disabled={busy}>{busy ? 'Salvando…' : 'Salvar'}</button>
-            {who !== meId && !killing && <button type="button" className="btn danger-ghost" onClick={() => setKilling(true)}>Excluir conta…</button>}
+            {adm && who !== meId && !killing && <button type="button" className="btn danger-ghost" onClick={() => setKilling(true)}>Excluir conta…</button>}
           </div>
           {killing && <div className="acc-kill">
             <b>Excluir {profiles[who]?.name} de vez?</b>
@@ -149,7 +154,7 @@ export default function Accounts() {
         </>}
       </form>
 
-      <Salas depts={depts} people={people} />
+      {adm ? <Salas depts={depts} people={people} /> : <small className="muted">A conta nova já entra na sua sala. Excluir conta, dar adm ou mudar alguém de sala: fale com o adm.</small>}
 
       {msg && <p className="ok">{msg}</p>}
       {waiting.length > 0 && <p className="muted small">Ainda não entraram: {waiting.map(p => p.name).join(', ')}</p>}
