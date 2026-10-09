@@ -8,6 +8,7 @@ import { hasCanais } from '../store'
 import type { Attachment, Channel, CheckItem, Priority, Task } from '../types'
 import { CHANNEL_KEYS, CHANNELS } from './v4'
 import { FolderBox } from './DriveFolder'
+import { Ph } from './Icon'
 import MiniAvatar from './MiniAvatar'
 import { ReviewBox, ReviewHistory } from './Revisao'
 
@@ -234,24 +235,28 @@ export default function TaskDetail() {
             />
 
             <div
-              className={'field drop' + (over ? ' over' : '')}
+              className={'field td-anexos' + (over ? ' over' : '')}
               onDragOver={e => { if (edit && e.dataTransfer.types.includes('Files')) { e.preventDefault(); setOver(true) } }}
               onDragLeave={() => setOver(false)}
               onDrop={e => { e.preventDefault(); setOver(false); upload([...e.dataTransfer.files]) }}
             >
-              <h3>Anexos <span className="count">{t.attachments.length}</span></h3>
-              <div className="atts">
+              <div className="td-anexos-h">
+                <h3>Anexos{t.attachments.length > 0 && <span className="count">{t.attachments.length}</span>}</h3>
+                {edit && t.attachments.length > 0 && <button type="button" className="td-anexos-mais" onClick={() => fileRef.current?.click()} disabled={sending > 0}><Ph n="plus" size={13} />Anexar</button>}
+              </div>
+              {(t.attachments.length > 0 || sending > 0) && <div className="atts">
                 {t.attachments.map(a => (
                   <Thumb key={a.id} a={a} onZoom={setZoom} onDel={edit && (a.by === meId || own || chief) ? () => run(removeAttachment(t.id, a.id)) : undefined} />
                 ))}
                 {sending > 0 && <div className="att"><div className="att-box sending">⏳</div><div className="att-name">enviando {sending}…</div></div>}
-                {edit && (
-                  <button className="att add" onClick={() => fileRef.current?.click()} disabled={sending > 0}>
-                    <span>＋</span><small>Arraste, cole (Ctrl+V) ou clique</small>
+              </div>}
+              {t.attachments.length === 0 && sending === 0 && (edit
+                ? <button type="button" className="td-anexos-vazio" onClick={() => fileRef.current?.click()}>
+                    <span className="td-anexos-ic"><Ph n="paperclip" size={18} /></span>
+                    <span><b>Anexar arquivo</b><small>Clique, arraste pra cá ou cole com Ctrl+V</small></span>
                   </button>
-                )}
-              </div>
-              {!edit && t.attachments.length === 0 && <p className="empty">Nenhum arquivo.</p>}
+                : <p className="td-anexos-nada">Nenhum arquivo.</p>)}
+              {over && <div className="td-anexos-solta"><Ph n="upload-simple" size={22} />Solte pra anexar</div>}
               <input ref={fileRef} type="file" multiple hidden onChange={e => { upload([...(e.target.files ?? [])]); e.target.value = '' }} />
             </div>
 

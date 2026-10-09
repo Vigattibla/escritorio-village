@@ -483,3 +483,32 @@ button.tlogo.img:hover { box-shadow: inset 0 0 0 2px var(--acc2); }
   .nav.mini .nav-sec { width: auto; margin: 6px 8px; padding: 6px 0 0; border-top: 1px solid var(--line); border-radius: 0; color: var(--muted); }
   .nav.mini .nav-n { right: 0; }
 }
+
+/* ---------- anexos da tarefa + anexos do pedido ---------- */
+.td-anexos { position: relative; border-radius: 14px; }
+.td-anexos-h { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.td-anexos-h h3 { display: flex; align-items: center; gap: 6px; margin: 0; }
+.td-anexos-h .count { margin: 0; background: var(--t-areia, #EDE6D8); color: var(--t-tinta, #101014); border-radius: 999px; padding: 0 7px; font-size: 11px; line-height: 18px; }
+.td-anexos-mais { display: inline-flex; align-items: center; gap: 4px; border: 0; background: #EDE6D8; color: #101014; border-radius: 999px; padding: 4px 10px; font: 600 12px var(--tf, inherit); cursor: pointer; }
+.td-anexos-mais:hover:not(:disabled) { background: #2440FF; color: #fff; }
+.td-anexos-vazio { display: flex; align-items: center; gap: 12px; width: 100%; border: 0; background: #FFF8EC; border-radius: 12px; padding: 12px 14px; text-align: left; cursor: pointer; color: #101014; transition: background .15s; }
+.td-anexos-vazio:hover { background: #FFF1D6; }
+.td-anexos-vazio b { display: block; font: 700 13px var(--tf, inherit); }
+.td-anexos-vazio small { display: block; font-size: 12px; color: #6b6b73; margin-top: 1px; }
+.td-anexos-ic { flex: none; width: 36px; height: 36px; border-radius: 10px; background: #2440FF; color: #fff; display: grid; place-items: center; }
+.td-anexos-nada { margin: 0; font-size: 13px; color: #8a8a92; }
+.td-anexos-solta { position: absolute; inset: -6px; border-radius: 16px; background: rgba(36, 64, 255, .92); color: #fff; display: flex; align-items: center; justify-content: center; gap: 8px; font: 700 14px var(--tf, inherit); pointer-events: none; z-index: 2; }
+.td-anexos .att-box { border: 0; background: #F4EFE6; border-radius: 10px; }
+.td-anexos .att-box:hover { box-shadow: 0 0 0 2px #2440FF; }
+.td-anexos .att-box.file b { border: 0; background: #fff; color: #2440FF; border-radius: 8px; }
+
+.rq-anexos { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; background: #FFF8EC; border-radius: 12px; padding: 10px 12px; transition: background .15s, box-shadow .15s; }
+.rq-anexos.over { background: #E7EBFF; box-shadow: 0 0 0 2px #2440FF; }
+.rq-anexos-t { width: 100%; font-size: 13px; font-weight: 600; }
+.rq-anexos-t small { font-weight: 400; color: #8a8a92; }
+.rq-file { display: inline-flex; align-items: center; gap: 5px; max-width: 220px; background: #fff; border-radius: 999px; padding: 3px 4px 3px 10px; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rq-file button { flex: none; border: 0; background: #EDE6D8; border-radius: 999px; width: 18px; height: 18px; display: grid; place-items: center; padding: 0; cursor: pointer; color: #101014; }
+.rq-file button:hover { background: #FF7A1A; color: #fff; }
+.rq-add { display: inline-flex; align-items: center; gap: 5px; border: 0; background: #2440FF; color: #fff; border-radius: 999px; padding: 5px 12px; font: 600 12px var(--tf, inherit); cursor: pointer; }
+.rq-add:hover { background: #1a32d9; }
+.rq-dica { font-size: 12px; color: #8a8a92; }
