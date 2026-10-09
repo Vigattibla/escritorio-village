@@ -129,3 +129,13 @@ Pendente: push (precisa da migration 202610080900_v4_agenda_metas.sql e do secre
 - Store: `state.sala`; tarefas/projetos/linhas filtrados na entrada (`keepTask/keepProject/keepRow`); `team()`, `roomOf()`, `openSala()` (só Chefe), `setDept()`, `saveDept()`, `freeDesk()`. `<Office key={sala}>` remonta ao trocar.
 - UI: Contas → "Salas do andar" (criar/renomear/cor, máx. 4) + select Sala em Editar conta; Chefe troca de sala no menu do avatar (banner azul pra voltar); chat ganha "# <sala>" quando há 2+ salas.
 - Falta: fase 2 (tela do andar + visita na mesa), fase 3 (pedido entre salas, projeto compartilhado), fase 4 (andar 2/elevador). Segunda área: o adm cria e dá o nome.
+
+## 09/10 — Turmeo rodada 2 (no ar: 15aeaa5, 8ab3997)
+- Início em grade fixa, sala com "Bater na porta", logo do cliente (upload), Mais recolhível, Meo encostado na borda no lugar da bolinha do chat ("Miau! Falar com quem?").
+- `src/prefs.ts`: preferências por aparelho (localStorage `ev:prefs`): `dev` (padrão off) e `destaque` (padrão on).
+- Modo desenvolvedor (menu do perfil / menu Mais no celular): mostra Equipe, Geral, Salas do andar e troca de logo. Desligado = ocultos.
+- Quadro: chip "Destacar minhas" (cartão amarelo claro + contorno acc2); botão Relatório.
+- Relatório da semana (`components/Relatorio.tsx`): por pessoa, concluídas/ajudou/em aberto/atrasadas/refeitas, navega semanas, imprime/PDF.
+- Arquivamento: coluna Feito mostra só a semana atual (desde segunda); semanas anteriores ficam só no Relatório. Sem migration, nada apagado.
+- Nav: só a página atual ganha a pílula navy; chat aberto = fundo leve (`.aberto`).
+- Pendente: remake do chat (Chat.tsx/tc-*), remake de Arquivos.
