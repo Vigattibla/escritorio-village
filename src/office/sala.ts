@@ -110,6 +110,15 @@ export const KINDS: Record<string, Kind> = {
       r(c, OUT, x + 4, y0 + h + 1, w - 8, 2); r(c, '#9aa1ad', x + 5, y0 + h + 1, w - 10, 1)
     },
   },
+  // sala de vendas: os números de verdade são desenhados por cima no jogo (Game.tsx)
+  'painel-quartos': { nome: 'Painel de quartos', tema: 'Escritório', w: 5, h: 1, up: 2, draw: (c, x, y) => {
+    lousa(c, x, y, 5)
+    for (let k = 0; k < 3; k++) { r(c, ['#2440FF', '#FF7A1A', '#2E9E6A'][k], x + 7, y - 19 + k * 7, 3, 3); r(c, '#c8ccd3', x + 12, y - 18 + k * 7, 14, 1); for (let j = 0; j < 5; j++) r(c, '#efe3cf', x + 31 + j * 9, y - 20 + k * 7, 7, 5) }
+  } },
+  'painel-placar': { nome: 'Painel do placar', tema: 'Escritório', w: 4, h: 1, up: 2, draw: (c, x, y) => {
+    lousa(c, x, y, 4)
+    for (let k = 0; k < 3; k++) { disc(c, x + 9, y - 16 + k * 7, 2, ['#E8B400', '#9AA3B5', '#C98A4B'][k]); r(c, '#c8ccd3', x + 14, y - 17 + k * 7, 22, 1); r(c, '#efe3cf', x + 44, y - 19 + k * 7, 12, 5) }
+  } },
   'quadro-paisagem': { nome: 'Quadro paisagem', tema: 'Escritório', w: 2, h: 1, camada: 'parede', draw: (c, x) => { frame(c, x + 5, 9, 22, 13); r(c, '#f3c98b', x + 6, 10, 20, 6); disc(c, x + 20, 13, 2, '#fbe3a0'); r(c, '#8a9a5b', x + 6, 16, 20, 5); r(c, '#7a8b3a', x + 6, 18, 9, 3) } },
   'cartaz': { nome: 'Cartaz amarelo', tema: 'Escritório', w: 1, h: 1, camada: 'parede', draw: (c, x) => { frame(c, x + 3, 8, 11, 15); r(c, '#FBC222', x + 4, 9, 9, 13); disc(c, x + 8, 14, 2, '#fbfbf8'); r(c, '#3b302c', x + 5, 19, 7, 1) } },
   'foto-piscina': { nome: 'Foto da piscina', tema: 'Escritório', w: 2, h: 1, camada: 'parede', draw: (c, x) => { frame(c, x + 6, 10, 19, 12); r(c, '#7cc4d8', x + 7, 15, 17, 6); r(c, '#e3f4fb', x + 9, 17, 4, 1); r(c, '#8a9a5b', x + 7, 11, 17, 4) } },
@@ -217,10 +226,18 @@ export function defaultDesk(i: number): Desk {
   const tx = 7 + (i % 4) * 4, ty = 4 + Math.floor(i / 4) * 4
   return { tx, ty, w: 2, seat: { x: tx * T + 16, y: ty * T + 8 } }
 }
-/** sala de vendas: baia grande, 2 bancadas corridas de 6 lugares */
-export function baiaDesk(i: number): Desk {
+/** sala de vendas: baia grande, 2 bancadas corridas de 6 lugares encostadas na direita; o painel de quartos fica na esquerda */
+export const BAIA_X = 9, PAINEL = { x: 2, y: 5 }, PLACAR = { x: 2, y: 13 }
+/** lousa em pé (w tiles): pés, moldura azul, faixa de título e face branca de (x+4, y-22) a (x+16w-4, y+3) */
+function lousa(c: CanvasRenderingContext2D, x: number, y: number, w: number) {
+  const W = w * T
+  for (const lx of [x + 9, x + W - 12]) { r(c, OUT, lx, y - 1, 3, 15); r(c, OUT, lx - 4, y + 13, 11, 2) }
+  box(c, '#26324F', x + 2, y - 30, W - 4, 35); r(c, '#fbfbf8', x + 4, y - 22, W - 8, 25)
+  r(c, '#FFC600', x + 5, y - 28, 14, 3)
+}
+export function baiaDesk(i: number, x0 = BAIA_X): Desk {
   if (i === BOSS_DESK) return defaultDesk(i)
-  const tx = 6 + (i % 6) * 2, ty = 5 + Math.floor(i / 6) * 5
+  const tx = x0 + (i % 6) * 2, ty = 5 + Math.floor(i / 6) * 5
   return { tx, ty, w: 2, seat: { x: tx * T + 16, y: ty * T + 8 } }
 }
 /** vizinhos colados na mesma bancada (mesma linha, encostados): vira uma peça só */
@@ -239,12 +256,26 @@ export function original(baia = false): Sala {
   add('tapete-chefe', 1, 7)
   for (let i = 0; i < MAX_DESKS; i++) { const d = baia ? baiaDesk(i) : defaultDesk(i); add('mesa', d.tx, d.ty, i) }
   add('mesa-chefe', 2, 9, BOSS_DESK)
+  if (baia) { add('painel-quartos', PAINEL.x, PAINEL.y); add('painel-placar', PLACAR.x, PLACAR.y) }
   for (const [x, y] of [[1, 2], [22, 2], [1, 14], [22, 14], [5, 14], [18, 14]]) add('planta', x, y)
   add('estante', 2, 2); add('arquivo', 19, 2); add('impressora', 20, 2); add('bebedouro', 21, 2)
   for (const x of [3, 17]) add('janela', x, 0)
   add('quadro-branco', 10, 0); add('quadro-paisagem', 1, 0); add('cartaz', 6, 0); add('foto-piscina', 7, 0)
   add('calendario', 13, 0); add('relogio', 14, 0); add('arte', 15, 0); add('tv', 20, 0)
   return { piso, div, objs }
+}
+
+/** baia salva no lugar antigo (começando em x 6): bancadas vão pra direita e o painel entra no lugar (uma vez só) */
+function baiaNova(s: Sala): Sala {
+  const ms = s.objs.filter(o => o.k === 'mesa')
+  const antiga = ms.length === MAX_DESKS && ms.every(o => { const d = baiaDesk(o.d!, 6); return o.x === d.tx && o.y === d.ty })
+  if (!antiga) return s
+  const objs = s.objs.map(o => o.k === 'mesa' ? { ...o, x: o.x + BAIA_X - 6 } : o)
+  const livre = (at: { x: number; y: number }, w: number) => !objs.some(o => { const b = bbox(o), p = { x: at.x * T, y: (at.y - 2) * T, w: w * T, h: 3 * T }; return !kd(o).camada && !kd(o).passa && b.x < p.x + p.w && p.x < b.x + b.w && b.y < p.y + p.h && p.y < b.y + b.h })
+  for (const [k, at, w] of [['painel-quartos', PAINEL, 5], ['painel-placar', PLACAR, 4]] as const)
+    if (livre(at, w)) objs.push({ id: Math.max(0, ...objs.map(o => o.id)) + 1, k, x: at.x, y: at.y })
+  const out = { ...s, objs }
+  return reach(out, () => null) ? s : out
 }
 
 /** tamanho antigo da sala (30×20): layout salvo nele é reescalado pro atual */
@@ -295,7 +326,7 @@ export function parseSala(data: unknown, baia = false): Sala {
       objs.push(d === undefined ? { id: o.id, k: o.k, x: o.x, y: o.y } : { id: o.id, k: o.k, x: o.x, y: o.y, d })
     }
     const out = { piso: s.piso.map(r => [...r]), div: s.div.map(r => [...r]), objs }
-    return old ? fitSala(out, W, H) : out
+    return old ? fitSala(out, W, H) : baia ? baiaNova(out) : out
   } catch { return original(baia) }
 }
 

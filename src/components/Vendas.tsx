@@ -7,11 +7,10 @@ import { driveOn } from '../data/drive'
 import { Bell } from './Avisos'
 import { Ph } from './Icon'
 import MiniAvatar from './MiniAvatar'
-import SegInd from './SegInd'
 import { FolderBox } from './DriveFolder'
 import { first, monthKey } from './v4'
 
-type Aba = 'quartos' | 'placar' | 'kit'
+export type Aba = 'quartos' | 'placar' | 'kit'
 const CORES = ['#2440FF', '#FF7A1A', '#FF9ECF', '#FFE14D', '#2E9E6A', '#101014']
 const diaCurto = (d: string) => new Date(d + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit' }).replace('.', '')
 const diaBr = (d: string) => new Date(d + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }).replace('.', '')
@@ -33,23 +32,24 @@ function Modal({ title, onClose, onSubmit, children, foot }: { title: string; on
   )
 }
 
-export default function Vendas() {
+const TOPO: Record<Aba, [string, string]> = {
+  quartos: ['Quartos', 'Quantos quartos estão livres em cada dia. Clique num dia pra corrigir a contagem.'],
+  placar: ['Placar', 'Pontos do mês, ranking do time e os prêmios em jogo.'],
+  kit: ['Kit de vendas', 'Campanhas e material pra mostrar pro cliente.'],
+}
+export default function Vendas({ aba }: { aba: Aba }) {
   const s = useStore(x => x)
   const eu = s.meId ? s.profiles[s.meId] : undefined
   const pode = { manda: manda(eu, s), ve: ve(eu, s), edita: editaCampanha(eu, s) }
-  const abas: [Aba, string][] = [['quartos', 'Quartos'], ...(pode.ve ? [['placar', 'Placar'] as [Aba, string]] : []), ['kit', 'Kit de vendas']]
-  const [aba, setAba] = useState<Aba>(() => { try { const a = localStorage.getItem('ev:vendas:aba') as Aba; return abas.some(x => x[0] === a) ? a : 'quartos' } catch { return 'quartos' } })
-  const ir = (a: Aba) => { setAba(a); try { localStorage.setItem('ev:vendas:aba', a) } catch { /* sem storage */ } }
   const [venda, setVenda] = useState<Partial<Venda> | null>(null)
   const quartos = Object.values(s.rows.quartos).filter(q => q.ativo).sort((a, b) => a.pos - b.pos || a.nome.localeCompare(b.nome))
 
   return (
     <div className="quadro metas vendas">
       <div className="qbar"><span className="grow" /><Bell />
-        {pode.ve && quartos.length > 0 && <button className="btn accent" onClick={() => setVenda({})}><Ph n="plus" size={18} fill />Registrar venda</button>}
+        {pode.ve && aba !== 'kit' && quartos.length > 0 && <button className="btn accent" onClick={() => setVenda({})}><Ph n="plus" size={18} fill />Registrar venda</button>}
       </div>
-      <div className="qhead"><div><h1>Vendas</h1><div className="sub">Quadro de quartos livres, placar do mês e o material de campanha pra mostrar pro cliente.</div></div></div>
-      <div className="seg vd-seg"><SegInd />{abas.map(([k, l]) => <button key={k} className={aba === k ? 'on' : ''} onClick={() => ir(k)}>{l}</button>)}</div>
+      <div className="qhead"><div><h1>{TOPO[aba][0]}</h1><div className="sub">{TOPO[aba][1]}</div></div></div>
       {aba === 'quartos' && <Quartos quartos={quartos} pode={pode} onVenda={setVenda} />}
       {aba === 'placar' && pode.ve && <PlacarTab pode={pode} />}
       {aba === 'kit' && <Kit pode={pode} />}
@@ -477,5 +477,56 @@ function CampForm({ c, onClose }: { c: Campanha | null; onClose: () => void }) {
       <div className="opts">{CORES.map(x => <button type="button" key={x} className={'vd-cor' + (cor === x ? ' on' : '')} style={{ background: x }} onClick={() => setCor(x)} aria-label={'Cor ' + x} />)}</div>
       {driveOn && <small className="muted">Depois de salvar, crie ou ligue a pasta do Drive no card da campanha.</small>}
     </Modal>
+  )
+}
+
+/* ---------------- lousa: o quadro inteiro, mês a mês (clique no painel da sala) ---------------- */
+export function Lousa({ onClose }: { onClose: () => void }) {
+  const s = useStore(x => x)
+  const eu = s.meId ? s.profiles[s.meId] : undefined
+  const pode = ve(eu, s)
+  const d0 = hoje(), m0 = d0.slice(0, 7)
+  const [mes, setMes] = useState(m0)
+  const [aj, setAj] = useState<{ q: Quarto; dia: string } | null>(null)
+  const quartos = Object.values(s.rows.quartos).filter(q => q.ativo).sort((a, b) => a.pos - b.pos || a.nome.localeCompare(b.nome))
+  const vs = useMemo(() => Object.values(s.rows.vendas), [s.rows.vendas])
+  const [y, m] = mes.split('-').map(Number), nDias = new Date(y, m, 0).getDate()
+  const dias = Array.from({ length: nDias }, (_, i) => `${mes}-${String(i + 1).padStart(2, '0')}`)
+  const livre = (q: Quarto, d: string) => livres(q, d, vs, s.rows.ajustes[`${q.id}:${d}`])
+  const nivel = (n: number, q: Quarto) => n === 0 ? ' zero' : n <= Math.max(1, Math.ceil(q.total * 0.25)) ? ' pouco' : ''
+  const MAX = addMes(m0, 18)
+
+  return (
+    <div className="modal-bg" onMouseDown={e => e.target === e.currentTarget && onClose()} onKeyDown={e => e.key === 'Escape' && !aj && onClose()}>
+      <section className="modal vd-lousa" role="dialog" aria-label="Quadro de quartos">
+        <div className="vd-gbar">
+          <b className="grow">Quartos livres</b>
+          <div className="mnav">
+            <button onClick={() => setMes(addMes(mes, -1))} disabled={mes <= m0} aria-label="Mês anterior"><Ph n="caret-left" size={18} /></button>
+            <button className="mlabel" onClick={() => setMes(m0)} title="Voltar pro mês de hoje">{mesNome(mes)}</button>
+            <button onClick={() => setMes(addMes(mes, 1))} disabled={mes >= MAX} aria-label="Próximo mês"><Ph n="caret-right" size={18} /></button>
+          </div>
+          <button className="btn ghost sm" onClick={onClose} aria-label="Fechar" autoFocus><Ph n="x" size={18} /></button>
+        </div>
+        {!quartos.length ? <p className="muted">Nenhum tipo de quarto cadastrado ainda.</p> : <>
+          <div className="vd-gscroll">
+            <table className="vd-tab">
+              <thead><tr><th />{dias.map(d => <th key={d} className={(d === d0 ? 'hj' : '') + (d < d0 ? ' vd-pass' : '')}>{diaCurto(d)}</th>)}</tr></thead>
+              <tbody>{quartos.map(q => (
+                <tr key={q.id}>
+                  <th><i style={{ background: q.cor }} />{q.nome}<small>{q.total}</small></th>
+                  {dias.map(d => {
+                    const n = livre(q, d), a = s.rows.ajustes[`${q.id}:${d}`], pass = d < d0
+                    return <td key={d}><button className={'vd-cel' + nivel(n, q) + (d === d0 ? ' hj' : '') + (a ? ' aj' : '') + (pass ? ' vd-pass' : '')} disabled={!pode || pass} onClick={() => setAj({ q, dia: d })} title={`${q.nome} · ${diaBr(d)}: ${n} livre(s)${a ? ' · contagem ajustada à mão' : ''}`}>{n}</button></td>
+                  })}
+                </tr>
+              ))}</tbody>
+            </table>
+          </div>
+          <div className="vd-leg"><span><i className="zero" />esgotado</span><span><i className="pouco" />últimos</span><span><i className="aj" />contado à mão</span>{pode && <span className="muted">Clique num dia pra corrigir a contagem.</span>}</div>
+        </>}
+      </section>
+      {aj && <AjusteForm q={aj.q} dia={aj.dia} atual={livre(aj.q, aj.dia)} aj={s.rows.ajustes[`${aj.q.id}:${aj.dia}`]} vendidos={vs.filter(v => v.quarto_id === aj.q.id && cobre(v, aj.dia)).reduce((n, v) => n + v.qtd, 0)} onClose={() => setAj(null)} />}
+    </div>
   )
 }

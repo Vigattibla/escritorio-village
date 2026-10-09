@@ -16,6 +16,7 @@ export default function MoreMenu() {
   const sv = useStore(s => !!me && !me.is_admin && vende(me, s))
   // setor de vendas: o resto já está na barra de baixo
   const items: [PhName, string, () => void, number?][] = sv ? [
+    ['folder-simple', 'Arquivos', () => setUi({ view: 'arquivos', drawer: false })],
     ['coffee', 'Almoxarifado', () => setUi({ view: 'loja', drawer: false })],
   ] : [
     ['kanban', 'Quadro', () => setUi({ view: 'quadro', drawer: false }), pend],

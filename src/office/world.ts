@@ -176,6 +176,15 @@ function near(tx: number, ty: number) {
 /** onde o boneco para pra escrever no quadro (null = sala sem quadro) */
 export function boardSpot(r: Room) { const q = r.sala.objs.find(o => o.k === 'quadro-branco'); return q ? near(r.ox + q.x + 1, r.oy + 2) : null }
 /** onde o boneco mexe na estante (null = sala sem estante) */
+/** painel de quartos da sala de vendas (coordenadas da sala) */
+export const PAINEIS = { 'painel-quartos': 5, 'painel-placar': 4 } as Record<string, number>
+export const paineisOf = (r: Room) => (r.baia ? r.sala.objs.filter(o => o.k in PAINEIS) : [])
+/** clique num painel (tile do mundo, conta a parte que sobe 2 tiles) */
+export function painelAt(gx: number, gy: number) {
+  for (const r of rooms) for (const o of paineisOf(r))
+    if (gx >= r.ox + o.x && gx < r.ox + o.x + PAINEIS[o.k] && gy >= r.oy + o.y - 2 && gy <= r.oy + o.y) return o.k
+  return null
+}
 export function shelfSpot(r: Room) { const e = r.sala.objs.find(o => o.k === 'estante'); return e ? near(r.ox + e.x + 1, r.oy + e.y + 1) : null }
 
 /** fundo do andar inteiro (estático): salas, vidros, corredor, salas vazias em cinza */

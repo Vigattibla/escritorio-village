@@ -13,7 +13,7 @@ import { ROW_TABLES } from './types'
 export type Phase = 'loading' | 'auth' | 'creator' | 'office'
 export type Tab = 'mesa' | 'aprovar' | 'avisos' | 'equipe' | 'chat' | 'geral'
 /** quadro = trabalho do dia a dia (estilo Trello); escritório = visualização em pixel */
-export type View = 'quadro' | 'escritorio' | 'agenda' | 'metas' | 'fluxos' | 'inicio' | 'arquivos' | 'loja' | 'vendas'
+export type View = 'quadro' | 'escritorio' | 'agenda' | 'metas' | 'fluxos' | 'inicio' | 'arquivos' | 'loja' | 'vendas' | 'placar' | 'kit'
 export interface Go { view?: View; tab?: Tab; viewing?: string; channel?: string; task?: string }
 export interface Notice { id: string; text: string; at: number; from?: string; go?: Go }
 
@@ -54,6 +54,8 @@ export interface State {
   aiOpen: boolean
   /** chat flutuante (botão no canto) aberto */
   chatOpen: boolean
+  /** quadro de quartos aberto em tela cheia (clique na lousa da sala de vendas) */
+  lousa: boolean
   /** sino de avisos aberto */
   bellOpen: boolean
   /** quadro filtrado só no que espera minha aprovação */
@@ -72,9 +74,9 @@ export interface State {
 
 
 const initial: State = {
-  phase: 'loading', meId: null, accountName: '', error: '', profiles: {}, tasks: {}, messages: [], notes: [], projects: {}, rows: { events: {}, goals: {}, stickers: {}, flows: {}, stages: {}, groups: {}, rooms: {}, carpenters: {}, depts: {}, brand: {}, quartos: {}, vendas: {}, ajustes: {}, metas_venda: {}, vendas_cfg: {}, campanhas: {} }, online: new Set(),
+  phase: 'loading', meId: null, accountName: '', error: '', profiles: {}, tasks: {}, messages: [], notes: [], projects: {}, rows: { events: {}, goals: {}, stickers: {}, flows: {}, stages: {}, groups: {}, rooms: {}, carpenters: {}, depts: {}, brand: {}, quartos: {}, vendas: {}, ajustes: {}, metas_venda: {}, vendas_cfg: {}, campanhas: {}, caderno: {} }, online: new Set(),
   tab: 'mesa', viewing: null, channel: 'geral', reads: {}, requestTo: null, task: null, editing: false, notices: [], pipOpen: false, view: 'quadro' as View, wallet: null, drawer: false,
-  project: '', projectEdit: null, aiOpen: false, chatOpen: false, bellOpen: false, qApprove: false, flow: null, sheet: false, stickTo: null, sala: DEPT0, here: DEPT0,
+  project: '', projectEdit: null, aiOpen: false, chatOpen: false, lousa: false, bellOpen: false, qApprove: false, flow: null, sheet: false, stickTo: null, sala: DEPT0, here: DEPT0,
 }
 
 let state = initial
@@ -488,7 +490,7 @@ export async function signOut() {
   set({ ...initial, phase: 'auth' })
 }
 
-export function setUi(p: Partial<Pick<State, 'tab' | 'viewing' | 'channel' | 'requestTo' | 'editing' | 'pipOpen' | 'error' | 'task' | 'view' | 'drawer' | 'project' | 'projectEdit' | 'aiOpen' | 'chatOpen' | 'bellOpen' | 'qApprove' | 'flow' | 'sheet' | 'stickTo'>>) {
+export function setUi(p: Partial<Pick<State, 'tab' | 'viewing' | 'channel' | 'requestTo' | 'editing' | 'pipOpen' | 'error' | 'task' | 'view' | 'drawer' | 'project' | 'projectEdit' | 'aiOpen' | 'chatOpen' | 'lousa' | 'bellOpen' | 'qApprove' | 'flow' | 'sheet' | 'stickTo'>>) {
   // chat, avisos e aprovação não são mais páginas: viram painel flutuante, sino e filtro do quadro
   if (p.tab === 'chat') { const { tab: _, ...rest } = p; p = { ...rest, chatOpen: true } }
   else if (p.tab === 'avisos') { const { tab: _, ...rest } = p; p = { ...rest, bellOpen: true } }

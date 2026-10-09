@@ -9,10 +9,11 @@ import { addMark, boardMarks, takeErrands, type Errand } from '../office/errands
 import { drawAnim, plateFill, PLATE_CV } from '../office/anim'
 import { drawChair } from '../office/props'
 import { drawFurniture, kd, parseSala, type Obj } from '../office/sala'
-import { blocked, boardSpot, BOSS_DESK, deskAtTile, deskIds, deskOf, deskSidesOf, doorAtTile, doorSpot, drawBoardMarks, drawCarry, drawDesk, emptySala, FH, findPath, floorVersion, furniture, FW, getRooms, hallDecor, hasDesk, HY0, MAX_DESKS, MH, MW, pathToSeat, regionOfPx, renderFloor, roomOfId, setFloor, setPassable, shelfSpot, T, wallObjs, type Room } from '../office/world'
+import { blocked, boardSpot, BOSS_DESK, deskAtTile, deskIds, deskOf, deskSidesOf, doorAtTile, doorSpot, drawBoardMarks, drawCarry, drawDesk, emptySala, FH, findPath, floorVersion, furniture, FW, getRooms, hallDecor, hasDesk, HY0, MAX_DESKS, MH, MW, painelAt, paineisOf, pathToSeat, regionOfPx, renderFloor, roomOfId, setFloor, setPassable, shelfSpot, T, wallObjs, type Room } from '../office/world'
 import { bubbles, canDoor, canEnter, curtainsOpen, deptName, doorOpen, getState, goTo, knock, myDept, positions, roomOf, run, setCurtains, setDoor, setUi, slotDept, useStore } from '../store'
 import type { Dir, Pos, Profile, Task } from '../types'
 import Icon from './Icon'
+import { addDia, CFG0, hoje, livres, mesDe, placar, ve } from '../game/vendas'
 
 const SPEED = 72
 const ACT_MS = { write: 2600, fetch: 1400, store: 1400 }
@@ -172,8 +173,11 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
         if (owner?.id === meId) goSeat.current()
         return
       }
+      // painel de quartos: abre o quadro de Quartos
+      const pq = hiddenAt(w.x, w.y) ? null : painelAt(tx, ty), s = getState()
+      if (pq && ve(s.profiles[meId], s)) return pq === 'painel-placar' ? setUi({ view: 'placar', drawer: false }) : setUi({ lousa: true })
       // porta que não abre pra mim: chega perto e mostra o aviso
-      const k = doorAtTile(tx, ty), s = getState()
+      const k = doorAtTile(tx, ty)
       if (k >= 0) {
         const d = slotDept(k, s)
         if (!d || !canEnter(d.id, s)) {
@@ -192,7 +196,7 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
       const id = avatarAt(w.x, w.y)
       const r = canvas.getBoundingClientRect()
       const tx = Math.floor(w.x / T), ty = Math.floor(w.y / T)
-      canvas.style.cursor = id || doorAtTile(tx, ty) >= 0 || (!hiddenAt(w.x, w.y) && deskAtTile(tx, ty)) ? 'pointer' : 'default'
+      canvas.style.cursor = id || doorAtTile(tx, ty) >= 0 || (!hiddenAt(w.x, w.y) && painelAt(tx, ty)) || (!hiddenAt(w.x, w.y) && deskAtTile(tx, ty)) ? 'pointer' : 'default'
       setHover(h => (id ? { id, sx: e.clientX - r.left, sy: e.clientY - r.top } : h ? null : h))
     }
     const onLeave = () => setHover(null)
@@ -425,6 +429,58 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
       // rótulos em espaço de tela (texto nítido)
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
       const now = Date.now()
+      // painel de quartos: livres hoje e nos próximos 4 dias, texto nítido em espaço de tela
+      const qs = Object.values(s.rows.quartos).filter(q => q.ativo).sort((a, b) => a.pos - b.pos || a.nome.localeCompare(b.nome)).slice(0, 3)
+      if (z >= 2) for (const r of rooms) {
+        if (hid[r.slot]) continue
+        for (const o of paineisOf(r)) {
+        const fx = (r.ox + o.x) * T + 4, fy = (r.oy + o.y) * T - 22, sx = (wx: number) => Math.round((fx + wx - cam.x) * z), sy = (wy: number) => Math.round((fy + wy - cam.y) * z)
+        ctx.textBaseline = 'middle'
+        if (o.k === 'painel-placar') {
+          // placar do mês: quem está na frente nos pontos
+          const pl = Object.values(placar(Object.values(s.rows.vendas), mesDe(new Date().toISOString()), s.rows.vendas_cfg.cfg ?? CFG0)).sort((a, b) => b.pts - a.pts).slice(0, 3)
+          ctx.font = `700 ${Math.round(2.6 * z)}px "Pixelify Sans", Inter, sans-serif`; ctx.fillStyle = '#fff'; ctx.textAlign = 'left'
+          ctx.fillText('PLACAR · ' + new Date().toLocaleDateString('pt-BR', { month: 'long' }).toUpperCase(), sx(16), sy(-4.5))
+          ctx.fillStyle = '#fbfbf8'; ctx.fillRect(sx(0), sy(0), Math.round(56 * z), Math.round(25 * z))
+          if (!pl.length) { ctx.fillStyle = '#8a8a92'; ctx.font = `600 ${Math.round(2.4 * z)}px Inter, sans-serif`; ctx.textAlign = 'center'; ctx.fillText('nenhuma venda no mês', sx(28), sy(12.5)) }
+          pl.forEach((p, k) => {
+            const cy = 4.5 + k * 8
+            ctx.fillStyle = ['#E8B400', '#9AA3B5', '#C98A4B'][k]; ctx.beginPath(); ctx.arc(sx(5), sy(cy), 2.4 * z, 0, Math.PI * 2); ctx.fill()
+            ctx.fillStyle = k === 1 ? '#101014' : '#fff'; ctx.textAlign = 'center'; ctx.font = `800 ${Math.round(2.8 * z)}px Inter, sans-serif`; ctx.fillText(String(k + 1), sx(5), sy(cy) + 0.5)
+            ctx.fillStyle = '#101014'; ctx.textAlign = 'left'; ctx.font = `${k ? 600 : 800} ${Math.round(3 * z)}px Inter, sans-serif`
+            ctx.fillText(s.profiles[p.id]?.name.split(' ')[0] ?? 'Alguém', sx(9.5), sy(cy), 28 * z)
+            ctx.fillStyle = '#EDE6D8'; roundRect(ctx, sx(39), sy(cy - 3), Math.round(15 * z), Math.round(6 * z), z); ctx.fill()
+            ctx.fillStyle = '#26324F'; ctx.textAlign = 'center'; ctx.font = `800 ${Math.round(2.8 * z)}px Inter, sans-serif`; ctx.fillText(`${p.pts} pts`, sx(46.5), sy(cy) + 0.5)
+          })
+          continue
+        }
+        const vs = Object.values(s.rows.vendas), d0 = hoje(), dias = [0, 1, 2, 3, 4].map(n => addDia(d0, n))
+        ctx.textBaseline = 'middle'
+        ctx.font = `700 ${Math.round(2.6 * z)}px "Pixelify Sans", Inter, sans-serif`; ctx.fillStyle = '#fff'; ctx.textAlign = 'left'
+        ctx.fillText('QUARTOS LIVRES', sx(16), sy(-4.5))
+        ctx.fillStyle = '#26324F'; ctx.fillRect(sx(0), sy(0), Math.round(72 * z), Math.round(25 * z))
+        ctx.fillStyle = '#fbfbf8'; ctx.fillRect(sx(0), sy(4.5), Math.round(72 * z), Math.round(20.5 * z))
+        ctx.font = `600 ${Math.round(2.4 * z)}px Inter, sans-serif`; ctx.textAlign = 'center'; ctx.fillStyle = '#fff'
+        dias.forEach((d, j) => ctx.fillText(j ? d.slice(8) : 'hoje', sx(31.5 + j * 9), sy(2.3)))
+        if (!qs.length) { ctx.fillStyle = '#8a8a92'; ctx.fillText('sem quartos cadastrados', sx(36), sy(14)) }
+        const rh = 20 / Math.max(1, qs.length)
+        qs.forEach((q, k) => {
+          const cy = 5 + k * rh + rh / 2
+          ctx.fillStyle = q.cor; ctx.beginPath(); ctx.arc(sx(3.5), sy(cy), 1.3 * z, 0, Math.PI * 2); ctx.fill()
+          ctx.font = `600 ${Math.round(2.6 * z)}px Inter, sans-serif`; ctx.textAlign = 'left'; ctx.fillStyle = '#101014'
+          ctx.fillText(q.nome, sx(6), sy(cy), 20 * z)
+          dias.forEach((d, j) => {
+            const n = livres(q, d, vs, s.rows.ajustes[`${q.id}:${d}`]), pouco = n <= Math.max(1, Math.ceil(q.total * 0.25))
+            ctx.fillStyle = n === 0 ? '#FF7A1A' : pouco ? '#FFE14D' : '#EDE6D8'
+            const ch = Math.min(rh - 1.2, 6)
+            roundRect(ctx, sx(27.5 + j * 9), sy(cy - ch / 2), Math.round(8 * z), Math.round(ch * z), z); ctx.fill()
+            ctx.fillStyle = n === 0 ? '#fff' : '#101014'; ctx.textAlign = 'center'
+            ctx.font = `800 ${Math.round(Math.min(3.4, ch * 0.62) * z)}px Inter, sans-serif`
+            ctx.fillText(String(n), sx(31.5 + j * 9), sy(cy) + 0.5)
+          })
+        })
+        }
+      }
       /** placa em (wx, wy) do mundo; ax/ay = qual ponto da placa fica ali (0 = esquerda/topo, 1 = direita/base) */
       const plate = (wx: number, wy: number, text: string, o: { bg: string; fg: string; dot?: string; lock?: boolean; ax?: number; ay?: number }) => {
         ctx.font = '700 10px "Pixelify Sans", Inter, sans-serif'

@@ -165,9 +165,11 @@ export interface Premio { titulo: string; regra: 'pontos' | 'valor' | 'vendas'; 
 export interface VendasCfg { id: 'cfg'; pts_venda: number; pts_mil: number; tiers: Tier[]; premios: Premio[]; pasta: DriveLink | null; created_at: string }
 /** campanha do Marketing pro Comercial vender */
 export interface Campanha { id: string; titulo: string; texto: string; inicio: string | null; fim: string | null; cor: string; pasta: DriveLink | null; link: string | null; created_by: string | null; created_at: string }
-export interface Rows { events: CalEvent; goals: Goal; stickers: Sticker; flows: Flow; stages: Stage; groups: Group; rooms: Room; carpenters: Carpenter; depts: Dept; brand: Brand; quartos: Quarto; vendas: Venda; ajustes: Ajuste; metas_venda: MetaVenda; vendas_cfg: VendasCfg; campanhas: Campanha }
+/** anotação do caderninho (só o dono vê; some em 7 dias se não for fixada) */
+export interface Nota { id: string; user_id: string; texto: string; fixa: boolean; created_at: string }
+export interface Rows { events: CalEvent; goals: Goal; stickers: Sticker; flows: Flow; stages: Stage; groups: Group; rooms: Room; carpenters: Carpenter; depts: Dept; brand: Brand; quartos: Quarto; vendas: Venda; ajustes: Ajuste; metas_venda: MetaVenda; vendas_cfg: VendasCfg; campanhas: Campanha; caderno: Nota }
 export type RowTable = keyof Rows
-export const ROW_TABLES: RowTable[] = ['events', 'goals', 'stickers', 'flows', 'stages', 'groups', 'rooms', 'carpenters', 'depts', 'brand', 'quartos', 'vendas', 'ajustes', 'metas_venda', 'vendas_cfg', 'campanhas']
+export const ROW_TABLES: RowTable[] = ['events', 'goals', 'stickers', 'flows', 'stages', 'groups', 'rooms', 'carpenters', 'depts', 'brand', 'quartos', 'vendas', 'ajustes', 'metas_venda', 'vendas_cfg', 'campanhas', 'caderno']
 
 export type Priority = 'alta' | 'media' | 'baixa'
 export interface CheckItem {

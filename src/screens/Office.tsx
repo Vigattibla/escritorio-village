@@ -21,7 +21,8 @@ import Loja from '../components/Loja'
 import SalaEditor, { canEditOffice } from '../components/SalaEditor'
 import Fluxos from '../components/Fluxos'
 import Arquivos from '../components/Arquivos'
-import Vendas from '../components/Vendas'
+import Vendas, { Lousa } from '../components/Vendas'
+import Caderno from '../components/Caderno'
 import { vende } from '../game/vendas'
 import Inicio from '../components/Inicio'
 import InicioDesk from '../components/InicioDesk'
@@ -69,13 +70,14 @@ export default function Office() {
   }, [pend, msgs])
   // setor de vendas tem layout próprio: sem Quadro/Agenda, abre em Vendas
   const sv = vende(me, s) && !me?.is_admin
-  const SV_PAGES: Page[] = ['vendas', 'arquivos', 'escritorio', 'loja']
+  const SV_PAGES: Page[] = ['vendas', 'placar', 'kit', 'arquivos', 'escritorio', 'loja']
+  const VD_PAGES: Page[] = ['vendas', 'placar', 'kit']
   const dev = usePref('dev')
   // a porta de entrada é o Início (celular e computador); vendas abre em Vendas
   useEffect(() => { if (!sv && s.view === 'quadro' && !s.drawer) setUi({ view: 'inicio' }) }, []) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (sv) { if (!SV_PAGES.includes(s.view as Page) || s.drawer) setUi({ view: 'vendas', drawer: false }) }
-    else if (s.view === 'vendas' && !(me?.is_admin && dev)) setUi({ view: 'inicio' })
+    else if (VD_PAGES.includes(s.view as Page) && !(me?.is_admin && dev)) setUi({ view: 'inicio' })
   }, [sv, dev, s.view, s.drawer]) // eslint-disable-line react-hooks/exhaustive-deps
   if (!me) return null
 
@@ -91,7 +93,9 @@ export default function Office() {
   const page: Page = s.view !== 'quadro' ? s.view : s.drawer ? s.tab : 'quadro'
   // minha mesa = filtro "Só minhas"; aprovação = coluna do quadro; avisos = sino; chat = abre a janela flutuante
   const items: { id: Page | 'chatwin'; label: string; ic: TName; n?: number; tip?: string; more?: boolean }[] = sv ? [
-    { id: 'vendas', label: 'Vendas', ic: 'vendas' },
+    { id: 'vendas', label: 'Quartos', ic: 'vendas' },
+    { id: 'placar', label: 'Placar', ic: 'placar' },
+    { id: 'kit', label: 'Kit de vendas', ic: 'kit' },
     { id: 'chatwin', label: 'Chat', ic: 'chat', n: msgs },
     { id: 'arquivos', label: 'Arquivos', ic: 'arquivos' },
     { id: 'escritorio', label: 'Escritório', ic: 'escritorio' },
@@ -103,7 +107,7 @@ export default function Office() {
     { id: 'escritorio', label: 'Escritório', ic: 'escritorio' },
     { id: 'arquivos', label: 'Arquivos', ic: 'arquivos' },
     // Vendas fora do setor de vendas: só o admin, no modo desenvolvedor
-    ...(depts.some(d => d.vendas) && me.is_admin && dev ? [{ id: 'vendas' as Page, label: 'Vendas', ic: 'vendas' as TName }] : []),
+    ...(depts.some(d => d.vendas) && me.is_admin && dev ? ([['vendas', 'Quartos'], ['placar', 'Placar'], ['kit', 'Kit de vendas']] as const).map(([id, label]) => ({ id: id as Page, label, ic: (id === 'vendas' ? 'vendas' : id) as TName, more: true })) : []),
     { id: 'metas', label: 'Metas', ic: 'metas', more: true },
     { id: 'fluxos', label: 'Fluxos', ic: 'fluxos', more: true },
   ]
@@ -187,7 +191,7 @@ export default function Office() {
         </div>}
         {s.sala !== myDept(s) && s.here === s.sala && <div className="banner sala-visit" onClick={() => run(openSala(myDept(s)))}>Você está na sala {deptName(s.sala, s)} <small>(clique para voltar para a sua)</small></div>}
         {s.error && <div className="banner" onClick={() => setUi({ error: '' })}>{s.error} <small>(clique para fechar)</small></div>}
-        {page !== 'quadro' && page !== 'agenda' && page !== 'metas' && page !== 'fluxos' && page !== 'arquivos' && page !== 'vendas' && page !== 'inicio' && page !== 'loja' && <div className="ptop"><h1 className="grow">{items.find(i => i.id === page)?.label}</h1><Bell /></div>}
+        {page !== 'quadro' && page !== 'agenda' && page !== 'metas' && page !== 'fluxos' && page !== 'arquivos' && !VD_PAGES.includes(page) && page !== 'inicio' && page !== 'loja' && <div className="ptop"><h1 className="grow">{items.find(i => i.id === page)?.label}</h1><Bell /></div>}
         <main className="main">
           {page === 'quadro' && <Quadro />}
           {page === 'inicio' && (isNarrow ? <Inicio /> : <InicioDesk />)}
@@ -195,14 +199,18 @@ export default function Office() {
           {page === 'metas' && <Metas />}
           {page === 'fluxos' && <Fluxos />}
           {page === 'arquivos' && <Arquivos />}
-          {page === 'vendas' && <Vendas />}
+          {page === 'vendas' && <Vendas aba="quartos" />}
+          {page === 'placar' && <Vendas aba="placar" />}
+          {page === 'kit' && <Vendas aba="kit" />}
           {page === 'loja' && <Loja />}
           {office && arrumando && <SalaEditor onClose={() => setArrumando(false)} />}
           {office && !arrumando && <>
             <div className="game-wrap"><Game />{canEdit && s.here === s.sala && <button className="btn primary sm game-edit" onClick={() => setArrumando(true)}>🪚 Arrumar sala</button>}
               <button className={'btn sm game-tl' + (new Date().getHours() >= 17 ? ' accent' : ' soft')} onClick={() => setTl(true)} title="Ver como todo mundo se movimentou hoje, acelerado"><Ph n="film-strip" size={16} />Timelapse do dia</button></div>
             {tl && <Timelapse onClose={() => setTl(false)} />}
+            {s.lousa && <Lousa onClose={() => setUi({ lousa: false })} />}
             <aside className="side">
+              {sv ? <div className="pane"><Caderno /></div> : <>
               <nav className="who-strip" aria-label="Ver a mesa de">
                 {people.map(p => {
                   const here = p.id === me.id || s.online.has(p.id)
@@ -216,6 +224,7 @@ export default function Office() {
                 })}
               </nav>
               <div className="pane"><Board /></div>
+              </>}
             </aside>
           </>}
           {!s.drawer || s.view !== 'quadro' ? null : page !== 'quadro' && <div className="doc">{pane(page as Tab)}</div>}
@@ -230,9 +239,9 @@ export default function Office() {
       <CeleWatch />
       <Sheet />
       {sv ? <nav className="tabbar" aria-label="Seções">
-        <Tab it={{ id: 'vendas', label: 'Vendas', ic: 'storefront' }} />
+        <Tab it={{ id: 'vendas', label: 'Quartos', ic: 'bed' }} /><Tab it={{ id: 'placar', label: 'Placar', ic: 'trophy' }} /><Tab it={{ id: 'kit', label: 'Kit', ic: 'megaphone' }} />
         <button className={s.chatOpen ? 'on' : ''} onClick={() => setUi({ chatOpen: !s.chatOpen })}><Ph n="chat-circle-dots" size={24} fill={s.chatOpen} />Chat{msgs > 0 && <i className="nav-n">{msgs > 9 ? '9+' : msgs}</i>}</button>
-        <Tab it={{ id: 'arquivos', label: 'Arquivos', ic: 'folder-simple' }} /><Tab it={tabs[3]} />
+        <Tab it={tabs[3]} />
       </nav> : <nav className="tabbar" aria-label="Seções">
         <Tab it={tabs[0]} /><Tab it={tabs[1]} />
         <button className="tfab" onClick={() => setUi({ sheet: true })} aria-label="Nova tarefa"><Ph n="plus" size={26} fill /></button>
