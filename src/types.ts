@@ -147,9 +147,11 @@ export interface Dept { id: string; name: string; color: string; floor: number; 
 export interface Room { id: string; data: unknown; created_by: string; created_at: string }
 /** carpinteiro: pode editar o escritório até `until` */
 export interface Carpenter { id: string; until: string; created_by: string; created_at: string }
-export interface Rows { events: CalEvent; goals: Goal; stickers: Sticker; flows: Flow; stages: Stage; groups: Group; rooms: Room; carpenters: Carpenter; depts: Dept }
+/** marca do cliente (linha única id 'marca'): logo = imagem em data URL, já reduzida no navegador */
+export interface Brand { id: string; logo: string | null; created_at: string }
+export interface Rows { events: CalEvent; goals: Goal; stickers: Sticker; flows: Flow; stages: Stage; groups: Group; rooms: Room; carpenters: Carpenter; depts: Dept; brand: Brand }
 export type RowTable = keyof Rows
-export const ROW_TABLES: RowTable[] = ['events', 'goals', 'stickers', 'flows', 'stages', 'groups', 'rooms', 'carpenters', 'depts']
+export const ROW_TABLES: RowTable[] = ['events', 'goals', 'stickers', 'flows', 'stages', 'groups', 'rooms', 'carpenters', 'depts', 'brand']
 
 export type Priority = 'alta' | 'media' | 'baixa'
 export interface CheckItem {

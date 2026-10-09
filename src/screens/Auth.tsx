@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import Meo, { Wordmark } from '../components/Meo'
 import { TENANT } from '../tenant'
+import { LogoImg } from '../components/Marca'
 import { backend } from '../data'
 import { enter, useStore } from '../store'
 
@@ -34,7 +35,7 @@ export default function Auth() {
     <div className="auth">
       <div className="auth-card">
         <div className="brand">
-          <span className="tlogo lg">{TENANT.logo}</span>
+          <span className="tlogo img lg"><LogoImg /></span>
           <div>
             <h1>{TENANT.name}</h1>
             <p className="muted">O escritório virtual da equipe: tarefas, pedidos e conversa num lugar só.</p>

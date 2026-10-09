@@ -24,6 +24,7 @@ import InicioDesk from '../components/InicioDesk'
 import TIcon, { type TName } from '../components/TIcon'
 import Meo, { Wordmark } from '../components/Meo'
 import { TENANT } from '../tenant'
+import Marca from '../components/Marca'
 import MoreMenu from '../components/MoreMenu'
 import Sheet from '../components/Sheet'
 import { StickerLayer, StickerPicker } from '../components/Stickers'
@@ -49,6 +50,9 @@ export default function Office() {
   const s = useStore(x => x)
   const [arrumando, setArrumando] = useState(false)
   const [meOpen, setMeOpen] = useState(false)
+  // Metas, Fluxos e Geral ficam guardados: só aparecem quando a pessoa abre o "Mais"
+  const [mais, setMais] = useState(() => { try { return localStorage.getItem('ev:nav:mais') === '1' } catch { return false } })
+  const toggleMais = () => { setMais(!mais); try { localStorage.setItem('ev:nav:mais', mais ? '0' : '1') } catch { /* sem storage */ } }
   const isNarrow = useNarrow()
   const me = s.profiles[s.meId!]
   const tasks = Object.values(s.tasks)
@@ -78,12 +82,13 @@ export default function Office() {
     { id: 'agenda', label: 'Agenda', ic: 'agenda' },
     { id: 'chatwin', label: 'Chat', ic: 'chat', n: msgs },
     { id: 'escritorio', label: 'Escritório', ic: 'escritorio' },
+    { id: 'arquivos', label: 'Arquivos', ic: 'arquivos' },
+    { id: 'equipe', label: 'Equipe', ic: 'equipe' },
     { id: 'metas', label: 'Metas', ic: 'metas', more: true },
     { id: 'fluxos', label: 'Fluxos', ic: 'fluxos', more: true },
-    { id: 'arquivos', label: 'Arquivos', ic: 'arquivos', more: true },
-    { id: 'equipe', label: 'Equipe', ic: 'equipe', more: true },
   ]
   if (chief) items.push({ id: 'geral', label: 'Geral', ic: 'mural', more: true, n: tasks.filter(t => t.status === 'inbox').length })
+  const maisOn = mais || items.some(it => it.more && it.id === page)
   const goTo = (id: Page) => {
     if (id === 'mesa' || id === 'aprovar' || id === 'avisos' || id === 'equipe' || id === 'chat' || id === 'geral') setUi({ view: 'quadro', tab: id, drawer: true })
     else setUi({ view: id, drawer: false })
@@ -116,14 +121,14 @@ export default function Office() {
     <div className="office" data-page={page}>
       <aside className="nav">
         <div className="tbrand">
-          <span className="tlogo">{TENANT.logo}</span>
-          <span className="grow"><b>{TENANT.name}</b><small>{TENANT.sub}</small></span>
+          <Marca />
+          <span className="grow"><b>{TENANT.short}</b><small>{TENANT.sub}</small></span>
           {backend.mode === 'demo' && <span className="nav-demo">demo</span>}
         </div>
         <nav className="nav-list">
           {items.filter(it => !it.more).map(it => <NavItem key={it.id} it={it} />)}
-          <small className="nav-sec">Mais</small>
-          {items.filter(it => it.more).map(it => <NavItem key={it.id} it={it} />)}
+          <button className={'nav-sec' + (maisOn ? ' on' : '')} onClick={toggleMais} aria-expanded={maisOn}>Mais <Ph n={maisOn ? 'caret-left' : 'caret-right'} size={14} /></button>
+          {maisOn && items.filter(it => it.more).map(it => <NavItem key={it.id} it={it} />)}
         </nav>
         <div className="nav-me">
           <button className={'nav-av' + (page === 'loja' ? ' on' : '')} onClick={() => setMeOpen(!meOpen)} title={`${me.name} · ${me.role || rankName(me)}`} aria-expanded={meOpen}>

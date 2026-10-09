@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
-import { dmPeer, floatChans, groupOf, setUi, useStore, type State } from '../store'
+import { dmChannel, dmPeer, floatChans, groupOf, setUi, useStore, type State } from '../store'
 import Chat from './Chat'
 import Icon, { Ph } from './Icon'
-import Meo from './Meo'
+import { MeoEncostado } from './Meo'
+import { TENANT } from '../tenant'
 import MiniAvatar from './MiniAvatar'
 import type { PhName } from './ph'
 
@@ -92,6 +93,8 @@ export default function FloatChat({ unread }: { unread: number }) {
   const [floats, setFloats] = useState<Float[]>(() => load<Float[]>('ev:floats', []))
   const [peek, setPeek] = useState<{ id: string; from: string; body: string } | null>(null)
   const [ping, setPing] = useState(0)
+  /** o balãozinho do gato: "Miau! Falar com quem?" */
+  const [miau, setMiau] = useState(false)
   const seen = useRef(s.messages.at(-1)?.id ?? '')
 
   // conversas soltas contam como "vistas" pro aviso
@@ -123,17 +126,32 @@ export default function FloatChat({ unread }: { unread: number }) {
   }, [])
 
   const right = bp.x + B / 2 > innerWidth / 2
+  // janela mudou de tamanho (ou abriu escondida): o gato continua encostado no mesmo lado
+  const lado = useRef(right); lado.current = right
+  useEffect(() => {
+    const fit = () => setBp(p => clamp({ x: lado.current ? innerWidth - B - M : M, y: load<XY | null>('ev:bubble', null) ? p.y : innerHeight - B - (narrow() ? 150 : 20) }, B, B))
+    addEventListener('resize', fit)
+    return () => removeEventListener('resize', fit)
+  }, [])
   const down = (e: React.PointerEvent) => {
     e.preventDefault()
     drag(e, bp, q => { setDragging(true); setBp(clamp(q, B, B)) }, (q, moved) => {
       setDragging(false)
-      if (!moved) return setUi({ chatOpen: !open })
+      if (!moved) return tap()
       // encosta na borda mais perto
       const c = clamp(q, B, B)
       const snap = { x: c.x + B / 2 > innerWidth / 2 ? innerWidth - B - M : M, y: c.y }
       setBp(snap); save('ev:bubble', snap)
     })
   }
+  const tap = () => {
+    if (open) return setUi({ chatOpen: false })
+    if (peek) { setPeek(null); return setUi({ chatOpen: true, channel: last!.channel }) }
+    setMiau(!miau)
+  }
+  const falar = (channel?: string) => { setMiau(false); setUi(channel ? { chatOpen: true, channel } : { chatOpen: true }) }
+  const gente = Object.values(s.profiles).filter(p => p.id !== s.meId && p.avatar)
+    .sort((a, b) => Number(s.online.has(b.id)) - Number(s.online.has(a.id)) || a.name.localeCompare(b.name)).slice(0, 8)
   // primeira vez: a janela abre do lado da bolinha
   const winAt = wp ?? clamp({ x: right ? bp.x - 440 + B : bp.x, y: bp.y - 580 }, 440, 560)
   const pop = (ch: string) => {
@@ -149,24 +167,44 @@ export default function FloatChat({ unread }: { unread: number }) {
 
   return (
     <>
-      <button
-        className={'bubble' + (open ? ' on' : '') + (dragging ? ' dragging' : '') + (right ? ' right' : ' left') + (unread ? ' has' : '')}
-        key={ping} /* reinicia a animação de pulo */
-        style={{ left: bp.x, top: bp.y }}
-        onPointerDown={down}
-        onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && setUi({ chatOpen: !open })}
-        title="Chat da equipe (arraste pra mudar de lugar)"
-        aria-label={`Chat${unread ? ` (${unread} novas)` : ''}`}
-      >
-        <span className="bubble-ic">{open ? <Icon n="x" size={24} /> : <Meo size={34} />}</span>
-        {!open && unread > 0 && <i className="bubble-n">{unread > 9 ? '9+' : unread}</i>}
-        {peek && !open && (
-          <span className="bubble-peek" onPointerDown={e => e.stopPropagation()} onClick={e => { e.stopPropagation(); setPeek(null); setUi({ chatOpen: true, channel: last!.channel }) }}>
-            <MiniAvatar avatar={s.profiles[peek.from]?.avatar ?? null} photo={s.profiles[peek.from]?.photo ?? null} name={s.profiles[peek.from]?.name} size={26} />
+      <div className={'gato-wrap' + (right ? ' right' : ' left') + (bp.y < innerHeight / 2 ? ' cima' : ' baixo')} style={{ top: bp.y }}>
+        <button
+          className={'gato' + (open ? ' on' : '') + (dragging ? ' dragging' : '') + (unread ? ' has' : '') + (miau ? ' miau' : '')}
+          key={ping} /* reinicia o pulinho */
+          onPointerDown={down}
+          onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && tap()}
+          title="Chat da equipe (arraste pra cima ou pra baixo, ou pro outro lado)"
+          aria-label={`Chat${unread ? ` (${unread} novas)` : ''}`}
+          aria-expanded={open || miau}
+        >
+          <span className="gato-corpo"><MeoEncostado size={62} color={TENANT.acc} mood={open || miau ? 'feliz' : unread ? 'chamando' : 'idle'} /></span>
+          {!open && unread > 0 && <i className="gato-n">{unread > 9 ? '9+' : unread}</i>}
+        </button>
+        {peek && !open && !miau && (
+          <button className="gato-balao gato-peek" onClick={() => { setPeek(null); setUi({ chatOpen: true, channel: last!.channel }) }}>
+            <MiniAvatar avatar={s.profiles[peek.from]?.avatar ?? null} photo={s.profiles[peek.from]?.photo ?? null} name={s.profiles[peek.from]?.name} size={28} />
             <span><b>{s.profiles[peek.from]?.name ?? 'Alguém'}</b>{peek.body.slice(0, 80)}</span>
-          </span>
+          </button>
         )}
-      </button>
+        {miau && !open && <>
+          <div className="more-veil" onClick={() => setMiau(false)} />
+          <div className="gato-balao gato-pop" role="dialog" aria-label="Falar com quem?">
+            <b className="gato-t">Miau! Falar com quem?</b>
+            <div className="gato-gente">
+              {gente.map(p => (
+                <button key={p.id} onClick={() => falar(dmChannel(s.meId!, p.id))} title={p.name}>
+                  <span className={'gato-av' + (s.online.has(p.id) ? ' on' : '')}><MiniAvatar avatar={p.avatar} photo={p.photo} name={p.name} size={40} /></span>
+                  <small>{p.name.split(' ')[0]}</small>
+                </button>
+              ))}
+            </div>
+            <div className="gato-acts">
+              <button onClick={() => falar('geral')}><Ph n="chat-circle-dots" size={18} />Geral da equipe</button>
+              <button onClick={() => falar()}><Ph n="users-three" size={18} />Todas as conversas</button>
+            </div>
+          </div>
+        </>}
+      </div>
 
       {open && (
         <Win id="main" at={winAt} above={bp.y} onAt={p => { setWp(p); save('ev:cwin', p) }} onClose={() => setUi({ chatOpen: false })}

@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { dayKey } from '../game/xp'
-import { deptOf, isChief } from '../game/ranks'
-import { acceptRequest, canMove, deptList, deptName, hasCanais, openSala, run, setStatus, setUi, team, toApprove, useStore } from '../store'
+import { deptOf } from '../game/ranks'
+import { acceptRequest, canEnter, canMove, deptList, deptName, hasCanais, knock, openSala, run, setStatus, setUi, team, toApprove, useStore } from '../store'
 import type { Task } from '../types'
 import { TENANT } from '../tenant'
 import { Bell } from './Avisos'
@@ -15,7 +15,7 @@ const hello = () => { const h = new Date().getHours(); return h < 12 ? 'Bom dia'
 const ORDER = { doing: 0, review: 1, inbox: 2, todo: 3, done: 4, declined: 5 }
 const mins = (hhmm: string) => { const [h, m] = hhmm.split(':').map(Number); return h * 60 + (m || 0) }
 
-/** a sala ao vivo: câmera passa por quem está; o botão entra no escritório */
+/** a sala ao vivo: câmera passa por quem está; as abas trocam de sala, a porta bate nas que estão fechadas */
 function Sala() {
   const s = useStore(x => x)
   const meId = s.meId!
@@ -23,38 +23,62 @@ function Sala() {
   const here = [meId, ...people.filter(p => p.id !== meId && s.online.has(p.id)).map(p => p.id)]
   const [i, setI] = useState(0)
   const [dip, setDip] = useState(false)
+  const [porta, setPorta] = useState(false)
+  const [toc, setToc] = useState('')
   useEffect(() => {
     if (here.length < 2) return
     const t = setInterval(() => { setDip(true); setTimeout(() => { setI(n => n + 1); setDip(false) }, 380) }, 7000)
     return () => clearInterval(t)
   }, [here.join(',')]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (!toc) return; const t = setTimeout(() => setToc(''), 4000); return () => clearTimeout(t) }, [toc])
   const focus = here[i % here.length]
-  const chief = isChief(s.profiles[meId])
   const depts = deptList(s)
+  const others = depts.filter(d => d.id !== s.sala)
   const p = s.profiles[focus]
   const doing = Object.values(s.tasks).find(t => t.owner_id === focus && t.status === 'doing')
   const names = here.filter(id => id !== meId).map(id => first(s.profiles[id]))
+  const bater = async (id: string) => {
+    setPorta(false)
+    try { await knock(id); setToc(`Toc, toc! Avisamos quem cuida da sala ${deptName(id, s)}.`) }
+    catch (e) { setToc(e instanceof Error ? e.message : 'Não deu pra bater agora.') }
+  }
   return (
     <section className="tsala">
       <div className="tsala-cine"><Game cine focus={focus} /><div className={'dip' + (dip ? ' on' : '')} /></div>
       <div className="tsala-top">
         <span className="tvivo"><i />ao vivo</span>
-        {depts.length > 1 && <span className="tsala-tabs">
+        <span className="tsala-tabs">
           {depts.map(d => {
             const n = team(s.profiles, { sala: d.id }).length
             const on = d.id === s.sala
-            return <button key={d.id} className={on ? 'on' : ''} disabled={!on && !chief} title={!on && !chief ? 'Só a chefia visita outras salas' : undefined}
-              onClick={() => !on && chief && run(openSala(d.id))}>{d.name}<i>{n}</i></button>
+            const pode = canEnter(d.id, s)
+            return <button key={d.id} className={on ? 'on' : ''} title={on ? undefined : pode ? `Ver a sala ${d.name}` : 'Porta fechada: clique para bater'}
+              onClick={() => { if (!on) void (pode ? run(openSala(d.id)) : bater(d.id)) }}>{d.name}<i>{n}</i></button>
           })}
-        </span>}
+        </span>
       </div>
       <div className="tsala-bot">
         {p && <span className="tpill">
           <MiniAvatar avatar={p.avatar} photo={p.photo} name={p.name} size={26} />
           <span><b>{focus === meId ? 'Você' : first(p)}</b>{doing ? <> · {doing.title}</> : focus === meId && names.length ? <> · com {names.slice(0, 2).join(' e ')}{names.length > 2 ? ` e mais ${names.length - 2}` : ''}</> : ' · na sala'}</span>
         </span>}
-        <button className="tbtn acc lg" onClick={() => setUi({ view: 'escritorio', drawer: false })}>Entrar na sala</button>
+        <span className="tsala-acts">
+          {others.length > 0 && <span className="tporta">
+            <button className="tbtn creme lg" onClick={() => setPorta(!porta)} aria-expanded={porta}><TIcon n="escritorio" size={20} />Bater na porta</button>
+            {porta && <>
+              <div className="more-veil" onClick={() => setPorta(false)} />
+              <div className="tpedir-pop tporta-pop">
+                <small>Bater na porta de qual sala?</small>
+                {others.map(d => <button key={d.id} onClick={() => bater(d.id)}>
+                  <i className="sala-dot" style={{ background: d.color }} /><b className="grow">{d.name}</b><small>{team(s.profiles, { sala: d.id }).length} na sala</small>
+                </button>)}
+              </div>
+            </>}
+          </span>}
+          <button className="tbtn acc lg" onClick={() => setUi({ view: 'escritorio', drawer: false })}>Entrar na sala</button>
+        </span>
       </div>
+      {toc && <span className="ttoc" role="status">{toc}</span>}
       <span className="tsala-espia"><MeoEspia size={42} color={TENANT.acc} /></span>
     </section>
   )
@@ -67,7 +91,7 @@ function Pedir() {
     .sort((a, b) => Number(deptOf(b) === s.sala) - Number(deptOf(a) === s.sala) || a.name.localeCompare(b.name))
   return (
     <span className="tpedir">
-      <button className="tbtn acc2 lg" onClick={() => setOpen(!open)} aria-expanded={open}><TIcon n="pedir" size={20} />Pedir algo</button>
+      <button className="tbtn branco lg" onClick={() => setOpen(!open)} aria-expanded={open}><TIcon n="pedir" size={20} />Pedir algo</button>
       {open && <>
         <div className="more-veil" onClick={() => setOpen(false)} />
         <div className="tpedir-pop">
@@ -133,12 +157,11 @@ export default function InicioDesk() {
   const next = ev.find(e => e.time && mins(e.time) >= now - 30)
   const week = Date.now() - 7 * 864e5
   const cols = [
-    { k: 'A fazer', n: open.filter(t => t.status === 'todo').length, c: '#CFC6B4' },
-    { k: 'Fazendo', n: open.filter(t => t.status === 'doing').length, c: 'var(--acc)' },
-    { k: 'Aprovação', n: open.filter(t => t.status === 'review').length, c: '#FFE14D' },
-    { k: 'Feito', n: all.filter(t => t.status === 'done' && t.done_at && Date.parse(t.done_at) >= week).length, c: '#1F9D55' },
+    { k: 'A fazer', d: 'esperando alguém pegar', n: open.filter(t => t.status === 'todo').length, c: '#CFC6B4' },
+    { k: 'Fazendo', d: 'em andamento', n: open.filter(t => t.status === 'doing').length, c: 'var(--acc)' },
+    { k: 'Aprovação', d: 'esperando o ok', n: open.filter(t => t.status === 'review').length, c: '#FFC600' },
+    { k: 'Feito', d: 'nos últimos 7 dias', n: all.filter(t => t.status === 'done' && t.done_at && Date.parse(t.done_at) >= week).length, c: '#1F9D55' },
   ]
-  const total = cols.reduce((n, c) => n + c.n, 0)
   const date = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })
   const sala = deptName(s.sala, s)
   const when = (t: Task) => {
@@ -155,14 +178,19 @@ export default function InicioDesk() {
         <span className="grow" />
         <Bell />
         <Pedir />
-        <button className="tbtn acc lg" onClick={() => setUi({ sheet: true })}><TIcon n="mais" size={20} />Nova tarefa</button>
+        <button className="tbtn acc2 lg" onClick={() => setUi({ sheet: true })}><TIcon n="mais" size={20} />Nova tarefa</button>
       </div>
       <div className="thead">
         <div><small>{date[0].toUpperCase() + date.slice(1)}</small><h1>{hello()}, {first(me)}</h1></div>
-        {late > 0 && <button className="tchip tang lg" onClick={() => setUi({ view: 'quadro', drawer: false })}><TIcon n="alerta" size={18} />{late} atrasada{late > 1 ? 's' : ''}</button>}
+        <span className="tresumo">
+          <span><b>{mine.length}</b>na sua lista</span>
+          <span><b>{pedidos.length}</b>pedido{pedidos.length === 1 ? '' : 's'} novo{pedidos.length === 1 ? '' : 's'}</span>
+          <span><b>{ev.length}</b>na agenda hoje</span>
+          {late > 0 && <button className="tchip tang lg" onClick={() => setUi({ view: 'quadro', drawer: false })}><TIcon n="alerta" size={18} />{late} atrasada{late > 1 ? 's' : ''}</button>}
+        </span>
       </div>
-      <Sala />
-      <div className="tgrid">
+      <div className="tlinha1">
+        <Sala />
         <section className="tbox tdia">
           <header><TIcon n="lista" size={24} /><h2>Meu dia</h2><small>{doneToday.length} de {doneToday.length + mine.length}</small>
             <button className="tlink" onClick={() => setUi({ sheet: true })}><TIcon n="mais" size={20} />Adicionar</button></header>
@@ -180,7 +208,10 @@ export default function InicioDesk() {
               </div>
             )
           })}
+          <footer><button className="tlink" onClick={() => setUi({ view: 'quadro', drawer: false })}>Ver tudo no quadro</button></footer>
         </section>
+      </div>
+      <div className="tlinha2">
         <section className="tbox tagenda">
           <header><TIcon n="agenda" size={22} /><h2>Agenda de hoje</h2></header>
           {!ev.length && <p className="tvazio">Nada marcado hoje.</p>}
@@ -193,6 +224,7 @@ export default function InicioDesk() {
               </button>
             )
           })}
+          <footer><button className="tlink" onClick={() => setUi({ view: 'agenda', drawer: false })}>Abrir agenda</button></footer>
         </section>
         <section className="tbox tpedidos">
           <header><TIcon n="pedir" size={22} /><h2>Pedidos pra você</h2>{pedidos.length > 0 && <span className="tchip tang">{pedidos.length}</span>}</header>
@@ -216,14 +248,19 @@ export default function InicioDesk() {
           })}
           {approve > 0 && <button className="tapr" onClick={() => setUi({ view: 'quadro', drawer: false, qApprove: true })}>
             <TIcon n="ok" size={20} /><span className="grow">{approve} esperando sua aprovação</span><b>Ver</b></button>}
+          <footer><button className="tlink" onClick={() => setUi({ view: 'quadro', drawer: false })}>Ver pedidos no quadro</button></footer>
         </section>
         <section className="tbox tquadro">
-          <TIcon n="quadro" size={22} /><h2>Quadro {/(a|ção|gem|dade)$/i.test(sala) ? 'da' : 'do'} {sala}</h2>
+          <header><TIcon n="quadro" size={22} /><h2>Quadro {/(a|ção|gem|dade)$/i.test(sala) ? 'da' : 'do'} {sala}</h2>
+            <button className="tlink" onClick={() => setUi({ view: 'quadro', drawer: false })}>Abrir</button></header>
           <div className="tq">
-            <div className="tq-bar">{cols.map(c => <i key={c.k} style={{ flexGrow: total ? c.n : 1, background: c.c }} />)}</div>
-            <div className="tq-leg">{cols.map(c => <span key={c.k}><i style={{ background: c.c }} />{c.k}<b>{c.n}</b></span>)}</div>
+            {cols.map(c => (
+              <button key={c.k} className="tq-n" style={{ '--c': c.c } as CSSProperties}
+                onClick={() => setUi(c.k === 'Aprovação' && approve ? { view: 'quadro', drawer: false, qApprove: true } : { view: 'quadro', drawer: false })}>
+                <b>{c.n}</b><span>{c.k}</span><small>{c.d}</small>
+              </button>
+            ))}
           </div>
-          <button className="tlink" onClick={() => setUi({ view: 'quadro', drawer: false })}>Abrir</button>
         </section>
       </div>
     </div>

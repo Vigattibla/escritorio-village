@@ -45,5 +45,6 @@ export default function Icon({ n, size = 16 }: { n: IconName; size?: number }) {
 
 /** Ícone de área (Phosphor): duotone parado, cheio quando ativo. */
 export function Ph({ n, size = 20, fill = false }: { n: PhName; size?: number; fill?: boolean }) {
+  if (!PH[n]) { console.warn('Ph: ícone inexistente', n); return null }
   return <svg className="ph" width={size} height={size} viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" dangerouslySetInnerHTML={{ __html: PH[n][fill ? 1 : 0] }} />
 }
