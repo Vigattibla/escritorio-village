@@ -13,6 +13,8 @@
 
 - 08/10: Quadro — caixa de novo cartão não vaza mais da coluna (ec471db, publicado). Backup diário criptografado (backup.yml + scripts/backup.mjs; abrir com scripts/abrir-backup.sh; chave privada em D:\Backups\escritorio-village). Primeiro backup rodou e abriu ok. Anexos do Storage fora do backup. Loja (Almoxarifado) publicada em 84e5dac (ver seção 08/10 loja).
 
+- 09/10: identidade Turmeo aplicada e publicada (b34886f): src/turmeo.css (tokens Recreio por cima, Bricolage forçada, Pixelify só no jogo), src/tenant.ts (nome/logo/acc #26324F/acc2 #FFC600 do cliente), barra lateral branca com TIcon (classe `tic`; `.ti` e `.tcard` colidiam), InicioDesk.tsx = Início desktop (sala ao vivo no topo + Meu dia/Agenda/Pedidos/faixa do Quadro), Início vira padrão também no desktop, Meo na bolha do chat (escondida no celular; chat fica no topo). Backlog funcional: pedidos entre setores, permissões do Drive por setor/cargo, "entregar na mesa".
+
 ## Próximo
 - 08/10: fila do andar concluída. Nomenclatura por setor + bandeira da porta (cc7d038). Polimento (dcf87bb): sala 24×16 (base.ts MW/MH; parseSala reencaixa layout salvo 30×20 via fitSala), corredor de pedra + passadeira #26324F/#FFC600 + sofá/bancos/canteiros (HALL_OBJS em world.ts, nada na frente de porta), sala sem setor com caixas/móveis cobertos/escada (vacant), capacho na cor (drawMat), placa da porta navy com bolinha + cadeado, popups .game-tip/.game-door novos. Marketing em produção ainda tem layout antigo reencaixado: ajustar em "Arrumar sala" se quiser. Não testado visualmente: popup "Bater na porta" (demo é Chefe, entra em tudo).
 0. Usuário aprovar e push (migrate aplica a migração F1). Depois: F2+ do mockup v4.
