@@ -79,6 +79,7 @@ export class DemoBackend implements Backend {
     if (!localStorage.getItem(K.seeded)) seed()
     if (!localStorage.getItem(K.row + 'depts'))
       write(K.row + 'depts', { marketing: { id: 'marketing', name: 'Marketing', color: '#0B235D', floor: 1, slot: 0, canais: true, flag: 'megaphone', created_at: new Date(0).toISOString() } })
+    if (!localStorage.getItem(K.row + 'quartos')) seedVendas()
     return {
       profiles: Object.values(read<Record<string, Profile>>(K.prof, {})),
       tasks: Object.values(read<Record<string, Task>>(K.task, {})),
@@ -129,12 +130,12 @@ export class DemoBackend implements Backend {
     await this.upsertRow('depts', { ...d, curtains_open: open })
   }
 
-  async setDeptLook(dept: string, flag: string | null, canais: boolean) {
+  async setDeptLook(dept: string, flag: string | null, canais: boolean, vendas?: boolean) {
     const me = read<Record<string, Profile>>(K.prof, {})[sessionStorage.getItem(K.session) ?? '']
     const d = read<Record<string, Dept>>(K.row + 'depts', {})[dept]
     if (!d) throw new Error('Essa sala não existe.')
     if (!(me?.is_admin || me?.rank === 4 || ((me?.rank ?? 1) >= 3 && (me?.dept || 'marketing') === dept))) throw new Error('Só o gerente da sala, a Chefe ou o adm mudam a sala.')
-    await this.upsertRow('depts', { ...d, flag, canais })
+    await this.upsertRow('depts', { ...d, flag, canais, vendas: vendas ?? d.vendas })
   }
 
   async setDept(target: string, dept: string, desk: number) {
@@ -479,6 +480,44 @@ export class DemoBackend implements Backend {
 }
 
 // ---- equipe de exemplo ----
+/** Comercial de exemplo: sala que vende, quadro de quartos, vendas do mês, metas, tiers/prêmios e campanhas */
+function seedVendas() {
+  const now = new Date(), t0 = new Date(0).toISOString()
+  const dia = (d: number) => dayKey(new Date(now.getTime() + d * 864e5))
+  const ago = (h: number) => new Date(now.getTime() - h * 36e5).toISOString()
+  const depts = read<Record<string, Dept>>(K.row + 'depts', {})
+  if (!depts.comercial) write(K.row + 'depts', { ...depts, comercial: { id: 'comercial', name: 'Comercial', color: '#FF7A1A', floor: 1, slot: 1, vendas: true, flag: 'cifrao', created_at: t0 } })
+  const q = (id: string, nome: string, total: number, pos: number, cor: string) => ({ id, nome, total, pos, cor, ativo: true, created_by: null, created_at: t0 })
+  const quartos = [q('q-chale', 'Chalé', 12, 1, '#2440FF'), q('q-suite', 'Suíte Orquídea', 6, 2, '#FF7A1A'), q('q-familia', 'Apto Família', 8, 3, '#FF9ECF'), q('q-tulipa', 'Cubo Tulipa', 4, 4, '#3fa66b')]
+  write(K.row + 'quartos', Object.fromEntries(quartos.map(x => [x.id, x])))
+  const v = (user_id: string, quarto_id: string, de: number, noites: number, qtd: number, valor: number, h: number) =>
+    ({ id: crypto.randomUUID(), user_id, quarto_id, entrada: dia(de), saida: dia(de + noites), qtd, valor, nota: null, created_by: user_id, created_at: ago(h) })
+  const vendas = [
+    v('demo-ana', 'q-chale', 1, 2, 2, 2380, 3), v('demo-ana', 'q-suite', 3, 3, 1, 2970, 20), v('demo-ana', 'q-familia', 0, 2, 1, 1560, 30),
+    v('demo-bruno', 'q-chale', 2, 2, 3, 3570, 5), v('demo-bruno', 'q-tulipa', 5, 1, 1, 690, 50),
+    v('demo-carla', 'q-suite', 1, 2, 2, 3960, 8), v('demo-carla', 'q-chale', 4, 3, 2, 3570, 26), v('demo-carla', 'q-familia', 6, 2, 3, 4680, 70), v('demo-carla', 'q-chale', -2, 2, 1, 1190, 96),
+  ]
+  write(K.row + 'vendas', Object.fromEntries(vendas.map(x => [x.id, x])))
+  write(K.row + 'ajustes', {})
+  const mes = dia(0).slice(0, 7)
+  write(K.row + 'metas_venda', {
+    [mes + ':time']: { id: mes + ':time', user_id: null, mes, alvo: 60000, created_by: null, created_at: t0 },
+    [mes + ':demo-ana']: { id: mes + ':demo-ana', user_id: 'demo-ana', mes, alvo: 15000, created_by: 'demo-ana', created_at: t0 },
+  })
+  write(K.row + 'vendas_cfg', { cfg: {
+    id: 'cfg', pts_venda: 10, pts_mil: 10, pasta: null, created_at: t0,
+    tiers: [{ nome: 'Bronze', min: 0, cor: '#C98A4B' }, { nome: 'Prata', min: 100, cor: '#9AA3B5' }, { nome: 'Ouro', min: 250, cor: '#E8B400' }, { nome: 'Diamante', min: 500, cor: '#2440FF' }],
+    premios: [{ titulo: 'Jantar no restaurante', regra: 'valor', alvo: 15000 }, { titulo: 'Day off', regra: 'pontos', alvo: 400 }, { titulo: 'Vale-presente R$ 200', regra: 'vendas', alvo: 10 }],
+  } })
+  const c = (titulo: string, texto: string, de: number, ate: number, cor: string, link: string | null) =>
+    ({ id: crypto.randomUUID(), titulo, texto, inicio: dia(de), fim: dia(ate), cor, pasta: null, link, created_by: 'demo-bruno', created_at: t0 })
+  const camps = [
+    c('Semana das Crianças', 'Pacote família com 2 noites + recreação o dia todo. Argumento: monitores das 8h às 22h, duas turmas por idade.', -3, 4, '#FF7A1A', null),
+    c('Feriado de novembro', 'Pré-venda com 10% até dia 20. Mínimo de 3 noites nos chalés.', 0, 30, '#2440FF', null),
+  ]
+  write(K.row + 'campanhas', Object.fromEntries(camps.map(x => [x.id, x])))
+}
+
 function seed() {
   const now = new Date()
   const dayAhead = (d: number) => dayKey(new Date(now.getTime() + d * 864e5))

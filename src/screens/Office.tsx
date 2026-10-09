@@ -21,6 +21,8 @@ import Loja from '../components/Loja'
 import SalaEditor, { canEditOffice } from '../components/SalaEditor'
 import Fluxos from '../components/Fluxos'
 import Arquivos from '../components/Arquivos'
+import Vendas from '../components/Vendas'
+import { editaCampanha, ve as veVendas } from '../game/vendas'
 import Inicio from '../components/Inicio'
 import InicioDesk from '../components/InicioDesk'
 import TIcon, { type TName } from '../components/TIcon'
@@ -88,6 +90,7 @@ export default function Office() {
     { id: 'chatwin', label: 'Chat', ic: 'chat', n: msgs },
     { id: 'escritorio', label: 'Escritório', ic: 'escritorio' },
     { id: 'arquivos', label: 'Arquivos', ic: 'arquivos' },
+    ...(depts.some(d => d.vendas) && (veVendas(me, s) || editaCampanha(me, s)) ? [{ id: 'vendas' as Page, label: 'Vendas', ic: 'vendas' as TName }] : []),
     { id: 'metas', label: 'Metas', ic: 'metas', more: true },
     { id: 'fluxos', label: 'Fluxos', ic: 'fluxos', more: true },
   ]
@@ -171,7 +174,7 @@ export default function Office() {
         </div>}
         {s.sala !== myDept(s) && s.here === s.sala && <div className="banner sala-visit" onClick={() => run(openSala(myDept(s)))}>Você está na sala {deptName(s.sala, s)} <small>(clique para voltar para a sua)</small></div>}
         {s.error && <div className="banner" onClick={() => setUi({ error: '' })}>{s.error} <small>(clique para fechar)</small></div>}
-        {page !== 'quadro' && page !== 'agenda' && page !== 'metas' && page !== 'fluxos' && page !== 'arquivos' && page !== 'inicio' && page !== 'loja' && <div className="ptop"><h1 className="grow">{items.find(i => i.id === page)?.label}</h1><Bell /></div>}
+        {page !== 'quadro' && page !== 'agenda' && page !== 'metas' && page !== 'fluxos' && page !== 'arquivos' && page !== 'vendas' && page !== 'inicio' && page !== 'loja' && <div className="ptop"><h1 className="grow">{items.find(i => i.id === page)?.label}</h1><Bell /></div>}
         <main className="main">
           {page === 'quadro' && <Quadro />}
           {page === 'inicio' && (isNarrow ? <Inicio /> : <InicioDesk />)}
@@ -179,6 +182,7 @@ export default function Office() {
           {page === 'metas' && <Metas />}
           {page === 'fluxos' && <Fluxos />}
           {page === 'arquivos' && <Arquivos />}
+          {page === 'vendas' && <Vendas />}
           {page === 'loja' && <Loja />}
           {office && arrumando && <SalaEditor onClose={() => setArrumando(false)} />}
           {office && !arrumando && <>

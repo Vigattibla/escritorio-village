@@ -142,16 +142,30 @@ export interface Group { id: string; name: string; icon: string; open: boolean; 
 /** sala do andar: id = rooms.id do layout dela; floor/slot = posição no andar */
 /** flag: ícone da bandeira na porta · canais: a sala publica (posts, canais, agenda de publicação)
  *  door_open: porta aberta (qualquer um entra pelo corredor); fechada só quem é da sala e a Chefe · curtains_open: cortina do vidro aberta (quem passa vê dentro) */
-export interface Dept { id: string; name: string; color: string; floor: number; slot: number; door_open?: boolean; curtains_open?: boolean; flag?: string | null; canais?: boolean; created_at: string }
+export interface Dept { id: string; name: string; color: string; floor: number; slot: number; door_open?: boolean; curtains_open?: boolean; flag?: string | null; canais?: boolean; vendas?: boolean; created_at: string }
 /** layout de cada sala (id = id da sala; 'escritorio' = layout antigo do Marketing); data = Sala do editor */
 export interface Room { id: string; data: unknown; created_by: string; created_at: string }
 /** carpinteiro: pode editar o escritório até `until` */
 export interface Carpenter { id: string; until: string; created_by: string; created_at: string }
 /** marca do cliente (linha única id 'marca'): logo = imagem em data URL, já reduzida no navegador */
 export interface Brand { id: string; logo: string | null; created_at: string }
-export interface Rows { events: CalEvent; goals: Goal; stickers: Sticker; flows: Flow; stages: Stage; groups: Group; rooms: Room; carpenters: Carpenter; depts: Dept; brand: Brand }
+/** Comercial · tipo de quarto do quadro de disponibilidade (ativo=false = arquivado, as vendas antigas seguem) */
+export interface Quarto { id: string; nome: string; total: number; pos: number; cor: string; ativo: boolean; created_by: string | null; created_at: string }
+/** venda fechada: ocupa `qtd` quartos de entrada até a noite antes da saída (YYYY-MM-DD) */
+export interface Venda { id: string; user_id: string; quarto_id: string; entrada: string; saida: string; qtd: number; valor: number; nota: string | null; created_by: string; created_at: string }
+/** contagem manual do quadro num dia (id = quarto:dia); vendas lançadas depois descontam dela */
+export interface Ajuste { id: string; quarto_id: string; dia: string; livres: number; created_by: string | null; created_at: string }
+/** meta do mês em R$ (id = mes:user, ou mes:time com user_id nulo) */
+export interface MetaVenda { id: string; user_id: string | null; mes: string; alvo: number; created_by: string | null; created_at: string }
+export interface Tier { nome: string; min: number; cor: string }
+export interface Premio { titulo: string; regra: 'pontos' | 'valor' | 'vendas'; alvo: number }
+/** regras do placar (linha única 'cfg'): pontos por venda + por R$ 1.000, tiers por pontos do mês, prêmios do chefe */
+export interface VendasCfg { id: 'cfg'; pts_venda: number; pts_mil: number; tiers: Tier[]; premios: Premio[]; pasta: DriveLink | null; created_at: string }
+/** campanha do Marketing pro Comercial vender */
+export interface Campanha { id: string; titulo: string; texto: string; inicio: string | null; fim: string | null; cor: string; pasta: DriveLink | null; link: string | null; created_by: string | null; created_at: string }
+export interface Rows { events: CalEvent; goals: Goal; stickers: Sticker; flows: Flow; stages: Stage; groups: Group; rooms: Room; carpenters: Carpenter; depts: Dept; brand: Brand; quartos: Quarto; vendas: Venda; ajustes: Ajuste; metas_venda: MetaVenda; vendas_cfg: VendasCfg; campanhas: Campanha }
 export type RowTable = keyof Rows
-export const ROW_TABLES: RowTable[] = ['events', 'goals', 'stickers', 'flows', 'stages', 'groups', 'rooms', 'carpenters', 'depts', 'brand']
+export const ROW_TABLES: RowTable[] = ['events', 'goals', 'stickers', 'flows', 'stages', 'groups', 'rooms', 'carpenters', 'depts', 'brand', 'quartos', 'vendas', 'ajustes', 'metas_venda', 'vendas_cfg', 'campanhas']
 
 export type Priority = 'alta' | 'media' | 'baixa'
 export interface CheckItem {
@@ -265,7 +279,7 @@ export interface Backend {
   setDept(target: string, dept: string, desk: number): Promise<void>
   setDoor(dept: string, open: boolean): Promise<void>
   setCurtains(dept: string, open: boolean): Promise<void>
-  setDeptLook(dept: string, flag: string | null, canais: boolean): Promise<void>
+  setDeptLook(dept: string, flag: string | null, canais: boolean, vendas?: boolean): Promise<void>
   /** só o adm: cria a conta já com perfil e cargo */
   createAccount(user: string, password: string, name: string, rank: number): Promise<Profile>
   /** só o adm */

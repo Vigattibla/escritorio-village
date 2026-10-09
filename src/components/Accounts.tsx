@@ -196,6 +196,7 @@ function Salas({ depts, people }: { depts: Dept[]; people: Profile[] }) {
             {n.trim() && n !== d.name && <button type="button" className="btn ghost sm" onClick={() => run(saveDept({ id: d.id, name: n, color: d.color }))}>Renomear</button>}
             <button type="button" className="btn ghost sm" title="Fechada: só quem é da sala (e a Chefe) entra; os outros batem na porta" onClick={() => run(setDoor(d.id, d.door_open === false))}>{d.door_open === false ? '🔒 Porta fechada' : '🚪 Porta aberta'}</button>
             <label className="acc-canais" title="Sala que publica: aparecem posts, canais (Feed, Reels…) e a meta de posts"><input type="checkbox" checked={hasCanais(d.id)} onChange={e => run(setDeptLook(d.id, { canais: e.target.checked }))} />Publica posts</label>
+            <label className="acc-canais" title="Sala que vende: quadro de quartos, metas de venda e placar"><input type="checkbox" checked={!!d.vendas} onChange={e => run(setDeptLook(d.id, { vendas: e.target.checked }))} />Vende</label>
             <div className="acc-flag"><small className="muted">Bandeira</small><FlagPicker d={d} /></div>
           </div>
         )

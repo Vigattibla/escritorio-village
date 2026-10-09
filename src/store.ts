@@ -13,7 +13,7 @@ import { ROW_TABLES } from './types'
 export type Phase = 'loading' | 'auth' | 'creator' | 'office'
 export type Tab = 'mesa' | 'aprovar' | 'avisos' | 'equipe' | 'chat' | 'geral'
 /** quadro = trabalho do dia a dia (estilo Trello); escritório = visualização em pixel */
-export type View = 'quadro' | 'escritorio' | 'agenda' | 'metas' | 'fluxos' | 'inicio' | 'arquivos' | 'loja'
+export type View = 'quadro' | 'escritorio' | 'agenda' | 'metas' | 'fluxos' | 'inicio' | 'arquivos' | 'loja' | 'vendas'
 export interface Go { view?: View; tab?: Tab; viewing?: string; channel?: string; task?: string }
 export interface Notice { id: string; text: string; at: number; from?: string; go?: Go }
 
@@ -72,7 +72,7 @@ export interface State {
 
 
 const initial: State = {
-  phase: 'loading', meId: null, accountName: '', error: '', profiles: {}, tasks: {}, messages: [], notes: [], projects: {}, rows: { events: {}, goals: {}, stickers: {}, flows: {}, stages: {}, groups: {}, rooms: {}, carpenters: {}, depts: {}, brand: {} }, online: new Set(),
+  phase: 'loading', meId: null, accountName: '', error: '', profiles: {}, tasks: {}, messages: [], notes: [], projects: {}, rows: { events: {}, goals: {}, stickers: {}, flows: {}, stages: {}, groups: {}, rooms: {}, carpenters: {}, depts: {}, brand: {}, quartos: {}, vendas: {}, ajustes: {}, metas_venda: {}, vendas_cfg: {}, campanhas: {} }, online: new Set(),
   tab: 'mesa', viewing: null, channel: 'geral', reads: {}, requestTo: null, task: null, editing: false, notices: [], pipOpen: false, view: 'quadro' as View, wallet: null, drawer: false,
   project: '', projectEdit: null, aiOpen: false, chatOpen: false, bellOpen: false, qApprove: false, flow: null, sheet: false, stickTo: null, sala: DEPT0, here: DEPT0,
 }
@@ -454,13 +454,16 @@ export async function setCurtains(id: string, open: boolean) {
 /** a sala trabalha com publicação? (posts, canais). Marketing antigo sem a coluna conta como sim */
 export const hasCanais = (id: string = state.sala, s: State = state) => s.rows.depts[id]?.canais ?? id === DEPT0
 /** bandeira da porta (ícone Phosphor) e se a sala publica: mesma regra da porta */
-export async function setDeptLook(id: string, look: { flag?: string | null; canais?: boolean }) {
+/** a sala trabalha com vendas (quadro de quartos, placar) */
+export const hasVendas = (id?: string, s: State = state) => !!s.rows.depts[id ?? myDept(s)]?.vendas
+export async function setDeptLook(id: string, look: { flag?: string | null; canais?: boolean; vendas?: boolean }) {
   const d = state.rows.depts[id]
   if (!d) return
   const flag = look.flag !== undefined ? look.flag : d.flag ?? null
   const canais = look.canais ?? hasCanais(id)
-  onRow('depts', { ...d, flag, canais })
-  try { await backend.setDeptLook(id, flag, canais) } catch (e) { onRow('depts', d); throw e }
+  const vendas = look.vendas ?? !!d.vendas
+  onRow('depts', { ...d, flag, canais, vendas })
+  try { await backend.setDeptLook(id, flag, canais, vendas) } catch (e) { onRow('depts', d); throw e }
 }
 /** o boneco passou por uma porta. A Chefe leva o quadro junto; quem visita só vê a sala */
 export function goTo(where: string) {
