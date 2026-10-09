@@ -1,5 +1,6 @@
 import { backend } from '.'
 import { SupabaseBackend } from './supabase'
+import * as demo from './drive-demo'
 
 export interface DFile { id: string; name: string; mime: string; modified: string; thumb: boolean; link: string | null; size: number }
 export const FOLDER = 'application/vnd.google-apps.folder'
@@ -19,9 +20,11 @@ async function call(body: object) {
 }
 
 export async function list(path: string[], page?: string) {
+  if (!driveOn) return demo.list(path)
   return (await call({ a: 'list', path, page })).json() as Promise<{ root: string; files: DFile[]; next: string | null }>
 }
 export async function mkdir(path: string[], name: string) {
+  if (!driveOn) return demo.mkdir(path, name)
   return (await call({ a: 'mkdir', path, name })).json() as Promise<DFile & { root: string }>
 }
 
@@ -30,6 +33,7 @@ const thumbs = new Map<string, Promise<string>>()
 let busy = 0
 const waiting: (() => void)[] = []
 export function thumb(path: string[], id: string, px = 400) {
+  if (!driveOn) return demo.thumb(path, id)
   const k = id + '@' + px
   if (!thumbs.has(k)) {
     const p = (async () => {
@@ -45,6 +49,7 @@ export function thumb(path: string[], id: string, px = 400) {
 }
 
 export async function download(path: string[], f: DFile) {
+  if (!driveOn) return demo.download(path, f)
   const r = await call({ a: 'file', path, id: f.id })
   const name = decodeURIComponent(r.headers.get('content-disposition')?.match(/filename\*=UTF-8''(.+)$/)?.[1] ?? encodeURIComponent(f.name))
   const a = document.createElement('a')
@@ -56,6 +61,7 @@ export async function download(path: string[], f: DFile) {
 
 /** pede a sessão de envio e manda o arquivo direto pro Google, avisando o progresso (0–1) */
 export async function upload(path: string[], file: File, onProgress: (p: number) => void) {
+  if (!driveOn) return demo.upload(path, file, onProgress)
   const { url } = await (await call({ a: 'upload', path, name: file.name, mime: file.type, size: file.size })).json()
   return new Promise<DFile>((ok, fail) => {
     const x = new XMLHttpRequest()
