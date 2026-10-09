@@ -4,10 +4,8 @@ import { dayKey } from '../game/xp'
 import { deptOf } from '../game/ranks'
 import { acceptRequest, canEnter, canMove, deptList, deptName, hasCanais, knock, openSala, run, setStatus, setUi, team, toApprove, useStore } from '../store'
 import type { Task } from '../types'
-import { TENANT } from '../tenant'
 import { Bell } from './Avisos'
 import Game from './Game'
-import { MeoEspia } from './Meo'
 import MiniAvatar from './MiniAvatar'
 import TIcon from './TIcon'
 import { first } from './v4'
@@ -80,7 +78,6 @@ function Sala() {
         </span>
       </div>
       {toc && <span className="ttoc" role="status">{toc}</span>}
-      <span className="tsala-espia"><MeoEspia size={42} color={TENANT.acc} /></span>
     </section>
   )
 }

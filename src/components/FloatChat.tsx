@@ -177,7 +177,7 @@ export default function FloatChat({ unread }: { unread: number }) {
           aria-label={`Chat${unread ? ` (${unread} novas)` : ''}`}
           aria-expanded={open || miau}
         >
-          <span className="gato-corpo"><MeoEncostado size={62} color={TENANT.acc} mood={open || miau ? 'feliz' : unread ? 'chamando' : 'idle'} /></span>
+          <span className="gato-corpo"><MeoEncostado cabeca size={48} color={TENANT.acc} mood={open || miau ? 'feliz' : unread ? 'chamando' : 'idle'} /></span>
           {!open && unread > 0 && <i className="gato-n">{unread > 9 ? '9+' : unread}</i>}
         </button>
         {peek && !open && !miau && (
