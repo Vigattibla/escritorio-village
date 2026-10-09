@@ -1,7 +1,7 @@
 import type { Ajuste, Profile, Quarto, Tier, Venda, VendasCfg } from '../types'
 import { dayKey } from './xp'
 import { deptOf, rankOf } from './ranks'
-import { hasCanais, hasVendas, type State } from '../store'
+import { hasVendas, type State } from '../store'
 
 export const hoje = () => dayKey(new Date())
 /** soma n dias a um YYYY-MM-DD (meio-dia pra não tropeçar no horário de verão) */
@@ -25,11 +25,11 @@ export const proxTier = (pts: number, t: Tier[]) => porMin(t).find(x => x.min > 
 
 export const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })
 
-/** igual ao banco: manda_vendas / ve_vendas / edita_campanha */
+/** igual ao banco: manda_vendas / ve_vendas / edita_campanha — só o setor de vendas (e o admin) */
 export const vende = (p: Profile | undefined, s: State) => !!p && hasVendas(deptOf(p), s)
-export const manda = (p: Profile | undefined, s: State) => !!p && (!!p.is_admin || rankOf(p) === 4 || (vende(p, s) && rankOf(p) >= 3))
-export const ve = (p: Profile | undefined, s: State) => !!p && (!!p.is_admin || rankOf(p) === 4 || vende(p, s))
-export const editaCampanha = (p: Profile | undefined, s: State) => !!p && (manda(p, s) || hasCanais(deptOf(p), s))
+export const manda = (p: Profile | undefined, s: State) => !!p && (!!p.is_admin || (vende(p, s) && rankOf(p) >= 3))
+export const ve = (p: Profile | undefined, s: State) => !!p && (!!p.is_admin || vende(p, s))
+export const editaCampanha = manda
 
 export interface Placar { id: string; pts: number; valor: number; n: number }
 export function placar(vendas: Venda[], mes: string, c: VendasCfg) {

@@ -1,7 +1,7 @@
 import { MH, MW, OUT, rect, SHADOW, T, WALL, WALL_HI, type C2D } from './base'
 import { exitX, glassDoorX, glassStrip, glassWall } from './andar'
 import { drawDecor, drawFloor, drawNotebook, MESA, mesaExtra, type DeskLook } from './props'
-import { defaultDesk, deskFrom, isDesk, kd, renderRoom, solidGrid, type Desk, type Obj, type Sala } from './sala'
+import { defaultDesk, deskFrom, deskSides, isDesk, kd, renderRoom, solidGrid, type Desk, type Obj, type Sala } from './sala'
 
 export * from './base'
 
@@ -31,6 +31,8 @@ export interface Room {
   /** tile da esquerda da porta (local, 2 de largura) */
   door: number
   solid: boolean[][]
+  /** sala de vendas: mesas coladas viram bancada com telefone */
+  baia: boolean
   deskTile: (number | null)[][]
 }
 
@@ -49,12 +51,12 @@ export function emptySala(): Sala {
 }
 
 /** monta o andar: specs[k] = sala do slot k (id null = vazia) */
-export function setFloor(specs: { id: string | null; sala: Sala }[]) {
-  rooms = specs.map(({ id, sala }, slot) => {
+export function setFloor(specs: { id: string | null; sala: Sala; baia?: boolean }[]) {
+  rooms = specs.map(({ id, sala, baia = false }, slot) => {
     const top = slot < 2
     const deskTile = Array.from({ length: MH }, () => Array<number | null>(MW).fill(null))
     for (const o of sala.objs) if (isDesk(o.k) && o.d !== undefined) for (let k = 0; k < kd(o).w; k++) deskTile[o.y][o.x + k] = o.d
-    return { slot, id, sala, ox: (slot % 2) * MW, oy: top ? 0 : HY1 + 1, top, door: top ? exitX(sala) : glassDoorX(sala), solid: solidGrid(sala), deskTile }
+    return { slot, id, sala, ox: (slot % 2) * MW, oy: top ? 0 : HY1 + 1, top, door: top ? exitX(sala) : glassDoorX(sala), solid: solidGrid(sala), baia, deskTile }
   })
   // nada do corredor pode ficar na frente de uma porta
   const front = new Set(rooms.flatMap(r => [0, 1].map(k => (r.top ? HY0 : HY1) * FW + r.ox + r.door + k)))
@@ -108,6 +110,11 @@ export function blocked(x: number, y: number) {
 const desks = (r: Room) => r.sala.objs.filter(o => isDesk(o.k) && o.d !== undefined)
 export const deskIds = (r: Room) => desks(r).map(o => o.d!)
 export const hasDesk = (r: Room, i: number) => desks(r).some(o => o.d === i)
+/** na baia: quem está colado à esquerda/direita (null = sala normal) */
+export function deskSidesOf(r: Room, i: number) {
+  const o = r.baia && desks(r).find(o => o.d === i)
+  return o ? deskSides(r.sala.objs, o) : undefined
+}
 /** mesa em coordenadas da sala */
 export function deskLocal(r: Room, i: number): Desk {
   const o = desks(r).find(o => o.d === i)
@@ -285,19 +292,37 @@ export function drawCarry(c: C2D, x: number, y: number) {
   rect(c, '#fbfbf8', x + 2, y, 3, 1)
 }
 
+const BANCADA = { top: '#d8d1c2', hi: '#ece6da', front: '#6f7a91' }
+/** telefone de mesa (canto esquerdo da bancada); tocando = luz piscando */
+function drawPhone(c: C2D, x: number, y: number, ring: boolean) {
+  rect(c, OUT, x, y, 7, 6)
+  rect(c, '#2f3442', x + 1, y + 1, 5, 4)
+  rect(c, '#9aa3b5', x + 2, y + 3, 3, 1)
+  rect(c, OUT, x - 1, y - 2, 9, 3)
+  rect(c, '#3c4254', x, y - 1, 7, 1)
+  rect(c, ring ? '#e5483a' : '#5fd28a', x + 5, y + 1, 1, 1)
+}
+
 /** mesa d (nas coordenadas de quem chama) */
-export function drawDesk(c: C2D, d: Desk, boss: boolean, info: { pile: number; inbox: boolean; busy: boolean; owned: boolean; t: number }, look?: DeskLook) {
+export function drawDesk(c: C2D, d: Desk, boss: boolean, info: { pile: number; inbox: boolean; busy: boolean; owned: boolean; t: number; baia?: { l: boolean; r: boolean } }, look?: DeskLook) {
   const { tx, ty, w: wt } = d
   const x = tx * T, y = ty * T, w = wt * T, m = x + w / 2
-  const g = look ?? {}
-  const col = MESA[g.mesa ?? ''] ?? (boss ? { top: '#6b3f22', hi: '#8a5530', front: '#4a2a16' } : { top: '#b07a4f', hi: '#c99566', front: '#8a5a36' })
-  rect(c, OUT, x - 1, y + 1, w + 2, 15)
+  const g = look ?? {}, bx = info.baia
+  const col = MESA[g.mesa ?? ''] ?? (boss ? { top: '#6b3f22', hi: '#8a5530', front: '#4a2a16' } : bx ? BANCADA : { top: '#b07a4f', hi: '#c99566', front: '#8a5a36' })
+  // baia: lado colado no vizinho sem contorno nem perna, a bancada segue direto
+  const el = bx?.l ? 0 : 1, er = bx?.r ? 0 : 1
+  rect(c, OUT, x - el, y + 1, w + el + er, 15)
   rect(c, col.top, x, y + 2, w, 8)
   rect(c, col.hi, x, y + 2, w, 1)
   rect(c, col.front, x, y + 10, w, 5)
   mesaExtra(c, g.mesa, x, y, w, info.t)
-  rect(c, '#6e4529', x + 1, y + 15, 2, 1)
-  rect(c, '#6e4529', x + w - 3, y + 15, 2, 1)
+  if (el) rect(c, '#6e4529', x + 1, y + 15, 2, 1)
+  if (er) rect(c, '#6e4529', x + w - 3, y + 15, 2, 1)
+  if (bx) {
+    // divisória baixa entre um lugar e outro + telefone do lado
+    if (bx.l) { rect(c, OUT, x - 2, y - 7, 4, 13); rect(c, '#b9c4dc', x - 1, y - 6, 2, 11); rect(c, '#dfe5f1', x - 1, y - 6, 1, 11) }
+    drawPhone(c, x + (bx.l ? 3 : 2), y + 3, info.owned && info.inbox && Math.sin(info.t / 160) > 0)
+  }
   if (boss) {
     // plaquinha na frente da mesa + luminária
     rect(c, OUT, m - 9, y + 10, 18, 5)
@@ -318,7 +343,8 @@ export function drawDesk(c: C2D, d: Desk, boss: boolean, info: { pile: number; i
   if (info.inbox && Math.sin(info.t / 220) > 0) { rect(c, OUT, m + 4, y - 3, 4, 4); rect(c, '#e5483a', m + 5, y - 2, 2, 2) }
   // folhas: quanto mais demanda aberta, mais a mesa enche (direita → esquerda → chão)
   const n = info.pile, off = boss ? 10 : 0
-  if (n > PILE) pile(c, x + 1 + off, y + 7, Math.min(n - PILE, PILE), false)
+  if (bx) { /* o canto esquerdo é do telefone */ }
+  else if (n > PILE) pile(c, x + 1 + off, y + 7, Math.min(n - PILE, PILE), false)
   else { rect(c, '#ffffff', x + 3 + off, y + 4, 3, 4); rect(c, '#ffffff', x + 6 + off, y + 5, 1, 2) }
   pile(c, x + w - 9 - (boss ? 4 : 0), y + 7, Math.min(n, PILE), info.inbox)
   for (let k = 0; k < Math.min(n - 2 * PILE, 6); k++) {

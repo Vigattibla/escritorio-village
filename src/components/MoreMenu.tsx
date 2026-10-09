@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { isChief } from '../game/ranks'
+import { vende } from '../game/vendas'
 import { setUi, signOut, useStore } from '../store'
 import Icon, { Ph } from './Icon'
 import type { PhName } from './ph'
@@ -12,15 +13,19 @@ export default function MoreMenu() {
   const pend = useStore(s => Object.values(s.tasks).filter(t => t.owner_id === s.meId && t.status === 'inbox').length)
   const dev = usePref('dev')
   const go = (fn: () => void) => () => { setOpen(false); fn() }
-  const items: [PhName, string, () => void, number?][] = [
+  const sv = useStore(s => !!me && !me.is_admin && vende(me, s))
+  // setor de vendas: o resto já está na barra de baixo
+  const items: [PhName, string, () => void, number?][] = sv ? [
+    ['coffee', 'Almoxarifado', () => setUi({ view: 'loja', drawer: false })],
+  ] : [
     ['kanban', 'Quadro', () => setUi({ view: 'quadro', drawer: false }), pend],
     ['flow-arrow', 'Fluxos', () => setUi({ view: 'fluxos', drawer: false })],
     ['folder-simple', 'Arquivos', () => setUi({ view: 'arquivos', drawer: false })],
     ['coffee', 'Almoxarifado', () => setUi({ view: 'loja', drawer: false })],
     ['chat-circle-dots', 'Chat da equipe', () => setUi({ chatOpen: true })],
   ]
-  if (dev) items.push(['users-three', 'Equipe', () => setUi({ view: 'quadro', tab: 'equipe', drawer: true })])
-  if (dev && me && isChief(me)) items.push(['squares-four', 'Geral', () => setUi({ view: 'quadro', tab: 'geral', drawer: true })])
+  if (dev && !sv) items.push(['users-three', 'Equipe', () => setUi({ view: 'quadro', tab: 'equipe', drawer: true })])
+  if (dev && !sv && me && isChief(me)) items.push(['squares-four', 'Geral', () => setUi({ view: 'quadro', tab: 'geral', drawer: true })])
   return (
     <div className="more-m">
       <button className="iconbtn" onClick={() => setOpen(!open)} aria-label="Mais" aria-expanded={open}><Icon n="menu" size={20} />{pend > 0 && <i>{pend > 9 ? '9+' : pend}</i>}</button>

@@ -2,9 +2,9 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { drawAvatar } from '../chibi/sprite'
 import { managerOf, rankOf } from '../game/ranks'
 import { drawChair } from '../office/props'
-import { at, bbox, check, defaultDesk, hitTest, isDesk, KINDS, kd, original, parseSala, PISOS, reach, renderRoom, solidGrid, TEMAS, type Kind, type Obj, type Piso, type Sala, type Tema } from '../office/sala'
+import { at, bbox, check, defaultDesk, deskSides, hitTest, isDesk, KINDS, kd, original, parseSala, PISOS, reach, renderRoom, solidGrid, TEMAS, type Kind, type Obj, type Piso, type Sala, type Tema } from '../office/sala'
 import { BOSS_DESK, drawDesk, MAX_DESKS, MH, MW, T, upperWall, wallFace } from '../office/world'
-import { dropRow, me, putRow, roomOf, team, useStore } from '../store'
+import { dropRow, hasVendas, me, putRow, roomOf, team, useStore } from '../store'
 import type { Profile } from '../types'
 import { Px } from './Px'
 
@@ -42,8 +42,8 @@ function KindThumb({ k, id }: { k: Kind; id: string }) {
 export default function SalaEditor({ onClose }: { onClose: () => void }) {
   const s = { rows: useStore(x => x.rows), profiles: useStore(x => x.profiles), sala: useStore(x => x.sala) }
   const meP = me()
-  const saved = roomOf(s)
-  const [sala, setSala] = useState<Sala>(() => parseSala(saved?.data))
+  const saved = roomOf(s), baia = useStore(x => hasVendas(x.sala, x))
+  const [sala, setSala] = useState<Sala>(() => parseSala(saved?.data, baia))
   const [hist, setHist] = useState<Sala[]>([])
   const [dirty, setDirty] = useState(false)
   const [sel, setSel] = useState<number | null>(null)
@@ -87,7 +87,7 @@ export default function SalaEditor({ onClose }: { onClose: () => void }) {
     const seated = withPeople && !!p
     drawChair(c, gear?.cadeira, d0.seat.x, d0.seat.y - (seated ? 0 : 9), tpl === BOSS_DESK)
     if (seated && p.avatar) drawAvatar(c, p.avatar, p.photo, d0.seat.x - 8, d0.seat.y - 26, 'down', 0)
-    drawDesk(c, d0, tpl === BOSS_DESK, { pile: 0, inbox: false, busy: false, owned: !!p, t }, gear)
+    drawDesk(c, d0, tpl === BOSS_DESK, { pile: 0, inbox: false, busy: false, owned: !!p, t, baia: baia ? deskSides(sala.objs, o) : undefined }, gear)
     c.restore()
   }
 
@@ -248,7 +248,7 @@ export default function SalaEditor({ onClose }: { onClose: () => void }) {
       {myCarp && <span className="sl-carp">🪚 carpinteiro até {hhmm(myCarp.until)}</span>}
       <span className="sl-sp" />
       <button className="btn ghost sm" disabled={!hist.length} onClick={() => { setSala(hist[hist.length - 1]); setHist(hist.slice(0, -1)); setSel(null); setDirty(true) }}>↶ Desfazer</button>
-      <button className="btn ghost sm" onClick={() => { if (!confirm('Voltar a sala pro jeito original? (só vale depois de salvar)')) return; const next = original(); const err = reach(next, nameOf); if (err) { setMsg({ t: err, bad: true }); return } setHist([...hist, sala]); setSala(next); setSel(null); setDirty(true) }}>Voltar ao original</button>
+      <button className="btn ghost sm" onClick={() => { if (!confirm('Voltar a sala pro jeito original? (só vale depois de salvar)')) return; const next = original(baia); const err = reach(next, nameOf); if (err) { setMsg({ t: err, bad: true }); return } setHist([...hist, sala]); setSala(next); setSel(null); setDirty(true) }}>Voltar ao original</button>
       <button className="btn ghost sm" onClick={close}>Fechar</button>
       <button className="btn primary sm" disabled={!dirty || busy || !can} onClick={() => void save()}>{busy ? 'Salvando…' : 'Salvar sala'}</button>
     </div>

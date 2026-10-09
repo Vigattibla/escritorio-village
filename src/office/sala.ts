@@ -217,16 +217,27 @@ export function defaultDesk(i: number): Desk {
   const tx = 7 + (i % 4) * 4, ty = 4 + Math.floor(i / 4) * 4
   return { tx, ty, w: 2, seat: { x: tx * T + 16, y: ty * T + 8 } }
 }
+/** sala de vendas: baia grande, 2 bancadas corridas de 6 lugares */
+export function baiaDesk(i: number): Desk {
+  if (i === BOSS_DESK) return defaultDesk(i)
+  const tx = 6 + (i % 6) * 2, ty = 5 + Math.floor(i / 6) * 5
+  return { tx, ty, w: 2, seat: { x: tx * T + 16, y: ty * T + 8 } }
+}
+/** vizinhos colados na mesma bancada (mesma linha, encostados): vira uma peça só */
+export function deskSides(objs: Obj[], o: Obj) {
+  const w = kd(o).w, same = (x: number) => objs.some(d => d.k === 'mesa' && d.y === o.y && d.x === x)
+  return o.k === 'mesa' ? { l: same(o.x - w), r: same(o.x + w) } : { l: false, r: false }
+}
 export const deskFrom = (o: Obj): Desk => { const w = kd(o).w; return { tx: o.x, ty: o.y, w, seat: { x: o.x * T + (w * T) / 2, y: o.y * T + 8 } } }
 
-export function original(): Sala {
+export function original(baia = false): Sala {
   const piso = Array.from({ length: MH }, () => Array.from({ length: MW }, () => 'madeira' as Piso))
   const div = Array.from({ length: MH }, () => Array<boolean>(MW).fill(false))
   let id = 1
   const objs: Obj[] = []
   const add = (k: string, x: number, y: number, d?: number) => objs.push(d === undefined ? { id: id++, k, x, y } : { id: id++, k, x, y, d })
   add('tapete-chefe', 1, 7)
-  for (let i = 0; i < MAX_DESKS; i++) { const d = defaultDesk(i); add('mesa', d.tx, d.ty, i) }
+  for (let i = 0; i < MAX_DESKS; i++) { const d = baia ? baiaDesk(i) : defaultDesk(i); add('mesa', d.tx, d.ty, i) }
   add('mesa-chefe', 2, 9, BOSS_DESK)
   for (const [x, y] of [[1, 2], [22, 2], [1, 14], [22, 14], [5, 14], [18, 14]]) add('planta', x, y)
   add('estante', 2, 2); add('arquivo', 19, 2); add('impressora', 20, 2); add('bebedouro', 21, 2)
@@ -262,13 +273,13 @@ function fitSala(s: Sala, W: number, H: number): Sala {
 }
 
 /** valida o JSON salvo; qualquer coisa estranha volta pro original */
-export function parseSala(data: unknown): Sala {
+export function parseSala(data: unknown, baia = false): Sala {
   try {
     const s = data as Sala
     const old = Array.isArray(s?.piso) && s.piso.length === OLD_H && Array.isArray(s.piso[0]) && s.piso[0].length === OLD_W
     const W = old ? OLD_W : MW, H = old ? OLD_H : MH
     const grid = (g: unknown, f: (v: unknown) => boolean) => Array.isArray(g) && g.length === H && g.every(r => Array.isArray(r) && r.length === W && r.every(f))
-    if (!s || !grid(s.piso, v => typeof v === 'string' && v in PISOS) || !grid(s.div, v => typeof v === 'boolean') || !Array.isArray(s.objs)) return original()
+    if (!s || !grid(s.piso, v => typeof v === 'string' && v in PISOS) || !grid(s.div, v => typeof v === 'boolean') || !Array.isArray(s.objs)) return original(baia)
     const ids = new Set<number>(), ds = new Set<number>(), objs: Obj[] = []
     for (const o of s.objs) {
       const k = o && KINDS[o.k]
@@ -285,7 +296,7 @@ export function parseSala(data: unknown): Sala {
     }
     const out = { piso: s.piso.map(r => [...r]), div: s.div.map(r => [...r]), objs }
     return old ? fitSala(out, W, H) : out
-  } catch { return original() }
+  } catch { return original(baia) }
 }
 
 /** tiles com móvel que bloqueia (tapete, parede e cadeira solta não contam) */

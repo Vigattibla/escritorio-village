@@ -9,7 +9,7 @@ import { addMark, boardMarks, takeErrands, type Errand } from '../office/errands
 import { drawAnim, plateFill, PLATE_CV } from '../office/anim'
 import { drawChair } from '../office/props'
 import { drawFurniture, kd, parseSala, type Obj } from '../office/sala'
-import { blocked, boardSpot, BOSS_DESK, deskAtTile, deskIds, deskOf, doorAtTile, doorSpot, drawBoardMarks, drawCarry, drawDesk, emptySala, FH, findPath, floorVersion, furniture, FW, getRooms, hallDecor, hasDesk, HY0, MAX_DESKS, MH, MW, pathToSeat, regionOfPx, renderFloor, roomOfId, setFloor, setPassable, shelfSpot, T, wallObjs, type Room } from '../office/world'
+import { blocked, boardSpot, BOSS_DESK, deskAtTile, deskIds, deskOf, deskSidesOf, doorAtTile, doorSpot, drawBoardMarks, drawCarry, drawDesk, emptySala, FH, findPath, floorVersion, furniture, FW, getRooms, hallDecor, hasDesk, HY0, MAX_DESKS, MH, MW, pathToSeat, regionOfPx, renderFloor, roomOfId, setFloor, setPassable, shelfSpot, T, wallObjs, type Room } from '../office/world'
 import { bubbles, canDoor, canEnter, curtainsOpen, deptName, doorOpen, getState, goTo, knock, myDept, positions, roomOf, run, setCurtains, setDoor, setUi, slotDept, useStore } from '../store'
 import type { Dir, Pos, Profile, Task } from '../types'
 import Icon from './Icon'
@@ -41,7 +41,7 @@ export function syncFloor() {
   const seen = ds.flatMap(d => [d?.id, d && roomOf(s, d.id)])
   if (seen.length !== floorSeen.length || seen.some((v, i) => v !== floorSeen[i])) {
     floorSeen = seen
-    setFloor(ds.map(d => (d ? { id: d.id, sala: parseSala(roomOf(s, d.id)?.data) } : { id: null, sala: emptySala() })))
+    setFloor(ds.map(d => (d ? { id: d.id, sala: parseSala(roomOf(s, d.id)?.data, !!d.vendas), baia: !!d.vendas } : { id: null, sala: emptySala() })))
   }
   setPassable(ds.map(d => !!d && canEnter(d.id, s)))
 }
@@ -382,11 +382,11 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
         const byDesk = new Map<number, Profile>()
         for (const p of Object.values(s.profiles)) if (p.avatar && deptOf(p) === r.id && !byDesk.has(deskIdx(p, r))) byDesk.set(deskIdx(p, r), p)
         for (const i of deskIds(r)) {
-          const owner = byDesk.get(i), d = deskOf(r, i), gear = owner?.avatar?.gear
+          const owner = byDesk.get(i), d = deskOf(r, i), gear = owner?.avatar?.gear, baia = deskSidesOf(r, i)
           const pile = owner ? tasks.filter(x => x.owner_id === owner.id && OPEN.has(x.status)).length : 0
           const inbox = owner ? tasks.some(x => x.owner_id === owner.id && x.status === 'inbox') : false
           const busy = !!owner && s.online.has(owner.id) && !!doingOf(tasks, owner.id)
-          items.push({ key: d.ty * T + 15, draw: () => drawDesk(ctx, d, i === BOSS_DESK, { pile, inbox, busy, owned: !!owner, t }, gear) })
+          items.push({ key: d.ty * T + 15, draw: () => drawDesk(ctx, d, i === BOSS_DESK, { pile, inbox, busy, owned: !!owner, t, baia }, gear) })
           // cadeira vai com a mesa; sem ninguém sentado ela fica puxada pra trás
           const o = owner && shown.get(owner.id)
           const seated = !!o && Math.hypot(o.x - d.seat.x, o.y - d.seat.y) < 2

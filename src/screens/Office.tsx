@@ -22,7 +22,7 @@ import SalaEditor, { canEditOffice } from '../components/SalaEditor'
 import Fluxos from '../components/Fluxos'
 import Arquivos from '../components/Arquivos'
 import Vendas from '../components/Vendas'
-import { editaCampanha, ve as veVendas } from '../game/vendas'
+import { vende } from '../game/vendas'
 import Inicio from '../components/Inicio'
 import InicioDesk from '../components/InicioDesk'
 import TIcon, { type TName } from '../components/TIcon'
@@ -67,12 +67,19 @@ export default function Office() {
     const n = pend + msgs
     document.title = n ? `(${n}) ${TENANT.name}` : TENANT.name
   }, [pend, msgs])
-  // a porta de entrada é o Início (celular e computador)
-  useEffect(() => { if (s.view === 'quadro' && !s.drawer) setUi({ view: 'inicio' }) }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  // setor de vendas tem layout próprio: sem Quadro/Agenda, abre em Vendas
+  const sv = vende(me, s) && !me?.is_admin
+  const SV_PAGES: Page[] = ['vendas', 'arquivos', 'escritorio', 'loja']
+  const dev = usePref('dev')
+  // a porta de entrada é o Início (celular e computador); vendas abre em Vendas
+  useEffect(() => { if (!sv && s.view === 'quadro' && !s.drawer) setUi({ view: 'inicio' }) }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (sv) { if (!SV_PAGES.includes(s.view as Page) || s.drawer) setUi({ view: 'vendas', drawer: false }) }
+    else if (s.view === 'vendas' && !(me?.is_admin && dev)) setUi({ view: 'inicio' })
+  }, [sv, dev, s.view, s.drawer]) // eslint-disable-line react-hooks/exhaustive-deps
   if (!me) return null
 
   const chief = isChief(me)
-  const dev = usePref('dev')
   const mini = usePref('navMini')
   const [tl, setTl] = useState(false)
   const depts = deptList(s)
@@ -83,20 +90,26 @@ export default function Office() {
   const office = s.view === 'escritorio'
   const page: Page = s.view !== 'quadro' ? s.view : s.drawer ? s.tab : 'quadro'
   // minha mesa = filtro "Só minhas"; aprovação = coluna do quadro; avisos = sino; chat = abre a janela flutuante
-  const items: { id: Page | 'chatwin'; label: string; ic: TName; n?: number; tip?: string; more?: boolean }[] = [
+  const items: { id: Page | 'chatwin'; label: string; ic: TName; n?: number; tip?: string; more?: boolean }[] = sv ? [
+    { id: 'vendas', label: 'Vendas', ic: 'vendas' },
+    { id: 'chatwin', label: 'Chat', ic: 'chat', n: msgs },
+    { id: 'arquivos', label: 'Arquivos', ic: 'arquivos' },
+    { id: 'escritorio', label: 'Escritório', ic: 'escritorio' },
+  ] : [
     { id: 'inicio', label: 'Início', ic: 'inicio' },
     { id: 'quadro', label: 'Quadro', ic: 'quadro', n: pend, tip: pend ? `${pend} pedido(s) esperando você aceitar` : undefined },
     { id: 'agenda', label: 'Agenda', ic: 'agenda' },
     { id: 'chatwin', label: 'Chat', ic: 'chat', n: msgs },
     { id: 'escritorio', label: 'Escritório', ic: 'escritorio' },
     { id: 'arquivos', label: 'Arquivos', ic: 'arquivos' },
-    ...(depts.some(d => d.vendas) && (veVendas(me, s) || editaCampanha(me, s)) ? [{ id: 'vendas' as Page, label: 'Vendas', ic: 'vendas' as TName }] : []),
+    // Vendas fora do setor de vendas: só o admin, no modo desenvolvedor
+    ...(depts.some(d => d.vendas) && me.is_admin && dev ? [{ id: 'vendas' as Page, label: 'Vendas', ic: 'vendas' as TName }] : []),
     { id: 'metas', label: 'Metas', ic: 'metas', more: true },
     { id: 'fluxos', label: 'Fluxos', ic: 'fluxos', more: true },
   ]
   // Equipe e Geral só no modo desenvolvedor (liga no menu do perfil)
-  if (dev) items.push({ id: 'equipe', label: 'Equipe', ic: 'equipe', more: true })
-  if (dev && chief) items.push({ id: 'geral', label: 'Geral', ic: 'mural', more: true, n: tasks.filter(t => t.status === 'inbox').length })
+  if (dev && !sv) items.push({ id: 'equipe', label: 'Equipe', ic: 'equipe', more: true })
+  if (dev && chief && !sv) items.push({ id: 'geral', label: 'Geral', ic: 'mural', more: true, n: tasks.filter(t => t.status === 'inbox').length })
   const maisOn = mais || items.some(it => it.more && it.id === page)
   const goTo = (id: Page) => {
     if (id === 'mesa' || id === 'aprovar' || id === 'avisos' || id === 'equipe' || id === 'chat' || id === 'geral') setUi({ view: 'quadro', tab: id, drawer: true })
@@ -216,11 +229,15 @@ export default function Office() {
       <StickerPicker />
       <CeleWatch />
       <Sheet />
-      <nav className="tabbar" aria-label="Seções">
+      {sv ? <nav className="tabbar" aria-label="Seções">
+        <Tab it={{ id: 'vendas', label: 'Vendas', ic: 'storefront' }} />
+        <button className={s.chatOpen ? 'on' : ''} onClick={() => setUi({ chatOpen: !s.chatOpen })}><Ph n="chat-circle-dots" size={24} fill={s.chatOpen} />Chat{msgs > 0 && <i className="nav-n">{msgs > 9 ? '9+' : msgs}</i>}</button>
+        <Tab it={{ id: 'arquivos', label: 'Arquivos', ic: 'folder-simple' }} /><Tab it={tabs[3]} />
+      </nav> : <nav className="tabbar" aria-label="Seções">
         <Tab it={tabs[0]} /><Tab it={tabs[1]} />
         <button className="tfab" onClick={() => setUi({ sheet: true })} aria-label="Nova tarefa"><Ph n="plus" size={26} fill /></button>
         <Tab it={tabs[2]} /><Tab it={tabs[3]} />
-      </nav>
+      </nav>}
       <FloatChat unread={msgs} />
       <Toast />
       {s.editing && <div className="overlay"><Creator /></div>}

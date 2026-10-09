@@ -139,6 +139,26 @@ export default function TaskDetail() {
   const toReview = !!appr && !approve
   const last = t.reviews.at(-1)
   const setList = (checklist: CheckItem[]) => run(updateTask(t.id, { checklist }))
+  // arrastar pela alça (mouse e dedo): reordena na tela e salva ao soltar
+  const [drag, setDrag] = useState<{ id: string; list: CheckItem[] } | null>(null)
+  const grab = (e: React.PointerEvent, id: string) => {
+    e.preventDefault()
+    let list = t.checklist
+    setDrag({ id, list })
+    const move = (ev: PointerEvent) => {
+      const li = document.elementFromPoint(ev.clientX, ev.clientY)?.closest<HTMLElement>('[data-ck]')
+      const to = li ? list.findIndex(x => x.id === li.dataset.ck) : -1, from = list.findIndex(x => x.id === id)
+      if (to < 0 || to === from) return
+      const next = [...list]; next.splice(to, 0, ...next.splice(from, 1)); list = next
+      setDrag({ id, list })
+    }
+    const up = () => {
+      removeEventListener('pointermove', move); removeEventListener('pointerup', up); removeEventListener('pointercancel', up)
+      setDrag(null)
+      if (list.some((x, i) => x.id !== t.checklist[i]?.id)) setList(list)
+    }
+    addEventListener('pointermove', move); addEventListener('pointerup', up); addEventListener('pointercancel', up)
+  }
   const addItem = () => { if (item.trim()) { setList([...t.checklist, { id: crypto.randomUUID(), text: item.trim(), done: false }]); setItem('') } }
   const addCrit = () => { if (crit.trim()) { run(setCriteria(t.id, [...t.criteria, crit])); setCrit('') } }
   const free = Object.values(profiles).filter(p => p.id !== t.owner_id && !t.collaborators.includes(p.id)).sort((a, b) => a.name.localeCompare(b.name))
@@ -215,9 +235,15 @@ export default function TaskDetail() {
               <h3>Checklist{t.checklist.length > 0 && <span className="muted small"> · {t.checklist.filter(c => c.done).length}/{t.checklist.length}</span>}</h3>
               {t.checklist.length > 0 && <i className="td2-bar"><i style={{ width: Math.round(100 * t.checklist.filter(c => c.done).length / t.checklist.length) + '%' }} /></i>}
               <ul className="checklist">
-                {t.checklist.map(c => (
-                  <li key={c.id} className={c.done ? 'done' : ''}>
-                    <label><input type="checkbox" checked={c.done} disabled={!edit} onChange={() => setList(t.checklist.map(x => (x.id === c.id ? { ...x, done: !x.done } : x)))} />{c.text}</label>
+                {(drag?.list ?? t.checklist).map(c => (
+                  <li key={c.id} className={(c.done ? 'done' : '') + (drag?.id === c.id ? ' arrasta' : '')} data-ck={c.id}>
+                    {edit && t.checklist.length > 1 && <span className="ck-grip" title="Arrastar pra mudar a ordem" onPointerDown={e => grab(e, c.id)}><i /><i /><i /><i /><i /><i /></span>}
+                    <input type="checkbox" checked={c.done} disabled={!edit} onChange={() => setList(t.checklist.map(x => (x.id === c.id ? { ...x, done: !x.done } : x)))} />
+                    {edit
+                      ? <input key={c.text} className="ck-txt" defaultValue={c.text} maxLength={140} aria-label="Texto do item"
+                          onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') { if (e.key === 'Escape') e.currentTarget.value = c.text; e.currentTarget.blur() } }}
+                          onBlur={e => { const v = e.currentTarget.value.trim(); if (!v) e.currentTarget.value = c.text; else if (v !== c.text) setList(t.checklist.map(x => (x.id === c.id ? { ...x, text: v } : x))) }} />
+                      : <span className="ck-ro">{c.text}</span>}
                     {edit && <button className="icon" onClick={() => setList(t.checklist.filter(x => x.id !== c.id))} title="Tirar item">✕</button>}
                   </li>
                 ))}
