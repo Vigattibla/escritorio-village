@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { usePref } from '../prefs'
 import { isChief } from '../game/ranks'
 import { putRow, useStore } from '../store'
 import { TENANT } from '../tenant'
@@ -34,7 +35,8 @@ export default function Marca() {
   const s = useStore(x => x)
   const me = s.profiles[s.meId!]
   const logo = s.rows.brand.marca?.logo ?? null
-  const can = !!me && (me.is_admin || isChief(me))
+  // trocar a logo é opção de desenvolvedor
+  const can = usePref('dev') && !!me && (me.is_admin || isChief(me))
   const [open, setOpen] = useState(false)
   const [msg, setMsg] = useState('')
   const file = useRef<HTMLInputElement>(null)

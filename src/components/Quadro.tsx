@@ -9,6 +9,8 @@ import { driveOn } from '../data/drive'
 import Icon, { Ph } from './Icon'
 import MiniAvatar from './MiniAvatar'
 import SegInd from './SegInd'
+import Relatorio, { segunda } from './Relatorio'
+import { setPref, usePref } from '../prefs'
 import Side, { Live } from './Side'
 import { CHANNELS, currentGoal, goalProgress } from './v4'
 
@@ -20,7 +22,7 @@ interface List { key: string; title: string; hint?: string; head?: ReactNode; ca
 interface Col { id: string; label: string; kind: TaskStatus; hint?: string; stage?: Stage }
 
 const KIND_LABEL = Object.fromEntries(STAGE_KINDS.map(k => [k.kind, k.label])) as Record<StageKind, string>
-const KIND_HINT: Partial<Record<TaskStatus, string>> = { review: 'Esperando quem aprova', done: 'Últimos 7 dias' }
+const KIND_HINT: Partial<Record<TaskStatus, string>> = { review: 'Esperando quem aprova', done: 'Desta semana · as antigas vão pro Relatório' }
 function colsOf(stages: Stage[]): Col[] {
   return [
     { id: 'inbox', label: 'Pedidos', kind: 'inbox', hint: 'Esperando a pessoa aceitar' },
@@ -29,7 +31,6 @@ function colsOf(stages: Stage[]): Col[] {
 }
 const STAGE_LABEL: Record<TaskStatus, string> = { inbox: 'Pedido', todo: 'A fazer', doing: 'Fazendo', review: 'Em aprovação', done: 'Feito', declined: 'Recusado' }
 const STAGE_ORDER: Record<TaskStatus, number> = { doing: 0, review: 1, todo: 2, inbox: 3, done: 4, declined: 5 }
-const DONE_DAYS = 7
 /** filtro de projeto: '' todos · '-' sem projeto · id */
 const NONE = '-'
 
@@ -116,9 +117,12 @@ export default function Quadro() {
   // com projeto aberto: só quem está no time (mestre, donos, ajudantes) + quem eu acabei de colocar
   const people = everyone.filter(p => !team || team.has(p.id) || p.id === meId || extra.includes(p.id))
   const outside = team ? everyone.filter(p => !people.includes(p)) : []
+  const destaque = usePref('destaque')
+  const [rel, setRel] = useState(false)
   const today = dayKey(new Date())
   const week = addDays(7)
-  const since = addDays(-DONE_DAYS)
+  // concluídas só da semana atual; as de antes ficam no Relatório da semana
+  const since = dayKey(segunda())
   const term = q.trim().toLowerCase()
   const filtered = mine || qApprove || who.length > 0 || !!due || !!term
   const projList = Object.values(projects).filter(p => !p.archived || p.id === project).sort((a, b) => a.name.localeCompare(b.name))
@@ -257,6 +261,7 @@ export default function Quadro() {
 
   return (
     <div className="qgrid">
+    {rel && <Relatorio onClose={() => setRel(false)} />}
     <div className="quadro">
       <div className="qbar">
         <label className="qsearch">
@@ -269,6 +274,7 @@ export default function Quadro() {
         </label>
         <span className="grow" />
         {canUseAI() && <button className="btn soft" onClick={() => setUi({ aiOpen: true })} title="O Claude propõe quem faz o quê"><Ph n="sparkle" size={18} />Distribuir com IA</button>}
+        <button className="btn soft" onClick={() => setRel(true)} title="O que cada um concluiu na semana (as concluídas antigas ficam guardadas aqui)"><Ph n="file-text" size={18} />Relatório</button>
         <Bell />
         <button className="btn accent" onClick={() => setAdding(defAdd)} title="Nova tarefa (atalho N)"><Ph n="plus" size={18} fill />Nova tarefa</button>
       </div>
@@ -311,6 +317,7 @@ export default function Quadro() {
           </select>
         </label>
         <button className={'qchip' + (mine ? ' on' : '')} onClick={() => setMine(v => !v)} title="Só as que tenho ou participo (atalho Q)"><Icon n="user" size={14} />Minhas</button>
+        <button className={'qchip' + (destaque ? ' on' : '')} onClick={() => setPref('destaque', !destaque)} title="Deixa as suas tarefas mais destacadas no quadro"><Ph n="star" size={14} fill={destaque} />Destacar minhas</button>
         <label className={'qchip' + (due ? ' on' : '')}>
           <Icon n="calendar" size={14} />
           <select value={due} onChange={e => setDue(e.target.value as Due)} aria-label="Prazo">
@@ -439,13 +446,14 @@ function Card({ t, mode, meId, profiles, projects, showProj, notes, dragging, on
   const prio = t.priority ? PRIO[t.priority] : null
   const ch = t.channel ? CHANNELS[t.channel] : null
   const okd = done && last?.ok === true
+  const meu = usePref('destaque') && (t.owner_id === meId || t.collaborators.includes(meId))
   const note = !done && t.notes.trim().split('\n')[0]
 
   return (
     <>
       {drop && <div className="tdrop" />}
       <article
-        className={'tcard' + (dragging ? ' dragging' : '') + (done ? ' done' : '') + (redo ? ' redo' : '') + (dark ? ' dark' : hot ? ' hot' : '')}
+        className={'tcard' + (dragging ? ' dragging' : '') + (done ? ' done' : '') + (redo ? ' redo' : '') + (dark ? ' dark' : hot ? ' hot' : '') + (meu ? ' meu' : '')}
         style={proj ? { '--pc': proj.color } as React.CSSProperties : undefined}
         draggable={canEditTask(t) || canApprove(t)}
         onDragStart={e => { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', t.id); onDrag(t.id) }}

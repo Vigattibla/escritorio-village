@@ -1,3 +1,4 @@
+import { segunda } from './Relatorio'
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { dayKey } from '../game/xp'
 import { deptOf } from '../game/ranks'
@@ -155,12 +156,12 @@ export default function InicioDesk() {
       .map(t => ({ id: t.id, time: new Date(t.publish_at!).toTimeString().slice(0, 5) as string | null, title: 'Post: ' + t.title, task: t.id as string | null })) : []),
   ].sort((a, b) => (a.time ?? '').localeCompare(b.time ?? ''))
   const next = ev.find(e => e.time && mins(e.time) >= now - 30)
-  const week = Date.now() - 7 * 864e5
+  const week = segunda().getTime()
   const cols = [
     { k: 'A fazer', d: 'esperando alguém pegar', n: open.filter(t => t.status === 'todo').length, c: '#CFC6B4' },
     { k: 'Fazendo', d: 'em andamento', n: open.filter(t => t.status === 'doing').length, c: 'var(--acc)' },
     { k: 'Aprovação', d: 'esperando o ok', n: open.filter(t => t.status === 'review').length, c: '#FFC600' },
-    { k: 'Feito', d: 'nos últimos 7 dias', n: all.filter(t => t.status === 'done' && t.done_at && Date.parse(t.done_at) >= week).length, c: '#1F9D55' },
+    { k: 'Feito', d: 'nesta semana', n: all.filter(t => t.status === 'done' && t.done_at && Date.parse(t.done_at) >= week).length, c: '#1F9D55' },
   ]
   const date = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })
   const sala = deptName(s.sala, s)

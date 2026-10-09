@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { setPref, usePref } from '../prefs'
 import Board from '../components/Board'
 import FloatChat from '../components/FloatChat'
 import Game from '../components/Game'
@@ -68,6 +69,7 @@ export default function Office() {
   if (!me) return null
 
   const chief = isChief(me)
+  const dev = usePref('dev')
   const depts = deptList(s)
   const canEdit = canEditOffice(me, s.rows.carpenters)
   // painel do escritório: eu primeiro, depois quem está na sala, depois quem está fora
@@ -83,11 +85,12 @@ export default function Office() {
     { id: 'chatwin', label: 'Chat', ic: 'chat', n: msgs },
     { id: 'escritorio', label: 'Escritório', ic: 'escritorio' },
     { id: 'arquivos', label: 'Arquivos', ic: 'arquivos' },
-    { id: 'equipe', label: 'Equipe', ic: 'equipe' },
     { id: 'metas', label: 'Metas', ic: 'metas', more: true },
     { id: 'fluxos', label: 'Fluxos', ic: 'fluxos', more: true },
   ]
-  if (chief) items.push({ id: 'geral', label: 'Geral', ic: 'mural', more: true, n: tasks.filter(t => t.status === 'inbox').length })
+  // Equipe e Geral só no modo desenvolvedor (liga no menu do perfil)
+  if (dev) items.push({ id: 'equipe', label: 'Equipe', ic: 'equipe', more: true })
+  if (dev && chief) items.push({ id: 'geral', label: 'Geral', ic: 'mural', more: true, n: tasks.filter(t => t.status === 'inbox').length })
   const maisOn = mais || items.some(it => it.more && it.id === page)
   const goTo = (id: Page) => {
     if (id === 'mesa' || id === 'aprovar' || id === 'avisos' || id === 'equipe' || id === 'chat' || id === 'geral') setUi({ view: 'quadro', tab: id, drawer: true })
@@ -95,13 +98,14 @@ export default function Office() {
   }
   const pane = (tab: Tab) => <>
     {tab === 'mesa' && <Board />}
-    {tab === 'equipe' && <Team />}
+    {tab === 'equipe' && dev && <Team />}
     {tab === 'geral' && chief && <Overview />}
   </>
   const NavItem = ({ it }: { it: (typeof items)[number] }) => {
-    const on = it.id === 'chatwin' ? s.chatOpen : page === it.id
+    // a janela do chat flutua por cima: aberta ganha só um fundo leve, o destaque fica na página
+    const on = it.id !== 'chatwin' && page === it.id
     return (
-      <button className={'nav-item' + (on ? ' on' : '')} onClick={() => it.id === 'chatwin' ? setUi({ chatOpen: !s.chatOpen }) : goTo(it.id)} title={it.tip} aria-current={on && it.id !== 'chatwin' ? 'page' : undefined}>
+      <button className={'nav-item' + (on ? ' on' : '') + (it.id === 'chatwin' && s.chatOpen ? ' aberto' : '')} onClick={() => it.id === 'chatwin' ? setUi({ chatOpen: !s.chatOpen }) : goTo(it.id)} title={it.tip} aria-current={on && it.id !== 'chatwin' ? 'page' : undefined}>
         <TIcon n={it.ic} size={22} /><span className="nav-l">{it.label}</span>{!!it.n && <i className="nav-n">{it.n > 9 ? '9+' : it.n}</i>}
       </button>
     )
@@ -142,7 +146,8 @@ export default function Office() {
               <div className="me-pop-h"><b>{me.name}</b><small>{me.role || rankName(me)}</small></div>
               <button onClick={() => { setMeOpen(false); setUi({ editing: true }) }}><Ph n="smiley" size={20} /><b className="grow">Meu personagem</b></button>
               <button onClick={() => { setMeOpen(false); goTo('loja') }}><Ph n="coffee" size={20} /><b className="grow">Almoxarifado</b>{s.wallet && <small className="me-pop-cf">☕ {s.wallet.balance}</small>}</button>
-              {chief && depts.length > 1 && <div className="me-pop-salas">
+              <button onClick={() => setPref('dev', !dev)} aria-pressed={dev}><Ph n="gear-six" size={20} /><b className="grow">Modo desenvolvedor</b><i className={'tswitch' + (dev ? ' on' : '')} /></button>
+              {dev && chief && depts.length > 1 && <div className="me-pop-salas">
                 <small>Salas do andar</small>
                 {depts.map(d => <button key={d.id} className={d.id === s.sala ? 'on' : ''} onClick={() => { setMeOpen(false); run(openSala(d.id)) }}>
                   <i className="sala-dot" style={{ background: d.color }} /><b className="grow">{d.name}</b>{d.id === s.sala && <small>aqui</small>}
