@@ -20,6 +20,10 @@ import SalaEditor, { canEditOffice } from '../components/SalaEditor'
 import Fluxos from '../components/Fluxos'
 import Arquivos from '../components/Arquivos'
 import Inicio from '../components/Inicio'
+import InicioDesk from '../components/InicioDesk'
+import TIcon, { type TName } from '../components/TIcon'
+import Meo, { Wordmark } from '../components/Meo'
+import { TENANT } from '../tenant'
 import MoreMenu from '../components/MoreMenu'
 import Sheet from '../components/Sheet'
 import { StickerLayer, StickerPicker } from '../components/Stickers'
@@ -29,12 +33,23 @@ import { isChief, rankName } from '../game/ranks'
 import { deptList, deptName, myDept, openSala, run, setUi, signOut, team, unread, useStore, type Tab, type View } from '../store'
 
 type Page = View | Tab
-const narrow = () => window.matchMedia('(max-width: 900px)').matches
+const NARROW = '(max-width: 900px)'
+const narrow = () => window.matchMedia(NARROW).matches
+function useNarrow() {
+  const [n, setN] = useState(narrow)
+  useEffect(() => {
+    const m = window.matchMedia(NARROW), f = () => setN(m.matches)
+    m.addEventListener('change', f)
+    return () => m.removeEventListener('change', f)
+  }, [])
+  return n
+}
 
 export default function Office() {
   const s = useStore(x => x)
   const [arrumando, setArrumando] = useState(false)
   const [meOpen, setMeOpen] = useState(false)
+  const isNarrow = useNarrow()
   const me = s.profiles[s.meId!]
   const tasks = Object.values(s.tasks)
   const pend = tasks.filter(t => t.owner_id === me?.id && t.status === 'inbox').length
@@ -42,10 +57,10 @@ export default function Office() {
   const msgs = [...chans].reduce((n, ch) => n + unread(s, ch), 0)
   useEffect(() => {
     const n = pend + msgs
-    document.title = n ? `(${n}) Escritório Village` : 'Escritório Village'
+    document.title = n ? `(${n}) ${TENANT.name}` : TENANT.name
   }, [pend, msgs])
-  // no celular a porta de entrada é o Início
-  useEffect(() => { if (narrow() && s.view === 'quadro' && !s.drawer) setUi({ view: 'inicio' }) }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  // a porta de entrada é o Início (celular e computador)
+  useEffect(() => { if (s.view === 'quadro' && !s.drawer) setUi({ view: 'inicio' }) }, []) // eslint-disable-line react-hooks/exhaustive-deps
   if (!me) return null
 
   const chief = isChief(me)
@@ -56,17 +71,19 @@ export default function Office() {
     Number(b.id === me.id) - Number(a.id === me.id) || Number(s.online.has(b.id)) - Number(s.online.has(a.id)) || a.name.localeCompare(b.name))
   const office = s.view === 'escritorio'
   const page: Page = s.view !== 'quadro' ? s.view : s.drawer ? s.tab : 'quadro'
-  // minha mesa = filtro "Só minhas"; aprovação = coluna do quadro; avisos = sino; chat = botão flutuante
-  const items: { id: Page; label: string; ic: PhName; n?: number; tip?: string }[] = [
-    { id: 'quadro', label: 'Quadro', ic: 'kanban', n: pend, tip: pend ? `${pend} pedido(s) esperando você aceitar` : undefined },
-    { id: 'agenda', label: 'Agenda', ic: 'calendar-dots' },
-    { id: 'metas', label: 'Metas', ic: 'target' },
-    { id: 'fluxos', label: 'Fluxos', ic: 'flow-arrow' },
-    { id: 'arquivos', label: 'Arquivos', ic: 'folder-simple' },
-    { id: 'escritorio', label: 'Escritório', ic: 'desk' },
-    { id: 'equipe', label: 'Equipe', ic: 'users-three' },
+  // minha mesa = filtro "Só minhas"; aprovação = coluna do quadro; avisos = sino; chat = abre a janela flutuante
+  const items: { id: Page | 'chatwin'; label: string; ic: TName; n?: number; tip?: string; more?: boolean }[] = [
+    { id: 'inicio', label: 'Início', ic: 'inicio' },
+    { id: 'quadro', label: 'Quadro', ic: 'quadro', n: pend, tip: pend ? `${pend} pedido(s) esperando você aceitar` : undefined },
+    { id: 'agenda', label: 'Agenda', ic: 'agenda' },
+    { id: 'chatwin', label: 'Chat', ic: 'chat', n: msgs },
+    { id: 'escritorio', label: 'Escritório', ic: 'escritorio' },
+    { id: 'metas', label: 'Metas', ic: 'metas', more: true },
+    { id: 'fluxos', label: 'Fluxos', ic: 'fluxos', more: true },
+    { id: 'arquivos', label: 'Arquivos', ic: 'arquivos', more: true },
+    { id: 'equipe', label: 'Equipe', ic: 'equipe', more: true },
   ]
-  if (chief) items.push({ id: 'geral', label: 'Geral', ic: 'squares-four', n: tasks.filter(t => t.status === 'inbox').length })
+  if (chief) items.push({ id: 'geral', label: 'Geral', ic: 'mural', more: true, n: tasks.filter(t => t.status === 'inbox').length })
   const goTo = (id: Page) => {
     if (id === 'mesa' || id === 'aprovar' || id === 'avisos' || id === 'equipe' || id === 'chat' || id === 'geral') setUi({ view: 'quadro', tab: id, drawer: true })
     else setUi({ view: id, drawer: false })
@@ -77,11 +94,10 @@ export default function Office() {
     {tab === 'geral' && chief && <Overview />}
   </>
   const NavItem = ({ it }: { it: (typeof items)[number] }) => {
-    const on = page === it.id
+    const on = it.id === 'chatwin' ? s.chatOpen : page === it.id
     return (
-      <button className={'nav-item' + (on ? ' on' : '')} onClick={() => goTo(it.id)} title={it.tip ?? it.label} aria-current={on ? 'page' : undefined}>
-        <span className="nav-ic"><Ph n={it.ic} size={24} fill={on} />{!!it.n && <i className="nav-n">{it.n > 9 ? '9+' : it.n}</i>}</span>
-        <span className="nav-tip">{it.label}</span>
+      <button className={'nav-item' + (on ? ' on' : '')} onClick={() => it.id === 'chatwin' ? setUi({ chatOpen: !s.chatOpen }) : goTo(it.id)} title={it.tip} aria-current={on && it.id !== 'chatwin' ? 'page' : undefined}>
+        <TIcon n={it.ic} size={22} /><span className="nav-l">{it.label}</span>{!!it.n && <i className="nav-n">{it.n > 9 ? '9+' : it.n}</i>}
       </button>
     )
   }
@@ -99,13 +115,21 @@ export default function Office() {
   return (
     <div className="office" data-page={page}>
       <aside className="nav">
-        {backend.mode === 'demo' && <span className="nav-demo">demo</span>}
+        <div className="tbrand">
+          <span className="tlogo">{TENANT.logo}</span>
+          <span className="grow"><b>{TENANT.name}</b><small>{TENANT.sub}</small></span>
+          {backend.mode === 'demo' && <span className="nav-demo">demo</span>}
+        </div>
         <nav className="nav-list">
-          {items.map(it => <NavItem key={it.id} it={it} />)}
+          {items.filter(it => !it.more).map(it => <NavItem key={it.id} it={it} />)}
+          <small className="nav-sec">Mais</small>
+          {items.filter(it => it.more).map(it => <NavItem key={it.id} it={it} />)}
         </nav>
         <div className="nav-me">
           <button className={'nav-av' + (page === 'loja' ? ' on' : '')} onClick={() => setMeOpen(!meOpen)} title={`${me.name} · ${me.role || rankName(me)}`} aria-expanded={meOpen}>
             <MiniAvatar avatar={me.avatar} photo={me.photo} name={me.name} size={36} />
+            <span className="grow"><b>{me.name.split(' ')[0]}</b><small>{s.wallet ? `☕ ${s.wallet.balance} cafezinhos` : me.role || rankName(me)}</small></span>
+            <TIcon n="ajustes" size={20} />
           </button>
           {meOpen && <>
             <div className="more-veil" onClick={() => setMeOpen(false)} />
@@ -123,6 +147,7 @@ export default function Office() {
             </div>
           </>}
         </div>
+        <div className="tfeito">feito com <Meo size={16} color="#2440FF" /><Wordmark size={14} /></div>
       </aside>
       <div className="page">
         {page !== 'inicio' && <div className="mbar">
@@ -135,7 +160,7 @@ export default function Office() {
         {page !== 'quadro' && page !== 'agenda' && page !== 'metas' && page !== 'fluxos' && page !== 'arquivos' && page !== 'inicio' && page !== 'loja' && <div className="ptop"><h1 className="grow">{items.find(i => i.id === page)?.label}</h1><Bell /></div>}
         <main className="main">
           {page === 'quadro' && <Quadro />}
-          {page === 'inicio' && <Inicio />}
+          {page === 'inicio' && (isNarrow ? <Inicio /> : <InicioDesk />)}
           {page === 'agenda' && <Agenda />}
           {page === 'metas' && <Metas />}
           {page === 'fluxos' && <Fluxos />}

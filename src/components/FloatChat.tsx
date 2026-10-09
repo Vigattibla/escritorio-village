@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { dmPeer, floatChans, groupOf, setUi, useStore, type State } from '../store'
 import Chat from './Chat'
 import Icon, { Ph } from './Icon'
+import Meo from './Meo'
 import MiniAvatar from './MiniAvatar'
 import type { PhName } from './ph'
 
@@ -157,7 +158,7 @@ export default function FloatChat({ unread }: { unread: number }) {
         title="Chat da equipe (arraste pra mudar de lugar)"
         aria-label={`Chat${unread ? ` (${unread} novas)` : ''}`}
       >
-        <span className="bubble-ic"><Icon n={open ? 'x' : 'chat'} size={24} /></span>
+        <span className="bubble-ic">{open ? <Icon n="x" size={24} /> : <Meo size={34} />}</span>
         {!open && unread > 0 && <i className="bubble-n">{unread > 9 ? '9+' : unread}</i>}
         {peek && !open && (
           <span className="bubble-peek" onPointerDown={e => e.stopPropagation()} onClick={e => { e.stopPropagation(); setPeek(null); setUi({ chatOpen: true, channel: last!.channel }) }}>

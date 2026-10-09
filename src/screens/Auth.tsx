@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { mascotSprite } from '../chibi/mascot'
+import Meo, { Wordmark } from '../components/Meo'
+import { TENANT } from '../tenant'
 import { backend } from '../data'
 import { enter, useStore } from '../store'
 
@@ -33,9 +34,9 @@ export default function Auth() {
     <div className="auth">
       <div className="auth-card">
         <div className="brand">
-          <img src={mascotSprite('idle').toDataURL()} alt="" className="pixel" width={64} height={64} />
+          <span className="tlogo lg">{TENANT.logo}</span>
           <div>
-            <h1>Escritório Village</h1>
+            <h1>{TENANT.name}</h1>
             <p className="muted">O escritório virtual da equipe: tarefas, pedidos e conversa num lugar só.</p>
           </div>
         </div>
@@ -60,6 +61,7 @@ export default function Auth() {
             <b>Modo demonstração.</b> Os dados ficam só neste navegador. Abra outra aba para entrar como outra pessoa e ver tudo em tempo real.
           </p>
         )}
+        <div className="tfeito">feito com <Meo size={16} color="#2440FF" /><Wordmark size={14} /></div>
       </div>
     </div>
   )

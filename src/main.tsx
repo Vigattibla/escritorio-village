@@ -4,6 +4,7 @@ import './index.css'
 import './v4.css'
 import './office/errands'
 import App from './App.tsx'
+import './turmeo.css'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

@@ -80,7 +80,8 @@ export default function Quadro() {
   const [mine, setMine] = useState<boolean>(() => load('ev:q:mine', false))
   const [who, setWho] = useState<string[]>([])
   const [due, setDue] = useState<Due>('')
-  const [q, setQ] = useState('')
+  // busca vinda do Início: lê uma vez e limpa
+  const [q, setQ] = useState(() => { try { const v = sessionStorage.getItem('ev:q:find') ?? ''; sessionStorage.removeItem('ev:q:find'); return v } catch { return '' } })
   const [drag, setDrag] = useState<string | null>(null)
   const [over, setOver] = useState<{ list: string; index: number } | null>(null)
   const [adding, setAdding] = useState<string | null>(null)
