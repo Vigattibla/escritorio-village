@@ -1,5 +1,6 @@
 import { segunda } from './Relatorio'
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { atrasada, hm } from '../game/prazo'
 import { dayKey } from '../game/xp'
 import { deptOf } from '../game/ranks'
 import { acceptRequest, canEnter, canMove, deptList, deptName, hasCanais, knock, openSala, run, setStatus, setUi, team, toApprove, useStore } from '../store'
@@ -164,9 +165,9 @@ export default function InicioDesk() {
   const sala = deptName(s.sala, s)
   const when = (t: Task) => {
     if (!t.due) return null
-    if (t.due < today) return <span className="tchip tang"><TIcon n="alerta" size={16} />atrasada</span>
-    if (t.due === today) return <span className="tchip tang"><TIcon n="prazo" size={16} />hoje</span>
-    return <small className="twhen">{new Date(t.due + 'T12:00').toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '')}</small>
+    if (atrasada(t)) return <span className="tchip tang"><TIcon n="alerta" size={16} />atrasada</span>
+    if (t.due === today) return <span className="tchip tang"><TIcon n="prazo" size={16} />{hm(t) ? 'hoje ' + hm(t) : 'hoje'}</span>
+    return <small className="twhen">{new Date(t.due + 'T12:00').toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '')}{hm(t) && ' ' + hm(t)}</small>
   }
 
   return (

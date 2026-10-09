@@ -21,6 +21,7 @@ export default function Sheet() {
   const [title, setTitle] = useState('')
   const [who, setWho] = useState('')
   const [due, setDue] = useState<string | null>(plus(1))
+  const [hora, setHora] = useState('')
   const [pick, setPick] = useState(false)
   const [channel, setChannel] = useState<Channel | null>(null)
   const canais = useStore(s => hasCanais(s.sala, s))
@@ -32,13 +33,13 @@ export default function Sheet() {
   // aprovação vem do mestre do projeto: uso o projeto aberto (se for meu) ou o primeiro que eu mestro
   const myProj = (projects[cur]?.master_id === meId ? projects[cur] : Object.values(projects).find(p => p.master_id === meId && !p.archived)) ?? null
   const canMine = !!myProj && owner !== meId
-  const close = () => { setUi({ sheet: false }); setTitle(''); setWho(''); setChannel(null); setPick(false); setDue(plus(1)) }
+  const close = () => { setUi({ sheet: false }); setTitle(''); setWho(''); setChannel(null); setPick(false); setDue(plus(1)); setHora('') }
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!title.trim()) return
     const project = canMine && mine ? myProj!.id : (cur && cur !== '-' && projects[cur] ? cur : null)
     const publish_at = channel && due ? new Date(`${due}T10:00`).toISOString() : null
-    run(addTask(owner, channel ? `${CHANNELS[channel].label} · ${title.trim()}` : title.trim(), due, '', 'todo', project, { channel, publish_at }))
+    run(addTask(owner, channel ? `${CHANNELS[channel].label} · ${title.trim()}` : title.trim(), due, '', 'todo', project, { channel, publish_at, due_time: hora || null }))
     close()
   }
   const chips: [string, string | null][] = [['Hoje', plus(0)], ['Amanhã', plus(1)], ['Sexta', friday()]]
@@ -67,6 +68,7 @@ export default function Sheet() {
           <button type="button" className={'qchip' + (pick ? ' on' : '')} onClick={() => setPick(true)}><Ph n="calendar-dots" size={14} />Escolher</button>
         </div>
         {pick && <input className="sh-field" type="date" value={due ?? ''} onChange={e => setDue(e.target.value || null)} />}
+        {due && <label className="sh-hora"><Icon n="clock" size={16} />Horário (opcional)<input type="time" value={hora} onChange={e => setHora(e.target.value)} /></label>}
         {canais && <>
         <div className="lbl">Canal (se for post)</div>
         <div className="opts">

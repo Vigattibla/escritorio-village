@@ -27,7 +27,7 @@ export const hh = (t: string) => (t ? t.replace(/^0?(\d+):(\d\d)$/, (_, h, m) =>
 const longDay = (k: string) => { const s = new Date(k + 'T12:00').toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' }).replace('-feira', ''); return s[0].toUpperCase() + s.slice(1) }
 const itemId = (i: Item) => (i.kind === 'evento' ? i.e.id : i.t.id)
 const itemTitle = (i: Item) => (i.kind === 'evento' ? i.e.title : i.t.title)
-const itemTime = (i: Item) => (i.kind === 'evento' ? i.e.time ?? '' : i.kind === 'post' && i.t.publish_at ? hm(i.t.publish_at) : '')
+const itemTime = (i: Item) => (i.kind === 'evento' ? i.e.time ?? '' : i.kind === 'post' && i.t.publish_at ? hm(i.t.publish_at) : i.kind === 'prazo' ? i.t.due_time ?? '' : '')
 // no calendário o canal já aparece pela cor e pelo ícone: tiro o “Reels · ” do começo
 const shortTitle = (i: Item) => (i.kind === 'post' && i.t.channel ? i.t.title.replace(new RegExp(`^${CHANNELS[i.t.channel].label} · `), '') : itemTitle(i))
 const narrow = () => window.matchMedia('(max-width: 900px)').matches
@@ -270,7 +270,7 @@ function PostCard({ t, meId }: { t: Task; meId: string }) {
   const can = canApprove(t, meId) && t.status === 'review'
   return (
     <div className="panel post-card">
-      <div className="eyebrow">{when ? longDay(key(when)) : 'Sem data'}{t.publish_at ? ` · ${hh(hm(t.publish_at))}` : ''}</div>
+      <div className="eyebrow">{when ? longDay(key(when)) : 'Sem data'}{t.publish_at ? ` · ${hh(hm(t.publish_at))}` : t.due_time ? ` · até ${hh(t.due_time)}` : ''}</div>
       <div className={'thumb ' + (ch?.tag ?? 'gray')}>
         <span className="fmt">{ch ? ch.label : 'Prazo'}{t.attachments.length ? ` · ${t.attachments.length} arquivo${t.attachments.length > 1 ? 's' : ''}` : ''}</span>
         <Ph n={ch?.ic ?? 'flag-banner'} size={40} />

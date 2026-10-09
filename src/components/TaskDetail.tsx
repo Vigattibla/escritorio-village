@@ -335,7 +335,10 @@ export default function TaskDetail() {
                 <input type="date" value={t.start ?? ''} disabled={!edit} max={t.due ?? undefined} onChange={e => run(updateTask(t.id, { start: e.target.value || null }))} />
               </label>
               <label className="prop"><span>Prazo</span>
-                <input type="date" value={t.due ?? ''} disabled={!edit} min={t.start ?? undefined} onChange={e => run(updateTask(t.id, { due: e.target.value || null }))} />
+                <span className="prop-hora">
+                  <input type="date" value={t.due ?? ''} disabled={!edit} min={t.start ?? undefined} onChange={e => run(updateTask(t.id, { due: e.target.value || null }))} />
+                  <input type="time" value={t.due_time ?? ''} disabled={!edit || !t.due} aria-label="Horário de entrega" onChange={e => run(updateTask(t.id, { due_time: e.target.value || null }))} />
+                </span>
               </label>
               <label className="prop"><span>Prioridade</span>
                 <select value={t.priority ?? ''} disabled={!edit} onChange={e => run(updateTask(t.id, { priority: (e.target.value || null) as Priority | null }))}>

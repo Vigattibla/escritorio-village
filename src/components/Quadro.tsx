@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { canAssign, rankName, rankOf } from '../game/ranks'
+import { atrasada, hm } from '../game/prazo'
 import { dayKey } from '../game/xp'
 import { acceptRequest, addTask, approverOf, canApprove, canAskReview, canCreateProject, canEditProject, canEditStages, canEditTask, canFinish, canMove, canReassign, canUseAI, CHEFIA, declineRequest, involved, placeTask, reassign, removeStage, run, saveStages, setStatus, setUi, STAGE_KINDS, stageList, stageOf, team as salaTeam, teamOf, toApprove, useStore } from '../store'
 import type { DriveLink, Priority, Profile, Project, Stage, StageKind, Task, TaskStatus } from '../types'
@@ -426,8 +427,8 @@ function Card({ t, mode, meId, profiles, projects, showProj, notes, dragging, on
 }) {
   const today = dayKey(new Date())
   const done = t.status === 'done'
-  const late = !done && !!t.due && t.due < today
-  const hot = !done && t.due === today
+  const late = atrasada(t)
+  const hot = !done && !late && t.due === today
   const dark = t.status === 'review' && canApprove(t)
   const dueTip = done ? 'Concluída' : late ? 'Atrasada' : hot ? 'Vence hoje' : 'Prazo'
   const req = t.created_by !== t.owner_id && !t.project_id
@@ -489,7 +490,7 @@ function Card({ t, mode, meId, profiles, projects, showProj, notes, dragging, on
           )}
           {req && <span className="tc-from" title={`Pedido por ${profiles[t.created_by]?.name ?? 'alguém'}`}>↩ {t.created_by === meId ? 'você' : first(profiles[t.created_by])}</span>}
           <span className="grow" />
-          {(t.due || done) && <span className={'tc-due' + (late ? ' late' : done ? ' ok' : '')} title={dueTip}><Icon n={done ? 'tick' : 'clock'} size={13} />{t.due ? (hot ? 'Hoje' : shortDate(t.due)) : 'Feito'}</span>}
+          {(t.due || done) && <span className={'tc-due' + (late ? ' late' : done ? ' ok' : '')} title={dueTip}><Icon n={done ? 'tick' : 'clock'} size={13} />{t.due ? (t.due === today ? 'Hoje' : shortDate(t.due)) + (hm(t) && !done ? ' ' + hm(t) : '') : 'Feito'}</span>}
           {t.remind_at && !done && <span className="cnt-pill" title={'Lembrete ' + new Date(t.remind_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}><Icon n="alarm" size={13} /></span>}
           {t.attachments.length > 0 && <span className="cnt-pill" title="Anexos"><Icon n="clip" size={13} />{t.attachments.length}</span>}
           {notes > 0 && <span className="cnt-pill" title="Comentários"><Icon n="chat" size={13} />{notes}</span>}
@@ -524,6 +525,7 @@ function Composer({ list, meId, profiles, people, project, onClose }: {
   const [title, setTitle] = useState('')
   const [owner, setOwner] = useState(list.owner ?? (ask ? '' : meId))
   const [due, setDue] = useState('')
+  const [hora, setHora] = useState('')
   const [prio, setPrio] = useState<Priority | null>(null)
   const [remind, setRemind] = useState('')
   const [drive, setDrive] = useState<DriveLink | null>(null)
@@ -542,8 +544,8 @@ function Composer({ list, meId, profiles, people, project, onClose }: {
     const name = title.trim()
     if (!name) return
     if (!owner) { setPop('owner'); return }
-    run(addTask(owner, name, due || null, '', list.status ?? 'todo', project, { priority: prio, remind_at: remind ? new Date(remind).toISOString() : null, stage: list.stage ?? null, drive }))
-    setTitle(''); setPrio(null); setDue(''); setRemind(''); setDrive(null); setPop(null)
+    run(addTask(owner, name, due || null, '', list.status ?? 'todo', project, { priority: prio, remind_at: remind ? new Date(remind).toISOString() : null, stage: list.stage ?? null, drive, due_time: hora || null }))
+    setTitle(''); setPrio(null); setDue(''); setHora(''); setRemind(''); setDrive(null); setPop(null)
     ref.current?.focus()
   }
   const tools: { k: Tool; ic: 'user' | 'flag' | 'calendar' | 'alarm'; tip: string; on: boolean }[] = [
@@ -608,7 +610,8 @@ function Composer({ list, meId, profiles, people, project, onClose }: {
                 {quick.map(q => <button key={q.l} type="button" className={'tag gray' + (due === q.d ? ' on' : '')} onClick={() => pick(() => setDue(q.d))}>{q.l}</button>)}
               </div>
               <input type="date" value={due} min={today} onChange={e => setDue(e.target.value)} aria-label="Escolher data" />
-              {due && <button type="button" className="cmp-clear" onClick={() => pick(() => setDue(''))}>Tirar prazo</button>}
+              {due && <label className="cmp-hora">Horário<input type="time" value={hora} onChange={e => setHora(e.target.value)} aria-label="Horário de entrega" /></label>}
+              {due && <button type="button" className="cmp-clear" onClick={() => pick(() => { setDue(''); setHora('') })}>Tirar prazo</button>}
             </>
           )}
           {pop === 'remind' && (

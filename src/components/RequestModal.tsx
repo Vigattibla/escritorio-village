@@ -10,6 +10,7 @@ export default function RequestModal() {
   const meId = useStore(s => s.meId)
   const [title, setTitle] = useState('')
   const [due, setDue] = useState('')
+  const [hora, setHora] = useState('')
   const [notes, setNotes] = useState('')
   const [busy, setBusy] = useState(false)
   const [files, setFiles] = useState<File[]>([])
@@ -18,13 +19,13 @@ export default function RequestModal() {
   const p = to ? profiles[to] : null
   if (!p) return null
   const direct = canAssign(meId ? profiles[meId] : undefined, p)
-  const close = () => { setUi({ requestTo: null }); setTitle(''); setDue(''); setNotes(''); setFiles([]) }
+  const close = () => { setUi({ requestTo: null }); setTitle(''); setDue(''); setHora(''); setNotes(''); setFiles([]) }
   const add = (f: File[]) => f.length && setFiles(xs => [...xs, ...f.filter(n => !xs.some(x => x.name === n.name && x.size === n.size))].slice(0, 10))
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     setBusy(true)
-    run(addTask(p.id, title, due || null, notes.trim()).then(t => files.length ? attachFiles(t.id, files) : undefined).then(close).finally(() => setBusy(false)))
+    run(addTask(p.id, title, due || null, notes.trim(), 'todo', null, { due_time: hora || null }).then(t => files.length ? attachFiles(t.id, files) : undefined).then(close).finally(() => setBusy(false)))
   }
 
   return (
@@ -35,7 +36,10 @@ export default function RequestModal() {
           <div><h2>{direct ? 'Passar tarefa para' : 'Pedir algo para'} {p.name}</h2><div className="muted small">{direct ? 'Vai direto para a pasta da pessoa.' : 'Chega no computador da pessoa para aceitar ou recusar.'} Concluir rende +5 XP extra.</div></div>
         </header>
         <label>O que você precisa?<input autoFocus required value={title} onChange={e => setTitle(e.target.value)} maxLength={140} placeholder="Ex.: Revisar a proposta de sábado" /></label>
-        <label>Prazo (opcional)<input type="date" value={due} onChange={e => setDue(e.target.value)} /></label>
+        <div className="row gap">
+          <label className="grow">Entrega (opcional)<input type="date" value={due} onChange={e => { setDue(e.target.value); if (!e.target.value) setHora('') }} /></label>
+          <label>Horário<input type="time" value={hora} disabled={!due} onChange={e => setHora(e.target.value)} /></label>
+        </div>
         <label>Detalhes (opcional)<textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3} maxLength={600} /></label>
         <div
           className={'rq-anexos' + (over ? ' over' : '')}

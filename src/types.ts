@@ -100,6 +100,8 @@ export interface Task {
   checklist: CheckItem[]
   /** lembrete para o dono (ISO) */
   remind_at: string | null
+  /** horário de entrega junto do prazo ("HH:MM") */
+  due_time?: string | null
   /** post: canal e horário de publicar (vai para a Agenda) */
   channel: Channel | null
   publish_at: string | null

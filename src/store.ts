@@ -548,12 +548,12 @@ async function putTask(t: Task) {
  * Na própria pasta ou de quem tem cargo menor: entra direto (na etapa pedida).
  * Senão (ou se `status` = 'inbox') vira pedido para a pessoa aceitar.
  */
-export async function addTask(owner: string, title: string, due: string | null = null, notes = '', status: TaskStatus = 'todo', project: string | null = null, extra: Pick<Partial<Task>, 'priority' | 'remind_at' | 'channel' | 'publish_at' | 'notes' | 'stage' | 'drive'> = {}) {
+export async function addTask(owner: string, title: string, due: string | null = null, notes = '', status: TaskStatus = 'todo', project: string | null = null, extra: Pick<Partial<Task>, 'priority' | 'remind_at' | 'due_time' | 'channel' | 'publish_at' | 'notes' | 'stage' | 'drive'> = {}) {
   const direct = canAssign(me(), state.profiles[owner])
   if (status === 'review' || status === 'done') status = 'todo' // entrega passa pela etapa certa
   const t: Task = {
     id: crypto.randomUUID(), owner_id: owner, created_by: state.meId!, title: title.trim(), notes, status: direct && status !== 'inbox' ? status : 'inbox',
-    start: null, due, collaborators: [], attachments: [], position: Date.now(), created_at: new Date().toISOString(),
+    start: null, due, due_time: (due && extra.due_time) || null, collaborators: [], attachments: [], position: Date.now(), created_at: new Date().toISOString(),
     done_at: null, project_id: project || null, criteria: [], reviews: [],
     priority: extra.priority ?? null, checklist: [], remind_at: extra.remind_at ?? null,
     channel: extra.channel ?? null, publish_at: extra.publish_at ?? null, stage: extra.stage ?? null, drive: extra.drive ?? null,
@@ -866,11 +866,12 @@ export async function removeTask(id: string) {
   await Promise.allSettled(t.attachments.map(a => backend.deleteFile(a.path)))
 }
 
-type Details = Partial<Pick<Task, 'title' | 'notes' | 'start' | 'due' | 'collaborators' | 'priority' | 'checklist' | 'remind_at' | 'channel' | 'publish_at' | 'drive'>>
+type Details = Partial<Pick<Task, 'title' | 'notes' | 'start' | 'due' | 'due_time' | 'collaborators' | 'priority' | 'checklist' | 'remind_at' | 'channel' | 'publish_at' | 'drive'>>
 export async function updateTask(id: string, patch: Details) {
   const t = state.tasks[id]
   if (!t) return
   if (patch.title !== undefined && !(patch.title = patch.title.trim())) return
+  if (patch.due === null) patch.due_time = null // sem dia, sem hora
   if ((Object.keys(patch) as (keyof Details)[]).every(k => JSON.stringify(t[k]) === JSON.stringify(patch[k]))) return
   await putTask({ ...t, ...patch })
 }

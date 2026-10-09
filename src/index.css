@@ -1118,3 +1118,11 @@ input:focus, textarea:focus { border-color: var(--yellow); box-shadow: 0 0 0 3px
 .gd-row button:hover, .game-door > button:not(.x):not(.primary):hover { background: var(--hover); }
 .gd-sec { display: grid; gap: 6px; padding-top: 9px; border-top: 1px solid var(--line); }
 .gd-sec > span { font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+
+/* horário de entrega junto do prazo */
+.prop-hora { display: grid; gap: 4px; min-width: 0; flex: 1; }
+.prop-hora input { width: 100%; min-width: 0; }
+.cmp-hora { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+.cmp-hora input { flex: 1; }
+.sh-hora { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 13px; color: var(--muted); }
+.sh-hora input { flex: 1; min-width: 0; }

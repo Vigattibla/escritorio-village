@@ -1,3 +1,4 @@
+import { atrasada, hm } from '../game/prazo'
 import { dayKey } from '../game/xp'
 import { hasCanais, setUi, toApprove, unread, useStore } from '../store'
 import { Bell } from './Avisos'
@@ -50,7 +51,7 @@ export default function Inicio() {
           const p = t.project_id ? s.projects[t.project_id] : null
           const ch = t.channel ? CHANNELS[t.channel] : null
           const by = s.profiles[t.created_by]
-          const late = t.due && t.due < today
+          const late = atrasada(t)
           const hot = !!t.due && t.due <= today
           const ck = t.checklist.filter(c => c.done).length
           const pct = t.checklist.length ? Math.round((ck / t.checklist.length) * 100) : 0
@@ -67,7 +68,7 @@ export default function Inicio() {
               {note && <p className="mc-note">{note}</p>}
               {t.checklist.length > 0 && <div className="tc-prog"><div className="row">Checklist {ck}/{t.checklist.length}<b>{pct}%</b></div><div className="bar"><i style={{ width: `${pct}%` }} /></div></div>}
               <div className="row gap mc-ft">
-                {t.due && <span className={late ? 'late' : ''}><Ph n="calendar-dots" size={14} />{t.due === today ? 'Hoje' : late ? 'Atrasada' : new Date(t.due + 'T12:00').toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' })}</span>}
+                {t.due && <span className={late ? 'late' : ''}><Ph n="calendar-dots" size={14} />{late ? 'Atrasada' : t.due === today ? 'Hoje' : new Date(t.due + 'T12:00').toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' })}{hm(t) && ' · ' + hm(t)}</span>}
                 <span className="grow" />
                 {by && by.id !== me.id && <><small>de {first(by)}</small><MiniAvatar avatar={by.avatar} photo={by.photo} name={by.name} size={22} /></>}
               </div>
