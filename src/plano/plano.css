@@ -12,7 +12,7 @@
 
 /* ---------- Ano ---------- */
 .pl-scroll { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; }
-.pl-mx { border-collapse: separate; border-spacing: 0; min-width: 100%; table-layout: fixed; width: calc(200px + var(--n) * 196px); font-size: 12.5px; }
+.pl-mx { --c: 200px; border-collapse: separate; border-spacing: 0; min-width: 100%; table-layout: fixed; width: calc(var(--c) + var(--n) * 196px); font-size: 12.5px; }
 .pl-mx th, .pl-mx td { border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); vertical-align: top; text-align: left; }
 .pl-mx col, .pl-mx td { width: 196px; }
 .pl-mx thead th { position: sticky; top: 0; z-index: 2; background: var(--creme, #FFF8EC); padding: 0; }
@@ -22,8 +22,8 @@
 .pl-mx thead th button:hover b { color: var(--cobalto); }
 .pl-mx thead th.agora { background: var(--cobalto); }
 .pl-mx thead th.agora b, .pl-mx thead th.agora small { color: #fff; }
-.pl-mx tbody th { position: sticky; left: 0; z-index: 1; width: 200px; background: #fff; padding: 10px 12px; font-weight: 700; }
-.pl-mx .pl-corner { left: 0; z-index: 3; width: 200px; padding: 10px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.pl-mx tbody th { position: sticky; left: 0; z-index: 1; width: var(--c); background: #fff; padding: 10px 12px; font-weight: 700; }
+.pl-mx .pl-corner { left: 0; z-index: 3; width: var(--c); padding: 10px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
 .pl-mx td { background: #fff; padding: 6px; }
 .pl-mx td.agora { background: #F2F4FF; }
 
@@ -173,8 +173,7 @@ input.pl-campo:focus, textarea.pl-campo:focus { background: rgba(36, 64, 255, .0
 @media (max-width: 720px) {
   .plano .pl-bar { padding: 8px 12px; }
   .plano .pl-busca input { width: 100px; }
-  .pl-mx { width: calc(140px + var(--n) * 170px); }
-  .pl-mx tbody th, .pl-mx .pl-corner { width: 140px; }
+  .pl-mx { --c: 140px; width: calc(var(--c) + var(--n) * 170px); }
   .pl-mx td { width: 170px; }
   .pl-mes { padding: 12px 16px 32px; }
   .pl-hero-grid { grid-template-columns: 1fr; }
@@ -237,6 +236,13 @@ input.pl-campo:focus, textarea.pl-campo:focus { background: rgba(36, 64, 255, .0
 
 /* ---------- ano por responsável ---------- */
 .pl-mx tr.pl-rrow th { border-left: 4px solid var(--sc); }
+/* por quem faz: coluna estreita, nome em pé ao longo da linha */
+.pl-mx.resp { --c: 128px; }
+.pl-mx tr.pl-rrow th { padding: 10px 6px; }
+.pl-rrow .pl-quem { flex-direction: column; justify-content: flex-start; gap: 8px; }
+.pl-rrow .pl-quem-nm { flex: none; writing-mode: vertical-rl; transform: rotate(180deg); max-height: 260px; gap: 2px; }
+.pl-rrow .pl-quem-nm b { font-size: 14px; }
+@media (max-width: 720px) { .pl-mx.resp { --c: 96px; } }
 .pl-quem { all: unset; box-sizing: border-box; width: 100%; cursor: pointer; position: sticky; top: 48px; display: flex; align-items: center; gap: 8px; min-width: 0; }
 .pl-quem:disabled { cursor: default; }
 .pl-quem:not(:disabled):hover b { color: var(--cobalto); }
@@ -278,3 +284,4 @@ input.pl-campo:focus, textarea.pl-campo:focus { background: rgba(36, 64, 255, .0
 .pl-pess .eq-pick.on { background: var(--ec); border-color: var(--ec); color: #fff; }
 .pl-pess .eq-pick.on .eq-ic { background: rgba(255, 255, 255, .2); color: #fff; }
 .pl-pess .eq-pick small { font-weight: 800; }
+.eq-ex { display: grid; gap: 6px; padding-top: 4px; }

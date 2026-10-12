@@ -196,7 +196,7 @@ function Matriz({ meses, nucleos, acoes, passa, can, mesAtual, agr, chaves, ctx,
   }
   return (
     <div className="pl-scroll">
-      <table className="pl-mx" style={{ ['--n' as string]: meses.length }}>
+      <table className={'pl-mx' + (agr === 'resp' ? ' resp' : '')} style={{ ['--n' as string]: meses.length }}>
         <thead>
           <tr>
             <th className="pl-corner">{agr === 'resp' ? '' : 'Núcleo'}</th>

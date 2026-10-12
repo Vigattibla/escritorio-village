@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { deptOf, isChief } from '../game/ranks'
 import { gereEquipe } from '../plano/core'
 import { Modal, Pessoas, Rostos } from '../plano/ui'
-import { deptList, deptName, dropRow, me, putRow, putRows, run, useStore } from '../store'
+import { deptList, deptName, dropRow, me, putRow, run, useStore } from '../store'
 import type { Equipe } from '../types'
 import { confirmar, pedirTexto } from './Dialogo'
 import { Ph } from './Icon'
@@ -75,8 +75,12 @@ export function EquipesModal({ onClose }: { onClose: () => void }) {
         })}
         {!lista.length && <div className="eq-vazio"><Ph n="users-three" size={28} /><span>Nenhuma equipe ainda.</span></div>}
       </div>
+      {podeCriar && faltam.length > 0 && <div className="eq-ex">
+        <span className="pl-lab">Exemplos <small className="muted">· toque para criar só as que fazem sentido aqui</small></span>
+        <div className="pl-pess">{faltam.map(([n, ic, c]) => <button type="button" key={n} className="eq-pick" style={{ ['--ec' as string]: c }} onClick={() => run(putRow('equipes', nova(n, deptNovo, ic, c)))}>
+          <i className="eq-ic sm"><Ph n={ic} size={13} fill /></i>{n}<Ph n="plus" size={12} /></button>)}</div>
+      </div>}
       {podeCriar && <footer className="pl-foot">
-        {faltam.length > 0 && <button type="button" className="btn soft" onClick={() => run(putRows('equipes', faltam.map(([n, ic, c]) => nova(n, deptNovo, ic, c))))}><Ph n="sparkle" size={16} />Criar sugeridas ({faltam.length})</button>}
         <span className="grow" />
         <button type="button" className="btn accent" onClick={() => run(criar())}><Ph n="plus" size={16} />Nova equipe</button>
       </footer>}
