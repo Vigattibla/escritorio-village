@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { dayKey } from '../game/xp'
-import { canEditTask, me, run, team, updateTask, useStore } from '../store'
+import { canEditTask, me, putRow, run, team, updateTask, useStore } from '../store'
 import { textoRelatorio } from '../data/ia'
 import type { Profile, Task } from '../types'
 import { Ph } from './Icon'
@@ -139,19 +139,25 @@ function Item({ t, proj, de }: { t: Task; proj?: string; de?: string }) {
 }
 
 /** texto corrido do relatório escrito pela IA a partir das tarefas e descrições; dá pra mexer e copiar */
-// último relatório de cada pessoa, guardado neste navegador: { de, ate (exclusivo), semana, texto, resumo, em }
+// último relatório de cada pessoa: no banco (vale em qualquer computador) e neste navegador, fica o mais novo
 interface Salvo { de: string; ate: string; semana: string; texto: string; resumo: string; em: string }
 const chave = (id: string) => 'rel-ia:' + id
 const lerSalvo = (id: string): Salvo | null => { try { return JSON.parse(localStorage.getItem(chave(id)) ?? 'null') } catch { return null } }
+const maisNovo = (a?: Salvo | null, b?: Salvo | null) => (!a ? b ?? null : !b ? a : a.em >= b.em ? a : b)
 
 function TextoIA({ p, de, ate, onAbrir, semana, ts, proj }: { p: Profile; de: string; ate: string; onAbrir: (de: string, ate: string) => void; semana: string; ts: Task[]; proj: (id: string | null) => string | undefined }) {
-  const [salvo] = useState(() => lerSalvo(p.id))
+  const banco = useStore(s => s.rows.relatorios[p.id])
+  const [salvo] = useState(() => maisNovo(banco, lerSalvo(p.id)))
   const igual = salvo?.de === de && salvo?.ate === ate
   const [txt, setTxt] = useState(igual ? salvo.texto : '')
   const [resumo, setResumo] = useState(igual ? salvo.resumo : '')
   useEffect(() => {
     if (!txt.trim()) return
-    try { localStorage.setItem(chave(p.id), JSON.stringify({ de, ate, semana, texto: txt, resumo, em: new Date().toISOString() } satisfies Salvo)) } catch { /* sem armazenamento: só não guarda */ }
+    const v: Salvo = { de, ate, semana, texto: txt, resumo, em: new Date().toISOString() }
+    try { localStorage.setItem(chave(p.id), JSON.stringify(v)) } catch { /* sem armazenamento: fica só no banco */ }
+    // no banco com folga, para não gravar a cada letra; sem permissão fica só neste navegador
+    const t = window.setTimeout(() => { putRow('relatorios', { id: p.id, ...v }).catch(() => {}) }, 1500)
+    return () => window.clearTimeout(t)
   }, [txt, resumo, p.id, de, ate, semana])
   const [rodando, setRodando] = useState<number | null>(null)
   const [seg, setSeg] = useState(0)
@@ -177,7 +183,7 @@ function TextoIA({ p, de, ate, onAbrir, semana, ts, proj }: { p: Profile; de: st
     <section className={'rel-ia' + (txt ? ' tem' : '')}>
       <header className="no-print">
         <i className="rel-ia-ic"><Ph n="sparkle" size={16} fill /></i>
-        <span className="grow"><b>Texto do relatório</b><small>{rodando !== null ? `Escrevendo com a IA… ${seg}s (costuma levar de 5 a 15s)` : txt ? 'Fica salvo aqui. Revise antes de mandar: dá pra editar.' : 'Conte do seu jeito o que fez; a IA junta com as tarefas abaixo e escreve o relatório.'}</small></span>
+        <span className="grow"><b>Texto do relatório</b><small>{rodando !== null ? `Escrevendo com a IA… ${seg}s (costuma levar de 5 a 15s)` : txt ? 'Fica salvo, em qualquer computador. Revise antes de mandar: dá pra editar.' : 'Conte do seu jeito o que fez; a IA junta com as tarefas abaixo e escreve o relatório.'}</small></span>
         {txt && rodando === null && <button type="button" className="btn ghost sm" onClick={() => run(copiar())}><Ph n={copiou ? 'check' : 'copy'} size={16} />{copiou ? 'Copiado' : 'Copiar'}</button>}
         <button type="button" className="btn soft sm" onClick={() => run(gerar())} disabled={rodando !== null || (!ts.length && !resumo.trim())}>{rodando !== null ? <span className="rel-ia-gira" aria-hidden /> : <Ph n="sparkle" size={16} />}{txt ? 'Escrever de novo' : 'Escrever com IA'}</button>
         {txt && rodando === null && <button type="button" className="btn ghost sm" onClick={() => setTxt('')}>Voltar ao resumo</button>}
