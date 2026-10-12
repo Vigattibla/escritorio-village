@@ -1,7 +1,38 @@
 import { useEffect, useState } from 'react'
-import { setUi, useStore, type Notice } from '../store'
-import Icon from './Icon'
+import { clearNotices, setUi, useStore, type Notice, type NoticeKind } from '../store'
+import Icon, { Ph } from './Icon'
 import MiniAvatar from './MiniAvatar'
+import type { PhName } from './ph'
+
+/** cada tipo de aviso com nome, ícone e cor, pra bater o olho e saber o que é */
+const TIPOS: Record<NoticeKind, [string, PhName, string]> = {
+  data: ['Data comemorativa', 'calendar-dots', '#C2189B'],
+  plano: ['Plano de marketing', 'megaphone', '#7B4DFF'],
+  prazo: ['Prazo', 'flag-banner', '#E8620C'],
+  lembrete: ['Lembrete', 'bell-simple', '#B88A00'],
+  pedido: ['Pedido', 'paper-plane-tilt', '#2440FF'],
+  colab: ['Colaboração', 'hand-heart', '#0E8FA8'],
+  aprov: ['Aprovação', 'seal-check', '#1F9D55'],
+  msg: ['Mensagem', 'chat-circle-dots', '#2440FF'],
+  adesivo: ['Adesivo', 'sticker', '#C2189B'],
+  loja: ['Cafezinhos', 'coffee', '#8A5A2B'],
+  time: ['Equipe', 'users-three', '#5A5A66'],
+}
+const tipo = (n: Notice) => TIPOS[n.kind ?? 'msg'] ?? TIPOS.msg
+/** tira emoji do começo/fim (o ícone já diz o que é) */
+const limpo = (t: string) => t.replace(/^[\p{Extended_Pictographic}\uFE0F\s]+/u, '').replace(/[\s\uFE0F]*[\p{Extended_Pictographic}\uFE0F]+$/u, '')
+
+/** ícone do tipo; com remetente, o rosto dele com o ícone no canto */
+function Marca({ n, size = 34 }: { n: Notice; size?: number }) {
+  const p = useStore(s => (n.from ? s.profiles[n.from] : null))
+  const [, ic, cor] = tipo(n)
+  return (
+    <span className="nt-m" style={{ ['--nc' as string]: cor, width: size, height: size }}>
+      {p ? <><MiniAvatar avatar={p.avatar} photo={p.photo} name={p.name} size={size} /><i className="nt-badge"><Ph n={ic} size={11} fill /></i></>
+        : <i className="nt-ic"><Ph n={ic} size={Math.round(size * .5)} fill /></i>}
+    </span>
+  )
+}
 
 const SHOW_MS = 6000
 const ago = (t: number) => {
@@ -14,21 +45,29 @@ const readSeen = () => { try { return Number(localStorage.getItem(SEEN)) || 0 } 
 
 /** Último aviso no canto, some sozinho. */
 export function Toast() {
-  const n = useStore(s => s.notices[0])
-  const from = useStore(s => (n?.from ? s.profiles[n.from] : null))
+  const notices = useStore(s => s.notices)
+  const n = notices[0]
   const [, force] = useState(0)
-  const live = !!n && Date.now() - n.at < SHOW_MS
+  const [fechado, setFechado] = useState<string | null>(null)
+  const live = !!n && n.id !== fechado && Date.now() - n.at < SHOW_MS
   useEffect(() => {
     if (!live) return
     const id = setTimeout(() => force(x => x + 1), SHOW_MS - (Date.now() - n!.at) + 50)
     return () => clearTimeout(id)
   }, [live, n])
   if (!live) return null
+  // chegou um monte junto: mostra o último e avisa quantos mais
+  const juntos = notices.filter(x => n.at - x.at < 5000).length
+  const [nome, , cor] = tipo(n)
   return (
-    <button className="toast" onClick={() => go(n!)}>
-      {from ? <MiniAvatar avatar={from.avatar} photo={from.photo} name={from.name} size={28} /> : <span className="toast-dot" />}
-      <span>{n!.text}</span>
-    </button>
+    <div className="toast" role="status" style={{ ['--nc' as string]: cor }}>
+      <button type="button" className="toast-c" onClick={() => go(n)}>
+        <Marca n={n} />
+        <span className="toast-tx"><small>{nome}</small><span>{limpo(n.text)}</span></span>
+      </button>
+      {juntos > 1 && <button type="button" className="toast-mais" onClick={() => setUi({ bellOpen: true })}>+{juntos - 1} aviso{juntos > 2 ? 's' : ''}</button>}
+      <button type="button" className="toast-x" onClick={() => setFechado(n.id)} aria-label="Fechar aviso"><Ph n="x" size={14} /></button>
+    </div>
   )
 }
 
@@ -56,27 +95,32 @@ export function Bell() {
 
 export default function Avisos() {
   const notices = useStore(s => s.notices)
-  const profiles = useStore(s => s.profiles)
+  const [desde] = useState(readSeen)
   const [perm, setPerm] = useState(() => ('Notification' in window ? Notification.permission : 'denied'))
   return (
     <div className="avisos">
       <header className="pop-head">
         <b className="grow">Avisos</b>
+        {notices.length > 0 && <button className="btn ghost sm" onClick={clearNotices}>Limpar</button>}
         {perm === 'default' && <button className="btn ghost sm" onClick={() => Notification.requestPermission().then(setPerm)}>Ativar notificações</button>}
         <button className="icon-btn" onClick={() => setUi({ bellOpen: false })} aria-label="Fechar"><Icon n="x" /></button>
       </header>
       <ul className="inbox">
-        {notices.map(n => {
-          const p = n.from ? profiles[n.from] : null
+        {notices.map((n, i) => {
+          const novo = n.at > desde
+          const sep = i === 0 ? (novo ? 'Novos' : 'Anteriores') : !novo && notices[i - 1].at > desde ? 'Anteriores' : null
+          const [nome, , cor] = tipo(n)
           return (
-            <li key={n.id} onClick={() => go(n)}>
-              {p ? <MiniAvatar avatar={p.avatar} photo={p.photo} name={p.name} size={28} /> : <span className="toast-dot" />}
-              <span className="grow">{n.text}</span>
-              <small>{ago(n.at)}</small>
+            <li key={n.id} className={novo ? 'novo' : ''} style={{ ['--nc' as string]: cor }}>
+              {sep && <b className="inbox-sep">{sep}</b>}
+              <button type="button" onClick={() => go(n)}>
+                <Marca n={n} size={32} />
+                <span className="inbox-tx"><small><b>{nome}</b> · {ago(n.at)}</small><span>{limpo(n.text)}</span></span>
+              </button>
             </li>
           )
         })}
-        {notices.length === 0 && <li className="muted">Nada novo. Pedidos, mensagens e aprovações aparecem aqui.</li>}
+        {notices.length === 0 && <li className="muted inbox-vazio">Nada novo. Datas, prazos, pedidos e mensagens aparecem aqui.</li>}
       </ul>
     </div>
   )

@@ -15,7 +15,8 @@ export type Tab = 'mesa' | 'aprovar' | 'avisos' | 'equipe' | 'chat' | 'geral'
 /** quadro = trabalho do dia a dia (estilo Trello); escritório = visualização em pixel */
 export type View = 'quadro' | 'escritorio' | 'agenda' | 'metas' | 'fluxos' | 'inicio' | 'arquivos' | 'loja' | 'vendas' | 'placar' | 'kit' | 'plano'
 export interface Go { view?: View; tab?: Tab; viewing?: string; channel?: string; task?: string }
-export interface Notice { id: string; text: string; at: number; from?: string; go?: Go }
+export type NoticeKind = 'data' | 'plano' | 'prazo' | 'lembrete' | 'pedido' | 'colab' | 'aprov' | 'msg' | 'adesivo' | 'loja' | 'time'
+export interface Notice { id: string; text: string; at: number; from?: string; go?: Go; kind?: NoticeKind }
 
 export interface State {
   phase: Phase
@@ -208,6 +209,8 @@ export function unread(s: State, ch: string) {
 }
 
 // ---------- avisos (mascote, PiP, notificação do sistema) ----------
+export function clearNotices() { set({ notices: [] }) }
+
 export function notify(text: string, extra: Omit<Notice, 'id' | 'text' | 'at'> = {}) {
   const n: Notice = { id: crypto.randomUUID(), text, at: Date.now(), ...extra }
   set({ notices: [n, ...state.notices].slice(0, 30) })
@@ -221,7 +224,7 @@ export function notify(text: string, extra: Omit<Notice, 'id' | 'text' | 'at'> =
 function onProfile(p: Profile) {
   const isNew = !state.profiles[p.id]
   set({ profiles: { ...state.profiles, [p.id]: p } })
-  if (isNew && p.id !== state.meId) notify(`${p.name} entrou no time! 👋`, { from: p.id, go: { tab: 'equipe' } })
+  if (isNew && p.id !== state.meId) notify(`${p.name} entrou no time!`, { kind: 'time', from: p.id, go: { tab: 'equipe' } })
 }
 
 function onProfileDeleted(id: string) {
@@ -239,27 +242,27 @@ function onTask(raw: Task) {
   const my = state.meId
   if (!my) return
   if (!prev && t.owner_id === my && t.created_by !== my) {
-    if (t.status === 'inbox') notify(`${nameOf(t.created_by)} te pediu: “${t.title}”`, { from: t.created_by, go: { task: t.id } })
-    else notify(`${nameOf(t.created_by)} colocou na sua pasta: “${t.title}”`, { from: t.created_by, go: { task: t.id } })
+    if (t.status === 'inbox') notify(`${nameOf(t.created_by)} te pediu: “${t.title}”`, { kind: 'pedido', from: t.created_by, go: { task: t.id } })
+    else notify(`${nameOf(t.created_by)} colocou na sua pasta: “${t.title}”`, { kind: 'pedido', from: t.created_by, go: { task: t.id } })
   }
   if (t.collaborators.includes(my) && !prev?.collaborators.includes(my) && t.owner_id !== my)
-    notify(`${nameOf(t.owner_id)} te chamou para colaborar: “${t.title}” 🤝`, { from: t.owner_id, go: { task: t.id } })
+    notify(`${nameOf(t.owner_id)} te chamou para colaborar: “${t.title}”`, { kind: 'colab', from: t.owner_id, go: { task: t.id } })
   if (t.created_by === my && t.owner_id !== my && t.status !== prev?.status) {
     const who = nameOf(t.owner_id), go: Go = { task: t.id }
-    if (t.status === 'done') notify(`${who} concluiu seu pedido: “${t.title}” ✅`, { from: t.owner_id, go })
-    else if (t.status === 'declined') notify(`${who} recusou seu pedido: “${t.title}”`, { from: t.owner_id, go })
-    else if (prev?.status === 'inbox' && t.status === 'todo') notify(`${who} aceitou seu pedido: “${t.title}”`, { from: t.owner_id, go })
+    if (t.status === 'done') notify(`${who} concluiu seu pedido: “${t.title}”`, { kind: 'pedido', from: t.owner_id, go })
+    else if (t.status === 'declined') notify(`${who} recusou seu pedido: “${t.title}”`, { kind: 'pedido', from: t.owner_id, go })
+    else if (prev?.status === 'inbox' && (t.status === 'todo' || t.status === 'doing')) notify(`${who} aceitou seu pedido: “${t.title}”`, { kind: 'pedido', from: t.owner_id, go })
   }
-  if (prev && prev.owner_id !== my && t.owner_id === my) notify(`Uma tarefa passou para você: “${t.title}”`, { go: { task: t.id } })
+  if (prev && prev.owner_id !== my && t.owner_id === my) notify(`Uma tarefa passou para você: “${t.title}”`, { kind: 'pedido', go: { task: t.id } })
   if (prev && prev.status !== 'review' && t.status === 'review' && (approverOf(t) === my || (approverOf(t) === CHEFIA && canApprove(t, my))) && t.owner_id !== my)
-    notify(`${nameOf(t.owner_id)} enviou para aprovação: “${t.title}” 📥`, { from: t.owner_id, go: { tab: 'aprovar' } })
+    notify(`${nameOf(t.owner_id)} enviou para aprovação: “${t.title}”`, { kind: 'aprov', from: t.owner_id, go: { tab: 'aprovar' } })
   // decisão nova: avisa o time do projeto (menos quem decidiu)
   const r = t.reviews.at(-1)
   if (prev && r && t.reviews.length > prev.reviews.length && r.by !== my && t.project_id && (teamOf(t.project_id).has(my) || involved(t, my))) {
     const proj = state.projects[t.project_id]?.name ?? 'projeto'
     const dono = t.owner_id === my ? 'Sua entrega' : `A entrega de ${nameOf(t.owner_id)}`
-    notify(r.ok ? `✅ ${dono} foi aprovada por ${nameOf(r.by)}: “${t.title}” (${proj})`
-      : `❌ ${dono} foi reprovada por ${nameOf(r.by)}: “${t.title}” (${proj}) — ${r.reason.slice(0, 90)}`, { from: r.by, go: { task: t.id } })
+    notify(r.ok ? `${dono} foi aprovada por ${nameOf(r.by)}: “${t.title}” (${proj})`
+      : `${dono} foi reprovada por ${nameOf(r.by)}: “${t.title}” (${proj}) — ${r.reason.slice(0, 90)}`, { kind: 'aprov', from: r.by, go: { task: t.id } })
   }
 }
 
@@ -269,7 +272,7 @@ function onRow<K extends RowTable>(k: K, r: Rows[K]) {
   set({ rows: { ...state.rows, [k]: { ...state.rows[k], [r.id]: r } } })
   if (k === 'stickers' && !prev) {
     const st = r as Sticker
-    if (st.to_id === state.meId && st.by_id !== state.meId) notify(`${nameOf(st.by_id)} colou um adesivo na sua tela: “${st.text}”`, { from: st.by_id })
+    if (st.to_id === state.meId && st.by_id !== state.meId) notify(`${nameOf(st.by_id)} colou um adesivo na sua tela: “${st.text}”`, { kind: 'adesivo', from: st.by_id })
   }
 }
 
@@ -304,7 +307,7 @@ function onProject(p: Project) {
   set({ projects: { ...state.projects, [p.id]: { ...p, criteria: p.criteria ?? [] } } })
   const my = state.meId
   if (my && p.master_id === my && prev?.master_id !== my && p.created_by !== my)
-    notify(`Você é o mestre do projeto “${p.name}” 🎯`, { from: p.created_by, go: { tab: 'aprovar' } })
+    notify(`Você é o mestre do projeto “${p.name}”`, { kind: 'aprov', from: p.created_by, go: { tab: 'aprovar' } })
 }
 
 function onProjectDeleted(id: string) {
@@ -326,7 +329,7 @@ function onNote(n: TaskNote) {
   set({ notes: [...state.notes, n] })
   const t = state.tasks[n.task_id], my = state.meId
   if (!t || !my || n.author_id === my || !involved(t, my) || state.task === t.id) return
-  notify(`${nameOf(n.author_id)} comentou em “${t.title}”: ${n.body.slice(0, 80)}`, { from: n.author_id, go: { task: t.id } })
+  notify(`${nameOf(n.author_id)} comentou em “${t.title}”: ${n.body.slice(0, 80)}`, { kind: 'msg', from: n.author_id, go: { task: t.id } })
 }
 
 function onNoteDeleted(id: string) {
@@ -343,7 +346,7 @@ function onMessage(m: Message) {
   if (viewing) return markRead(m.channel)
   if (!inChannel(m.channel)) return
   const where = m.channel === 'geral' ? ' (Geral)' : m.channel.startsWith('g:') ? ` (${groupOf(m.channel)?.name ?? 'grupo'})` : ''
-  notify(`${nameOf(m.sender_id)}${where}: ${m.body.slice(0, 90)}`, { from: m.sender_id, go: { tab: 'chat', channel: m.channel } })
+  notify(`${nameOf(m.sender_id)}${where}: ${m.body.slice(0, 90)}`, { kind: 'msg', from: m.sender_id, go: { tab: 'chat', channel: m.channel } })
 }
 
 // ---------- ações ----------
@@ -369,7 +372,7 @@ function checkReminders() {
     if (new Date(t.remind_at).getTime() > now || seen[t.id] === t.remind_at) continue
     seen[t.id] = t.remind_at
     changed = true
-    notify(`⏰ Lembrete: “${t.title}”`, { go: { task: t.id } })
+    notify(`Lembrete: “${t.title}”`, { kind: 'lembrete', go: { task: t.id } })
   }
   if (changed) try { localStorage.setItem(key, JSON.stringify(seen)) } catch { /* sem espaço */ }
   for (const c of checagens) try { c() } catch { /* aviso não pode derrubar o app */ }
@@ -823,7 +826,8 @@ export async function removeProject(id: string) {
   await backend.deleteProject(id)
 }
 
-export const acceptRequest = (id: string) => setStatus(id, 'todo')
+/** aceitou o pedido = já começou a fazer */
+export const acceptRequest = (id: string) => setStatus(id, 'doing')
 export const declineRequest = (id: string) => setStatus(id, 'declined')
 
 export async function setRank(target: string, rank: number) {
@@ -985,7 +989,7 @@ async function claim() {
   if (!state.meId) return
   try {
     const got = await backend.claimCoffee()
-    for (const l of got.slice().reverse()) notify(coffeeText(l), { go: { view: 'loja' } })
+    for (const l of got.slice().reverse()) notify(coffeeText(l), { kind: 'loja', go: { view: 'loja' } })
   } catch { /* tenta de novo no próximo ciclo */ }
   await refreshWallet()
 }

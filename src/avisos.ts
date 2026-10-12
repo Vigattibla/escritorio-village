@@ -28,24 +28,24 @@ function checarDatas() {
     if (d < 0 || d > 7) continue
     if (plano_nucleos[a.nucleo]?.tipo === 'datas') {
       if (!editaPlano(eu)) continue
-      if (d >= 2) add(`d:${a.id}:${dia}:sem`, `📅 ${a.texto} é ${emDias(d)} (${dm(dia)}). Uma semana pra montar a campanha.`, { go: { view: 'agenda' } })
-      else add(`d:${a.id}:${dia}:vesp`, `📅 ${a.texto} é ${emDias(d)} (${dm(dia)}).`, { go: { view: 'agenda' } })
+      if (d >= 2) add(`d:${a.id}:${dia}:sem`, `${a.texto} é ${emDias(d)} (${dm(dia)}). Dá uma semana pra montar a campanha.`, { kind: 'data', go: { view: 'agenda' } })
+      else add(`d:${a.id}:${dia}:vesp`, `${a.texto} é ${emDias(d)} (${dm(dia)}).`, { kind: 'data', go: { view: 'agenda' } })
       continue
     }
     if (situacao(a, s.tasks) !== 'livre') continue
     const { pessoas } = quem(a, plano_resp, s.profiles, equipes)
     if (!(pessoas.includes(my) || (!pessoas.length && editaPlano(eu)))) continue
-    if (d >= 3) add(`a:${a.id}:${dia}:sem`, `🗓 Ação do plano ${emDias(d)} (${dm(dia)}) e ainda fora do quadro: “${a.texto}”`, { go: { view: 'plano' } })
-    else add(`a:${a.id}:${dia}:perto`, `⚠ ${d === 0 ? 'É hoje' : d === 1 ? 'Falta 1 dia' : `Faltam ${d} dias`} e a ação ainda não virou tarefa: “${a.texto}”`, { go: { view: 'plano' } })
+    if (d >= 3) add(`a:${a.id}:${dia}:sem`, `“${a.texto}” é ${emDias(d)} (${dm(dia)}) e ainda não virou tarefa.`, { kind: 'plano', go: { view: 'plano' } })
+    else add(`a:${a.id}:${dia}:perto`, `${d === 0 ? 'É hoje' : d === 1 ? 'Falta 1 dia' : `Faltam ${d} dias`} e “${a.texto}” ainda não virou tarefa.`, { kind: 'plano', go: { view: 'plano' } })
   }
 
   for (const t of Object.values(s.tasks)) {
     if (!t.due || t.owner_id !== my || t.status === 'done' || t.status === 'declined') continue
     const due = t.due.slice(0, 10)
     const d = difDias(due, hoje)
-    if (d === 1) add(`t:${t.id}:${due}:1`, `⏳ Vence amanhã: “${t.title}”`, { go: { task: t.id } })
-    else if (d === 0) add(`t:${t.id}:${due}:0`, `⏳ Vence hoje: “${t.title}”`, { go: { task: t.id } })
-    else if (d < 0 && d >= -3) add(`t:${t.id}:${due}:x`, `🔴 Atrasou: “${t.title}” venceu ${dm(due)}`, { go: { task: t.id } })
+    if (d === 1) add(`t:${t.id}:${due}:1`, `Vence amanhã: “${t.title}”`, { kind: 'prazo', go: { task: t.id } })
+    else if (d === 0) add(`t:${t.id}:${due}:0`, `Vence hoje: “${t.title}”`, { kind: 'prazo', go: { task: t.id } })
+    else if (d < 0 && d >= -3) add(`t:${t.id}:${due}:x`, `Atrasou: “${t.title}” venceu ${dm(due)}`, { kind: 'prazo', go: { task: t.id } })
   }
 
   if (!fila.length) return
