@@ -7,6 +7,7 @@ import Icon, { Ph } from './Icon'
 import MiniAvatar from './MiniAvatar'
 import SegInd from './SegInd'
 import { first } from './v4'
+import { confirmar } from './Dialogo'
 
 const NW = 220, NH = 96, OX = 290 // OX: espaço do nó do objetivo, à esquerda
 const MODELOS: { name: string; objective: string; steps: [string, number[]][] }[] = [
@@ -133,7 +134,7 @@ export default function Fluxos() {
             </div>}
             {can && <button className="btn accent" disabled={!pending.length} onClick={() => run(send())} title={pending.length ? 'Cria uma tarefa para cada passo com responsável' : 'Escolha quem faz cada passo'}>
               <Ph n="paper-plane-tilt" size={18} fill />{pending.length ? `Enviar ${pending.length} tarefa${pending.length > 1 ? 's' : ''}` : 'Tudo enviado'}</button>}
-            {can && <button className="icon-btn" title="Apagar fluxo" aria-label="Apagar fluxo" onClick={() => { if (confirm(`Apagar o fluxo “${f.name}”? As tarefas já enviadas continuam.`)) { run(dropRow('flows', f.id)); setUi({ flow: null }) } }}><Icon n="trash" /></button>}
+            {can && <button className="icon-btn" title="Apagar fluxo" aria-label="Apagar fluxo" onClick={async () => { if (await confirmar(`Apagar o fluxo “${f.name}”?`, { text: 'As tarefas já enviadas continuam.', danger: true })) { run(dropRow('flows', f.id)); setUi({ flow: null }) } }}><Icon n="trash" /></button>}
           </div>
           <div className="fl-wrap">
             {mode === 'seq' ? (

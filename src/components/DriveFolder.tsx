@@ -4,6 +4,7 @@ import { setUi } from '../store'
 import type { DriveLink } from '../types'
 import { Thumb } from './Arquivos'
 import { Ph } from './Icon'
+import { pedirTexto } from './Dialogo'
 
 type Crumb = DriveLink['crumbs'][number]
 const ids = (c: Crumb[]) => c.map(x => x.id)
@@ -30,7 +31,7 @@ export function FolderPicker({ start, onPick, onClose }: { start?: DriveLink | n
     return () => clearInterval(t)
   }, [dirs, err])
   const add = async () => {
-    const name = prompt('Nome da nova pasta')?.trim()
+    const name = await pedirTexto('Nova pasta', { ph: 'Nome da pasta', max: 80 })
     if (!name) return
     try { const f = await mkdir(ids(crumbs), name); open([...crumbs, { id: f.id, name: f.name }]) } catch (e) { setErr((e as Error).message) }
   }

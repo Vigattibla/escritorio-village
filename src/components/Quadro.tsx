@@ -14,6 +14,7 @@ import Relatorio, { segunda } from './Relatorio'
 import { setPref, usePref } from '../prefs'
 import { Live } from './Side'
 import { CHANNELS, currentGoal, goalProgress } from './v4'
+import { confirmar } from './Dialogo'
 
 type Group = 'etapa' | 'raias' | 'pessoa'
 type Due = '' | 'late' | 'today' | 'week' | 'none'
@@ -653,11 +654,11 @@ function StageMenu({ s, list, count }: { s: Stage; list: Stage[]; count: number 
     setName(null); setOpen(false)
     if (label && label !== s.label) run(saveStages(list.map(x => (x.id === s.id ? { ...x, label } : x))))
   }
-  const del = () => {
+  const del = async () => {
     setOpen(false)
     const to = list.find(x => x.id === s.kind && x.id !== s.id) ?? list.find(x => x.kind === s.kind && x.id !== s.id)
     if (!to) return run(removeStage(s.id))
-    if (confirm(`Excluir a etapa “${s.label}”?${count ? `\n\n${count === 1 ? 'A tarefa dela vai' : `As ${count} tarefas dela vão`} para “${to.label}”.` : ''}`)) run(removeStage(s.id))
+    if (await confirmar(`Excluir a etapa “${s.label}”?`, { text: count ? `${count === 1 ? 'A tarefa dela vai' : `As ${count} tarefas dela vão`} para “${to.label}”.` : undefined, ok: 'Excluir', danger: true })) run(removeStage(s.id))
   }
   return (
     <div className="pop-wrap">

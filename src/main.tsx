@@ -4,10 +4,12 @@ import './index.css'
 import './v4.css'
 import './office/errands'
 import App from './App.tsx'
+import Dialogos from './components/Dialogo'
 import './turmeo.css'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />
+    <Dialogos />
   </StrictMode>,
 )

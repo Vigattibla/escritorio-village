@@ -9,6 +9,7 @@ import { Ph } from './Icon'
 import MiniAvatar from './MiniAvatar'
 import SegInd from './SegInd'
 import '../plano/plano.css'
+import { confirmar } from './Dialogo'
 
 type Modo = 'matriz' | 'mes'
 type Faixa = 'campanha' | 'principal' | 'tematica' | 'oferta' | 'persona'
@@ -22,6 +23,23 @@ const FAIXAS: { k: Faixa; label: string; max: number }[] = [
 const hoje = () => new Date().toISOString().slice(0, 7)
 const norm = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
 const siglas = (resp: string) => resp.toUpperCase().split(/\s*(?:\/|,|\+|&|\bE\b)\s*/).map(x => x.trim()).filter(Boolean)
+
+/** coluna/linha da ação: a sigla inteira se ela está na legenda; senão a primeira; '' = sem responsável */
+const chave = (a: PlanoAcao, resp: Record<string, PlanoResp>) => { const k = a.resp.trim().toUpperCase(); return resp[k] ? k : siglas(k)[0] ?? '' }
+const CORES = ['#2440FF', '#E8620C', '#1F9D55', '#C2189B', '#0E8FA8', '#7B4DFF', '#B88A00', '#D93A3F']
+/** cor fixa por sigla (a primeira), igual em toda a tela */
+const corSig = (s: string) => { let h = 0; for (const c of siglas(s)[0] ?? s) h = (h * 31 + c.charCodeAt(0)) | 0; return s ? CORES[Math.abs(h) % CORES.length] : '#A39C8E' }
+const novoResp = (id: string): PlanoResp => ({ id, nome: '', dept: null, pessoas: [], created_at: new Date().toISOString() })
+type Agr = 'resp' | 'nucleo'
+const AGR = 'pl-agrupa'
+const lerAgr = (): Agr => { try { return localStorage.getItem(AGR) === 'nucleo' ? 'nucleo' : 'resp' } catch { return 'resp' } }
+
+function Sig({ s, big }: { s: string; big?: boolean }) {
+  return <em className={'pl-sig' + (big ? ' big' : '')} style={{ ['--sc' as string]: corSig(s) }}>{s}</em>
+}
+function Rostos({ ids, profiles, size = 24, max = 4 }: { ids: string[]; profiles: Record<string, Profile>; size?: number; max?: number }) {
+  return <span className="faces">{ids.slice(0, max).map(id => <MiniAvatar key={id} avatar={profiles[id]?.avatar ?? null} photo={profiles[id]?.photo ?? null} name={profiles[id]?.name} size={size} />)}{ids.length > max && <i className="pl-mais-n">+{ids.length - max}</i>}</span>
+}
 
 const editaPlano = (p: Profile | undefined) => !!p && (!!p.is_admin || rankOf(p) === 4 || deptOf(p) === 'marketing')
 
@@ -86,17 +104,26 @@ export default function Plano() {
   const [sala, setSala] = useState('')
   const [q, setQ] = useState('')
   const [edit, setEdit] = useState<PlanoAcao | 'novo' | null>(null)
-  const [novo, setNovo] = useState<{ nucleo: string; mes: string } | null>(null)
+  const [novo, setNovo] = useState<Base | null>(null)
   const [nuc, setNuc] = useState<PlanoNucleo | 'novo' | null>(null)
-  const [respOpen, setRespOpen] = useState(false)
+  const [respOpen, setRespOpen] = useState<string | boolean>(false)
+  const [agr, setAgr] = useState<Agr>(lerAgr)
+  const agrupa = (v: Agr) => { setAgr(v); try { localStorage.setItem(AGR, v) } catch { /* sem storage */ } }
+  const [rf, setRf] = useState('')
   const [prev, setPrev] = useState<Importado | null>(null)
   const [lendo, setLendo] = useState(false)
   const file = useRef<HTMLInputElement>(null)
   const ctx = { resp: rows.plano_resp, profiles, meses: rows.plano_meses, nucleos: rows.plano_nucleos }
 
+  const ehData = (a: PlanoAcao) => rows.plano_nucleos[a.nucleo]?.tipo === 'datas'
+  const chaves = useMemo(() => [...new Set(acoes.filter(a => rows.plano_nucleos[a.nucleo]?.tipo !== 'datas').map(a => chave(a, rows.plano_resp)))].sort((a, b) => a === '' ? -1 : b === '' ? 1 : a.localeCompare(b)), [acoes, rows.plano_nucleos, rows.plano_resp])
   const passa = (a: PlanoAcao) => {
     if (q && !norm(`${a.texto} ${a.resp} ${a.dia}`).includes(norm(q))) return false
-    if (sala && rows.plano_nucleos[a.nucleo]?.tipo !== 'datas' && quem(a, rows.plano_resp, profiles).dept !== sala) return false
+    if (ehData(a)) return true
+    const qq = (sala || rf === '@eu') ? quem(a, rows.plano_resp, profiles) : null
+    if (sala && qq?.dept !== sala) return false
+    if (rf === '@eu') return !!meP && !!qq?.pessoas.includes(meP.id)
+    if (rf && chave(a, rows.plano_resp) !== rf && !siglas(a.resp).includes(rf)) return false
     return true
   }
 
@@ -139,6 +166,11 @@ export default function Plano() {
           <button className={modo === 'matriz' ? 'on' : ''} onClick={() => setModo('matriz')} title="Todos os núcleos × todos os meses"><Ph n="squares-four" size={18} fill={modo === 'matriz'} />Ano</button>
           <button className={modo === 'mes' ? 'on' : ''} onClick={() => setModo('mes')} title="A campanha e as ações de um mês"><Ph n="calendar-blank" size={18} fill={modo === 'mes'} />Mês</button>
         </div>
+        <div className="seg pl-agr" role="tablist" aria-label="Organizar por">
+          <SegInd />
+          <button className={agr === 'resp' ? 'on' : ''} onClick={() => agrupa('resp')} title="Uma coluna para cada responsável"><Ph n="users-three" size={18} fill={agr === 'resp'} />Por quem faz</button>
+          <button className={agr === 'nucleo' ? 'on' : ''} onClick={() => agrupa('nucleo')} title="Agrupado pelos núcleos da planilha"><Ph n="tree-structure" size={18} fill={agr === 'nucleo'} />Por núcleo</button>
+        </div>
         {ciclos.length > 1 && <label className="qchip"><Ph n="calendar-dots" size={15} />
           <select value={cc} onChange={e => setCiclo(e.target.value)} aria-label="Ciclo">{ciclos.map(c => <option key={c} value={c}>Ciclo {nomeMes(c, true)}/{c.slice(2, 4)}</option>)}</select>
         </label>}
@@ -148,33 +180,41 @@ export default function Plano() {
             {depts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
           </select>
         </label>
+        <label className={'qchip' + (rf ? ' on' : '')}><Ph n="user-circle" size={15} />
+          <select value={rf} onChange={e => setRf(e.target.value)} aria-label="Filtrar por responsável">
+            <option value="">Todos os responsáveis</option>
+            {meP && <option value="@eu">Só as minhas</option>}
+            {chaves.map(k => <option key={k} value={k}>{k ? `${k}${rows.plano_resp[k]?.nome ? ' · ' + rows.plano_resp[k].nome : ''}` : 'Sem responsável'}</option>)}
+          </select>
+        </label>
         <label className="qchip pl-busca"><Ph n="magnifying-glass" size={15} /><input value={q} onChange={e => setQ(e.target.value)} placeholder="Buscar ação" aria-label="Buscar ação" /></label>
         <span className="grow" />
-        {can && <button className="btn soft" onClick={() => setRespOpen(true)} title="Quem é cada sigla (MKT, DES…) e quem recebe as tarefas"><Ph n="users-three" size={18} />Responsáveis</button>}
+        {can && <button className="btn soft" onClick={() => setRespOpen(true)} title="Quem é cada sigla (MKT, DES…) e quem recebe as tarefas"><Ph n="list-bullets" size={18} />Legenda</button>}
         {can && <button className="btn soft" disabled={lendo} onClick={() => file.current?.click()} title="Atualiza o plano com uma nova versão da planilha"><Ph n="upload-simple" size={18} />{lendo ? 'Lendo…' : 'Importar'}</button>}
         {input}
         <Bell />
       </div>
 
       {modo === 'matriz'
-        ? <Matriz meses={meses} nucleos={nucleos} acoes={acoes} passa={passa} can={can} mesAtual={hoje()}
-            onMes={m => { setMes(m); setModo('mes') }} onAcao={setEdit} onNova={(n, m) => { setNovo({ nucleo: n, mes: m }); setEdit('novo') }} onNucleo={setNuc} />
-        : <Mes m={meses.find(x => x.mes === mm)} meses={meses} nucleos={nucleos} acoes={acoes.filter(a => a.mes === mm)} passa={passa} can={can} ctx={ctx} tasks={tasks}
-            onMes={setMes} onAcao={setEdit} onNova={n => { setNovo({ nucleo: n, mes: mm }); setEdit('novo') }} />}
+        ? <Matriz meses={meses} nucleos={nucleos} acoes={acoes} passa={passa} can={can} mesAtual={hoje()} agr={agr} chaves={chaves} ctx={ctx}
+            onMes={m => { setMes(m); setModo('mes') }} onAcao={setEdit} onNova={b => { setNovo(b); setEdit('novo') }} onNucleo={setNuc} onResp={k => setRespOpen(k || true)} />
+        : <Mes m={meses.find(x => x.mes === mm)} meses={meses} nucleos={nucleos} acoes={acoes.filter(a => a.mes === mm)} passa={passa} can={can} ctx={ctx} tasks={tasks} agr={agr}
+            onMes={setMes} onAcao={setEdit} onNova={(n, resp) => { setNovo({ nucleo: n, mes: mm, resp }); setEdit('novo') }} />}
 
       {edit && <AcaoModal a={edit === 'novo' ? null : rows.plano_acoes[edit.id] ?? edit} base={novo} ciclo={cc} meses={meses} nucleos={nucleos} can={can} ctx={ctx} tasks={tasks}
         onClose={() => { setEdit(null); setNovo(null) }} />}
       {nuc && <NucleoModal n={nuc === 'novo' ? null : nuc} ciclo={cc} pos={nucleos.length} onClose={() => setNuc(null)} />}
-      {respOpen && <RespModal acoes={acoes} onClose={() => setRespOpen(false)} />}
+      {respOpen && <RespModal acoes={acoes} foco={typeof respOpen === 'string' ? respOpen : null} onClose={() => setRespOpen(false)} />}
       {prev && <Previa p={prev} onClose={() => setPrev(null)} onDone={c => { setCiclo(c); setPrev(null) }} />}
     </div>
   )
 }
 
 /* ---------------- Ano: núcleos × meses ---------------- */
-function Matriz({ meses, nucleos, acoes, passa, can, mesAtual, onMes, onAcao, onNova, onNucleo }: {
-  meses: PlanoMes[]; nucleos: PlanoNucleo[]; acoes: PlanoAcao[]; passa: (a: PlanoAcao) => boolean; can: boolean; mesAtual: string
-  onMes: (m: string) => void; onAcao: (a: PlanoAcao) => void; onNova: (n: string, m: string) => void; onNucleo: (n: PlanoNucleo | 'novo') => void
+type Base = { nucleo: string; mes: string; resp?: string }
+function Matriz({ meses, nucleos, acoes, passa, can, mesAtual, agr, chaves, ctx, onMes, onAcao, onNova, onNucleo, onResp }: {
+  meses: PlanoMes[]; nucleos: PlanoNucleo[]; acoes: PlanoAcao[]; passa: (a: PlanoAcao) => boolean; can: boolean; mesAtual: string; agr: Agr; chaves: string[]
+  ctx: Parameters<typeof mandar>[1]; onMes: (m: string) => void; onAcao: (a: PlanoAcao) => void; onNova: (b: Base) => void; onNucleo: (n: PlanoNucleo | 'novo') => void; onResp: (k: string) => void
 }) {
   const tasks = useStore(s => s.tasks)
   const por = useMemo(() => {
@@ -182,6 +222,13 @@ function Matriz({ meses, nucleos, acoes, passa, can, mesAtual, onMes, onAcao, on
     for (const a of acoes) (o[a.nucleo + '|' + a.mes] ??= []).push(a)
     return o
   }, [acoes])
+  const porResp = useMemo(() => {
+    const o: Record<string, PlanoAcao[]> = {}
+    for (const a of acoes) if (ctx.nucleos[a.nucleo]?.tipo !== 'datas') (o[chave(a, ctx.resp) + '|' + a.mes] ??= []).push(a)
+    return o
+  }, [acoes, ctx.nucleos, ctx.resp])
+  const primeiro = nucleos.find(n => n.tipo === 'acoes')?.id ?? nucleos[0]?.id ?? ''
+  const linhas = agr === 'resp' ? chaves.filter(k => meses.some(m => (porResp[k + '|' + m.mes] ?? []).some(passa))) : []
   // faixas: meses vizinhos com o mesmo texto viram uma célula só
   const faixa = (k: Faixa) => {
     const out: { v: string; n: number; mes: string }[] = []
@@ -197,7 +244,7 @@ function Matriz({ meses, nucleos, acoes, passa, can, mesAtual, onMes, onAcao, on
       <table className="pl-mx" style={{ ['--n' as string]: meses.length }}>
         <thead>
           <tr>
-            <th className="pl-corner">Núcleo</th>
+            <th className="pl-corner">{agr === 'resp' ? 'Quem faz' : 'Núcleo'}</th>
             {meses.map(m => <th key={m.mes} className={m.mes === mesAtual ? 'agora' : ''}>
               <button onClick={() => onMes(m.mes)} title="Abrir o mês"><b>{nomeMes(m.mes, true)}</b><small>{m.mes.slice(0, 4)}</small></button>
             </th>)}
@@ -212,7 +259,7 @@ function Matriz({ meses, nucleos, acoes, passa, can, mesAtual, onMes, onAcao, on
               </td>)}
             </tr>
           ))}
-          {nucleos.map(n => (
+          {nucleos.filter(n => agr === 'nucleo' || n.tipo === 'datas').map(n => (
             <tr key={n.id} className={n.tipo === 'datas' ? 'pl-datas' : ''}>
               <th>{can ? <button className="pl-nuc" onClick={() => onNucleo(n)} title="Renomear ou apagar">{n.nome}</button> : <span className="pl-nuc">{n.nome}</span>}</th>
               {meses.map(m => {
@@ -220,32 +267,53 @@ function Matriz({ meses, nucleos, acoes, passa, can, mesAtual, onMes, onAcao, on
                 return <td key={m.mes} className={m.mes === mesAtual ? 'agora' : ''}>
                   <div className="pl-cel">
                     {xs.map(a => <Chip key={a.id} a={a} datas={n.tipo === 'datas'} sit={situacao(a, tasks)} onClick={() => onAcao(a)} />)}
-                    {can && <button className="pl-add" onClick={() => onNova(n.id, m.mes)} aria-label={`Nova ação em ${n.nome}, ${nomeMes(m.mes)}`}><Ph n="plus" size={14} /></button>}
+                    {can && <button className="pl-add" onClick={() => onNova({ nucleo: n.id, mes: m.mes })} aria-label={`Nova ação em ${n.nome}, ${nomeMes(m.mes)}`}><Ph n="plus" size={14} /></button>}
                   </div>
                 </td>
               })}
             </tr>
           ))}
-          {can && <tr className="pl-novo"><th><button className="btn ghost" onClick={() => onNucleo('novo')}><Ph n="plus" size={16} />Núcleo</button></th><td colSpan={meses.length} /></tr>}
+          {linhas.map(k => {
+            const r = ctx.resp[k], eq = (r?.pessoas ?? []).filter(id => ctx.profiles[id])
+            return (
+              <tr key={'r:' + k} className="pl-rrow" style={{ ['--sc' as string]: corSig(k) }}>
+                <th><button className="pl-quem" onClick={() => onResp(k)} disabled={!can} title={can ? 'Quem recebe as tarefas desta sigla' : undefined}>
+                  {k ? <Sig s={k} /> : <span className="pl-sig sem"><Ph n="user-circle" size={14} /></span>}
+                  <span className="pl-quem-nm"><b>{k ? r?.nome || k : 'Sem responsável'}</b>{k && <small>{r?.dept ? deptName(r.dept) : eq.length ? '' : 'falta quem faça'}</small>}</span>
+                  {eq.length > 0 && <Rostos ids={eq} profiles={ctx.profiles} size={20} max={3} />}
+                </button></th>
+                {meses.map(m => {
+                  const xs = (porResp[k + '|' + m.mes] ?? []).filter(passa)
+                  return <td key={m.mes} className={m.mes === mesAtual ? 'agora' : ''}>
+                    <div className="pl-cel">
+                      {xs.map(a => <Chip key={a.id} a={a} sit={situacao(a, tasks)} meta={ctx.nucleos[a.nucleo]?.nome} onClick={() => onAcao(a)} />)}
+                      {can && <button className="pl-add" onClick={() => onNova({ nucleo: primeiro, mes: m.mes, resp: k })} aria-label={`Nova ação de ${k || 'sem responsável'}, ${nomeMes(m.mes)}`}><Ph n="plus" size={14} /></button>}
+                    </div>
+                  </td>
+                })}
+              </tr>
+            )
+          })}
+          {can && agr === 'nucleo' && <tr className="pl-novo"><th><button className="btn ghost" onClick={() => onNucleo('novo')}><Ph n="plus" size={16} />Núcleo</button></th><td colSpan={meses.length} /></tr>}
         </tbody>
       </table>
     </div>
   )
 }
 
-function Chip({ a, datas, sit, onClick }: { a: PlanoAcao; datas: boolean; sit: Sit; onClick: () => void }) {
+function Chip({ a, datas, sit, meta, onClick }: { a: PlanoAcao; datas?: boolean; sit: Sit; meta?: string; onClick: () => void }) {
   return (
     <button className={'pl-chip' + (datas ? ' data' : ' s-' + sit)} onClick={onClick} title={`${a.dia ? a.dia + ' · ' : ''}${a.texto}${datas ? '' : '\n' + SIT[sit]}`}>
-      {(a.dia || a.resp) && <span className="pl-meta">{a.dia && <b>{a.dia}</b>}{a.resp && <em>{a.resp}</em>}</span>}
+      {(a.dia || a.resp || meta) && <span className="pl-meta">{a.dia && <b>{a.dia}</b>}{meta ? <small>{meta}</small> : a.resp && <em style={{ color: corSig(a.resp) }}>{a.resp}</em>}</span>}
       <span className="pl-tx">{a.texto}</span>
     </button>
   )
 }
 
 /* ---------------- Mês: campanha + ações por núcleo ---------------- */
-function Mes({ m, meses, nucleos, acoes, passa, can, ctx, tasks, onMes, onAcao, onNova }: {
+function Mes({ m, meses, nucleos, acoes, passa, can, ctx, tasks, agr, onMes, onAcao, onNova }: {
   m: PlanoMes | undefined; meses: PlanoMes[]; nucleos: PlanoNucleo[]; acoes: PlanoAcao[]; passa: (a: PlanoAcao) => boolean; can: boolean
-  ctx: Parameters<typeof mandar>[1]; tasks: Record<string, Task>; onMes: (m: string) => void; onAcao: (a: PlanoAcao) => void; onNova: (n: string) => void
+  ctx: Parameters<typeof mandar>[1]; tasks: Record<string, Task>; agr: Agr; onMes: (m: string) => void; onAcao: (a: PlanoAcao) => void; onNova: (n: string, resp?: string) => void
 }) {
   const [indo, setIndo] = useState(false)
   if (!m) return null
@@ -258,7 +326,7 @@ function Mes({ m, meses, nucleos, acoes, passa, can, ctx, tasks, onMes, onAcao, 
   const feitas = acs.filter(a => situacao(a, tasks) === 'feita').length
   const salva = (k: keyof PlanoMes, v: string) => { if (v !== m[k]) run(putRow('plano_meses', { ...m, [k]: v })) }
   const tudo = async () => {
-    if (!confirm(`Mandar ${prontas.length} ação(ões) de ${nomeMes(m.mes)} pro quadro de quem executa?${livres.length > prontas.length ? `\n\n${livres.length - prontas.length} ficam de fora porque ainda não têm quem faça.` : ''}`)) return
+    if (!await confirmar(`Mandar ${prontas.length} ${prontas.length === 1 ? 'ação' : 'ações'} de ${nomeMes(m.mes)} pro quadro?`, { text: `Cada uma vira tarefa no quadro de quem executa.${livres.length > prontas.length ? `\n${livres.length - prontas.length} ficam de fora porque ainda não têm quem faça.` : ''}`, ok: 'Mandar', ic: 'paper-plane-tilt' })) return
     setIndo(true)
     try { for (const a of prontas) await mandar(a, ctx) } finally { setIndo(false) }
   }
@@ -300,7 +368,7 @@ function Mes({ m, meses, nucleos, acoes, passa, can, ctx, tasks, onMes, onAcao, 
         <div className="pl-dts-l">{dts.map(a => <button key={a.id} className="pl-dt" onClick={() => onAcao(a)}><b>{a.dia || '—'}</b><span>{a.texto}</span></button>)}</div>
       </section>}
 
-      <div className="pl-grupos">
+      {agr === 'resp' ? <Raias acs={acs} ctx={ctx} tasks={tasks} can={can} onAcao={onAcao} onNova={k => onNova(nucleos.find(n => n.tipo === 'acoes')?.id ?? nucleos[0]?.id ?? '', k)} /> : <div className="pl-grupos">
         {nucleos.filter(n => n.tipo === 'acoes').map(n => {
           const xs = acs.filter(a => a.nucleo === n.id)
           if (!xs.length && (!can || acoes.some(a => a.nucleo === n.id))) return null
@@ -311,7 +379,118 @@ function Mes({ m, meses, nucleos, acoes, passa, can, ctx, tasks, onMes, onAcao, 
             </section>
           )
         })}
+      </div>}
+    </div>
+  )
+}
+
+/* ---------------- Mês por responsável: uma coluna por sigla, arrasta pra trocar ---------------- */
+function Raias({ acs, ctx, tasks, can, onAcao, onNova }: {
+  acs: PlanoAcao[]; ctx: Parameters<typeof mandar>[1]; tasks: Record<string, Task>; can: boolean; onAcao: (a: PlanoAcao) => void; onNova: (resp: string) => void
+}) {
+  const [arr, setArr] = useState<string | null>(null)
+  const [sobre, setSobre] = useState<string | null>(null)
+  const grupos = new Map<string, PlanoAcao[]>()
+  for (const a of acs) { const k = chave(a, ctx.resp); grupos.set(k, [...(grupos.get(k) ?? []), a]) }
+  const ks = [...grupos.keys()].sort((a, b) => a === '' ? -1 : b === '' ? 1 : grupos.get(b)!.length - grupos.get(a)!.length || a.localeCompare(b))
+  const solta = (k: string) => {
+    const a = acs.find(x => x.id === arr)
+    setArr(null); setSobre(null)
+    if (a && chave(a, ctx.resp) !== k) run(putRow('plano_acoes', { ...a, resp: k, pessoas: [], dept: null }))
+  }
+  if (!ks.length) return <div className="panel pl-raias-vazio muted">Nenhuma ação neste mês{can ? ' — crie uma pelo Ano ou pelo botão abaixo.' : '.'}{can && <button className="btn soft" onClick={() => onNova('')}><Ph n="plus" size={16} />Nova ação</button>}</div>
+  return (
+    <div className={'pl-raias' + (arr ? ' arrastando' : '')}>
+      {ks.map(k => <Raia key={k} k={k} xs={grupos.get(k)!} ctx={ctx} tasks={tasks} can={can} alvo={!!arr && sobre === k}
+        onSobre={on => setSobre(on ? k : s => s === k ? null : s)} onSolta={() => solta(k)} onDrag={setArr} onAcao={onAcao} onNova={() => onNova(k)} />)}
+    </div>
+  )
+}
+
+function Raia({ k, xs, ctx, tasks, can, alvo, onSobre, onSolta, onDrag, onAcao, onNova }: {
+  k: string; xs: PlanoAcao[]; ctx: Parameters<typeof mandar>[1]; tasks: Record<string, Task>; can: boolean; alvo: boolean
+  onSobre: (on: boolean) => void; onSolta: () => void; onDrag: (id: string | null) => void; onAcao: (a: PlanoAcao) => void; onNova: () => void
+}) {
+  const [eq, setEq] = useState(false)
+  const [indo, setIndo] = useState(false)
+  const r = ctx.resp[k]
+  const sits = xs.map(a => situacao(a, tasks))
+  const noQ = sits.filter(s => s !== 'livre').length, feitas = sits.filter(s => s === 'feita').length
+  const prontas = xs.filter((a, i) => sits[i] === 'livre' && quem(a, ctx.resp, ctx.profiles).pessoas.length)
+  const equipe = (r?.pessoas ?? []).filter(id => ctx.profiles[id])
+  const dept = r?.dept ?? (equipe[0] ? deptOf(ctx.profiles[equipe[0]]) : null)
+  const nome = k ? r?.nome || k : 'Sem responsável'
+  const manda = async () => {
+    if (!await confirmar(`Mandar ${prontas.length} ${prontas.length === 1 ? 'ação' : 'ações'} de ${nome} pro quadro?`, { text: 'Cada uma vira tarefa no quadro de quem executa.', ok: 'Mandar', ic: 'paper-plane-tilt' })) return
+    setIndo(true)
+    try { for (const a of prontas) await mandar(a, ctx) } finally { setIndo(false) }
+  }
+  const pct = (n: number) => (xs.length ? n / xs.length * 100 : 0) + '%'
+  return (
+    <section className={'pl-raia' + (k ? '' : ' sem') + (alvo ? ' alvo' : '')} style={{ ['--sc' as string]: corSig(k) }} aria-label={nome}
+      onDragOver={e => { if (e.dataTransfer.types.includes('text/plain')) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; onSobre(true) } }}
+      onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) onSobre(false) }}
+      onDrop={e => { e.preventDefault(); onSolta() }}>
+      <header className="pl-rh">
+        <div className="pl-rh-top">
+          {k ? <Sig s={k} big /> : <span className="pl-sig big sem"><Ph n="user-circle" size={20} /></span>}
+          <div className="pl-rh-nm"><b>{nome}</b><small>{k ? (dept ? deptName(dept) : 'Sem sala') : 'Arraste o cartão pra coluna de quem faz'}</small></div>
+          {k && (equipe.length ? <Rostos ids={equipe} profiles={ctx.profiles} size={26} max={3} /> : <span className="pl-falta">ninguém recebe</span>)}
+          {can && k && <button className={'icon-btn pl-rh-ed' + (eq ? ' on' : '')} onClick={() => setEq(!eq)} aria-expanded={eq} title="Nome, sala e quem recebe as tarefas" aria-label={`Editar equipe de ${k}`}><Ph n={eq ? 'x' : 'pencil-simple-line'} size={16} /></button>}
+        </div>
+        {eq && <Equipe r={r ?? novoResp(k)} />}
+        <div className="pl-prog" role="img" aria-label={`${feitas} feitas, ${noQ} no quadro, de ${xs.length}`}><i className="q" style={{ width: pct(noQ) }} /><i className="f" style={{ width: pct(feitas) }} /></div>
+        <div className="pl-rh-n">
+          <span><b>{xs.length}</b>{xs.length === 1 ? 'ação' : 'ações'}</span><span><b>{noQ}</b>no quadro</span><span><b>{feitas}</b>{feitas === 1 ? 'feita' : 'feitas'}</span>
+          {can && prontas.length > 0 && <button className="btn soft sm" disabled={indo} onClick={() => run(manda())} title="Cria uma tarefa no quadro para cada ação desta coluna"><Ph n="paper-plane-tilt" size={14} fill />{indo ? 'Mandando…' : `Mandar ${prontas.length}`}</button>}
+        </div>
+      </header>
+      <div className="pl-rb">
+        {xs.map((a, i) => <Cartao key={a.id} a={a} k={k} sit={sits[i]} ctx={ctx} can={can} onOpen={() => onAcao(a)} onDrag={onDrag} />)}
+        {can && <button className="pl-r-add" onClick={onNova}><Ph n="plus" size={15} />Ação{k ? ` de ${k}` : ''}</button>}
       </div>
+    </section>
+  )
+}
+
+function Cartao({ a, k, sit, ctx, can, onOpen, onDrag }: { a: PlanoAcao; k: string; sit: Sit; ctx: Parameters<typeof mandar>[1]; can: boolean; onOpen: () => void; onDrag: (id: string | null) => void }) {
+  const [indo, setIndo] = useState(false)
+  const { pessoas } = quem(a, ctx.resp, ctx.profiles)
+  const extra = a.resp.trim().toUpperCase() === k ? [] : siglas(a.resp).filter(s => s !== k)
+  const solto = can && sit === 'livre'
+  return (
+    <article className={'pl-card s-' + sit + (solto ? ' solto' : '')} draggable={solto}
+      onDragStart={e => { e.dataTransfer.setData('text/plain', a.id); e.dataTransfer.effectAllowed = 'move'; onDrag(a.id) }} onDragEnd={() => onDrag(null)}>
+      <button className="pl-card-main" onClick={onOpen} title={a.texto}>
+        <span className="pl-card-top">{a.dia && <b>{a.dia}</b>}<small>{ctx.nucleos[a.nucleo]?.nome}</small></span>
+        <span className="pl-card-tx">{a.texto}</span>
+      </button>
+      <footer>
+        {extra.map(s => <Sig key={s} s={s} />)}
+        {pessoas.length > 0 && <Rostos ids={pessoas} profiles={ctx.profiles} size={22} max={3} />}
+        <span className="grow" />
+        {sit !== 'livre' ? <span className={'pl-st s-' + sit}><Ph n={sit === 'feita' ? 'check-circle' : 'kanban'} size={14} fill={sit === 'feita'} />{SIT[sit]}</span>
+          : can && <button className="btn soft sm" disabled={!pessoas.length || indo} title={pessoas.length ? 'Cria a tarefa no quadro da sala' : 'Escolha quem faz'} onClick={() => { setIndo(true); run(mandar(a, ctx).finally(() => setIndo(false))) }}>
+            <Ph n="paper-plane-tilt" size={14} />{pessoas.length ? 'Quadro' : 'Sem quem faça'}</button>}
+      </footer>
+    </article>
+  )
+}
+
+/** nome, sala e pessoas de uma sigla — no cabeçalho da coluna e na legenda */
+function Equipe({ r }: { r: PlanoResp }) {
+  const depts = deptList()
+  const save = (p: Partial<PlanoResp>) => run(putRow('plano_resp', { ...r, ...p }))
+  return (
+    <div className="pl-eq">
+      <div className="pl-eq-l">
+        <input key={r.nome} defaultValue={r.nome} maxLength={80} placeholder="Nome (ex.: Design)" onBlur={e => e.target.value.trim() !== r.nome && save({ nome: e.target.value.trim() })} onKeyDown={e => e.key === 'Enter' && e.currentTarget.blur()} aria-label={`Nome de ${r.id}`} />
+        <select value={r.dept ?? ''} onChange={e => save({ dept: e.target.value || null })} aria-label={`Sala de ${r.id}`}>
+          <option value="">Sala…</option>{depts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+        </select>
+      </div>
+      <span className="pl-lab">Quem recebe <small className="muted">· a primeira pessoa é a dona da tarefa</small></span>
+      <Pessoas sel={r.pessoas} sala={r.dept} onChange={ids => save({ pessoas: ids })} />
     </div>
   )
 }
@@ -327,7 +506,7 @@ function Linha({ a, ctx, tasks, can, onOpen }: { a: PlanoAcao; ctx: Parameters<t
         <span className="pl-l-tx">{a.texto}{a.estrategia && <small><Ph n="tree-structure" size={12} />{a.estrategia}</small>}</span>
       </button>
       <span className="pl-l-side">
-        {a.resp && <em className="pl-sig">{a.resp}</em>}
+        {a.resp && <Sig s={a.resp} />}
         {dept && <span className="pl-sala">{deptName(dept)}</span>}
         <span className="faces">{pessoas.slice(0, 3).map(id => <MiniAvatar key={id} avatar={ctx.profiles[id]?.avatar ?? null} photo={ctx.profiles[id]?.photo ?? null} name={ctx.profiles[id]?.name} size={26} />)}</span>
         {sit !== 'livre' ? <span className={'pl-st s-' + sit}><Ph n={sit === 'feita' ? 'check-circle' : 'kanban'} size={14} fill={sit === 'feita'} />{SIT[sit]}</span>
@@ -375,13 +554,13 @@ function Pessoas({ sel, sala, onChange }: { sel: string[]; sala: string | null; 
 }
 
 function AcaoModal({ a, base, ciclo, meses, nucleos, can, ctx, tasks, onClose }: {
-  a: PlanoAcao | null; base: { nucleo: string; mes: string } | null; ciclo: string; meses: PlanoMes[]; nucleos: PlanoNucleo[]; can: boolean
+  a: PlanoAcao | null; base: Base | null; ciclo: string; meses: PlanoMes[]; nucleos: PlanoNucleo[]; can: boolean
   ctx: Parameters<typeof mandar>[1]; tasks: Record<string, Task>; onClose: () => void
 }) {
   const depts = deptList()
   const [f, setF] = useState<PlanoAcao>(() => a ?? {
     id: crypto.randomUUID(), ciclo, nucleo: base?.nucleo ?? nucleos[0]?.id ?? '', pos: Date.now() % 1e6, mes: base?.mes ?? meses[0]?.mes ?? '',
-    dia: '', resp: '', texto: '', estrategia: '', dept: null, pessoas: [], tarefas: [], created_by: me()?.id ?? null, created_at: new Date().toISOString(),
+    dia: '', resp: base?.resp ?? '', texto: '', estrategia: '', dept: null, pessoas: [], tarefas: [], created_by: me()?.id ?? null, created_at: new Date().toISOString(),
   })
   const [indo, setIndo] = useState(false)
   const datas = ctx.nucleos[f.nucleo]?.tipo === 'datas'
@@ -424,7 +603,7 @@ function AcaoModal({ a, base, ciclo, meses, nucleos, can, ctx, tasks, onClose }:
             })}</div>}
         </>}
         {!ro && <footer className="pl-full pl-foot">
-          {a && <button type="button" className="btn ghost danger" onClick={() => { if (confirm('Apagar esta ação do plano? As tarefas já criadas continuam no quadro.')) { run(dropRow('plano_acoes', a.id)); onClose() } }}><Ph n="trash" size={16} />Apagar</button>}
+          {a && <button type="button" className="btn ghost danger" onClick={async () => { if (await confirmar('Apagar esta ação do plano?', { text: 'As tarefas já criadas continuam no quadro.', danger: true })) { run(dropRow('plano_acoes', a.id)); onClose() } }}><Ph n="trash" size={16} />Apagar</button>}
           <span className="grow" />
           {!datas && <button type="button" className="btn soft" disabled={!ok || !ef.pessoas.length || indo} title={ef.pessoas.length ? 'Salva e cria a tarefa no quadro da sala' : 'Escolha quem faz'}
             onClick={() => { setIndo(true); run(salvar().then(() => mandar({ ...f, texto: f.texto.trim() }, ctx)).then(onClose).finally(() => setIndo(false))) }}>
@@ -446,7 +625,7 @@ function NucleoModal({ n, ciclo, pos, onClose }: { n: PlanoNucleo | null; ciclo:
         <label><span>Nome</span><input value={nome} onChange={e => setNome(e.target.value)} maxLength={120} placeholder="Ex.: Instagram e conteúdo" autoFocus required /></label>
         <label><span>Tipo</span><select value={tipo} onChange={e => setTipo(e.target.value as PlanoNucleo['tipo'])}><option value="acoes">Ações (viram tarefas)</option><option value="datas">Datas comemorativas</option></select></label>
         <footer className="pl-foot">
-          {n && <button type="button" className="btn ghost danger" onClick={() => { if (confirm(`Apagar o núcleo “${n.nome}” e as ações dele? As tarefas já criadas continuam.`)) { run(dropRow('plano_nucleos', n.id)); onClose() } }}><Ph n="trash" size={16} />Apagar</button>}
+          {n && <button type="button" className="btn ghost danger" onClick={async () => { if (await confirmar(`Apagar o núcleo “${n.nome}”?`, { text: 'As ações dele saem do plano. As tarefas já criadas continuam.', danger: true })) { run(dropRow('plano_nucleos', n.id)); onClose() } }}><Ph n="trash" size={16} />Apagar</button>}
           <span className="grow" /><button className="btn accent" disabled={!nome.trim()}>Salvar</button>
         </footer>
       </form>
@@ -455,34 +634,29 @@ function NucleoModal({ n, ciclo, pos, onClose }: { n: PlanoNucleo | null; ciclo:
 }
 
 /** legenda de siglas → sala e pessoas que recebem as tarefas */
-function RespModal({ acoes, onClose }: { acoes: PlanoAcao[]; onClose: () => void }) {
+function RespModal({ acoes, foco, onClose }: { acoes: PlanoAcao[]; foco: string | null; onClose: () => void }) {
   const resp = useStore(s => s.rows.plano_resp)
-  const depts = deptList()
+  const profiles = useStore(s => s.profiles)
   const usadas = [...new Set(acoes.flatMap(a => resp[a.resp] ? [a.resp] : siglas(a.resp)))].filter(s => s && s.length <= 12)
   const ids = [...new Set([...Object.keys(resp), ...usadas])].sort()
-  const [open, setOpen] = useState<string | null>(null)
-  const cur = (id: string): PlanoResp => resp[id] ?? { id, nome: '', dept: null, pessoas: [], created_at: new Date().toISOString() }
-  const save = (r: PlanoResp) => run(putRow('plano_resp', r))
+  const [open, setOpen] = useState<string | null>(foco)
   return (
-    <Modal title="Responsáveis" onClose={onClose} wide>
-      <small className="muted">Cada sigla da coluna RESP. aponta para uma sala e as pessoas que recebem a tarefa. A primeira pessoa é a dona; as outras entram como colaboradoras.</small>
+    <Modal title="Legenda de responsáveis" onClose={onClose} wide>
+      <small className="muted">Cada sigla da coluna RESP. aponta para uma sala e para as pessoas que recebem a tarefa. Dá pra editar também direto na coluna, na visão do mês.</small>
       <div className="pl-resp">
         {ids.map(id => {
-          const r = cur(id)
+          const r = resp[id] ?? novoResp(id)
           const n = acoes.filter(a => a.resp === id || siglas(a.resp).includes(id)).length
+          const eq = r.pessoas.filter(p => profiles[p])
           return (
-            <div key={id} className={'pl-r' + (open === id ? ' on' : '')}>
-              <div className="pl-r-top">
-                <b className="pl-sig">{id}</b>
-                <input key={r.nome} defaultValue={r.nome} maxLength={80} placeholder="Quem é" onBlur={e => e.target.value.trim() !== r.nome && save({ ...r, nome: e.target.value.trim() })} aria-label={`Nome de ${id}`} />
-                <select value={r.dept ?? ''} onChange={e => save({ ...r, dept: e.target.value || null })} aria-label={`Sala de ${id}`}>
-                  <option value="">Sala…</option>{depts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-                </select>
-                <button type="button" className={'pl-r-pp' + (r.pessoas.length ? ' tem' : '')} onClick={() => setOpen(open === id ? null : id)}>
-                  <Ph n="users-three" size={15} />{r.pessoas.length || 'Pessoas'}</button>
-                <small className="muted">{n} ações</small>
-              </div>
-              {open === id && <Pessoas sel={r.pessoas} sala={r.dept} onChange={ids => save({ ...r, pessoas: ids })} />}
+            <div key={id} className={'pl-r' + (open === id ? ' on' : '')} style={{ ['--sc' as string]: corSig(id) }}>
+              <button type="button" className="pl-r-top" onClick={() => setOpen(open === id ? null : id)} aria-expanded={open === id}>
+                <Sig s={id} big />
+                <span className="pl-rh-nm"><b>{r.nome || 'Sem nome'}</b><small>{r.dept ? deptName(r.dept) : 'Sem sala'} · {n} {n === 1 ? 'ação' : 'ações'}</small></span>
+                {eq.length ? <Rostos ids={eq} profiles={profiles} size={24} max={3} /> : <span className="pl-falta">ninguém</span>}
+                <Ph n="caret-right" size={16} />
+              </button>
+              {open === id && <Equipe r={r} />}
             </div>
           )
         })}

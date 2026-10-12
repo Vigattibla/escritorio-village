@@ -7,6 +7,7 @@ import { BOSS_DESK, drawDesk, MAX_DESKS, MH, MW, roomOfId, T, upperWall, wallFac
 import { dropRow, hasVendas, me, putRow, roomOf, team, useStore } from '../store'
 import type { Profile } from '../types'
 import { Px } from './Px'
+import { confirmar } from './Dialogo'
 
 type C2D = CanvasRenderingContext2D
 type Tool = 'mover' | 'piso' | 'parede' | 'carpinteiro'
@@ -247,7 +248,7 @@ export default function SalaEditor({ onClose }: { onClose: () => void }) {
       setMsg({ t: `Não salvou: ${e instanceof Error ? e.message : 'erro'}`, bad: true })
     } finally { setBusy(false) }
   }
-  const close = () => { if (!dirty || confirm('Sair sem salvar as mudanças da sala?')) onClose() }
+  const close = async () => { if (!dirty || await confirmar('Sair sem salvar?', { text: 'As mudanças da sala se perdem.', ok: 'Sair sem salvar', danger: true, ic: 'x' })) onClose() }
 
   // ---------- carpinteiro ----------
   const now = Date.now()
@@ -279,7 +280,7 @@ export default function SalaEditor({ onClose }: { onClose: () => void }) {
       {myCarp && <span className="sl-carp">🪚 carpinteiro até {hhmm(myCarp.until)}</span>}
       <span className="sl-sp" />
       <button className="btn ghost sm" disabled={!hist.length} onClick={() => { setSala(hist[hist.length - 1]); setHist(hist.slice(0, -1)); setSel([]); setDirty(true) }}>↶ Desfazer</button>
-      <button className="btn ghost sm" onClick={() => { if (!confirm('Voltar a sala pro jeito original? (só vale depois de salvar)')) return; const next = original(baia); const err = reach(next, nameOf); if (err) { setMsg({ t: err, bad: true }); return } setHist([...hist, sala]); setSala(next); setSel([]); setDirty(true) }}>Voltar ao original</button>
+      <button className="btn ghost sm" onClick={async () => { if (!await confirmar('Voltar a sala pro jeito original?', { text: 'Só vale depois de salvar.', ok: 'Voltar ao original' })) return; const next = original(baia); const err = reach(next, nameOf); if (err) { setMsg({ t: err, bad: true }); return } setHist([...hist, sala]); setSala(next); setSel([]); setDirty(true) }}>Voltar ao original</button>
       <button className="btn ghost sm" onClick={close}>Fechar</button>
       <button className="btn primary sm" disabled={!dirty || busy || !can} onClick={() => void save()}>{busy ? 'Salvando…' : 'Salvar sala'}</button>
     </div>

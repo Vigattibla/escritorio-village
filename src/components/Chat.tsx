@@ -5,6 +5,7 @@ import { deptOf } from '../game/ranks'
 import MiniAvatar from './MiniAvatar'
 import { Ph } from './Icon'
 import type { PhName } from './ph'
+import { confirmar } from './Dialogo'
 
 const hhmm = (iso: string) => new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
 const diaKey = (iso: string) => new Date(iso).toDateString()
@@ -169,7 +170,7 @@ function GroupForm({ g, close }: { g: Group | null; close: () => void }) {
     const r = await saveGroup({ id: g?.id, name, icon, open, members: members.includes(meId) || g ? members : [...members, meId] })
     setUi({ channel: groupChannel(r.id) }); close()
   }
-  const del = () => { if (g && confirm(`Apagar o grupo “${g.name}”? As mensagens dele somem da lista.`)) { run(deleteGroup(g.id)); close() } }
+  const del = async () => { if (g && await confirmar(`Apagar o grupo “${g.name}”?`, { text: 'As mensagens dele somem da lista.', danger: true })) { run(deleteGroup(g.id)); close() } }
   return (
     <form className="gform" onSubmit={e => { e.preventDefault(); run(save()) }}>
       <b className="gform-t">{g ? 'Editar grupo' : 'Novo grupo'}</b>

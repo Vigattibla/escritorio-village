@@ -5,6 +5,7 @@ import { Ph } from './Icon'
 import Meo from './Meo'
 import SegInd from './SegInd'
 import type { PhName } from './ph'
+import { pedirTexto } from './Dialogo'
 
 type Crumb = { id: string; name: string }
 type Sending = { key: string; name: string; p: number; err?: string }
@@ -98,7 +99,7 @@ export default function Arquivos() {
   }
 
   const newFolder = async () => {
-    const name = prompt('Nome da nova pasta')?.trim()
+    const name = await pedirTexto('Nova pasta', { ph: 'Nome da pasta', max: 80 })
     if (!name) return
     try { const f = await mkdir(path, name); setFiles(fs => [f, ...(fs ?? [])]) } catch (e) { setErr((e as Error).message) }
   }
