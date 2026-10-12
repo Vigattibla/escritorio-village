@@ -59,6 +59,17 @@ export class SupabaseBackend implements Backend {
     return (data.user?.user_metadata?.name as string | undefined) ?? data.user?.email?.split('@')[0] ?? ''
   }
 
+  /** a API devolve no máximo 1000 linhas por vez: busca em páginas (o plano passa disso) */
+  private async every(k: RowTable): Promise<{ data: unknown[]; error: { message: string } | null }> {
+    const out: unknown[] = []
+    for (let i = 0; ; i += 1000) {
+      const { data, error } = await this.sb.from(k).select('*').order('created_at').order('id').range(i, i + 999)
+      if (error) return { data: [], error }
+      out.push(...data)
+      if (data.length < 1000) return { data: out, error: null }
+    }
+  }
+
   async loadAll(): Promise<Snapshot> {
     const [p, t, m, n, pj] = await Promise.all([
       this.sb.from('profiles').select('*'),
@@ -68,7 +79,7 @@ export class SupabaseBackend implements Backend {
       this.sb.from('projects').select('*').order('created_at'),
     ])
     const tables = ROW_TABLES
-    const extra = await Promise.all(tables.map(k => this.sb.from(k).select('*').order('created_at')))
+    const extra = await Promise.all(tables.map(k => this.every(k)))
     // tabelas da v4: antes da migração não existem, o escritório abre sem elas
     const rows = Object.fromEntries(tables.map((k, i) => [k, extra[i].error ? [] : extra[i].data])) as Snapshot['rows']
     const err = p.error ?? t.error ?? m.error
@@ -197,6 +208,13 @@ export class SupabaseBackend implements Backend {
   async joinGroup(gid: string, join: boolean) {
     const { error } = await this.sb.rpc('group_join', { gid, p_join: join })
     if (error) throw pt(error)
+  }
+
+  async upsertRows<K extends RowTable>(table: K, rs: Rows[K][]) {
+    for (let i = 0; i < rs.length; i += 200) {
+      const { error } = await this.sb.from(table).upsert(rs.slice(i, i + 200))
+      if (error) throw pt(error)
+    }
   }
 
   async deleteRow(table: RowTable, id: string) {

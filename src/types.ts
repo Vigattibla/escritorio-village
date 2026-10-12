@@ -169,9 +169,16 @@ export interface Campanha { id: string; titulo: string; texto: string; inicio: s
 export interface Nota { id: string; user_id: string; texto: string; fixa: boolean; created_at: string }
 /** recorde de uma pessoa num jogo da sala de jogos no mês (id = user:jogo:aaaa-mm) */
 export interface JogoPonto { id: string; user_id: string; dept: string; jogo: string; mes: string; pontos: number; partidas: number; created_at: string; updated_at: string }
-export interface Rows { events: CalEvent; goals: Goal; stickers: Sticker; flows: Flow; stages: Stage; groups: Group; rooms: Room; carpenters: Carpenter; depts: Dept; brand: Brand; quartos: Quarto; vendas: Venda; ajustes: Ajuste; metas_venda: MetaVenda; vendas_cfg: VendasCfg; campanhas: Campanha; caderno: Nota; jogos_pontos: JogoPonto }
+/** Plano macro: um ciclo de 12 meses (id do ciclo = 1º mês, YYYY-MM) */
+export interface PlanoMes { id: string; ciclo: string; mes: string; tematica: string; principal: string; campanha: string; oferta: string; persona: string; estrategia: string; created_at: string; updated_at?: string }
+/** núcleo = linha da matriz (stakeholder que executa); tipo datas = calendário comemorativo */
+export interface PlanoNucleo { id: string; ciclo: string; nome: string; pos: number; tipo: 'acoes' | 'datas'; created_at: string }
+export interface PlanoAcao { id: string; ciclo: string; nucleo: string; pos: number; mes: string; dia: string; resp: string; texto: string; estrategia: string; dept: string | null; pessoas: string[]; tarefas: string[]; created_by: string | null; created_at: string; updated_at?: string }
+/** sigla de responsável (MKT, PERF…) → sala e pessoas */
+export interface PlanoResp { id: string; nome: string; dept: string | null; pessoas: string[]; created_at: string }
+export interface Rows { events: CalEvent; goals: Goal; stickers: Sticker; flows: Flow; stages: Stage; groups: Group; rooms: Room; carpenters: Carpenter; depts: Dept; brand: Brand; quartos: Quarto; vendas: Venda; ajustes: Ajuste; metas_venda: MetaVenda; vendas_cfg: VendasCfg; campanhas: Campanha; caderno: Nota; jogos_pontos: JogoPonto; plano_meses: PlanoMes; plano_nucleos: PlanoNucleo; plano_acoes: PlanoAcao; plano_resp: PlanoResp }
 export type RowTable = keyof Rows
-export const ROW_TABLES: RowTable[] = ['events', 'goals', 'stickers', 'flows', 'stages', 'groups', 'rooms', 'carpenters', 'depts', 'brand', 'quartos', 'vendas', 'ajustes', 'metas_venda', 'vendas_cfg', 'campanhas', 'caderno', 'jogos_pontos']
+export const ROW_TABLES: RowTable[] = ['events', 'goals', 'stickers', 'flows', 'stages', 'groups', 'rooms', 'carpenters', 'depts', 'brand', 'quartos', 'vendas', 'ajustes', 'metas_venda', 'vendas_cfg', 'campanhas', 'caderno', 'jogos_pontos', 'plano_meses', 'plano_nucleos', 'plano_acoes', 'plano_resp']
 
 export type Priority = 'alta' | 'media' | 'baixa'
 export interface CheckItem {
@@ -314,6 +321,7 @@ export interface Backend {
   deleteProject(id: string): Promise<void>
   /** agenda, metas, adesivos e fluxos */
   upsertRow<K extends RowTable>(table: K, r: Rows[K]): Promise<void>
+  upsertRows<K extends RowTable>(table: K, rs: Rows[K][]): Promise<void>
   deleteRow(table: RowTable, id: string): Promise<void>
   /** entra (só em grupo aberto) ou sai de um grupo do chat */
   joinGroup(id: string, join: boolean): Promise<void>

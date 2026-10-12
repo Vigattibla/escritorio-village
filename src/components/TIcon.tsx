@@ -28,6 +28,7 @@ const I = {
   mural: "<path class=\"t\" d=\"M7 9.2 17.5 4v15L7 13.8z\"/><rect class=\"s\" x=\"2.5\" y=\"8.5\" width=\"5.5\" height=\"6\" rx=\"1.8\"/><path class=\"s\" d=\"M5 14.5h3l1.3 5H6.6z\"/><rect class=\"s\" x=\"19\" y=\"10\" width=\"2.5\" height=\"3\" rx=\"1.2\"/>",
   lista: "<rect class=\"t\" x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"3.5\"/><rect class=\"s\" x=\"6\" y=\"7\" width=\"2.2\" height=\"2.2\" rx=\"1.1\"/><rect class=\"s\" x=\"10\" y=\"7\" width=\"8\" height=\"2.2\" rx=\"1.1\"/><rect class=\"s\" x=\"6\" y=\"11\" width=\"2.2\" height=\"2.2\" rx=\"1.1\"/><rect class=\"s\" x=\"10\" y=\"11\" width=\"8\" height=\"2.2\" rx=\"1.1\"/><rect class=\"s\" x=\"6\" y=\"15\" width=\"2.2\" height=\"2.2\" rx=\"1.1\"/><rect class=\"s\" x=\"10\" y=\"15\" width=\"5\" height=\"2.2\" rx=\"1.1\"/>",
   filtro: "<path class=\"t\" d=\"M4 6h16l-6.5 7.5v5.5l-3 1.8v-7.3z\"/><rect class=\"s\" x=\"3\" y=\"3.5\" width=\"18\" height=\"3.2\" rx=\"1.6\"/>",
+  plano: "<rect class=\"t\" x=\"3\" y=\"4\" width=\"18\" height=\"17\" rx=\"3.5\"/><rect class=\"s\" x=\"6\" y=\"2.5\" width=\"2.2\" height=\"4\" rx=\"1.1\"/><rect class=\"s\" x=\"15.8\" y=\"2.5\" width=\"2.2\" height=\"4\" rx=\"1.1\"/><rect class=\"s\" x=\"6\" y=\"10\" width=\"7\" height=\"2.6\" rx=\"1.3\"/><rect class=\"s\" x=\"9\" y=\"14.5\" width=\"9\" height=\"2.6\" rx=\"1.3\"/>",
   sair: "<rect class=\"t\" x=\"3\" y=\"3\" width=\"11\" height=\"18\" rx=\"2.5\"/><path class=\"s\" d=\"M10 10.9h7.4l-2.2-2.2 1.6-1.6 4.9 4.9-4.9 4.9-1.6-1.6 2.2-2.2H10z\"/>",
 }
 export type TName = keyof typeof I

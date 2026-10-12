@@ -372,6 +372,13 @@ export class DemoBackend implements Backend {
     this.post({ t: 'row', k, r })
   }
 
+  async upsertRows<K extends RowTable>(k: K, rs: Rows[K][]) {
+    const all = read<Record<string, Rows[K]>>(K.row + k, {})
+    for (const r of rs) all[r.id] = r
+    write(K.row + k, all)
+    for (const r of rs) this.post({ t: 'row', k, r })
+  }
+
   // carteira da demo: mesmas regras do claim_coffee do servidor, guardada por pessoa
   private coffee(): CoffeeLine[] { return read<CoffeeLine[]>('ev:coffee:' + sessionStorage.getItem(K.session), []) }
   private credit(log: CoffeeLine[], amount: number, reason: CoffeeLine['reason'], ref: string, out: CoffeeLine[]) {

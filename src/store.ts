@@ -13,7 +13,7 @@ import { ROW_TABLES } from './types'
 export type Phase = 'loading' | 'auth' | 'creator' | 'office'
 export type Tab = 'mesa' | 'aprovar' | 'avisos' | 'equipe' | 'chat' | 'geral'
 /** quadro = trabalho do dia a dia (estilo Trello); escritório = visualização em pixel */
-export type View = 'quadro' | 'escritorio' | 'agenda' | 'metas' | 'fluxos' | 'inicio' | 'arquivos' | 'loja' | 'vendas' | 'placar' | 'kit'
+export type View = 'quadro' | 'escritorio' | 'agenda' | 'metas' | 'fluxos' | 'inicio' | 'arquivos' | 'loja' | 'vendas' | 'placar' | 'kit' | 'plano'
 export interface Go { view?: View; tab?: Tab; viewing?: string; channel?: string; task?: string }
 export interface Notice { id: string; text: string; at: number; from?: string; go?: Go }
 
@@ -76,7 +76,7 @@ export interface State {
 
 
 const initial: State = {
-  phase: 'loading', meId: null, accountName: '', error: '', profiles: {}, tasks: {}, messages: [], notes: [], projects: {}, rows: { events: {}, goals: {}, stickers: {}, flows: {}, stages: {}, groups: {}, rooms: {}, carpenters: {}, depts: {}, brand: {}, quartos: {}, vendas: {}, ajustes: {}, metas_venda: {}, vendas_cfg: {}, campanhas: {}, caderno: {}, jogos_pontos: {} }, online: new Set(),
+  phase: 'loading', meId: null, accountName: '', error: '', profiles: {}, tasks: {}, messages: [], notes: [], projects: {}, rows: { events: {}, goals: {}, stickers: {}, flows: {}, stages: {}, groups: {}, rooms: {}, carpenters: {}, depts: {}, brand: {}, quartos: {}, vendas: {}, ajustes: {}, metas_venda: {}, vendas_cfg: {}, campanhas: {}, caderno: {}, jogos_pontos: {}, plano_meses: {}, plano_nucleos: {}, plano_acoes: {}, plano_resp: {} }, online: new Set(),
   tab: 'mesa', viewing: null, channel: 'geral', reads: {}, requestTo: null, task: null, editing: false, notices: [], pipOpen: false, view: 'quadro' as View, wallet: null, drawer: false,
   project: '', projectEdit: null, aiOpen: false, chatOpen: false, lousa: false, jogo: null, bellOpen: false, qApprove: false, flow: null, sheet: false, stickTo: null, sala: DEPT0, here: DEPT0,
 }
@@ -284,6 +284,13 @@ export async function putRow<K extends RowTable>(k: K, r: Rows[K]) {
   if (DEPT_ROWS.has(k) && !(r as { dept?: string }).dept) r = { ...r, dept: state.sala }
   onRow(k, r)
   await backend.upsertRow(k, r)
+}
+
+/** várias de uma vez (importação): mostra tudo e grava em lotes */
+export async function putRows<K extends RowTable>(k: K, rs: Rows[K][]) {
+  if (!rs.length) return
+  set({ rows: { ...state.rows, [k]: { ...state.rows[k], ...Object.fromEntries(rs.map(r => [r.id, r])) } } })
+  await backend.upsertRows(k, rs)
 }
 
 export async function dropRow(k: RowTable, id: string) {
@@ -559,12 +566,12 @@ async function putTask(t: Task) {
  * Na própria pasta ou de quem tem cargo menor: entra direto (na etapa pedida).
  * Senão (ou se `status` = 'inbox') vira pedido para a pessoa aceitar.
  */
-export async function addTask(owner: string, title: string, due: string | null = null, notes = '', status: TaskStatus = 'todo', project: string | null = null, extra: Pick<Partial<Task>, 'priority' | 'remind_at' | 'due_time' | 'channel' | 'publish_at' | 'notes' | 'stage' | 'drive'> = {}) {
+export async function addTask(owner: string, title: string, due: string | null = null, notes = '', status: TaskStatus = 'todo', project: string | null = null, extra: Pick<Partial<Task>, 'priority' | 'remind_at' | 'due_time' | 'channel' | 'publish_at' | 'notes' | 'stage' | 'drive' | 'start' | 'collaborators'> = {}) {
   const direct = canAssign(me(), state.profiles[owner])
   if (status === 'review' || status === 'done') status = 'todo' // entrega passa pela etapa certa
   const t: Task = {
     id: crypto.randomUUID(), owner_id: owner, created_by: state.meId!, title: title.trim(), notes, status: direct && status !== 'inbox' ? status : 'inbox',
-    start: null, due, due_time: (due && extra.due_time) || null, collaborators: [], attachments: [], position: Date.now(), created_at: new Date().toISOString(),
+    start: extra.start ?? null, due, due_time: (due && extra.due_time) || null, collaborators: (extra.collaborators ?? []).filter(c => c !== owner), attachments: [], position: Date.now(), created_at: new Date().toISOString(),
     done_at: null, project_id: project || null, criteria: [], reviews: [],
     priority: extra.priority ?? null, checklist: [], remind_at: extra.remind_at ?? null,
     channel: extra.channel ?? null, publish_at: extra.publish_at ?? null, stage: extra.stage ?? null, drive: extra.drive ?? null,

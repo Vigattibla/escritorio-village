@@ -20,6 +20,7 @@ import Metas, { CeleWatch } from '../components/Metas'
 import Loja from '../components/Loja'
 import SalaEditor, { canEditOffice } from '../components/SalaEditor'
 import Fluxos from '../components/Fluxos'
+import Plano from '../components/Plano'
 import Arquivos from '../components/Arquivos'
 import Vendas, { Lousa } from '../components/Vendas'
 import Jogos from '../components/Jogos'
@@ -107,6 +108,7 @@ export default function Office() {
     { id: 'inicio', label: 'Início', ic: 'inicio' },
     { id: 'quadro', label: 'Quadro', ic: 'quadro', n: pend, tip: pend ? `${pend} pedido(s) esperando você aceitar` : undefined },
     { id: 'agenda', label: 'Agenda', ic: 'agenda' },
+    { id: 'plano', label: 'Plano', ic: 'plano' },
     { id: 'chatwin', label: 'Chat', ic: 'chat', n: msgs },
     { id: 'escritorio', label: 'Escritório', ic: 'escritorio' },
     { id: 'arquivos', label: 'Arquivos', ic: 'arquivos' },
@@ -202,13 +204,14 @@ export default function Office() {
         </div>}
         {s.sala !== myDept(s) && s.here === s.sala && <div className="banner sala-visit" onClick={() => run(openSala(myDept(s)))}>Você está na sala {deptName(s.sala, s)} <small>(clique para voltar para a sua)</small></div>}
         {s.error && <div className="banner" onClick={() => setUi({ error: '' })}>{s.error} <small>(clique para fechar)</small></div>}
-        {page !== 'quadro' && page !== 'agenda' && page !== 'metas' && page !== 'fluxos' && page !== 'arquivos' && !VD_PAGES.includes(page) && page !== 'inicio' && page !== 'loja' && <div className="ptop"><h1 className="grow">{items.find(i => i.id === page)?.label}</h1><Bell /></div>}
+        {page !== 'quadro' && page !== 'agenda' && page !== 'metas' && page !== 'fluxos' && page !== 'plano' && page !== 'arquivos' && !VD_PAGES.includes(page) && page !== 'inicio' && page !== 'loja' && <div className="ptop"><h1 className="grow">{items.find(i => i.id === page)?.label}</h1><Bell /></div>}
         <main className="main">
           {page === 'quadro' && <Quadro />}
           {page === 'inicio' && (isNarrow ? <Inicio /> : <InicioDesk />)}
           {page === 'agenda' && <Agenda />}
           {page === 'metas' && <Metas />}
           {page === 'fluxos' && <Fluxos />}
+          {page === 'plano' && <Plano />}
           {page === 'arquivos' && <Arquivos />}
           {page === 'vendas' && <Vendas aba="quartos" />}
           {page === 'placar' && <Vendas aba="placar" />}
