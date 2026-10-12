@@ -19,10 +19,15 @@ async function member(req: Request) {
   if (!p) throw new Http(403, 'Sem perfil no escritório.')
 }
 
-// tamanho do texto acompanha o volume da semana: pouca coisa = texto curto, muita = mais longo, sempre em 1 folha
-function tam(n: number, resumo: string) {
-  const peso = n + Math.round(resumo.length / 250)
-  return peso <= 3 ? 'entre 120 e 180 palavras' : peso <= 8 ? 'entre 200 e 300 palavras' : peso <= 15 ? 'entre 300 e 400 palavras' : 'entre 400 e 480 palavras'
+// tamanho do texto pelo que a pessoa contou: quanto mais material (resumo + descrições), mais longo,
+// até o espaço que sobra na folha A4 depois da lista de tarefas (2 colunas, ~22px por linha)
+const palavras = (s: string) => s.split(/\s+/).filter(Boolean).length
+function tam(ts: Tarefa[], resumo: string) {
+  const material = palavras(resumo) + ts.reduce((a, t) => a + palavras(`${t.descricao ?? ''} ${(t.itens ?? []).join(' ')}`), 0)
+  const linhas = Math.floor((1030 - 140 - Math.ceil(ts.length / 2) * 22) / 20)
+  const max = Math.max(250, linhas * 14)
+  const alvo = Math.min(max, Math.max(120, Math.round(material * 0.8 + ts.length * 18)))
+  return { min: Math.round(alvo * 0.8), max: alvo, cheio: alvo >= max }
 }
 
 function pedido(b: { nome?: string; cargo?: string; semana?: string; tarefas?: Tarefa[]; resumo?: string }) {
@@ -36,6 +41,7 @@ function pedido(b: { nome?: string; cargo?: string; semana?: string; tarefas?: T
     return l.join('\n')
   })
   const resumo = corta(b.resumo, 3000)
+  const tm = tam(b.tarefas ?? [], resumo)
   if (!ts.length && !resumo) throw new Http(400, 'Escreva um resumo ou conclua alguma tarefa primeiro.')
   return `Você escreve o relatório semanal de trabalho de uma pessoa de uma equipe de marketing, em português do Brasil.
 Pessoa: ${corta(b.nome, 80)}${b.cargo ? ` (${corta(b.cargo, 60)})` : ''}
@@ -45,7 +51,7 @@ ${resumo ? `Resumo da semana, nas palavras da pessoa (fonte principal):\n${resum
 
 Escreva o relatório em primeira pessoa, tom profissional e direto. Junte o resumo e as tarefas sem repetir a mesma entrega duas vezes. Organize e melhore a escrita, mas não exagere nem invente nada que não esteja acima.
 Formato: um parágrafo curto de resumo da semana; depois uma lista com "- " de uma linha por entrega (o que foi feito e para quê, quando der pra saber); no fim, uma linha "Próximos passos:" só se as descrições indicarem algo pendente.
-Tamanho: ${tam(ts.length, resumo)}. O texto precisa caber numa folha A4 junto com a lista de tarefas; se houver muita coisa, junte entregas parecidas numa linha só. Termine sempre a última frase.
+Tamanho: entre ${tm.min} e ${tm.max} palavras. ${tm.cheio ? 'Tem bastante coisa: junte entregas parecidas numa linha só para caber numa folha A4 junto com a lista de tarefas.' : 'Quando a pessoa descreveu bastante, aproveite os detalhes dela (o que fez, para quem, resultado) em vez de resumir demais; quando há pouco material, seja breve e não encha linguiça.'} Termine sempre a última frase.
 Texto simples, sem markdown além dos "- ", sem títulos, sem emojis.`
 }
 
