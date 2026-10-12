@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { dayKey } from '../game/xp'
 import { canEditTask, me, run, team, updateTask, useStore } from '../store'
-import type { Task } from '../types'
+import { textoRelatorio } from '../data/ia'
+import type { Profile, Task } from '../types'
 import { Ph } from './Icon'
 import MiniAvatar from './MiniAvatar'
 import { Fundo } from './Fundo'
@@ -68,6 +69,7 @@ export default function Relatorio({ onClose }: { onClose: () => void }) {
                 {n === 0 && atrasadas.length > 0 && <span className="rel-n tang"><b>{atrasadas.length}</b>atrasada{atrasadas.length === 1 ? '' : 's'}</span>}
                 {refeitas.length > 0 && <span className="rel-n"><b>{refeitas.length}</b>refeita{refeitas.length === 1 ? '' : 's'}</span>}
               </header>
+              {sel && <TextoIA key={p.id + a} p={p} semana={`${curto(ini)} a ${curto(new Date(fim.getTime() - 864e5))}`} ts={[...feitas, ...ajudou]} proj={id => (id ? s.projects[id]?.name : undefined)} />}
               {feitas.length + ajudou.length === 0 ? <p className="rel-vazio">Nada concluído nesta semana.</p> : sel ? (
                 <div className="rel-ts">
                   {[...feitas, ...ajudou].map(t => <Item key={t.id} t={t} proj={t.project_id ? s.projects[t.project_id]?.name : undefined} de={t.owner_id !== p.id ? s.profiles[t.owner_id]?.name.split(' ')[0] ?? 'alguém' : undefined} />)}
@@ -104,5 +106,47 @@ function Item({ t, proj, de }: { t: Task; proj?: string; de?: string }) {
         : <p className="rel-t-desc vazio">Sem descrição.</p>}
       {feitos.length > 0 && <ul className="rel-t-ck">{feitos.map(c => <li key={c.id}><Ph n="check" size={13} />{c.text}</li>)}</ul>}
     </article>
+  )
+}
+
+/** texto corrido do relatório escrito pela IA a partir das tarefas e descrições; dá pra mexer e copiar */
+function TextoIA({ p, semana, ts, proj }: { p: Profile; semana: string; ts: Task[]; proj: (id: string | null) => string | undefined }) {
+  const [txt, setTxt] = useState('')
+  const [resumo, setResumo] = useState('')
+  const [rodando, setRodando] = useState<number | null>(null)
+  const [seg, setSeg] = useState(0)
+  const [erro, setErro] = useState('')
+  const [copiou, setCopiou] = useState(false)
+  useEffect(() => {
+    if (rodando === null) return
+    const i = window.setInterval(() => setSeg(Math.round((Date.now() - rodando) / 1000)), 500)
+    return () => window.clearInterval(i)
+  }, [rodando])
+  const gerar = async () => {
+    setErro(''); setSeg(0); setRodando(Date.now())
+    try {
+      setTxt(await textoRelatorio({
+        nome: p.name, cargo: p.role || undefined, semana, resumo: resumo.trim() || undefined,
+        tarefas: ts.map(t => ({ titulo: t.title, projeto: proj(t.project_id), descricao: t.notes.trim() || undefined, itens: t.checklist.filter(c => c.done).map(c => c.text), ajudou: t.owner_id !== p.id ? 'outra pessoa' : undefined, dia: t.done_at ? dia(t.done_at) : undefined })),
+      }))
+    } catch (e) { setErro(e instanceof Error ? e.message : String(e)) }
+    setRodando(null)
+  }
+  const copiar = async () => { await navigator.clipboard.writeText(txt).catch(() => {}); setCopiou(true); window.setTimeout(() => setCopiou(false), 1500) }
+  return (
+    <section className={'rel-ia' + (txt ? ' tem' : '')}>
+      <header className="no-print">
+        <i className="rel-ia-ic"><Ph n="sparkle" size={16} fill /></i>
+        <span className="grow"><b>Texto do relatório</b><small>{rodando !== null ? `Escrevendo com a IA… ${seg}s (costuma levar de 5 a 15s)` : txt ? 'Revise antes de mandar: dá pra editar aqui.' : 'Conte do seu jeito o que fez; a IA junta com as tarefas abaixo e escreve o relatório.'}</small></span>
+        {txt && rodando === null && <button type="button" className="btn ghost sm" onClick={() => run(copiar())}><Ph n={copiou ? 'check' : 'copy'} size={16} />{copiou ? 'Copiado' : 'Copiar'}</button>}
+        <button type="button" className="btn soft sm" onClick={() => run(gerar())} disabled={rodando !== null || (!ts.length && !resumo.trim())}>{rodando !== null ? <span className="rel-ia-gira" aria-hidden /> : <Ph n="sparkle" size={16} />}{txt ? 'Escrever de novo' : 'Escrever com IA'}</button>
+        {txt && rodando === null && <button type="button" className="btn ghost sm" onClick={() => setTxt('')}>Voltar ao resumo</button>}
+      </header>
+      {!txt && <textarea className="rel-ia-tx no-print" value={resumo} onChange={e => setResumo(e.target.value)} rows={3} maxLength={3000} disabled={rodando !== null}
+        placeholder="Ex.: fechei a tabela do Day Use com o comercial, gravei dois reels da Semana das Crianças, ajudei a Carla no texto do site…" aria-label="Seu resumo da semana" />}
+      {erro && <p className="rel-ia-erro no-print">{erro}</p>}
+      {txt && <><textarea className="rel-ia-tx no-print" value={txt} onChange={e => setTxt(e.target.value)} rows={Math.min(14, txt.split('\n').length + 2)} aria-label="Texto do relatório" />
+        <p className="rel-ia-imp">{txt}</p></>}
+    </section>
   )
 }
