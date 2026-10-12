@@ -154,3 +154,4 @@ Pendente: push (precisa da migration 202610080900_v4_agenda_metas.sql e do secre
 - 12/10 (10) no ar (run 38295299498: build/deploy/migrate ok; job functions falhou 2x com erro 500 interno do Supabase, sem mudança em functions).
 - 12/10 (11): src/avisos.ts (checagens no checkReminders, a cada 20s): datas comemorativas a 7 dias e véspera (quem edita o plano); ação do plano sem tarefa a 7 e ≤2 dias; tarefa minha amanhã/hoje/atrasada (até 3 dias). Dedupe em localStorage ev:avisos:<id>, máx. 4 por rodada.
 - 12/10 (12): Pessoas (plano/ui) mostra só o setor (sala da ação/equipe ou o meu); demais em "Outros setores (n)", agrupados por sala.
+- 12/10 (13): Relatório individual: abas por pessoa (abre em mim) + "Equipe toda"; cada tarefa concluída vira card com a descrição (notes) e itens do checklist feitos; sem descrição, quem pode editar escreve ali (salva em notes). Imprimir sai só da pessoa escolhida.

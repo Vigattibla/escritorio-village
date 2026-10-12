@@ -313,6 +313,23 @@ button.tlogo.img:hover { box-shadow: inset 0 0 0 2px var(--acc2); }
 .rel-p li.aj > svg { color: var(--cobalto); }
 .rel-p li small { color: var(--muted); font-size: 13px; white-space: nowrap; }
 .rel-vazio { margin: 10px 0 0; color: var(--muted); font-size: 14px; }
+.rel-quem { display: flex; gap: 6px; padding: 0 24px 14px; overflow-x: auto; scrollbar-width: thin; }
+.rel-quem button { display: inline-flex; align-items: center; gap: 7px; flex: none; height: 34px; padding: 0 12px 0 6px; border: 0; border-radius: 99px; background: #fff; color: var(--tinta); font: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer; }
+.rel-quem button .mini-av { border-radius: 50%; background: var(--areia-3); }
+.rel-quem button > svg { margin-left: 4px; }
+.rel-quem button.on { background: var(--tinta); color: #fff; }
+.rel-ts { display: grid; gap: 8px; margin-top: 12px; }
+.rel-t { display: grid; gap: 4px; padding: 12px 14px; border-radius: 14px; background: #FBF7EF; break-inside: avoid; }
+.rel-t > header { display: flex; align-items: center; gap: 10px; font-size: 15px; color: var(--tinta); }
+.rel-t > header > svg { color: var(--ok); flex: none; }
+.rel-t.aj > header > svg { color: var(--cobalto); }
+.rel-t > header small, .rel-t-meta { color: var(--muted); font-size: 13px; }
+.rel-t-meta { padding-left: 28px; }
+.rel-t-desc { margin: 2px 0 0 28px; font-size: 14px; line-height: 1.5; color: var(--tinta); white-space: pre-wrap; overflow-wrap: anywhere; }
+.rel-t-desc.vazio { color: var(--muted); font-style: italic; }
+.rel-t-esc { margin: 4px 0 0 28px; width: calc(100% - 28px); resize: vertical; padding: 8px 10px; border: 1px dashed rgba(16, 16, 20, .2); border-radius: 10px; background: #fff; font: inherit; font-size: 14px; }
+.rel-t-ck { list-style: none; margin: 2px 0 0 28px; padding: 0; display: grid; gap: 2px; font-size: 13px; color: var(--muted); }
+.rel-t-ck li { display: flex; align-items: center; gap: 6px; padding: 0; background: none; }
 @media print {
   body * { visibility: hidden; }
   .rel, .rel * { visibility: visible; }

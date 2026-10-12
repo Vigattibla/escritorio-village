@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { dayKey } from '../game/xp'
-import { team, useStore } from '../store'
+import { canEditTask, me, run, team, updateTask, useStore } from '../store'
 import type { Task } from '../types'
 import { Ph } from './Icon'
 import MiniAvatar from './MiniAvatar'
@@ -15,6 +15,7 @@ const dia = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { weekday
 export default function Relatorio({ onClose }: { onClose: () => void }) {
   const s = useStore(x => x)
   const [n, setN] = useState(0)
+  const [quem, setQuem] = useState<string | null>(me()?.id ?? null)
   const ini = segunda(n), fim = segunda(n + 1)
   const a = dayKey(ini), b = dayKey(fim)
   const hoje = dayKey(new Date())
@@ -30,14 +31,16 @@ export default function Relatorio({ onClose }: { onClose: () => void }) {
     const refeitas = tasks.filter(t => meu(t) && t.reviews.some(r => r.ok === false && naSemana(r.at)))
     return { p, feitas, ajudou, abertas, atrasadas, refeitas }
   })
-  const total = linhas.reduce((m, l) => m + l.feitas.length, 0)
+  const sel = linhas.find(l => l.p.id === quem) ?? null
+  const vis = sel ? [sel] : linhas
+  const total = vis.reduce((m, l) => m + l.feitas.length, 0)
   const close = () => onClose()
   return (
     <Fundo className="modal-bg" onMouseDown={e => e.target === e.currentTarget && close()} onKeyDown={e => e.key === 'Escape' && close()}>
       <div className="rel" role="dialog" aria-label="Relatório da semana">
         <header className="rel-top">
           <div className="grow">
-            <h2>Relatório da semana</h2>
+            <h2>{sel ? `Relatório de ${sel.p.name.split(' ')[0]}` : 'Relatório da equipe'}</h2>
             <small>{curto(ini)} – {curto(new Date(fim.getTime() - 864e5))} · {total} concluída{total === 1 ? '' : 's'}</small>
           </div>
           <div className="rel-sem no-print">
@@ -48,8 +51,13 @@ export default function Relatorio({ onClose }: { onClose: () => void }) {
           <button className="btn soft no-print" onClick={() => print()}><Ph n="printer" size={18} />Imprimir / PDF</button>
           <button className="btn ghost sm no-print" onClick={close} aria-label="Fechar">✕</button>
         </header>
+        <div className="rel-quem no-print" role="tablist" aria-label="De quem é o relatório">
+          {linhas.map(({ p }) => <button key={p.id} type="button" role="tab" aria-selected={quem === p.id} className={quem === p.id ? 'on' : ''} onClick={() => setQuem(p.id)}>
+            <MiniAvatar avatar={p.avatar} photo={p.photo} name={p.name} size={22} />{p.name.split(' ')[0]}</button>)}
+          <button type="button" role="tab" aria-selected={!sel} className={!sel ? 'on' : ''} onClick={() => setQuem(null)}><Ph n="users-three" size={16} />Equipe toda</button>
+        </div>
         <div className="rel-lista">
-          {linhas.map(({ p, feitas, ajudou, abertas, atrasadas, refeitas }) => (
+          {vis.map(({ p, feitas, ajudou, abertas, atrasadas, refeitas }) => (
             <section key={p.id} className="rel-p">
               <header>
                 <MiniAvatar avatar={p.avatar} photo={p.photo} name={p.name} size={36} />
@@ -60,7 +68,11 @@ export default function Relatorio({ onClose }: { onClose: () => void }) {
                 {n === 0 && atrasadas.length > 0 && <span className="rel-n tang"><b>{atrasadas.length}</b>atrasada{atrasadas.length === 1 ? '' : 's'}</span>}
                 {refeitas.length > 0 && <span className="rel-n"><b>{refeitas.length}</b>refeita{refeitas.length === 1 ? '' : 's'}</span>}
               </header>
-              {feitas.length + ajudou.length === 0 ? <p className="rel-vazio">Nada concluído nesta semana.</p> : (
+              {feitas.length + ajudou.length === 0 ? <p className="rel-vazio">Nada concluído nesta semana.</p> : sel ? (
+                <div className="rel-ts">
+                  {[...feitas, ...ajudou].map(t => <Item key={t.id} t={t} proj={t.project_id ? s.projects[t.project_id]?.name : undefined} de={t.owner_id !== p.id ? s.profiles[t.owner_id]?.name.split(' ')[0] ?? 'alguém' : undefined} />)}
+                </div>
+              ) : (
                 <ul>
                   {feitas.map(t => <li key={t.id}><Ph n="check-circle" size={16} fill /><span className="grow">{t.title}{t.project_id && s.projects[t.project_id] && <small> · {s.projects[t.project_id].name}</small>}</span><small>{dia(t.done_at!)}</small></li>)}
                   {ajudou.map(t => <li key={t.id} className="aj"><Ph n="hand-heart" size={16} /><span className="grow">{t.title}<small> · de {s.profiles[t.owner_id]?.name.split(' ')[0] ?? 'alguém'}</small></span><small>{dia(t.done_at!)}</small></li>)}
@@ -71,5 +83,26 @@ export default function Relatorio({ onClose }: { onClose: () => void }) {
         </div>
       </div>
     </Fundo>
+  )
+}
+
+/** tarefa no relatório individual: o que foi feito, com a descrição. Se faltar descrição, quem pode editar escreve ali mesmo */
+function Item({ t, proj, de }: { t: Task; proj?: string; de?: string }) {
+  const pode = canEditTask(t)
+  const feitos = t.checklist.filter(c => c.done)
+  return (
+    <article className={'rel-t' + (de ? ' aj' : '')}>
+      <header>
+        <Ph n={de ? 'hand-heart' : 'check-circle'} size={18} fill={!de} />
+        <b className="grow">{t.title}</b>
+        <small>{dia(t.done_at!)}</small>
+      </header>
+      {(proj || de) && <small className="rel-t-meta">{[proj, de && `ajudou ${de}`].filter(Boolean).join(' · ')}</small>}
+      {t.notes.trim() ? <p className="rel-t-desc">{t.notes.trim()}</p>
+        : pode ? <textarea className="rel-t-esc no-print" rows={2} maxLength={4000} placeholder="Conte o que foi feito nessa tarefa (vai para a descrição dela)" aria-label={`Descrição de ${t.title}`}
+            onBlur={e => e.target.value.trim() && run(updateTask(t.id, { notes: e.target.value.trim() }))} />
+        : <p className="rel-t-desc vazio">Sem descrição.</p>}
+      {feitos.length > 0 && <ul className="rel-t-ck">{feitos.map(c => <li key={c.id}><Ph n="check" size={13} />{c.text}</li>)}</ul>}
+    </article>
   )
 }
