@@ -304,7 +304,7 @@ export default function Jogos({ inicio, onClose }: { inicio: Jogo; onClose: () =
 
   return (
     <Fundo className="modal-bg" onMouseDown={e => e.target === e.currentTarget && onClose()}>
-      <section className="modal jg" role="dialog" aria-label="Sala de jogos">
+      <section className="jan jg" role="dialog" aria-label="Sala de jogos">
         <div className="jg-bar">
           <div className="jg-tabs" role="tablist">
             {JOGOS.map(j => <button key={j.id} role="tab" aria-selected={j.id === jogo} className={j.id === jogo ? 'on' : ''} onClick={() => troca(j.id)}>{j.nome}</button>)}

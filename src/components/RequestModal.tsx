@@ -31,7 +31,7 @@ export default function RequestModal() {
 
   return (
     <Fundo className="modal-bg" onMouseDown={e => e.target === e.currentTarget && close()}>
-      <form className="modal" onSubmit={submit} onPaste={e => { const f = [...e.clipboardData.files]; if (f.length) { e.preventDefault(); add(f) } }}>
+      <form className="jan" onSubmit={submit} onPaste={e => { const f = [...e.clipboardData.files]; if (f.length) { e.preventDefault(); add(f) } }}>
         <header className="row gap">
           <MiniAvatar avatar={p.avatar} photo={p.photo} name={p.name} size={44} />
           <div><h2>{direct ? 'Passar tarefa para' : 'Pedir algo para'} {p.name}</h2><div className="muted small">{direct ? 'Vai direto para a pasta da pessoa.' : 'Chega no computador da pessoa para aceitar ou recusar.'} Concluir rende +5 XP extra.</div></div>

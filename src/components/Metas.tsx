@@ -93,7 +93,7 @@ function GoalForm({ g, onClose }: { g: Goal | null; onClose: () => void }) {
   }
   return (
     <Fundo className="modal-bg" onMouseDown={e => e.target === e.currentTarget && onClose()} onKeyDown={e => e.key === 'Escape' && onClose()}>
-      <form className="modal" onSubmit={submit}>
+      <form className="jan" onSubmit={submit}>
         <h2>{g ? 'Editar meta' : 'Nova meta'}</h2>
         <label>Meta<input autoFocus required maxLength={80} value={title} onChange={e => setTitle(e.target.value)} placeholder={canais ? 'Ex.: Publicar 40 posts' : 'Ex.: Fechar 30 tarefas no mês'} /></label>
         <div className="opts">

@@ -192,7 +192,7 @@ export default function Office() {
           </>}
         </div>
         {contas && <Fundo className="modal-bg" onMouseDown={e => e.target === e.currentTarget && setContas(false)} onKeyDown={e => e.key === 'Escape' && setContas(false)}>
-          <div className="modal acc-modal">
+          <div className="jan acc-modal">
             <Accounts open />
             <button type="button" className="btn ghost" onClick={() => setContas(false)}>Fechar</button>
           </div>

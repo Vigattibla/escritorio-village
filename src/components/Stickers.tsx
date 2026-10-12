@@ -63,7 +63,7 @@ export function StickerPicker() {
   }
   return (
     <Fundo className="modal-bg" onMouseDown={e => e.target === e.currentTarget && close()} onKeyDown={e => e.key === 'Escape' && close()}>
-      <form className="modal stk-modal" onSubmit={submit}>
+      <form className="jan stk-modal" onSubmit={submit}>
         <h2>Colar adesivo</h2>
         <div className="stk-grid">
           {KIND_KEYS.map(k => (

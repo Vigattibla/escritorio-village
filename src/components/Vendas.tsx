@@ -24,7 +24,7 @@ const sobre = (c: string) => { const n = parseInt(c.slice(1), 16); return (0.299
 function Modal({ title, onClose, onSubmit, children, foot }: { title: string; onClose: () => void; onSubmit: () => void; children: React.ReactNode; foot?: React.ReactNode }) {
   return (
     <Fundo className="modal-bg" onMouseDown={e => e.target === e.currentTarget && onClose()} onKeyDown={e => e.key === 'Escape' && onClose()}>
-      <form className="modal vd-modal" onSubmit={e => { e.preventDefault(); onSubmit() }}>
+      <form className="jan vd-modal" onSubmit={e => { e.preventDefault(); onSubmit() }}>
         <h2>{title}</h2>
         {children}
         <footer className="row gap end">{foot}<span className="grow" /><button type="button" className="btn ghost" onClick={onClose}>Cancelar</button><button className="btn primary">Salvar</button></footer>
@@ -499,7 +499,7 @@ export function Lousa({ onClose }: { onClose: () => void }) {
 
   return (
     <Fundo className="modal-bg" onMouseDown={e => e.target === e.currentTarget && onClose()} onKeyDown={e => e.key === 'Escape' && !aj && onClose()}>
-      <section className="modal vd-lousa" role="dialog" aria-label="Quadro de quartos">
+      <section className="jan vd-lousa" role="dialog" aria-label="Quadro de quartos">
         <div className="vd-gbar">
           <b className="grow">Quartos livres</b>
           <div className="mnav">

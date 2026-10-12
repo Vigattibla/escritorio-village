@@ -30,7 +30,7 @@ function Caixa({ p }: { p: Pedido }) {
   useEffect(() => { if (!p.campo) okRef.current?.focus() }, [p.campo])
   return (
     <Fundo className="modal-bg dlg-bg" onMouseDown={e => e.target === e.currentTarget && fim(null)} onKeyDown={e => { if (e.key === 'Escape') { e.stopPropagation(); fim(null) } }}>
-      <form className="modal dlg" role="alertdialog" aria-label={p.title} onSubmit={e => { e.preventDefault(); if (!p.campo || v.trim()) fim(p.campo ? v : '') }}>
+      <form className="jan dlg" role="alertdialog" aria-label={p.title} onSubmit={e => { e.preventDefault(); if (!p.campo || v.trim()) fim(p.campo ? v : '') }}>
         <div className={'dlg-ic' + (p.danger ? ' danger' : '')}><Ph n={p.ic ?? (p.danger ? 'trash' : p.campo ? 'pencil-simple-line' : 'check-circle')} size={22} fill /></div>
         <div className="dlg-tx">
           <h2>{p.title}</h2>

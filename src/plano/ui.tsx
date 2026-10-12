@@ -22,7 +22,7 @@ export function Rostos({ ids, profiles, size = 24, max = 4 }: { ids: string[]; p
 export function Modal({ title, onClose, children, wide }: { title: string; onClose: () => void; children: React.ReactNode; wide?: boolean }) {
   return (
     <Fundo className="modal-bg" onMouseDown={e => e.target === e.currentTarget && onClose()} onKeyDown={e => e.key === 'Escape' && onClose()}>
-      <div className={'modal pl-modal' + (wide ? ' wide' : '')} role="dialog" aria-label={title}>
+      <div className={'jan pl-modal' + (wide ? ' wide' : '')} role="dialog" aria-label={title}>
         <header className="pl-mh"><h2>{title}</h2><button className="icon-btn" onClick={onClose} aria-label="Fechar"><Ph n="x" size={18} /></button></header>
         {children}
       </div>

@@ -353,7 +353,7 @@ function PostForm({ day, onClose, onDone }: { day: string; onClose: () => void; 
   }
   return (
     <Fundo className="modal-bg" onMouseDown={e => e.target === e.currentTarget && onClose()} onKeyDown={e => e.key === 'Escape' && onClose()}>
-      <form className="modal" onSubmit={submit}>
+      <form className="jan" onSubmit={submit}>
         <h2>Novo post</h2>
         <label>Assunto<input autoFocus required maxLength={120} value={title} onChange={e => setTitle(e.target.value)} placeholder="Ex.: Promo Day Use" /></label>
         <div className="opts">
@@ -381,7 +381,7 @@ function EventForm({ day, onClose }: { day: string; onClose: () => void }) {
   }
   return (
     <Fundo className="modal-bg" onMouseDown={e => e.target === e.currentTarget && onClose()} onKeyDown={e => e.key === 'Escape' && onClose()}>
-      <form className="modal" onSubmit={submit}>
+      <form className="jan" onSubmit={submit}>
         <h2>Novo evento</h2>
         <label>Nome<input autoFocus required maxLength={120} value={title} onChange={e => setTitle(e.target.value)} placeholder="Ex.: Reunião de pauta" /></label>
         <div className="row gap"><label className="grow">Dia<input type="date" required value={d} onChange={e => setD(e.target.value)} /></label><label>Hora (opcional)<input type="time" value={h} onChange={e => setH(e.target.value)} /></label></div>
