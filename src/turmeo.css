@@ -340,15 +340,25 @@ button.tlogo.img:hover { box-shadow: inset 0 0 0 2px var(--acc2); }
 .rel-ia-imp { display: none; margin: 0; font-size: 14px; line-height: 1.55; white-space: pre-wrap; }
 .rel-ia-erro { margin: 0; color: #B3261E; font-size: 13px; }
 .rel-ia-gira { width: 14px; height: 14px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; animation: spin .8s linear infinite; }
+/* impressão: classe posta no beforeprint, pra medir igual ao papel e encolher até caber numa folha */
+.rel.rel-imp { width: 186mm; max-height: none; height: auto; border-radius: 0; box-shadow: none; background: #fff; overflow: visible; }
+.rel-imp .no-print { display: none !important; }
+.rel-imp .rel-top { padding: 0 0 8px; }
+.rel-imp .rel-lista { overflow: visible; padding: 0; }
+.rel-imp .rel-p { break-inside: auto; border: 1px solid #e6dfd0; padding: 12px 14px; }
+.rel-imp .rel-ia { background: none; border: 0; padding: 4px 0 6px; }
+.rel-imp .rel-ia-imp { display: block; font-size: 13.5px; line-height: 1.55; }
+/* com o texto da IA, ele é o principal; as tarefas viram lista curta (título + dia) em duas colunas */
+.rel-imp .rel-p:has(.rel-ia.tem) .rel-ts { grid-template-columns: 1fr 1fr; gap: 0 14px; margin-top: 4px; padding-top: 8px; border-top: 1px solid #eee5d3; }
+.rel-imp .rel-p:has(.rel-ia.tem) .rel-t { padding: 3px 0; background: none; border-radius: 0; }
+.rel-imp .rel-p:has(.rel-ia.tem) .rel-t > header { font-size: 12px; gap: 6px; }
+.rel-imp .rel-p:has(.rel-ia.tem) .rel-t > header svg { width: 13px; height: 13px; }
+.rel-imp .rel-p:has(.rel-ia.tem) :is(.rel-t-desc, .rel-t-ck, .rel-t-meta) { display: none; }
+@page { size: A4; margin: 12mm; }
 @media print {
   body * { visibility: hidden; }
   .rel, .rel * { visibility: visible; }
-  .rel { position: absolute; inset: 0; width: auto; max-height: none; box-shadow: none; border-radius: 0; background: #fff; overflow: visible; }
-  .rel-lista { overflow: visible; }
-  .rel-p { break-inside: avoid; border: 1px solid #e6dfd0; }
-  .no-print { display: none !important; }
-  .rel-ia { background: none; border: 0; padding: 0 0 8px; }
-  .rel-ia-imp { display: block; }
+  .rel { position: absolute; top: 0; left: 0; }
 }
 
 /* timelapse do dia */

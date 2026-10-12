@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { dayKey } from '../game/xp'
 import { canEditTask, me, run, team, updateTask, useStore } from '../store'
 import { textoRelatorio } from '../data/ia'
@@ -36,9 +36,23 @@ export default function Relatorio({ onClose }: { onClose: () => void }) {
   const vis = sel ? [sel] : linhas
   const total = vis.reduce((m, l) => m + l.feitas.length, 0)
   const close = () => onClose()
+  const caixa = useRef<HTMLDivElement>(null)
+  // na impressão o relatório encolhe até caber numa folha A4
+  useEffect(() => {
+    const antes = () => {
+      const el = caixa.current
+      if (!el) return
+      el.style.zoom = ''; el.classList.add('rel-imp')
+      const folha = 273 * 96 / 25.4
+      el.style.zoom = String(Math.min(1, folha / el.scrollHeight))
+    }
+    const depois = () => { const el = caixa.current; if (el) { el.classList.remove('rel-imp'); el.style.zoom = '' } }
+    window.addEventListener('beforeprint', antes); window.addEventListener('afterprint', depois)
+    return () => { window.removeEventListener('beforeprint', antes); window.removeEventListener('afterprint', depois) }
+  }, [])
   return (
     <Fundo className="modal-bg" onMouseDown={e => e.target === e.currentTarget && close()} onKeyDown={e => e.key === 'Escape' && close()}>
-      <div className="rel" role="dialog" aria-label="Relatório da semana">
+      <div ref={caixa} className="rel" role="dialog" aria-label="Relatório da semana">
         <header className="rel-top">
           <div className="grow">
             <h2>{sel ? `Relatório de ${sel.p.name.split(' ')[0]}` : 'Relatório da equipe'}</h2>

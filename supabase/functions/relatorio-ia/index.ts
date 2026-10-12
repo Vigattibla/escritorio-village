@@ -39,6 +39,7 @@ ${resumo ? `Resumo da semana, nas palavras da pessoa (fonte principal):\n${resum
 
 Escreva o relatório em primeira pessoa, tom profissional e direto. Junte o resumo e as tarefas sem repetir a mesma entrega duas vezes. Organize e melhore a escrita, mas não exagere nem invente nada que não esteja acima.
 Formato: um parágrafo curto de resumo da semana; depois uma lista com "- " de uma linha por entrega (o que foi feito e para quê, quando der pra saber); no fim, uma linha "Próximos passos:" só se as descrições indicarem algo pendente.
+Cabe numa folha A4 junto com a lista de tarefas: no máximo umas 300 palavras; junte entregas parecidas numa linha só.
 Texto simples, sem markdown além dos "- ", sem títulos, sem emojis.`
 }
 
