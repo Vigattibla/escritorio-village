@@ -1,8 +1,8 @@
-import { useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { deptOf } from '../game/ranks'
 import { importar, type Importado } from '../plano/importar'
 import { nomeMes, parseDia, somaMes } from '../plano/datas'
-import { chave, CORES, corSig, type Ctx, editaPlano, hoje, mandar, norm, quem, SIT, type Sit, siglas, situacao, membros, gereEquipe } from '../plano/core'
+import { chave, CORES, corSig, type Ctx, editaPlano, hoje, mandar, norm, quando, quem, SIT, type Sit, siglas, situacao, membros, gereEquipe } from '../plano/core'
 import { deptList, deptName, dropRow, me, putRow, putRows, run, setUi, useStore } from '../store'
 import type { PlanoAcao, PlanoMes, PlanoNucleo, PlanoResp, Task } from '../types'
 import { Bell } from './Avisos'
@@ -165,16 +165,23 @@ function Matriz({ meses, nucleos, acoes, passa, can, mesAtual, agr, chaves, ctx,
   ctx: Ctx; onMes: (m: string) => void; onAcao: (a: PlanoAcao) => void; onNova: (b: Base) => void; onNucleo: (n: PlanoNucleo | 'novo') => void; onResp: (k: string) => void
 }) {
   const tasks = useStore(s => s.tasks)
+  // dentro de cada bloco: pela data (as sem dia no fim), depois pela ordem dos núcleos
+  const ordena = useCallback((o: Record<string, PlanoAcao[]>) => {
+    const ix = new Map(nucleos.map((n, i) => [n.id, i]))
+    const k = (a: PlanoAcao) => { const q = quando(a); return (q.semDia ? '9' : '0') + q.start }
+    for (const xs of Object.values(o)) xs.sort((a, b) => k(a).localeCompare(k(b)) || (ix.get(a.nucleo) ?? 99) - (ix.get(b.nucleo) ?? 99) || a.pos - b.pos)
+    return o
+  }, [nucleos])
   const por = useMemo(() => {
     const o: Record<string, PlanoAcao[]> = {}
     for (const a of acoes) (o[a.nucleo + '|' + a.mes] ??= []).push(a)
-    return o
-  }, [acoes])
+    return ordena(o)
+  }, [acoes, ordena])
   const porResp = useMemo(() => {
     const o: Record<string, PlanoAcao[]> = {}
     for (const a of acoes) if (ctx.nucleos[a.nucleo]?.tipo !== 'datas') (o[chave(a, ctx.resp) + '|' + a.mes] ??= []).push(a)
-    return o
-  }, [acoes, ctx.nucleos, ctx.resp])
+    return ordena(o)
+  }, [acoes, ctx.nucleos, ctx.resp, ordena])
   const primeiro = nucleos.find(n => n.tipo === 'acoes')?.id ?? nucleos[0]?.id ?? ''
   const linhas = agr === 'resp' ? chaves.filter(k => meses.some(m => (porResp[k + '|' + m.mes] ?? []).some(passa))) : []
   // faixas: meses vizinhos com o mesmo texto viram uma célula só
@@ -192,7 +199,7 @@ function Matriz({ meses, nucleos, acoes, passa, can, mesAtual, agr, chaves, ctx,
       <table className="pl-mx" style={{ ['--n' as string]: meses.length }}>
         <thead>
           <tr>
-            <th className="pl-corner">{agr === 'resp' ? 'Quem faz' : 'Núcleo'}</th>
+            <th className="pl-corner">{agr === 'resp' ? '' : 'Núcleo'}</th>
             {meses.map(m => <th key={m.mes} className={m.mes === mesAtual ? 'agora' : ''}>
               <button onClick={() => onMes(m.mes)} title="Abrir o mês"><b>{nomeMes(m.mes, true)}</b><small>{m.mes.slice(0, 4)}</small></button>
             </th>)}
