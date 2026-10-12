@@ -1,6 +1,6 @@
 import { atrasada, hm } from '../game/prazo'
 import { dayKey } from '../game/xp'
-import { hasCanais, setUi, toApprove, unread, useStore } from '../store'
+import { comigo, hasCanais, setUi, toApprove, unread, useStore } from '../store'
 import { Bell } from './Avisos'
 import { StatusTag } from './Agenda'
 import Icon, { Ph } from './Icon'
@@ -21,12 +21,12 @@ export default function Inicio() {
   const today = dayKey(new Date())
   const all = Object.values(s.tasks)
   const open = all.filter(t => t.status !== 'done' && t.status !== 'declined')
-  const dueToday = open.filter(t => t.owner_id === me.id && t.due && t.due <= today).length
+  const dueToday = open.filter(t => comigo(t, me.id) && t.due && t.due <= today).length
   const approve = toApprove(s).length
   const canais = hasCanais(s.sala, s)
   const posts = canais ? open.filter(t => t.publish_at && dayKey(t.publish_at) >= today).length : Object.values(s.rows.events).filter(e => e.day >= today).length
   const msgs = [...new Set(s.messages.map(m => m.channel))].reduce((n, ch) => n + unread(s, ch), 0)
-  const mine = open.filter(t => t.owner_id === me.id).sort((a, b) => ORDER[a.status] - ORDER[b.status] || (a.due ?? '9').localeCompare(b.due ?? '9')).slice(0, 6)
+  const mine = open.filter(t => comigo(t, me.id)).sort((a, b) => ORDER[a.status] - ORDER[b.status] || (a.due ?? '9').localeCompare(b.due ?? '9')).slice(0, 6)
   const date = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })
   return (
     <div className="inicio">

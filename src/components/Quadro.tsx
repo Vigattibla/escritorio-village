@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { canAssign, deptOf, rankName, rankOf } from '../game/ranks'
 import { atrasada, hm } from '../game/prazo'
 import { dayKey } from '../game/xp'
-import { acceptRequest, addTask, approverOf, canApprove, canAskReview, canCreateProject, canEditProject, canEditStages, canEditTask, canFinish, canMove, canReassign, canUseAI, CHEFIA, declineRequest, involved, placeTask, reassign, removeStage, run, saveStages, setStatus, setUi, STAGE_KINDS, stageList, stageOf, team as salaTeam, teamOf, toApprove, useStore } from '../store'
+import { acceptRequest, addTask, approverOf, canApprove, canAskReview, canCreateProject, canEditProject, canEditStages, canEditTask, canFinish, canMove, canReassign, canUseAI, CHEFIA, comigo, declineRequest, involved, placeTask, reassign, removeStage, run, saveStages, setStatus, setUi, STAGE_KINDS, stageList, stageOf, team as salaTeam, teamOf, toApprove, useStore } from '../store'
 import type { DriveLink, Priority, Profile, Project, Stage, StageKind, Task, TaskStatus } from '../types'
 import { Bell } from './Avisos'
 import { folderName, FolderPicker } from './DriveFolder'
@@ -182,7 +182,7 @@ export default function Quadro() {
           .map(p => ({
             key: p.id, owner: p.id, title: p.id === meId ? `${p.name} (você)` : p.name, hint: [p.role || rankName(p), ...eqsDe(p.id).map(e => e.nome)].join(' · '), canAdd: true,
             head: personHead(p),
-            cards: shown.filter(t => t.owner_id === p.id && (t.status !== 'done' || dayKey(t.done_at!) === today)).sort(byStage),
+            cards: shown.filter(t => comigo(t, p.id) && (t.status !== 'done' || dayKey(t.done_at!) === today)).sort(byStage),
           }))
           .filter(l => l.owner === meId || !(mine || term || due) || l.cards.length > 0)
       : []
@@ -193,7 +193,7 @@ export default function Quadro() {
       p,
       cells: cols.map<List>(c => ({
         key: `${p.id}:${c.id}`, title: c.label, owner: p.id, status: c.kind, stage: c.stage?.id, canAdd: c.kind === 'todo',
-        cards: shown.filter(t => t.owner_id === p.id && inCol(t, c)).sort(sortFor(c.kind)),
+        cards: shown.filter(t => comigo(t, p.id) && inCol(t, c)).sort(sortFor(c.kind)),
       })),
     }))
     .filter(l => l.p.id === meId || extra.includes(l.p.id) || !(mine || term || due || proj) || l.cells.some(c => c.cards.length > 0))
@@ -210,7 +210,7 @@ export default function Quadro() {
   const accepts = (l: List) => {
     const t = dragged
     if (!t) return false
-    if (l.owner && t.owner_id !== l.owner && !canReassign(t, l.owner)) return false
+    if (l.owner && !comigo(t, l.owner) && !canReassign(t, l.owner)) return false
     return l.status ? stageOk(t, l.status, l.stage) : !!l.owner
   }
   /** posição entre os vizinhos (sem contar o próprio cartão arrastado) */
@@ -228,9 +228,9 @@ export default function Quadro() {
     if (!t || !accepts(l)) return
     const pos = l.status ? posAt(l.cards, index) : Date.now()
     run((async () => {
-      if (l.owner && t.owner_id !== l.owner) await reassign(t.id, l.owner, pos)
+      if (l.owner && !comigo(t, l.owner)) await reassign(t.id, l.owner, pos)
       if (l.status && (t.status !== l.status || (l.stage && stageOf(t, stages) !== l.stage))) await setStatus(t.id, l.status, pos, l.stage ?? null)
-      else if (l.status && (!l.owner || t.owner_id === l.owner)) await placeTask(t.id, pos)
+      else if (l.status && (!l.owner || comigo(t, l.owner))) await placeTask(t.id, pos)
     })())
   }
   const toggleWho = (id: string) => setWho(w => (w.includes(id) ? w.filter(x => x !== id) : [...w, id]))
@@ -258,7 +258,7 @@ export default function Quadro() {
         <div className="qcards">
           {l.cards.map((t, i) => (
             <Card
-              key={t.id} t={t} mode={group} meId={meId} profiles={profiles} projects={projects} showProj={!proj} notes={noteCount[t.id] ?? 0}
+              key={t.id} t={t} mode={group} lane={l.owner} meId={meId} profiles={profiles} projects={projects} showProj={!proj} notes={noteCount[t.id] ?? 0}
               dragging={drag === t.id} onDrag={setDrag} drop={ordered && at === i && drag !== t.id}
             />
           ))}
@@ -442,8 +442,8 @@ const PRIO: Record<Priority, { label: string; cls: string }> = {
   alta: { label: 'Alta', cls: 'red' }, media: { label: 'Média', cls: 'amber' }, baixa: { label: 'Baixa', cls: 'gray' },
 }
 
-function Card({ t, mode, meId, profiles, projects, showProj, notes, dragging, onDrag, drop }: {
-  t: Task; mode: Group; meId: string; profiles: Record<string, Profile>; projects: Record<string, Project>; showProj: boolean; notes: number
+function Card({ t, mode, lane, meId, profiles, projects, showProj, notes, dragging, onDrag, drop }: {
+  t: Task; mode: Group; lane?: string; meId: string; profiles: Record<string, Profile>; projects: Record<string, Project>; showProj: boolean; notes: number
   dragging: boolean; onDrag: (id: string | null) => void; drop: boolean
 }) {
   const today = dayKey(new Date())
@@ -469,6 +469,7 @@ function Card({ t, mode, meId, profiles, projects, showProj, notes, dragging, on
   const okd = done && last?.ok === true
   const meu = usePref('destaque') && (t.owner_id === meId || t.collaborators.includes(meId))
   const note = !done && t.notes.trim().split('\n')[0]
+  const colab = !!lane && t.owner_id !== lane
 
   return (
     <>
@@ -483,8 +484,9 @@ function Card({ t, mode, meId, profiles, projects, showProj, notes, dragging, on
         onKeyDown={e => e.key === 'Enter' && open()}
         tabIndex={0}
       >
-        {(mode === 'pessoa' || (proj && showProj) || redo || (prio && !done) || dark || ch || okd) && (
+        {(mode === 'pessoa' || colab || (proj && showProj) || redo || (prio && !done) || dark || ch || okd) && (
           <div className="tc-tags">
+            {colab && <span className="tag" title={`Responsável: ${profiles[t.owner_id]?.name ?? 'alguém'}`}><Ph n="hand-heart" size={13} />Colabora</span>}
             {dark && <span className="tag lilac"><Icon n="check" size={13} />Você aprova</span>}
             {okd && <span className="tag green"><Icon n="tick" size={13} />Aprovado</span>}
             {prio && !done && <span className={'tag ' + prio.cls} title="Prioridade"><Icon n="flag" size={13} />{prio.label}</span>}

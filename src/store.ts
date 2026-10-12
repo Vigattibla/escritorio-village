@@ -136,6 +136,8 @@ const norm = (t: Task): Task => ({
   channel: t.channel ?? null, publish_at: t.publish_at ?? null, stage: t.stage ?? null, drive: t.drive ?? null,
 })
 export const involved = (t: Task, uid: string) => t.owner_id === uid || t.created_by === uid || t.collaborators.includes(uid)
+/** a tarefa está com a pessoa: responsável ou colaborando */
+export const comigo = (t: Task, uid: string) => t.owner_id === uid || t.collaborators.includes(uid)
 /** Mexe nos detalhes: dono, autor, colaborador, cargo acima do dono ou Chefe. */
 export function canEditTask(t: Task, uid = state.meId) {
   if (!uid) return false

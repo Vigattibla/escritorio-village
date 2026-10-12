@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { addTask, dmChannel, hasCanais, run, setUi, team, useStore } from '../store'
+import { addTask, comigo, dmChannel, hasCanais, run, setUi, team, useStore } from '../store'
 import { dayKey } from '../game/xp'
 import Icon, { Ph } from './Icon'
 import MiniAvatar from './MiniAvatar'
@@ -83,7 +83,7 @@ export function SeuDia() {
   const [txt, setTxt] = useState('')
   const [at, setAt] = useState('')
   const today = dayKey(new Date())
-  const mine = Object.values(tasks).filter(t => t.owner_id === meId && t.status !== 'done' && t.status !== 'declined')
+  const mine = Object.values(tasks).filter(t => comigo(t, meId) && t.status !== 'done' && t.status !== 'declined')
   const due = mine.filter(t => t.due === today)
   const hi = due.filter(t => t.priority === 'alta').length
   const posts = Object.values(tasks).filter(t => t.publish_at && localDay(t.publish_at) === today && t.status !== 'declined' && (t.owner_id === meId || t.created_by === meId))

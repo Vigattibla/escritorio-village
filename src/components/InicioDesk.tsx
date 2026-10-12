@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { atrasada, hm } from '../game/prazo'
 import { dayKey } from '../game/xp'
 import { deptOf } from '../game/ranks'
-import { acceptRequest, canEnter, canMove, deptList, deptName, hasCanais, knock, openSala, run, setStatus, setUi, team, toApprove, useStore } from '../store'
+import { acceptRequest, canEnter, comigo, canMove, deptList, deptName, hasCanais, knock, openSala, run, setStatus, setUi, team, toApprove, useStore } from '../store'
 import type { Task } from '../types'
 import { Bell } from './Avisos'
 import Game from './Game'
@@ -140,7 +140,7 @@ export default function InicioDesk() {
   const now = new Date().getHours() * 60 + new Date().getMinutes()
   const all = Object.values(s.tasks)
   const open = all.filter(t => t.status !== 'done' && t.status !== 'declined')
-  const mine = open.filter(t => t.owner_id === me.id && t.status !== 'inbox')
+  const mine = open.filter(t => comigo(t, me.id) && t.status !== 'inbox')
     .sort((a, b) => ORDER[a.status] - ORDER[b.status] || (a.due ?? '9').localeCompare(b.due ?? '9'))
   const doneToday = all.filter(t => t.owner_id === me.id && t.status === 'done' && t.done_at && dayKey(t.done_at) === today)
   const late = mine.filter(t => t.due && t.due < today).length
