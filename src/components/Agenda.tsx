@@ -7,8 +7,11 @@ import Icon, { Ph } from './Icon'
 import MiniAvatar from './MiniAvatar'
 import SegInd from './SegInd'
 import { CHANNEL_KEYS, CHANNELS, first, hm, localDay } from './v4'
+import { agendar, alvo, PChip, type PItem, PlanoModal, PlanoPainel, SemDia, usePlano, VisaoEquipe, VisaoEstrategia } from '../plano/AgendaPlano'
+import { editaPlano } from '../plano/core'
 
-type Mode = 'mes' | 'semana' | 'lista'
+type Mode = 'mes' | 'semana' | 'lista' | 'equipe' | 'estrategia'
+const MODOS: [Mode, string][] = [['mes', 'Mês'], ['semana', 'Semana'], ['lista', 'Lista'], ['equipe', 'Equipe'], ['estrategia', 'Estratégia']]
 type Item = { kind: 'post' | 'prazo'; t: Task; day: string } | { kind: 'evento'; e: CalEvent; day: string }
 
 const STATUS: Record<string, { label: string; tag: string; ic: 'eye' | 'check' | 'circle-dashed' | 'pencil-simple-line' | 'paper-plane-tilt' }> = {
@@ -47,6 +50,18 @@ export default function Agenda() {
   const [day, setDay] = useState(today)
   const [sel, setSel] = useState<string | null>(null)
   const [form, setForm] = useState<'post' | 'evento' | null>(null)
+  const { ctx, itens } = usePlano()
+  const edita = editaPlano(profiles[meId])
+  const [plano, setPlano] = useState<'minhas' | 'todas' | 'off'>('minhas')
+  const [selP, setSelP] = useState<string | null>(null)
+  const [pModal, setPModal] = useState<string | null>(null)
+  const ql = q.toLowerCase()
+  const pVis = itens.filter(i => i.livre && plano !== 'off' && (plano === 'todas' || i.dono === meId || (i.semDono && edita)) && (!q || i.a.texto.toLowerCase().includes(ql)))
+  const pByDay = (k: string) => pVis.filter(i => i.dia === k)
+  const pickP = (i: PItem) => { if (narrow()) { setPModal(i.a.id); return } setSelP(i.a.id); setSel(null); if (i.dia) setDay(i.dia) }
+  const solta = (k: string) => (id: string) => { const i = itens.find(x => x.a.id === id); if (i?.pode) agendar(i, k) }
+  const pSel = selP ? itens.find(i => i.a.id === selP) : undefined
+  const pMod = pModal ? itens.find(i => i.a.id === pModal) : undefined
 
   const items = useMemo(() => {
     const out: Item[] = []
@@ -69,7 +84,7 @@ export default function Agenda() {
   const label = mode === 'semana'
     ? (() => { const m = sunday(new Date(day + 'T12:00')); const e = addD(m, 6); return `${m.getDate()}–${e.getDate()} ${e.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '')}` })()
     : cur.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }).replace(' de ', ' ')
-  const pick = (i: Item) => { if (narrow() && i.kind !== 'evento') { setUi({ task: i.t.id }); return } setSel(itemId(i)); setDay(i.day) }
+  const pick = (i: Item) => { if (narrow() && i.kind !== 'evento') { setUi({ task: i.t.id }); return } setSel(itemId(i)); setSelP(null); setDay(i.day) }
   // sem escolha, o painel já abre no primeiro post do dia (ou no primeiro item)
   const dayList = byDay(day)
   const selItem = (sel ? vis.find(i => itemId(i) === sel) ?? items.find(i => itemId(i) === sel) : undefined) ?? dayList.find(i => i.kind === 'post') ?? dayList[0]
@@ -91,18 +106,23 @@ export default function Agenda() {
     const last = new Date(cur.getFullYear(), cur.getMonth() + 1, 0)
     const n = Math.ceil(((last.getTime() - start.getTime()) / 864e5 + 1) / 7) * 7
     return (
+      <div className="ag-mes">
       <div className="month">
         {WD.map(w => <div key={w} className="mwd">{w}</div>)}
         {Array.from({ length: n }, (_, k) => {
-          const d = addD(start, k); const kd = key(d); const list = byDay(kd)
+          const d = addD(start, k); const kd = key(d); const list = byDay(kd); const pl = pByDay(kd)
+          const nl = Math.min(list.length, pl.length ? 2 : 3), np = Math.min(pl.length, 3 - nl), resto = list.length + pl.length - nl - np
           return (
-            <div key={kd} className={'mcell' + (d.getMonth() !== cur.getMonth() ? ' out' : '') + (d.getDay() % 6 === 0 ? ' we' : '') + (kd === today ? ' today' : '') + (kd === day ? ' sel' : '')} onClick={() => { setDay(kd); setSel(null) }}>
+            <div key={kd} className={'mcell' + (d.getMonth() !== cur.getMonth() ? ' out' : '') + (d.getDay() % 6 === 0 ? ' we' : '') + (kd === today ? ' today' : '') + (kd === day ? ' sel' : '')} onClick={() => { setDay(kd); setSel(null); setSelP(null) }} {...alvo(solta(kd))}>
               <span className="mnum">{d.getDate()}</span>
-              {list.slice(0, 3).map(chip)}
-              {list.length > 3 && <small className="more">+{list.length - 3} mais</small>}
+              {list.slice(0, nl).map(chip)}
+              {pl.slice(0, np).map(i => <PChip key={i.a.id} i={i} on={selP === i.a.id} onPick={pickP} />)}
+              {resto > 0 && <small className="more">+{resto} mais</small>}
             </div>
           )
         })}
+      </div>
+        <SemDia itens={plano === 'off' ? [] : itens} ym={key(cur).slice(0, 7)} sel={selP} onPick={pickP} />
       </div>
     )
   }
@@ -114,16 +134,17 @@ export default function Agenda() {
       <div className="wk">
         <div className="week">
           {Array.from({ length: 7 }, (_, k) => {
-            const d = addD(m, k); const kd = key(d); const n = byDay(kd).length
+            const d = addD(m, k); const kd = key(d); const n = byDay(kd).length + pByDay(kd).length
             return (
-              <button key={kd} className={'wd' + (kd === day ? ' on' : '') + (kd === today ? ' today' : '')} onClick={() => { setDay(kd); setSel(null) }}>
+              <button key={kd} className={'wd' + (kd === day ? ' on' : '') + (kd === today ? ' today' : '')} onClick={() => { setDay(kd); setSel(null); setSelP(null) }} {...alvo(solta(kd))}>
                 <small>{WD[k]}</small><b>{d.getDate()}</b>{n > 0 && <i className="dots">{Array.from({ length: Math.min(n, 3) }, (_, j) => <span key={j} />)}</i>}
               </button>
             )
           })}
         </div>
         <div className="tl">
-          {list.length === 0 && <p className="qempty">Nada marcado para {longDay(day).toLowerCase()}.</p>}
+          {pByDay(day).length > 0 && <div className="ti plano"><time>plano</time><div className="pl-ti">{pByDay(day).map(i => <PChip key={i.a.id} i={i} on={selP === i.a.id} onPick={pickP} />)}</div></div>}
+          {list.length === 0 && !pByDay(day).length && <p className="qempty">Nada marcado para {longDay(day).toLowerCase()}.</p>}
           {list.map(i => {
             const big = i.kind === 'post' && i.t.status === 'review' && canApprove(i.t, meId)
             const ch = i.kind === 'post' && i.t.channel ? CHANNELS[i.t.channel] : null
@@ -176,12 +197,12 @@ export default function Agenda() {
   const toToday = () => { setCur(new Date()); setDay(today); setSel(null) }
   const Label = label[0].toUpperCase() + label.slice(1)
   return (
-    <div className="qgrid agenda">
+    <div className={'qgrid agenda' + (mode === 'estrategia' ? ' ag-estr' : '')}>
       <div className="quadro">
         <div className="mtop ag-m">
           <div className="grow"><small>Agenda</small><h2 onClick={toToday}>{Label}</h2></div>
           <div className="mnav sm"><button onClick={() => move(-1)} aria-label="Anterior"><Ph n="caret-left" size={16} /></button><button onClick={() => move(1)} aria-label="Próximo"><Ph n="caret-right" size={16} /></button></div>
-          <div className="mseg">{(['semana', 'mes'] as Mode[]).map(m => <button key={m} className={mode === m ? 'on' : ''} onClick={() => setMode(m)}>{m === 'mes' ? 'Mês' : 'Semana'}</button>)}</div>
+          <div className="mseg">{(['semana', 'mes', 'estrategia'] as Mode[]).filter(m => m !== 'estrategia' || itens.length || edita).map(m => <button key={m} className={mode === m ? 'on' : ''} onClick={() => setMode(m)}>{m === 'mes' ? 'Mês' : m === 'semana' ? 'Semana' : 'Ano'}</button>)}</div>
         </div>
         <div className="qbar">
           <label className="qsearch"><Ph n="magnifying-glass" size={18} /><input type="search" placeholder={canais ? 'Buscar post, evento…' : 'Buscar tarefa, evento…'} value={q} onChange={e => setQ(e.target.value)} /></label>
@@ -199,13 +220,14 @@ export default function Agenda() {
           </div>
           <div className="seg">
             <SegInd />
-            {(['mes', 'semana', 'lista'] as Mode[]).map(m => <button key={m} className={mode === m ? 'on' : ''} onClick={() => setMode(m)}>{m === 'mes' ? 'Mês' : m === 'semana' ? 'Semana' : 'Lista'}</button>)}
+            {MODOS.filter(([m]) => itens.length || (m !== 'equipe' && m !== 'estrategia') || edita).map(([m, l]) => <button key={m} className={mode === m ? 'on' : ''} onClick={() => setMode(m)}>{l}</button>)}
           </div>
         </div>
         <div className="ag-filters">
           {(canais || postN > 0) && <button className={'qchip' + (show.post ? ' on' : '')} onClick={() => setShow(s => ({ ...s, post: !s.post }))}><Ph n="megaphone" size={15} />Posts<i>{postN}</i></button>}
           <button className={'qchip' + (show.prazo ? ' on' : '')} onClick={() => setShow(s => ({ ...s, prazo: !s.prazo }))}><Ph n="flag-banner" size={15} />Prazos</button>
           <button className={'qchip' + (show.evento ? ' on' : '')} onClick={() => setShow(s => ({ ...s, evento: !s.evento }))}><Ph n="star" size={15} />Eventos</button>
+          {itens.length > 0 && <button className={'qchip pl-qchip' + (plano !== 'off' ? ' on' : '')} title="Ações do plano de marketing" onClick={() => setPlano(p => (p === 'minhas' ? 'todas' : p === 'todas' ? 'off' : 'minhas'))}><Ph n="circle-dashed" size={15} />Plano<i>{plano === 'minhas' ? 'minhas' : plano === 'todas' ? 'todas' : 'oculto'}</i></button>}
           {canais && <><span className="sep" />
           {CHANNEL_KEYS.map(c => (
             <button key={c} className={'tag ' + CHANNELS[c].tag + (off.includes(c) ? ' off' : '')} onClick={() => setOff(o => (o.includes(c) ? o.filter(x => x !== c) : [...o, c]))}>
@@ -215,11 +237,11 @@ export default function Agenda() {
           <span className="grow" />
           <div className="faces">{team.slice(0, 5).map(p => <MiniAvatar key={p.id} avatar={p.avatar} photo={p.photo} name={p.name} size={30} />)}</div>
         </div>
-        {mode === 'mes' ? month() : mode === 'semana' ? week() : list()}
+        {mode === 'mes' ? month() : mode === 'semana' ? week() : mode === 'equipe' ? <VisaoEquipe itens={itens.filter(i => !q || i.a.texto.toLowerCase().includes(ql))} ym={key(cur).slice(0, 7)} sel={selP} onPick={pickP} /> : mode === 'estrategia' ? <VisaoEstrategia itens={itens} ctx={ctx} /> : list()}
       </div>
 
       <aside className="qside">
-        {selItem && selItem.kind !== 'evento' ? <PostCard t={selItem.t} meId={meId} /> : selItem && selItem.kind === 'evento' ? (
+        {pSel ? <PlanoPainel i={pSel} ctx={ctx} /> : selItem && selItem.kind !== 'evento' ? <PostCard t={selItem.t} meId={meId} /> : selItem && selItem.kind === 'evento' ? (
           <div className="panel">
             <div className="eyebrow">{longDay(selItem.e.day)}{selItem.e.time ? ` · ${hh(selItem.e.time)}` : ''}</div>
             <h3 className="ev-title"><Ph n="star" size={18} fill />{selItem.e.title}</h3>
@@ -232,7 +254,7 @@ export default function Agenda() {
             <div className="row gap">{canais && <button className="btn soft sm" onClick={() => setForm('post')}><Ph n="plus" size={14} />Post neste dia</button>}<button className={'btn sm ' + (canais ? 'ghost' : 'soft')} onClick={() => setForm('evento')}><Ph n={canais ? 'star' : 'plus'} size={14} />{canais ? 'Evento' : 'Evento neste dia'}</button></div>
           </div>
         )}
-        {others.length > 0 && (
+        {!pSel && others.length > 0 && (
           <div className="panel">
             <div className="eyebrow">Também no dia {Number(day.slice(8))}</div>
             {others.map(i => (
@@ -245,6 +267,7 @@ export default function Agenda() {
           </div>
         )}
       </aside>
+      {pMod && <PlanoModal i={pMod} ctx={ctx} onClose={() => setPModal(null)} />}
       {form === 'post' && <PostForm day={day} onClose={() => setForm(null)} onDone={id => { setSel(id) }} />}
       {form === 'evento' && <EventForm day={day} onClose={() => setForm(null)} />}
     </div>

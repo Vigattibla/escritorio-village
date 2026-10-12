@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { canAssign, rankName, rankOf } from '../game/ranks'
+import { canAssign, deptOf, rankName, rankOf } from '../game/ranks'
 import { atrasada, hm } from '../game/prazo'
 import { dayKey } from '../game/xp'
 import { acceptRequest, addTask, approverOf, canApprove, canAskReview, canCreateProject, canEditProject, canEditStages, canEditTask, canFinish, canMove, canReassign, canUseAI, CHEFIA, declineRequest, involved, placeTask, reassign, removeStage, run, saveStages, setStatus, setUi, STAGE_KINDS, stageList, stageOf, team as salaTeam, teamOf, toApprove, useStore } from '../store'
@@ -15,6 +15,8 @@ import { setPref, usePref } from '../prefs'
 import { Live } from './Side'
 import { CHANNELS, currentGoal, goalProgress } from './v4'
 import { confirmar } from './Dialogo'
+import { EqTag, EquipesModal } from './Equipes'
+import { gereEquipe } from '../plano/core'
 
 type Group = 'etapa' | 'raias' | 'pessoa'
 type Due = '' | 'late' | 'today' | 'week' | 'none'
@@ -69,6 +71,7 @@ export default function Quadro() {
   const profiles = useStore(s => s.profiles)
   const tasksMap = useStore(s => s.tasks)
   const goalsMap = useStore(s => s.rows.goals)
+  const equipes = useStore(s => s.rows.equipes)
   const stageRows = useStore(s => s.rows.stages)
   const stages = useMemo(() => stageList(stageRows), [stageRows])
   const cols = useMemo(() => colsOf(stages), [stages])
@@ -83,6 +86,8 @@ export default function Quadro() {
   const [mine, setMine] = useState<boolean>(() => load('ev:q:mine', false))
   const [who, setWho] = useState<string[]>([])
   const [due, setDue] = useState<Due>('')
+  const [eq, setEq] = useState('')
+  const [eqModal, setEqModal] = useState(false)
   // busca vinda do Início: lê uma vez e limpa
   const [q, setQ] = useState(() => { try { const v = sessionStorage.getItem('ev:q:find') ?? ''; sessionStorage.removeItem('ev:q:find'); return v } catch { return '' } })
   const [drag, setDrag] = useState<string | null>(null)
@@ -117,7 +122,12 @@ export default function Quadro() {
   const everyone = salaTeam(profiles)
     .sort((a, b) => a.id === meId ? -1 : b.id === meId ? 1 : rankOf(b) - rankOf(a) || a.name.localeCompare(b.name))
   // com projeto aberto: só quem está no time (mestre, donos, ajudantes) + quem eu acabei de colocar
-  const people = everyone.filter(p => !team || team.has(p.id) || p.id === meId || extra.includes(p.id))
+  const eqSet = eq && equipes[eq] ? new Set(equipes[eq].pessoas) : null
+  const eqsDe = (id: string) => Object.values(equipes).filter(e => e.pessoas.includes(id)).sort((a, b) => a.nome.localeCompare(b.nome))
+  const eqList = Object.values(equipes).sort((a, b) => a.nome.localeCompare(b.nome))
+  const euP = profiles[meId]
+  const gereEq = !!euP && (gereEquipe(euP, deptOf(euP)) || gereEquipe(euP, null))
+  const people = everyone.filter(p => (!team || team.has(p.id) || p.id === meId || extra.includes(p.id)) && (!eqSet || eqSet.has(p.id)))
   const outside = team ? everyone.filter(p => !people.includes(p)) : []
   const destaque = usePref('destaque')
   const [rel, setRel] = useState(false)
@@ -126,7 +136,7 @@ export default function Quadro() {
   // concluídas só da semana atual; as de antes ficam no Relatório da semana
   const since = dayKey(segunda())
   const term = q.trim().toLowerCase()
-  const filtered = mine || qApprove || who.length > 0 || !!due || !!term
+  const filtered = mine || qApprove || who.length > 0 || !!due || !!term || !!eqSet
   const projList = Object.values(projects).filter(p => !p.archived || p.id === project).sort((a, b) => a.name.localeCompare(b.name))
 
   const shown = Object.values(tasksMap).filter(t => {
@@ -136,6 +146,7 @@ export default function Quadro() {
     if (mine && !involved(t, meId)) return false
     if (qApprove && !(t.status === 'review' && canApprove(t))) return false
     if (who.length && !who.some(id => t.owner_id === id || t.collaborators.includes(id))) return false
+    if (eqSet && !eqSet.has(t.owner_id) && !t.collaborators.some(id => eqSet.has(id))) return false
     if (term && !`${t.title} ${t.notes}`.toLowerCase().includes(term)) return false
     if (due === 'none') return !t.due
     if (due) {
@@ -169,7 +180,7 @@ export default function Quadro() {
     : group === 'pessoa'
       ? lanePeople
           .map(p => ({
-            key: p.id, owner: p.id, title: p.id === meId ? `${p.name} (você)` : p.name, hint: p.role || rankName(p), canAdd: true,
+            key: p.id, owner: p.id, title: p.id === meId ? `${p.name} (você)` : p.name, hint: [p.role || rankName(p), ...eqsDe(p.id).map(e => e.nome)].join(' · '), canAdd: true,
             head: personHead(p),
             cards: shown.filter(t => t.owner_id === p.id && (t.status !== 'done' || dayKey(t.done_at!) === today)).sort(byStage),
           }))
@@ -223,7 +234,7 @@ export default function Quadro() {
     })())
   }
   const toggleWho = (id: string) => setWho(w => (w.includes(id) ? w.filter(x => x !== id) : [...w, id]))
-  const clear = () => { setMine(false); setWho([]); setDue(''); setQ(''); setUi({ qApprove: false }) }
+  const clear = () => { setMine(false); setWho([]); setDue(''); setQ(''); setEq(''); setUi({ qApprove: false }) }
 
   /** área que recebe cartões (coluna inteira ou célula da raia) */
   const zone = (l: List, cls: string, header?: ReactNode) => {
@@ -330,6 +341,14 @@ export default function Quadro() {
             <option value="none">Sem prazo</option>
           </select>
         </label>
+        {(eqList.length > 0 || gereEq) && <label className={'qchip' + (eqSet ? ' on' : '')} title="Só as tarefas de quem é da equipe">
+          <Ph n="users-three" size={14} />
+          <select value={eqSet ? eq : ''} onChange={e => e.target.value === '+' ? setEqModal(true) : setEq(e.target.value)} aria-label="Equipe">
+            <option value="">Equipe</option>
+            {eqList.map(e => <option key={e.id} value={e.id}>{e.nome} ({e.pessoas.length})</option>)}
+            {gereEq && <option value="+">{eqList.length ? 'Gerir equipes…' : '＋ Criar equipes…'}</option>}
+          </select>
+        </label>}
         <div className="qwho" aria-label="Filtrar por pessoa">
           {people.map(p => (
             <button key={p.id} className={who.includes(p.id) ? 'on' : ''} onClick={() => toggleWho(p.id)} title={`Só de ${p.name}`}>
@@ -340,6 +359,7 @@ export default function Quadro() {
         {filtered && <button className="qclear" onClick={clear}><Icon n="x" size={14} />Limpar</button>}
       </div>
 
+      {eqModal && <EquipesModal onClose={() => setEqModal(false)} />}
       {proj && <ProjectBar p={proj} profiles={profiles} tasks={Object.values(tasksMap).filter(t => t.project_id === proj.id)} />}
 
       {group === 'raias' ? (
@@ -357,7 +377,7 @@ export default function Quadro() {
             <div key={p.id} className={'qlane' + (p.id === meId ? ' me' : '')}>
               <div className="qlane-who">
                 {personHead(p, 34)}
-                <div><b>{p.id === meId ? `${first(p)} (você)` : p.name}</b><small>{p.role || rankName(p)}</small>
+                <div><b>{p.id === meId ? `${first(p)} (você)` : p.name}</b><small>{p.role || rankName(p)}</small>{eqsDe(p.id).length > 0 && <span className="qlane-eq">{eqsDe(p.id).map(e => <EqTag key={e.id} e={e} sm />)}</span>}
                   <small className="qlane-n">{cells.reduce((n, c) => n + (c.status === 'done' ? 0 : c.cards.length), 0)} abertas</small>
                 </div>
               </div>

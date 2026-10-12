@@ -1,15 +1,19 @@
 import { useMemo, useRef, useState } from 'react'
-import { deptOf, rankOf } from '../game/ranks'
+import { deptOf } from '../game/ranks'
 import { importar, type Importado } from '../plano/importar'
 import { nomeMes, parseDia, somaMes } from '../plano/datas'
-import { addTask, deptList, deptName, dropRow, me, putRow, putRows, run, setUi, useStore } from '../store'
-import type { PlanoAcao, PlanoMes, PlanoNucleo, PlanoResp, Profile, Task } from '../types'
+import { chave, CORES, corSig, type Ctx, editaPlano, hoje, mandar, norm, quem, SIT, type Sit, siglas, situacao, membros, gereEquipe } from '../plano/core'
+import { deptList, deptName, dropRow, me, putRow, putRows, run, setUi, useStore } from '../store'
+import type { PlanoAcao, PlanoMes, PlanoNucleo, PlanoResp, Task } from '../types'
 import { Bell } from './Avisos'
 import { Ph } from './Icon'
 import MiniAvatar from './MiniAvatar'
 import SegInd from './SegInd'
 import '../plano/plano.css'
+import { Modal, Pessoas, Rostos, Sig } from '../plano/ui'
 import { confirmar } from './Dialogo'
+import { EquipesModal, EscolheEquipes } from './Equipes'
+import type { PhName } from './ph'
 
 type Modo = 'matriz' | 'mes'
 type Faixa = 'campanha' | 'principal' | 'tematica' | 'oferta' | 'persona'
@@ -20,69 +24,10 @@ const FAIXAS: { k: Faixa; label: string; max: number }[] = [
   { k: 'oferta', label: 'Produto / oferta', max: 2000 },
   { k: 'persona', label: 'Persona e foco', max: 2000 },
 ]
-const hoje = () => new Date().toISOString().slice(0, 7)
-const norm = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
-const siglas = (resp: string) => resp.toUpperCase().split(/\s*(?:\/|,|\+|&|\bE\b)\s*/).map(x => x.trim()).filter(Boolean)
-
-/** coluna/linha da ação: a sigla inteira se ela está na legenda; senão a primeira; '' = sem responsável */
-const chave = (a: PlanoAcao, resp: Record<string, PlanoResp>) => { const k = a.resp.trim().toUpperCase(); return resp[k] ? k : siglas(k)[0] ?? '' }
-const CORES = ['#2440FF', '#E8620C', '#1F9D55', '#C2189B', '#0E8FA8', '#7B4DFF', '#B88A00', '#D93A3F']
-/** cor fixa por sigla (a primeira), igual em toda a tela */
-const corSig = (s: string) => { let h = 0; for (const c of siglas(s)[0] ?? s) h = (h * 31 + c.charCodeAt(0)) | 0; return s ? CORES[Math.abs(h) % CORES.length] : '#A39C8E' }
 const novoResp = (id: string): PlanoResp => ({ id, nome: '', dept: null, pessoas: [], created_at: new Date().toISOString() })
 type Agr = 'resp' | 'nucleo'
 const AGR = 'pl-agrupa'
 const lerAgr = (): Agr => { try { return localStorage.getItem(AGR) === 'nucleo' ? 'nucleo' : 'resp' } catch { return 'resp' } }
-
-function Sig({ s, big }: { s: string; big?: boolean }) {
-  return <em className={'pl-sig' + (big ? ' big' : '')} style={{ ['--sc' as string]: corSig(s) }}>{s}</em>
-}
-function Rostos({ ids, profiles, size = 24, max = 4 }: { ids: string[]; profiles: Record<string, Profile>; size?: number; max?: number }) {
-  return <span className="faces">{ids.slice(0, max).map(id => <MiniAvatar key={id} avatar={profiles[id]?.avatar ?? null} photo={profiles[id]?.photo ?? null} name={profiles[id]?.name} size={size} />)}{ids.length > max && <i className="pl-mais-n">+{ids.length - max}</i>}</span>
-}
-
-const editaPlano = (p: Profile | undefined) => !!p && (!!p.is_admin || rankOf(p) === 4 || deptOf(p) === 'marketing')
-
-/** quem executa: pessoas da ação; senão, as da sigla (RESP.) ou alguém com esse nome; sala idem */
-function quem(a: PlanoAcao, resp: Record<string, PlanoResp>, profiles: Record<string, Profile>) {
-  let pessoas = a.pessoas.filter(id => profiles[id])
-  const rs = resp[a.resp.toUpperCase()] ? [resp[a.resp.toUpperCase()]] : siglas(a.resp).map(c => resp[c]).filter(Boolean)
-  if (!pessoas.length) pessoas = [...new Set(rs.flatMap(r => r.pessoas))].filter(id => profiles[id])
-  if (!pessoas.length && a.resp && !rs.length) {
-    const n = norm(a.resp.trim())
-    pessoas = Object.values(profiles).filter(p => n.length > 2 && norm(p.name).split(' ')[0] === n.split(' ')[0]).map(p => p.id).slice(0, 1)
-  }
-  const dept = a.dept ?? rs.find(r => r.dept)?.dept ?? (pessoas[0] ? deptOf(profiles[pessoas[0]]) : null)
-  return { pessoas, dept }
-}
-
-type Sit = 'livre' | 'enviada' | 'fazendo' | 'feita'
-function situacao(a: PlanoAcao, tasks: Record<string, Task>): Sit {
-  if (!a.tarefas.length) return 'livre'
-  const ts = a.tarefas.map(id => tasks[id]).filter(Boolean)
-  if (ts.length && ts.every(t => t.status === 'done')) return 'feita'
-  if (ts.some(t => t.status === 'doing' || t.status === 'review')) return 'fazendo'
-  return 'enviada'
-}
-const SIT: Record<Sit, string> = { livre: 'Ainda não foi pro quadro', enviada: 'No quadro', fazendo: 'Em andamento', feita: 'Feita' }
-
-/** cria a tarefa no quadro da sala de quem executa e guarda o vínculo na ação */
-async function mandar(a: PlanoAcao, ctx: { resp: Record<string, PlanoResp>; profiles: Record<string, Profile>; meses: Record<string, PlanoMes>; nucleos: Record<string, PlanoNucleo> }) {
-  const { pessoas } = quem(a, ctx.resp, ctx.profiles)
-  if (!pessoas.length) throw new Error(`Escolha quem faz “${a.texto.slice(0, 40)}”.`)
-  const { start, due } = parseDia(a.dia, a.mes)
-  const m = ctx.meses[`${a.ciclo}:${a.mes}`], n = ctx.nucleos[a.nucleo]
-  const title = a.texto.length > 200 ? a.texto.slice(0, 197).trimEnd() + '…' : a.texto
-  const notes = [
-    `Plano de marketing · ${nomeMes(a.mes)}${m?.campanha ? ' · ' + m.campanha : ''}`,
-    n ? `Núcleo: ${n.nome}` : '',
-    a.texto.length > 200 ? a.texto : '',
-    a.estrategia ? `Estratégia: ${a.estrategia}` : '',
-    m?.estrategia ? `Estratégia do mês: ${m.estrategia}` : '',
-  ].filter(Boolean).join('\n\n')
-  const t = await addTask(pessoas[0], title, due, notes, 'todo', null, { start: start < due ? start : null, collaborators: pessoas.slice(1) })
-  await putRow('plano_acoes', { ...a, tarefas: [...a.tarefas, t.id] })
-}
 
 export default function Plano() {
   const rows = useStore(s => s.rows)
@@ -107,20 +52,21 @@ export default function Plano() {
   const [novo, setNovo] = useState<Base | null>(null)
   const [nuc, setNuc] = useState<PlanoNucleo | 'novo' | null>(null)
   const [respOpen, setRespOpen] = useState<string | boolean>(false)
+  const [eqOpen, setEqOpen] = useState(false)
   const [agr, setAgr] = useState<Agr>(lerAgr)
   const agrupa = (v: Agr) => { setAgr(v); try { localStorage.setItem(AGR, v) } catch { /* sem storage */ } }
   const [rf, setRf] = useState('')
   const [prev, setPrev] = useState<Importado | null>(null)
   const [lendo, setLendo] = useState(false)
   const file = useRef<HTMLInputElement>(null)
-  const ctx = { resp: rows.plano_resp, profiles, meses: rows.plano_meses, nucleos: rows.plano_nucleos }
+  const ctx: Ctx = { resp: rows.plano_resp, profiles, meses: rows.plano_meses, nucleos: rows.plano_nucleos, equipes: rows.equipes }
 
   const ehData = (a: PlanoAcao) => rows.plano_nucleos[a.nucleo]?.tipo === 'datas'
   const chaves = useMemo(() => [...new Set(acoes.filter(a => rows.plano_nucleos[a.nucleo]?.tipo !== 'datas').map(a => chave(a, rows.plano_resp)))].sort((a, b) => a === '' ? -1 : b === '' ? 1 : a.localeCompare(b)), [acoes, rows.plano_nucleos, rows.plano_resp])
   const passa = (a: PlanoAcao) => {
     if (q && !norm(`${a.texto} ${a.resp} ${a.dia}`).includes(norm(q))) return false
     if (ehData(a)) return true
-    const qq = (sala || rf === '@eu') ? quem(a, rows.plano_resp, profiles) : null
+    const qq = (sala || rf === '@eu') ? quem(a, rows.plano_resp, profiles, rows.equipes) : null
     if (sala && qq?.dept !== sala) return false
     if (rf === '@eu') return !!meP && !!qq?.pessoas.includes(meP.id)
     if (rf && chave(a, rows.plano_resp) !== rf && !siglas(a.resp).includes(rf)) return false
@@ -189,6 +135,7 @@ export default function Plano() {
         </label>
         <label className="qchip pl-busca"><Ph n="magnifying-glass" size={15} /><input value={q} onChange={e => setQ(e.target.value)} placeholder="Buscar ação" aria-label="Buscar ação" /></label>
         <span className="grow" />
+        {(can || gereEquipe(meP, meP ? deptOf(meP) : null)) && <button className="btn soft" onClick={() => setEqOpen(true)} title="Quem é de cada equipe (Design, Edição de vídeo…)"><Ph n="users-three" size={18} />Equipes</button>}
         {can && <button className="btn soft" onClick={() => setRespOpen(true)} title="Quem é cada sigla (MKT, DES…) e quem recebe as tarefas"><Ph n="list-bullets" size={18} />Legenda</button>}
         {can && <button className="btn soft" disabled={lendo} onClick={() => file.current?.click()} title="Atualiza o plano com uma nova versão da planilha"><Ph n="upload-simple" size={18} />{lendo ? 'Lendo…' : 'Importar'}</button>}
         {input}
@@ -204,6 +151,7 @@ export default function Plano() {
       {edit && <AcaoModal a={edit === 'novo' ? null : rows.plano_acoes[edit.id] ?? edit} base={novo} ciclo={cc} meses={meses} nucleos={nucleos} can={can} ctx={ctx} tasks={tasks}
         onClose={() => { setEdit(null); setNovo(null) }} />}
       {nuc && <NucleoModal n={nuc === 'novo' ? null : nuc} ciclo={cc} pos={nucleos.length} onClose={() => setNuc(null)} />}
+      {eqOpen && <EquipesModal onClose={() => setEqOpen(false)} />}
       {respOpen && <RespModal acoes={acoes} foco={typeof respOpen === 'string' ? respOpen : null} onClose={() => setRespOpen(false)} />}
       {prev && <Previa p={prev} onClose={() => setPrev(null)} onDone={c => { setCiclo(c); setPrev(null) }} />}
     </div>
@@ -211,10 +159,10 @@ export default function Plano() {
 }
 
 /* ---------------- Ano: núcleos × meses ---------------- */
-type Base = { nucleo: string; mes: string; resp?: string }
+export type Base = { nucleo: string; mes: string; resp?: string }
 function Matriz({ meses, nucleos, acoes, passa, can, mesAtual, agr, chaves, ctx, onMes, onAcao, onNova, onNucleo, onResp }: {
   meses: PlanoMes[]; nucleos: PlanoNucleo[]; acoes: PlanoAcao[]; passa: (a: PlanoAcao) => boolean; can: boolean; mesAtual: string; agr: Agr; chaves: string[]
-  ctx: Parameters<typeof mandar>[1]; onMes: (m: string) => void; onAcao: (a: PlanoAcao) => void; onNova: (b: Base) => void; onNucleo: (n: PlanoNucleo | 'novo') => void; onResp: (k: string) => void
+  ctx: Ctx; onMes: (m: string) => void; onAcao: (a: PlanoAcao) => void; onNova: (b: Base) => void; onNucleo: (n: PlanoNucleo | 'novo') => void; onResp: (k: string) => void
 }) {
   const tasks = useStore(s => s.tasks)
   const por = useMemo(() => {
@@ -274,7 +222,7 @@ function Matriz({ meses, nucleos, acoes, passa, can, mesAtual, agr, chaves, ctx,
             </tr>
           ))}
           {linhas.map(k => {
-            const r = ctx.resp[k], eq = (r?.pessoas ?? []).filter(id => ctx.profiles[id])
+            const r = ctx.resp[k], eq = membros(r, ctx.equipes, ctx.profiles)
             return (
               <tr key={'r:' + k} className="pl-rrow" style={{ ['--sc' as string]: corSig(k) }}>
                 <th><button className="pl-quem" onClick={() => onResp(k)} disabled={!can} title={can ? 'Quem recebe as tarefas desta sigla' : undefined}>
@@ -313,7 +261,7 @@ function Chip({ a, datas, sit, meta, onClick }: { a: PlanoAcao; datas?: boolean;
 /* ---------------- Mês: campanha + ações por núcleo ---------------- */
 function Mes({ m, meses, nucleos, acoes, passa, can, ctx, tasks, agr, onMes, onAcao, onNova }: {
   m: PlanoMes | undefined; meses: PlanoMes[]; nucleos: PlanoNucleo[]; acoes: PlanoAcao[]; passa: (a: PlanoAcao) => boolean; can: boolean
-  ctx: Parameters<typeof mandar>[1]; tasks: Record<string, Task>; agr: Agr; onMes: (m: string) => void; onAcao: (a: PlanoAcao) => void; onNova: (n: string, resp?: string) => void
+  ctx: Ctx; tasks: Record<string, Task>; agr: Agr; onMes: (m: string) => void; onAcao: (a: PlanoAcao) => void; onNova: (n: string, resp?: string) => void
 }) {
   const [indo, setIndo] = useState(false)
   if (!m) return null
@@ -322,7 +270,7 @@ function Mes({ m, meses, nucleos, acoes, passa, can, ctx, tasks, agr, onMes, onA
   const dts = vis.filter(a => datas.has(a.nucleo)).sort((a, b) => parseDia(a.dia, a.mes).start.localeCompare(parseDia(b.dia, b.mes).start))
   const acs = vis.filter(a => !datas.has(a.nucleo))
   const livres = acs.filter(a => !a.tarefas.length)
-  const prontas = livres.filter(a => quem(a, ctx.resp, ctx.profiles).pessoas.length)
+  const prontas = livres.filter(a => quem(a, ctx.resp, ctx.profiles, ctx.equipes).pessoas.length)
   const feitas = acs.filter(a => situacao(a, tasks) === 'feita').length
   const salva = (k: keyof PlanoMes, v: string) => { if (v !== m[k]) run(putRow('plano_meses', { ...m, [k]: v })) }
   const tudo = async () => {
@@ -386,7 +334,7 @@ function Mes({ m, meses, nucleos, acoes, passa, can, ctx, tasks, agr, onMes, onA
 
 /* ---------------- Mês por responsável: uma coluna por sigla, arrasta pra trocar ---------------- */
 function Raias({ acs, ctx, tasks, can, onAcao, onNova }: {
-  acs: PlanoAcao[]; ctx: Parameters<typeof mandar>[1]; tasks: Record<string, Task>; can: boolean; onAcao: (a: PlanoAcao) => void; onNova: (resp: string) => void
+  acs: PlanoAcao[]; ctx: Ctx; tasks: Record<string, Task>; can: boolean; onAcao: (a: PlanoAcao) => void; onNova: (resp: string) => void
 }) {
   const [arr, setArr] = useState<string | null>(null)
   const [sobre, setSobre] = useState<string | null>(null)
@@ -408,7 +356,7 @@ function Raias({ acs, ctx, tasks, can, onAcao, onNova }: {
 }
 
 function Raia({ k, xs, ctx, tasks, can, alvo, onSobre, onSolta, onDrag, onAcao, onNova }: {
-  k: string; xs: PlanoAcao[]; ctx: Parameters<typeof mandar>[1]; tasks: Record<string, Task>; can: boolean; alvo: boolean
+  k: string; xs: PlanoAcao[]; ctx: Ctx; tasks: Record<string, Task>; can: boolean; alvo: boolean
   onSobre: (on: boolean) => void; onSolta: () => void; onDrag: (id: string | null) => void; onAcao: (a: PlanoAcao) => void; onNova: () => void
 }) {
   const [eq, setEq] = useState(false)
@@ -416,8 +364,8 @@ function Raia({ k, xs, ctx, tasks, can, alvo, onSobre, onSolta, onDrag, onAcao, 
   const r = ctx.resp[k]
   const sits = xs.map(a => situacao(a, tasks))
   const noQ = sits.filter(s => s !== 'livre').length, feitas = sits.filter(s => s === 'feita').length
-  const prontas = xs.filter((a, i) => sits[i] === 'livre' && quem(a, ctx.resp, ctx.profiles).pessoas.length)
-  const equipe = (r?.pessoas ?? []).filter(id => ctx.profiles[id])
+  const prontas = xs.filter((a, i) => sits[i] === 'livre' && quem(a, ctx.resp, ctx.profiles, ctx.equipes).pessoas.length)
+  const equipe = membros(r, ctx.equipes, ctx.profiles)
   const dept = r?.dept ?? (equipe[0] ? deptOf(ctx.profiles[equipe[0]]) : null)
   const nome = k ? r?.nome || k : 'Sem responsável'
   const manda = async () => {
@@ -453,9 +401,9 @@ function Raia({ k, xs, ctx, tasks, can, alvo, onSobre, onSolta, onDrag, onAcao, 
   )
 }
 
-function Cartao({ a, k, sit, ctx, can, onOpen, onDrag }: { a: PlanoAcao; k: string; sit: Sit; ctx: Parameters<typeof mandar>[1]; can: boolean; onOpen: () => void; onDrag: (id: string | null) => void }) {
+function Cartao({ a, k, sit, ctx, can, onOpen, onDrag }: { a: PlanoAcao; k: string; sit: Sit; ctx: Ctx; can: boolean; onOpen: () => void; onDrag: (id: string | null) => void }) {
   const [indo, setIndo] = useState(false)
-  const { pessoas } = quem(a, ctx.resp, ctx.profiles)
+  const { pessoas } = quem(a, ctx.resp, ctx.profiles, ctx.equipes)
   const extra = a.resp.trim().toUpperCase() === k ? [] : siglas(a.resp).filter(s => s !== k)
   const solto = can && sit === 'livre'
   return (
@@ -481,6 +429,7 @@ function Cartao({ a, k, sit, ctx, can, onOpen, onDrag }: { a: PlanoAcao; k: stri
 function Equipe({ r }: { r: PlanoResp }) {
   const depts = deptList()
   const save = (p: Partial<PlanoResp>) => run(putRow('plano_resp', { ...r, ...p }))
+  const [gerir, setGerir] = useState(false)
   return (
     <div className="pl-eq">
       <div className="pl-eq-l">
@@ -489,15 +438,18 @@ function Equipe({ r }: { r: PlanoResp }) {
           <option value="">Sala…</option>{depts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
         </select>
       </div>
-      <span className="pl-lab">Quem recebe <small className="muted">· a primeira pessoa é a dona da tarefa</small></span>
+      <span className="pl-lab">Equipes <small className="muted">· quem é delas recebe as ações dessa sigla</small></span>
+      <EscolheEquipes sel={r.equipes ?? []} onChange={ids => save({ equipes: ids })} onGerir={() => setGerir(true)} />
+      <span className="pl-lab">Pessoas <small className="muted">· além das equipes; a primeira é a dona da tarefa</small></span>
       <Pessoas sel={r.pessoas} sala={r.dept} onChange={ids => save({ pessoas: ids })} />
+      {gerir && <EquipesModal onClose={() => setGerir(false)} />}
     </div>
   )
 }
 
-function Linha({ a, ctx, tasks, can, onOpen }: { a: PlanoAcao; ctx: Parameters<typeof mandar>[1]; tasks: Record<string, Task>; can: boolean; onOpen: () => void }) {
+function Linha({ a, ctx, tasks, can, onOpen }: { a: PlanoAcao; ctx: Ctx; tasks: Record<string, Task>; can: boolean; onOpen: () => void }) {
   const [indo, setIndo] = useState(false)
-  const { pessoas, dept } = quem(a, ctx.resp, ctx.profiles)
+  const { pessoas, dept } = quem(a, ctx.resp, ctx.profiles, ctx.equipes)
   const sit = situacao(a, tasks)
   return (
     <div className={'pl-linha s-' + sit}>
@@ -528,34 +480,9 @@ function Campo({ can, v, max, ph, onSave, area, cls = '' }: { can: boolean; v: s
 }
 
 /* ---------------- modais ---------------- */
-function Modal({ title, onClose, children, wide }: { title: string; onClose: () => void; children: React.ReactNode; wide?: boolean }) {
-  return (
-    <div className="modal-bg" onMouseDown={e => e.target === e.currentTarget && onClose()} onKeyDown={e => e.key === 'Escape' && onClose()}>
-      <div className={'modal pl-modal' + (wide ? ' wide' : '')} role="dialog" aria-label={title}>
-        <header className="pl-mh"><h2>{title}</h2><button className="icon-btn" onClick={onClose} aria-label="Fechar"><Ph n="x" size={18} /></button></header>
-        {children}
-      </div>
-    </div>
-  )
-}
-
-function Pessoas({ sel, sala, onChange }: { sel: string[]; sala: string | null; onChange: (ids: string[]) => void }) {
-  const profiles = useStore(s => s.profiles)
-  const [todas, setTodas] = useState(false)
-  const lista = Object.values(profiles).filter(p => todas || !sala || deptOf(p) === sala || sel.includes(p.id)).sort((a, b) => Number(sel.includes(b.id)) - Number(sel.includes(a.id)) || a.name.localeCompare(b.name))
-  return (
-    <div className="pl-pess">
-      {lista.map(p => <button type="button" key={p.id} className={sel.includes(p.id) ? 'on' : ''} onClick={() => onChange(sel.includes(p.id) ? sel.filter(x => x !== p.id) : [...sel, p.id])}>
-        <MiniAvatar avatar={p.avatar} photo={p.photo} name={p.name} size={24} />{p.name.split(' ')[0]}{sel[0] === p.id && sel.length > 1 && <small>dono</small>}</button>)}
-      {sala && !todas && <button type="button" className="pl-mais" onClick={() => setTodas(true)}>Outras salas…</button>}
-      {!lista.length && <small className="muted">Ninguém nessa sala ainda.</small>}
-    </div>
-  )
-}
-
-function AcaoModal({ a, base, ciclo, meses, nucleos, can, ctx, tasks, onClose }: {
+export function AcaoModal({ a, base, ciclo, meses, nucleos, can, ctx, tasks, onClose }: {
   a: PlanoAcao | null; base: Base | null; ciclo: string; meses: PlanoMes[]; nucleos: PlanoNucleo[]; can: boolean
-  ctx: Parameters<typeof mandar>[1]; tasks: Record<string, Task>; onClose: () => void
+  ctx: Ctx; tasks: Record<string, Task>; onClose: () => void
 }) {
   const depts = deptList()
   const [f, setF] = useState<PlanoAcao>(() => a ?? {
@@ -564,8 +491,8 @@ function AcaoModal({ a, base, ciclo, meses, nucleos, can, ctx, tasks, onClose }:
   })
   const [indo, setIndo] = useState(false)
   const datas = ctx.nucleos[f.nucleo]?.tipo === 'datas'
-  const auto = quem({ ...f, pessoas: [], dept: null }, ctx.resp, ctx.profiles)
-  const ef = quem(f, ctx.resp, ctx.profiles)
+  const auto = quem({ ...f, pessoas: [], dept: null, dono: null }, ctx.resp, ctx.profiles, ctx.equipes)
+  const ef = quem(f, ctx.resp, ctx.profiles, ctx.equipes)
   const up = (p: Partial<PlanoAcao>) => setF(x => ({ ...x, ...p }))
   const ok = f.texto.trim() && f.nucleo && f.mes
   const salvar = async () => { if (ok) await putRow('plano_acoes', { ...f, texto: f.texto.trim(), dia: f.dia.trim(), resp: f.resp.trim().toUpperCase(), estrategia: f.estrategia.trim() }) }
@@ -615,15 +542,23 @@ function AcaoModal({ a, base, ciclo, meses, nucleos, can, ctx, tasks, onClose }:
   )
 }
 
-function NucleoModal({ n, ciclo, pos, onClose }: { n: PlanoNucleo | null; ciclo: string; pos: number; onClose: () => void }) {
+export const ICONES: PhName[] = ['users-three', 'megaphone', 'storefront', 'house', 'hand-heart', 'gift', 'globe-simple', 'building-office', 'bed', 'star', 'target', 'trophy', 'film-strip', 'instagram-logo', 'coffee', 'medal', 'crown', 'sparkle']
+export function NucleoModal({ n, ciclo, pos, onClose, tipo0 = 'acoes', titulo }: { n: PlanoNucleo | null; ciclo: string; pos: number; onClose: () => void; tipo0?: PlanoNucleo['tipo']; titulo?: string }) {
   const [nome, setNome] = useState(n?.nome ?? '')
-  const [tipo, setTipo] = useState<PlanoNucleo['tipo']>(n?.tipo ?? 'acoes')
-  const save = () => putRow('plano_nucleos', n ? { ...n, nome: nome.trim(), tipo } : { id: `${ciclo}:${crypto.randomUUID().slice(0, 8)}`, ciclo, nome: nome.trim(), pos, tipo, created_at: new Date().toISOString() })
+  const [tipo, setTipo] = useState<PlanoNucleo['tipo']>(n?.tipo ?? tipo0)
+  const [cor, setCor] = useState<string | null>(n?.cor ?? null)
+  const [icone, setIcone] = useState<string | null>(n?.icone ?? null)
+  const save = () => putRow('plano_nucleos', n ? { ...n, nome: nome.trim(), tipo, cor, icone } : { id: `${ciclo}:${crypto.randomUUID().slice(0, 8)}`, ciclo, nome: nome.trim(), pos, tipo, cor, icone, created_at: new Date().toISOString() })
+  const cc = cor ?? corSig(nome || '?')
   return (
-    <Modal title={n ? 'Núcleo' : 'Novo núcleo'} onClose={onClose}>
+    <Modal title={titulo ?? (n ? 'Núcleo' : 'Novo núcleo')} onClose={onClose}>
       <form className="pl-form one" onSubmit={e => { e.preventDefault(); if (nome.trim()) run(save().then(onClose)) }}>
         <label><span>Nome</span><input value={nome} onChange={e => setNome(e.target.value)} maxLength={120} placeholder="Ex.: Instagram e conteúdo" autoFocus required /></label>
         <label><span>Tipo</span><select value={tipo} onChange={e => setTipo(e.target.value as PlanoNucleo['tipo'])}><option value="acoes">Ações (viram tarefas)</option><option value="datas">Datas comemorativas</option></select></label>
+        {tipo === 'acoes' && <div className="pl-cores"><span className="pl-lab">Cor e ícone</span>
+          <div className="pl-sw">{CORES.map(c => <button type="button" key={c} className={cc === c ? 'on' : ''} style={{ background: c }} onClick={() => setCor(c)} aria-label={`Cor ${c}`} />)}</div>
+          <div className="pl-ics" style={{ ['--sc' as string]: cc }}>{ICONES.map(i => <button type="button" key={i} className={(icone ?? 'users-three') === i ? 'on' : ''} onClick={() => setIcone(i)} aria-label={i}><Ph n={i} size={18} fill={(icone ?? 'users-three') === i} /></button>)}</div>
+        </div>}
         <footer className="pl-foot">
           {n && <button type="button" className="btn ghost danger" onClick={async () => { if (await confirmar(`Apagar o núcleo “${n.nome}”?`, { text: 'As ações dele saem do plano. As tarefas já criadas continuam.', danger: true })) { run(dropRow('plano_nucleos', n.id)); onClose() } }}><Ph n="trash" size={16} />Apagar</button>}
           <span className="grow" /><button className="btn accent" disabled={!nome.trim()}>Salvar</button>
@@ -637,6 +572,7 @@ function NucleoModal({ n, ciclo, pos, onClose }: { n: PlanoNucleo | null; ciclo:
 function RespModal({ acoes, foco, onClose }: { acoes: PlanoAcao[]; foco: string | null; onClose: () => void }) {
   const resp = useStore(s => s.rows.plano_resp)
   const profiles = useStore(s => s.profiles)
+  const equipes = useStore(s => s.rows.equipes)
   const usadas = [...new Set(acoes.flatMap(a => resp[a.resp] ? [a.resp] : siglas(a.resp)))].filter(s => s && s.length <= 12)
   const ids = [...new Set([...Object.keys(resp), ...usadas])].sort()
   const [open, setOpen] = useState<string | null>(foco)
@@ -647,7 +583,7 @@ function RespModal({ acoes, foco, onClose }: { acoes: PlanoAcao[]; foco: string 
         {ids.map(id => {
           const r = resp[id] ?? novoResp(id)
           const n = acoes.filter(a => a.resp === id || siglas(a.resp).includes(id)).length
-          const eq = r.pessoas.filter(p => profiles[p])
+          const eq = membros(r, equipes, profiles)
           return (
             <div key={id} className={'pl-r' + (open === id ? ' on' : '')} style={{ ['--sc' as string]: corSig(id) }}>
               <button type="button" className="pl-r-top" onClick={() => setOpen(open === id ? null : id)} aria-expanded={open === id}>

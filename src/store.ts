@@ -76,7 +76,7 @@ export interface State {
 
 
 const initial: State = {
-  phase: 'loading', meId: null, accountName: '', error: '', profiles: {}, tasks: {}, messages: [], notes: [], projects: {}, rows: { events: {}, goals: {}, stickers: {}, flows: {}, stages: {}, groups: {}, rooms: {}, carpenters: {}, depts: {}, brand: {}, quartos: {}, vendas: {}, ajustes: {}, metas_venda: {}, vendas_cfg: {}, campanhas: {}, caderno: {}, jogos_pontos: {}, plano_meses: {}, plano_nucleos: {}, plano_acoes: {}, plano_resp: {} }, online: new Set(),
+  phase: 'loading', meId: null, accountName: '', error: '', profiles: {}, tasks: {}, messages: [], notes: [], projects: {}, rows: { events: {}, goals: {}, stickers: {}, flows: {}, stages: {}, groups: {}, rooms: {}, carpenters: {}, depts: {}, brand: {}, quartos: {}, vendas: {}, ajustes: {}, metas_venda: {}, vendas_cfg: {}, campanhas: {}, caderno: {}, jogos_pontos: {}, plano_meses: {}, plano_nucleos: {}, plano_acoes: {}, plano_resp: {}, equipes: {} }, online: new Set(),
   tab: 'mesa', viewing: null, channel: 'geral', reads: {}, requestTo: null, task: null, editing: false, notices: [], pipOpen: false, view: 'quadro' as View, wallet: null, drawer: false,
   project: '', projectEdit: null, aiOpen: false, chatOpen: false, lousa: false, jogo: null, bellOpen: false, qApprove: false, flow: null, sheet: false, stickTo: null, sala: DEPT0, here: DEPT0,
 }
@@ -469,6 +469,28 @@ export async function setSalaGerente(id: string, on: boolean) {
   onRow('depts', { ...d, sala_gerente: on })
   try { await backend.setSalaGerente(id, on) } catch (e) { onRow('depts', d); throw e }
 }
+/** agenda do plano: muda o dia/a pessoa da ação (volta se o servidor recusar) */
+export async function planoAgendar(id: string, data: string | null, dono: string | null) {
+  const a = state.rows.plano_acoes[id]
+  if (!a) return
+  onRow('plano_acoes', { ...a, data, dono })
+  try { await backend.planoAgendar(id, data, dono) } catch (e) { onRow('plano_acoes', a); throw e }
+}
+export async function planoReservar(id: string, tarefa: string) {
+  const a = state.rows.plano_acoes[id]
+  if (!a || a.tarefas.length) return false
+  onRow('plano_acoes', { ...a, tarefas: [tarefa] })
+  try {
+    const ok = await backend.planoReservar(id, tarefa)
+    if (!ok && state.rows.plano_acoes[id]?.tarefas[0] === tarefa) onRow('plano_acoes', a)
+    return ok
+  } catch (e) { onRow('plano_acoes', a); throw e }
+}
+export async function planoSoltar(id: string, tarefa: string) {
+  const a = state.rows.plano_acoes[id]
+  if (a) onRow('plano_acoes', { ...a, tarefas: a.tarefas.filter(t => t !== tarefa) })
+  await backend.planoSoltar(id, tarefa)
+}
 /** a sala trabalha com publicação? (posts, canais). Marketing antigo sem a coluna conta como sim */
 export const hasCanais = (id: string = state.sala, s: State = state) => s.rows.depts[id]?.canais ?? id === DEPT0
 /** bandeira da porta (ícone Phosphor) e se a sala publica: mesma regra da porta */
@@ -566,11 +588,11 @@ async function putTask(t: Task) {
  * Na própria pasta ou de quem tem cargo menor: entra direto (na etapa pedida).
  * Senão (ou se `status` = 'inbox') vira pedido para a pessoa aceitar.
  */
-export async function addTask(owner: string, title: string, due: string | null = null, notes = '', status: TaskStatus = 'todo', project: string | null = null, extra: Pick<Partial<Task>, 'priority' | 'remind_at' | 'due_time' | 'channel' | 'publish_at' | 'notes' | 'stage' | 'drive' | 'start' | 'collaborators'> = {}) {
+export async function addTask(owner: string, title: string, due: string | null = null, notes = '', status: TaskStatus = 'todo', project: string | null = null, extra: Pick<Partial<Task>, 'id' | 'priority' | 'remind_at' | 'due_time' | 'channel' | 'publish_at' | 'notes' | 'stage' | 'drive' | 'start' | 'collaborators'> = {}) {
   const direct = canAssign(me(), state.profiles[owner])
   if (status === 'review' || status === 'done') status = 'todo' // entrega passa pela etapa certa
   const t: Task = {
-    id: crypto.randomUUID(), owner_id: owner, created_by: state.meId!, title: title.trim(), notes, status: direct && status !== 'inbox' ? status : 'inbox',
+    id: extra.id ?? crypto.randomUUID(), owner_id: owner, created_by: state.meId!, title: title.trim(), notes, status: direct && status !== 'inbox' ? status : 'inbox',
     start: extra.start ?? null, due, due_time: (due && extra.due_time) || null, collaborators: (extra.collaborators ?? []).filter(c => c !== owner), attachments: [], position: Date.now(), created_at: new Date().toISOString(),
     done_at: null, project_id: project || null, criteria: [], reviews: [],
     priority: extra.priority ?? null, checklist: [], remind_at: extra.remind_at ?? null,

@@ -177,6 +177,25 @@ export class DemoBackend implements Backend {
     return me
   }
 
+  async planoAgendar(id: string, data: string | null, dono: string | null) {
+    const a = read<Record<string, Rows['plano_acoes']>>(K.row + 'plano_acoes', {})[id]
+    if (!a) throw new Error('Essa ação não está mais no plano.')
+    await this.upsertRow('plano_acoes', { ...a, data, dono })
+  }
+
+  async planoReservar(id: string, tarefa: string) {
+    const a = read<Record<string, Rows['plano_acoes']>>(K.row + 'plano_acoes', {})[id]
+    if (!a) throw new Error('Essa ação não está mais no plano.')
+    if (a.tarefas.length) return false
+    await this.upsertRow('plano_acoes', { ...a, tarefas: [tarefa] })
+    return true
+  }
+
+  async planoSoltar(id: string, tarefa: string) {
+    const a = read<Record<string, Rows['plano_acoes']>>(K.row + 'plano_acoes', {})[id]
+    if (a) await this.upsertRow('plano_acoes', { ...a, tarefas: a.tarefas.filter(t => t !== tarefa) })
+  }
+
   async createAccount(user: string, password: string, name: string, rank: number) {
     const me = this.manager(undefined, rank)
     if (!validUser(user)) throw new Error('Usuário inválido: use letras, números, ponto ou traço.')

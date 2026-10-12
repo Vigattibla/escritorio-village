@@ -40,7 +40,7 @@ const PALPITE: [RegExp, RegExp][] = [
   [/^fin$/, /financ/], [/^rh$/, /\brh\b|pessoas|gente/],
 ]
 
-export async function importar(file: File, depts: Dept[], atual: { [K in 'plano_meses' | 'plano_acoes' | 'plano_resp']: Record<string, Rows[K]> }): Promise<Importado> {
+export async function importar(file: File, depts: Dept[], atual: { [K in 'plano_meses' | 'plano_acoes' | 'plano_resp']: Record<string, Rows[K]> } & { plano_nucleos?: Record<string, Rows['plano_nucleos']> }): Promise<Importado> {
   const sheets = await readXlsx(file)
   let sh: Sheet | undefined, h = 0
   for (const s of sheets) {
@@ -84,7 +84,7 @@ export async function importar(file: File, depts: Dept[], atual: { [K in 'plano_
     const own = sh.cells.get(key(r, 1))
     const merged = sh.merges.some(m => m.c0 === 1 && r > m.r0 && r <= m.r1)
     if (own && !merged) {
-      cur = { id: `${ciclo}:n${nucleos.length}`, ciclo, nome: own.slice(0, 120), pos: nucleos.length, tipo: /calend|datas comemor/.test(norm(own)) ? 'datas' : 'acoes', created_at: now }
+      cur = { id: `${ciclo}:n${nucleos.length}`, ciclo, nome: own.slice(0, 120), pos: nucleos.length, tipo: /calend|datas comemor/.test(norm(own)) ? 'datas' : 'acoes', cor: atual.plano_nucleos?.[`${ciclo}:n${nucleos.length}`]?.cor ?? null, icone: atual.plano_nucleos?.[`${ciclo}:n${nucleos.length}`]?.icone ?? null, created_at: now }
       nucleos.push(cur)
       linha = 0
     } else linha++
@@ -96,7 +96,7 @@ export async function importar(file: File, depts: Dept[], atual: { [K in 'plano_
       const old = atual.plano_acoes[id]
       acoes.push({
         id, ciclo, nucleo: cur.id, pos: linha, mes, dia: (sh.cells.get(key(r, c)) ?? '').slice(0, 40), resp: (sh.cells.get(key(r, c + 1)) ?? '').toUpperCase().slice(0, 60),
-        texto: texto.slice(0, 1000), estrategia: old?.estrategia ?? '', dept: old?.dept ?? null, pessoas: old?.pessoas ?? [], tarefas: old?.tarefas ?? [],
+        texto: texto.slice(0, 1000), estrategia: old?.estrategia ?? '', dept: old?.dept ?? null, pessoas: old?.pessoas ?? [], tarefas: old?.tarefas ?? [], data: old?.data ?? null, dono: old?.dono ?? null,
         created_by: old?.created_by ?? null, created_at: old?.created_at ?? now,
       })
     }
@@ -112,7 +112,7 @@ export async function importar(file: File, depts: Dept[], atual: { [K in 'plano_
     const old = atual.plano_resp[v]
     const guess = PALPITE.find(([re]) => re.test(v.toLowerCase()))?.[1]
     const dept = old?.dept ?? (guess ? depts.find(d => guess.test(norm(d.name)) || guess.test(d.id))?.id ?? null : null)
-    resp.push({ id: v, nome, dept, pessoas: old?.pessoas ?? [], created_at: old?.created_at ?? now })
+    resp.push({ id: v, nome, dept, pessoas: old?.pessoas ?? [], equipes: old?.equipes ?? [], created_at: old?.created_at ?? now })
   }
   return { ciclo, meses, nucleos, acoes, resp }
 }

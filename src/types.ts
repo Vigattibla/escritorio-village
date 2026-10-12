@@ -172,13 +172,15 @@ export interface JogoPonto { id: string; user_id: string; dept: string; jogo: st
 /** Plano macro: um ciclo de 12 meses (id do ciclo = 1º mês, YYYY-MM) */
 export interface PlanoMes { id: string; ciclo: string; mes: string; tematica: string; principal: string; campanha: string; oferta: string; persona: string; estrategia: string; created_at: string; updated_at?: string }
 /** núcleo = linha da matriz (stakeholder que executa); tipo datas = calendário comemorativo */
-export interface PlanoNucleo { id: string; ciclo: string; nome: string; pos: number; tipo: 'acoes' | 'datas'; created_at: string }
-export interface PlanoAcao { id: string; ciclo: string; nucleo: string; pos: number; mes: string; dia: string; resp: string; texto: string; estrategia: string; dept: string | null; pessoas: string[]; tarefas: string[]; created_by: string | null; created_at: string; updated_at?: string }
+export interface PlanoNucleo { id: string; ciclo: string; nome: string; pos: number; tipo: 'acoes' | 'datas'; cor?: string | null; icone?: string | null; created_at: string }
+export interface PlanoAcao { id: string; ciclo: string; nucleo: string; pos: number; mes: string; dia: string; resp: string; texto: string; estrategia: string; dept: string | null; pessoas: string[]; tarefas: string[]; data?: string | null; dono?: string | null; created_by: string | null; created_at: string; updated_at?: string }
 /** sigla de responsável (MKT, PERF…) → sala e pessoas */
-export interface PlanoResp { id: string; nome: string; dept: string | null; pessoas: string[]; created_at: string }
-export interface Rows { events: CalEvent; goals: Goal; stickers: Sticker; flows: Flow; stages: Stage; groups: Group; rooms: Room; carpenters: Carpenter; depts: Dept; brand: Brand; quartos: Quarto; vendas: Venda; ajustes: Ajuste; metas_venda: MetaVenda; vendas_cfg: VendasCfg; campanhas: Campanha; caderno: Nota; jogos_pontos: JogoPonto; plano_meses: PlanoMes; plano_nucleos: PlanoNucleo; plano_acoes: PlanoAcao; plano_resp: PlanoResp }
+export interface PlanoResp { id: string; nome: string; dept: string | null; pessoas: string[]; equipes?: string[]; created_at: string }
+/** equipe (Design, Edição de vídeo…): o gestor marca quem faz parte */
+export interface Equipe { id: string; nome: string; cor: string | null; icone: string | null; dept: string | null; pessoas: string[]; created_at: string }
+export interface Rows { events: CalEvent; goals: Goal; stickers: Sticker; flows: Flow; stages: Stage; groups: Group; rooms: Room; carpenters: Carpenter; depts: Dept; brand: Brand; quartos: Quarto; vendas: Venda; ajustes: Ajuste; metas_venda: MetaVenda; vendas_cfg: VendasCfg; campanhas: Campanha; caderno: Nota; jogos_pontos: JogoPonto; plano_meses: PlanoMes; plano_nucleos: PlanoNucleo; plano_acoes: PlanoAcao; plano_resp: PlanoResp; equipes: Equipe }
 export type RowTable = keyof Rows
-export const ROW_TABLES: RowTable[] = ['events', 'goals', 'stickers', 'flows', 'stages', 'groups', 'rooms', 'carpenters', 'depts', 'brand', 'quartos', 'vendas', 'ajustes', 'metas_venda', 'vendas_cfg', 'campanhas', 'caderno', 'jogos_pontos', 'plano_meses', 'plano_nucleos', 'plano_acoes', 'plano_resp']
+export const ROW_TABLES: RowTable[] = ['events', 'goals', 'stickers', 'flows', 'stages', 'groups', 'rooms', 'carpenters', 'depts', 'brand', 'quartos', 'vendas', 'ajustes', 'metas_venda', 'vendas_cfg', 'campanhas', 'caderno', 'jogos_pontos', 'plano_meses', 'plano_nucleos', 'plano_acoes', 'plano_resp', 'equipes']
 
 export type Priority = 'alta' | 'media' | 'baixa'
 export interface CheckItem {
@@ -296,6 +298,11 @@ export interface Backend {
   setCurtains(dept: string, open: boolean): Promise<void>
   setSalaGerente(dept: string, on: boolean): Promise<void>
   setDeptLook(dept: string, flag: string | null, canais: boolean, vendas?: boolean): Promise<void>
+  /** agenda do plano: dia/dono ajustados por quem é da equipe da ação */
+  planoAgendar(id: string, data: string | null, dono: string | null): Promise<void>
+  /** reserva o vínculo da tarefa (false = alguém já começou) */
+  planoReservar(id: string, tarefa: string): Promise<boolean>
+  planoSoltar(id: string, tarefa: string): Promise<void>
   /** só o adm: cria a conta já com perfil e cargo */
   createAccount(user: string, password: string, name: string, rank: number): Promise<Profile>
   /** só o adm */

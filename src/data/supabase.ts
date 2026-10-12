@@ -128,6 +128,22 @@ export class SupabaseBackend implements Backend {
     if (error) throw pt(error)
   }
 
+  async planoAgendar(id: string, data: string | null, dono: string | null) {
+    const { error } = await this.sb.rpc('plano_agendar', { p_id: id, p_data: data, p_dono: dono })
+    if (error) throw pt(error)
+  }
+
+  async planoReservar(id: string, tarefa: string) {
+    const { data, error } = await this.sb.rpc('plano_reservar', { p_id: id, p_tarefa: tarefa })
+    if (error) throw pt(error)
+    return !!data
+  }
+
+  async planoSoltar(id: string, tarefa: string) {
+    const { error } = await this.sb.rpc('plano_soltar', { p_id: id, p_tarefa: tarefa })
+    if (error) throw pt(error)
+  }
+
   async createAccount(user: string, password: string, name: string, rank: number) {
     const { data, error } = await this.sb.rpc('admin_create_user', { p_user: user, p_pass: password, p_name: name, p_rank: rank })
     if (error) throw pt(error)

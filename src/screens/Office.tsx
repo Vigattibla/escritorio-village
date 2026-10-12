@@ -16,6 +16,7 @@ import TaskDetail from '../components/TaskDetail'
 import RequestModal from '../components/RequestModal'
 import Team from '../components/Team'
 import Agenda from '../components/Agenda'
+import { useAutoPlano } from '../plano/AgendaPlano'
 import Metas, { CeleWatch } from '../components/Metas'
 import Loja from '../components/Loja'
 import SalaEditor, { canEditOffice } from '../components/SalaEditor'
@@ -57,6 +58,7 @@ function useNarrow() {
 
 export default function Office() {
   const s = useStore(x => x)
+  useAutoPlano()
   const [arrumando, setArrumando] = useState(false)
   const [meOpen, setMeOpen] = useState(false)
   // Metas, Fluxos e Geral ficam guardados: só aparecem quando a pessoa abre o "Mais"
