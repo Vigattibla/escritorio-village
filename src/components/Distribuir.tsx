@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { rankName, rankOf } from '../game/ranks'
 import { aiOnline, askAI, distribute, run, setUi, team, useStore } from '../store'
 import type { AiItem, AiStage } from '../types'
+import { Fundo } from './Fundo'
 
 const STAGE: Record<AiStage, string> = {
   pending: 'Esperando a ponte do PC pegar o pedido…',
@@ -84,7 +85,7 @@ export default function Distribuir() {
   }
 
   return (
-    <div className="modal-bg" onMouseDown={e => e.target === e.currentTarget && close()} onKeyDown={e => e.key === 'Escape' && close()}>
+    <Fundo className="modal-bg" onMouseDown={e => e.target === e.currentTarget && close()} onKeyDown={e => e.key === 'Escape' && close()}>
       <div className="task-modal ai-modal">
         <header className="task-top">
           <b className="grow">✨ Distribuir com IA</b>
@@ -158,6 +159,6 @@ export default function Distribuir() {
           </button>
         </footer>
       </div>
-    </div>
+    </Fundo>
   )
 }

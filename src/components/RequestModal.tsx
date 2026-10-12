@@ -3,6 +3,7 @@ import { canAssign } from '../game/ranks'
 import { addTask, attachFiles, run, setUi, useStore } from '../store'
 import { Ph } from './Icon'
 import MiniAvatar from './MiniAvatar'
+import { Fundo } from './Fundo'
 
 export default function RequestModal() {
   const to = useStore(s => s.requestTo)
@@ -29,7 +30,7 @@ export default function RequestModal() {
   }
 
   return (
-    <div className="modal-bg" onMouseDown={e => e.target === e.currentTarget && close()}>
+    <Fundo className="modal-bg" onMouseDown={e => e.target === e.currentTarget && close()}>
       <form className="modal" onSubmit={submit} onPaste={e => { const f = [...e.clipboardData.files]; if (f.length) { e.preventDefault(); add(f) } }}>
         <header className="row gap">
           <MiniAvatar avatar={p.avatar} photo={p.photo} name={p.name} size={44} />
@@ -63,6 +64,6 @@ export default function RequestModal() {
           <button className="btn primary" disabled={!title.trim() || busy}>{busy ? (files.length ? 'Enviando anexos…' : 'Enviando…') : direct ? 'Colocar na pasta' : 'Enviar pedido'}</button>
         </footer>
       </form>
-    </div>
+    </Fundo>
   )
 }

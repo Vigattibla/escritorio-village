@@ -42,6 +42,7 @@ import Creator from './Creator'
 import { backend } from '../data'
 import { isChief, rankName, rankOf } from '../game/ranks'
 import { deptList, deptName, myDept, openSala, run, setUi, signOut, team, unread, useStore, type Tab, type View } from '../store'
+import { Fundo } from '../components/Fundo'
 
 type Page = View | Tab
 const NARROW = '(max-width: 900px)'
@@ -190,12 +191,12 @@ export default function Office() {
             </div>
           </>}
         </div>
-        {contas && <div className="modal-bg" onMouseDown={e => e.target === e.currentTarget && setContas(false)} onKeyDown={e => e.key === 'Escape' && setContas(false)}>
+        {contas && <Fundo className="modal-bg" onMouseDown={e => e.target === e.currentTarget && setContas(false)} onKeyDown={e => e.key === 'Escape' && setContas(false)}>
           <div className="modal acc-modal">
             <Accounts open />
             <button type="button" className="btn ghost" onClick={() => setContas(false)}>Fechar</button>
           </div>
-        </div>}
+        </Fundo>}
         <div className="tfeito"><span className="tfeito-l">feito com</span> <Meo size={16} color="#2440FF" /><Wordmark size={14} /></div>
       </aside>
       <div className="page">

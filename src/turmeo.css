@@ -291,7 +291,7 @@ button.tlogo.img:hover { box-shadow: inset 0 0 0 2px var(--acc2); }
 .tcard.meu:not(.dark) { background: #FFF6D6; box-shadow: 0 0 0 2px var(--acc2), 0 2px 6px rgba(16, 16, 20, .08); }
 .tcard.meu:not(.dark):hover { background: #FFF1C2; }
 /* relatório da semana */
-.rel { width: min(860px, calc(100vw - 32px)); max-height: calc(100vh - 48px); display: flex; flex-direction: column; background: var(--creme); border-radius: 24px; box-shadow: 0 24px 60px rgba(16, 16, 20, .25); overflow: hidden; }
+.rel { width: min(860px, calc(100vw - 32px)); max-height: 100%; display: flex; flex-direction: column; background: var(--creme); border-radius: 24px; box-shadow: 0 24px 60px rgba(16, 16, 20, .25); overflow: hidden; }
 .rel-top { display: flex; align-items: center; gap: 12px; padding: 20px 24px 16px; flex-wrap: wrap; }
 .rel-top h2 { margin: 0; font-size: 24px; font-weight: 800; }
 .rel-top small { color: var(--muted); font-size: 14px; }
@@ -324,7 +324,7 @@ button.tlogo.img:hover { box-shadow: inset 0 0 0 2px var(--acc2); }
 
 /* timelapse do dia */
 .game-tl { position: absolute; left: 12px; bottom: 12px; z-index: 3; }
-.tl { width: min(1180px, calc(100vw - 32px)); height: min(860px, calc(100vh - 32px)); display: flex; flex-direction: column; background: var(--creme); border-radius: 24px; box-shadow: 0 24px 60px rgba(16, 16, 20, .3); overflow: hidden; }
+.tl { width: min(1180px, calc(100vw - 32px)); height: min(860px, 100%); display: flex; flex-direction: column; background: var(--creme); border-radius: 24px; box-shadow: 0 24px 60px rgba(16, 16, 20, .3); overflow: hidden; }
 .tl-top { display: flex; align-items: center; gap: 12px; padding: 16px 20px 12px; flex-wrap: wrap; }
 .tl-top h2 { margin: 0; font-size: 22px; font-weight: 800; }
 .tl-top .rel-sem b { text-transform: capitalize; }
@@ -345,7 +345,7 @@ button.tlogo.img:hover { box-shadow: inset 0 0 0 2px var(--acc2); }
 .tl-gente small { font-size: 12px; color: var(--muted); }
 
 /* chat (remake) */
-.cwin { width: 700px; height: min(620px, calc(100vh - 32px)); }
+.cwin { width: 700px; height: min(620px, calc(100% - 32px)); }
 .cwin.solo { width: 360px; height: 480px; }
 .chat.tc { height: 100%; min-height: 0; display: flex; align-items: stretch; grid-template-columns: none; background: var(--creme); font-family: var(--tf); }
 .tc-box { height: 100%; flex: 1; min-height: 0; container-type: inline-size; }
@@ -618,7 +618,7 @@ button.tlogo.img:hover { box-shadow: inset 0 0 0 2px var(--acc2); }
 .vd-ctexto { margin: 0; white-space: pre-wrap; font-size: 14px; line-height: 1.45; background: #FFF8EC; border-radius: 12px; padding: 10px 12px; max-height: 180px; overflow: auto; }
 .vd-pasta small.muted { display: block; margin-bottom: 10px; }
 .vd-sem { display: flex; align-items: center; gap: 10px; background: #FFF8EC; border-radius: 12px; padding: 12px 14px; font-size: 13px; color: #55555c; }
-.vd-modal { max-height: 90vh; overflow-y: auto; }
+.vd-modal { max-height: 100%; overflow-y: auto; }
 
 /* ---------- Arquivos (Drive) · Turmeo ---------- */
 .ar2 { padding-bottom: 40px; }
@@ -771,4 +771,4 @@ button.tlogo.img:hover { box-shadow: inset 0 0 0 2px var(--acc2); }
 .dlg-ft .btn:disabled { opacity: .45; cursor: not-allowed; }
 @keyframes dlg-fade { from { opacity: 0 } }
 @keyframes dlg-in { from { opacity: 0; transform: translateY(8px) scale(.96) } }
-@media (max-width: 480px) { .dlg-bg { place-items: end center; } .dlg { border-radius: 20px 20px 14px 14px; } .dlg-ft .btn { flex: 1; justify-content: center; } }
+@media (max-width: 480px) { .dlg-bg { align-items: flex-end; } .dlg { border-radius: 20px 20px 14px 14px; } .dlg-ft .btn { flex: 1; justify-content: center; } }

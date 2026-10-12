@@ -4,6 +4,7 @@ import { team, useStore } from '../store'
 import type { Task } from '../types'
 import { Ph } from './Icon'
 import MiniAvatar from './MiniAvatar'
+import { Fundo } from './Fundo'
 
 /** segunda-feira da semana de d, deslocada n semanas */
 export const segunda = (n = 0, d = new Date()) => { const x = new Date(d); x.setHours(0, 0, 0, 0); x.setDate(x.getDate() - ((x.getDay() + 6) % 7) + n * 7); return x }
@@ -32,7 +33,7 @@ export default function Relatorio({ onClose }: { onClose: () => void }) {
   const total = linhas.reduce((m, l) => m + l.feitas.length, 0)
   const close = () => onClose()
   return (
-    <div className="modal-bg" onMouseDown={e => e.target === e.currentTarget && close()} onKeyDown={e => e.key === 'Escape' && close()}>
+    <Fundo className="modal-bg" onMouseDown={e => e.target === e.currentTarget && close()} onKeyDown={e => e.key === 'Escape' && close()}>
       <div className="rel" role="dialog" aria-label="Relatório da semana">
         <header className="rel-top">
           <div className="grow">
@@ -69,6 +70,6 @@ export default function Relatorio({ onClose }: { onClose: () => void }) {
           ))}
         </div>
       </div>
-    </div>
+    </Fundo>
   )
 }

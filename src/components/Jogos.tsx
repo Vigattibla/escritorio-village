@@ -4,6 +4,7 @@ import type { Jogo } from '../office/world'
 import { Ph } from './Icon'
 import type { PhName } from './ph'
 import MiniAvatar from './MiniAvatar'
+import { Fundo } from './Fundo'
 
 /** os jogos da sala de jogos (o móvel que abre cada um está em world.ts) */
 const JOGOS: { id: Jogo; nome: string; onde: string; dica: string }[] = [
@@ -302,7 +303,7 @@ export default function Jogos({ inicio, onClose }: { inicio: Jogo; onClose: () =
   const meu = meId ? linhas[`${meId}:${jogo}:${mes}`]?.pontos ?? 0 : 0
 
   return (
-    <div className="modal-bg" onMouseDown={e => e.target === e.currentTarget && onClose()}>
+    <Fundo className="modal-bg" onMouseDown={e => e.target === e.currentTarget && onClose()}>
       <section className="modal jg" role="dialog" aria-label="Sala de jogos">
         <div className="jg-bar">
           <div className="jg-tabs" role="tablist">
@@ -361,6 +362,6 @@ export default function Jogos({ inicio, onClose }: { inicio: Jogo; onClose: () =
           </aside>
         </div>
       </section>
-    </div>
+    </Fundo>
   )
 }

@@ -8,6 +8,7 @@ import MiniAvatar from './MiniAvatar'
 import { Ring, Steps } from './Side'
 import { currentGoal, daysLeft, first, goalProgress, monthKey } from './v4'
 import { FINAL, goalTotal, MAX_GOALS, PHASE, steps } from '../shop/economy'
+import { Fundo } from './Fundo'
 
 const METRIC: Record<Goal['metric'], string> = { posts: 'Posts publicados', tasks: 'Tarefas feitas', manual: 'Contagem manual' }
 const monthName = (m: string) => new Date(m + '-02').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }).replace(' de ', ' ')
@@ -91,7 +92,7 @@ function GoalForm({ g, onClose }: { g: Goal | null; onClose: () => void }) {
     onClose()
   }
   return (
-    <div className="modal-bg" onMouseDown={e => e.target === e.currentTarget && onClose()} onKeyDown={e => e.key === 'Escape' && onClose()}>
+    <Fundo className="modal-bg" onMouseDown={e => e.target === e.currentTarget && onClose()} onKeyDown={e => e.key === 'Escape' && onClose()}>
       <form className="modal" onSubmit={submit}>
         <h2>{g ? 'Editar meta' : 'Nova meta'}</h2>
         <label>Meta<input autoFocus required maxLength={80} value={title} onChange={e => setTitle(e.target.value)} placeholder={canais ? 'Ex.: Publicar 40 posts' : 'Ex.: Fechar 30 tarefas no mês'} /></label>
@@ -107,7 +108,7 @@ function GoalForm({ g, onClose }: { g: Goal | null; onClose: () => void }) {
           <button type="button" className="btn ghost" onClick={onClose}>Cancelar</button><button className="btn primary" disabled={!title.trim()}>Salvar</button>
         </footer>
       </form>
-    </div>
+    </Fundo>
   )
 }
 
@@ -116,7 +117,7 @@ export function Cele({ g, onClose }: { g: Goal; onClose: () => void }) {
   useEffect(() => { const k = (e: KeyboardEvent) => e.key === 'Escape' && onClose(); window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k) }, [onClose])
   const month = new Date(g.month + '-02').toLocaleDateString('pt-BR', { month: 'long' })
   return (
-    <div className="modal-bg cele-bg" onMouseDown={e => e.target === e.currentTarget && onClose()}>
+    <Fundo className="modal-bg cele-bg" onMouseDown={e => e.target === e.currentTarget && onClose()}>
       <div className="panel cele" role="dialog" aria-label="Meta batida">
         <div className="confetti" aria-hidden="true">{Array.from({ length: 18 }, (_, i) => <i key={i} style={{ '--i': i } as React.CSSProperties} />)}</div>
         <div className="trophy"><Ph n="trophy" size={46} fill /></div>
@@ -124,7 +125,7 @@ export function Cele({ g, onClose }: { g: Goal; onClose: () => void }) {
         <p>A equipe bateu “{g.title}” em {month}.{g.reward && <><br />Recompensa liberada: {g.reward}.</>}</p>
         <button className="btn accent" onClick={onClose}><Ph n="gift" size={18} fill />Oba!</button>
       </div>
-    </div>
+    </Fundo>
   )
 }
 

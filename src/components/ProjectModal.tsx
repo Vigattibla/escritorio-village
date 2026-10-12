@@ -4,6 +4,7 @@ import { driveOn } from '../data/drive'
 import { removeProject, run, saveProject, setUi, team, useStore } from '../store'
 import type { DriveLink } from '../types'
 import { folderName, FolderPicker } from './DriveFolder'
+import { Fundo } from './Fundo'
 
 const COLORS = ['#e8a33d', '#3d8be8', '#2fb36d', '#d9493a', '#8e5cd9', '#1fa5a0', '#e05ea8', '#6b7a90']
 
@@ -32,7 +33,7 @@ export default function ProjectModal() {
   }
 
   return (
-    <div className="modal-bg" onMouseDown={e => e.target === e.currentTarget && close()} onKeyDown={e => e.key === 'Escape' && close()}>
+    <Fundo className="modal-bg" onMouseDown={e => e.target === e.currentTarget && close()} onKeyDown={e => e.key === 'Escape' && close()}>
       <form className="task-modal proj-modal" onSubmit={e => { e.preventDefault(); submit() }} style={{ '--pc': color } as React.CSSProperties}>
         <header className="task-top">
           <span className="qproj-dot" />
@@ -94,6 +95,6 @@ export default function ProjectModal() {
             : <button type="button" className="btn ghost sm" onClick={() => setSure(true)}>🗑 Apagar</button>)}
         </footer>
       </form>
-    </div>
+    </Fundo>
   )
 }

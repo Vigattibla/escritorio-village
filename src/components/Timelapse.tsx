@@ -10,6 +10,7 @@ import { useStore } from '../store'
 import type { Dir } from '../types'
 import MiniAvatar from './MiniAvatar'
 import { Ph } from './Icon'
+import { Fundo } from './Fundo'
 
 const DURA = 40 // s pra passar o dia inteiro no 1×
 const RASTRO = 45 * 60 // quanto do caminho fica desenhado atrás de cada um
@@ -156,7 +157,7 @@ export default function Timelapse({ onClose }: { onClose: () => void }) {
   const nomeDia = off === 0 ? 'Hoje' : off === -1 ? 'Ontem' : new Date(Date.now() + off * 864e5).toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'numeric' })
 
   return (
-    <div className="modal-bg" onClick={onClose}>
+    <Fundo className="modal-bg" onClick={onClose}>
       <div className="tl" onClick={e => e.stopPropagation()} role="dialog" aria-label="Timelapse do dia">
         <header className="tl-top">
           <h2>Timelapse do dia</h2>
@@ -190,6 +191,6 @@ export default function Timelapse({ onClose }: { onClose: () => void }) {
           ))}
         </ul>}
       </div>
-    </div>
+    </Fundo>
   )
 }

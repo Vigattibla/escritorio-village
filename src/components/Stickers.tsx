@@ -5,6 +5,7 @@ import type { Sticker, StickerKind } from '../types'
 import Icon, { Ph } from './Icon'
 import MiniAvatar from './MiniAvatar'
 import { first, hm, KIND_KEYS, KINDS } from './v4'
+import { Fundo } from './Fundo'
 
 export const canStick = () => rankOf(me()) >= 2
 
@@ -61,7 +62,7 @@ export function StickerPicker() {
     close()
   }
   return (
-    <div className="modal-bg" onMouseDown={e => e.target === e.currentTarget && close()} onKeyDown={e => e.key === 'Escape' && close()}>
+    <Fundo className="modal-bg" onMouseDown={e => e.target === e.currentTarget && close()} onKeyDown={e => e.key === 'Escape' && close()}>
       <form className="modal stk-modal" onSubmit={submit}>
         <h2>Colar adesivo</h2>
         <div className="stk-grid">
@@ -91,6 +92,6 @@ export function StickerPicker() {
           <button className="btn primary" disabled={!target}>Colar{target ? ` para ${first(profiles[target])}` : ''}</button>
         </footer>
       </form>
-    </div>
+    </Fundo>
   )
 }

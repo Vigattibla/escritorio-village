@@ -9,6 +9,7 @@ import SegInd from './SegInd'
 import { CHANNEL_KEYS, CHANNELS, first, hm, localDay } from './v4'
 import { agendar, alvo, PChip, type PItem, PlanoModal, PlanoPainel, SemDia, usePlano, VisaoEquipe, VisaoEstrategia } from '../plano/AgendaPlano'
 import { editaPlano } from '../plano/core'
+import { Fundo } from './Fundo'
 
 type Mode = 'mes' | 'semana' | 'lista' | 'equipe' | 'estrategia'
 const MODOS: [Mode, string][] = [['mes', 'Mês'], ['semana', 'Semana'], ['lista', 'Lista'], ['equipe', 'Equipe'], ['estrategia', 'Estratégia']]
@@ -351,7 +352,7 @@ function PostForm({ day, onClose, onDone }: { day: string; onClose: () => void; 
     onClose()
   }
   return (
-    <div className="modal-bg" onMouseDown={e => e.target === e.currentTarget && onClose()} onKeyDown={e => e.key === 'Escape' && onClose()}>
+    <Fundo className="modal-bg" onMouseDown={e => e.target === e.currentTarget && onClose()} onKeyDown={e => e.key === 'Escape' && onClose()}>
       <form className="modal" onSubmit={submit}>
         <h2>Novo post</h2>
         <label>Assunto<input autoFocus required maxLength={120} value={title} onChange={e => setTitle(e.target.value)} placeholder="Ex.: Promo Day Use" /></label>
@@ -364,7 +365,7 @@ function PostForm({ day, onClose, onDone }: { day: string; onClose: () => void; 
         </label>
         <footer className="row gap end"><button type="button" className="btn ghost" onClick={onClose}>Cancelar</button><button className="btn primary" disabled={!title.trim()}>Agendar post</button></footer>
       </form>
-    </div>
+    </Fundo>
   )
 }
 
@@ -379,13 +380,13 @@ function EventForm({ day, onClose }: { day: string; onClose: () => void }) {
     onClose()
   }
   return (
-    <div className="modal-bg" onMouseDown={e => e.target === e.currentTarget && onClose()} onKeyDown={e => e.key === 'Escape' && onClose()}>
+    <Fundo className="modal-bg" onMouseDown={e => e.target === e.currentTarget && onClose()} onKeyDown={e => e.key === 'Escape' && onClose()}>
       <form className="modal" onSubmit={submit}>
         <h2>Novo evento</h2>
         <label>Nome<input autoFocus required maxLength={120} value={title} onChange={e => setTitle(e.target.value)} placeholder="Ex.: Reunião de pauta" /></label>
         <div className="row gap"><label className="grow">Dia<input type="date" required value={d} onChange={e => setD(e.target.value)} /></label><label>Hora (opcional)<input type="time" value={h} onChange={e => setH(e.target.value)} /></label></div>
         <footer className="row gap end"><button type="button" className="btn ghost" onClick={onClose}>Cancelar</button><button className="btn primary" disabled={!title.trim()}>Salvar</button></footer>
       </form>
-    </div>
+    </Fundo>
   )
 }

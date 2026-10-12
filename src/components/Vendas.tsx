@@ -9,6 +9,7 @@ import { Ph } from './Icon'
 import MiniAvatar from './MiniAvatar'
 import { FolderBox } from './DriveFolder'
 import { first, monthKey } from './v4'
+import { Fundo } from './Fundo'
 
 export type Aba = 'quartos' | 'placar' | 'kit'
 const CORES = ['#2440FF', '#FF7A1A', '#FF9ECF', '#FFE14D', '#2E9E6A', '#101014']
@@ -22,13 +23,13 @@ const sobre = (c: string) => { const n = parseInt(c.slice(1), 16); return (0.299
 
 function Modal({ title, onClose, onSubmit, children, foot }: { title: string; onClose: () => void; onSubmit: () => void; children: React.ReactNode; foot?: React.ReactNode }) {
   return (
-    <div className="modal-bg" onMouseDown={e => e.target === e.currentTarget && onClose()} onKeyDown={e => e.key === 'Escape' && onClose()}>
+    <Fundo className="modal-bg" onMouseDown={e => e.target === e.currentTarget && onClose()} onKeyDown={e => e.key === 'Escape' && onClose()}>
       <form className="modal vd-modal" onSubmit={e => { e.preventDefault(); onSubmit() }}>
         <h2>{title}</h2>
         {children}
         <footer className="row gap end">{foot}<span className="grow" /><button type="button" className="btn ghost" onClick={onClose}>Cancelar</button><button className="btn primary">Salvar</button></footer>
       </form>
-    </div>
+    </Fundo>
   )
 }
 
@@ -497,7 +498,7 @@ export function Lousa({ onClose }: { onClose: () => void }) {
   const MAX = addMes(m0, 18)
 
   return (
-    <div className="modal-bg" onMouseDown={e => e.target === e.currentTarget && onClose()} onKeyDown={e => e.key === 'Escape' && !aj && onClose()}>
+    <Fundo className="modal-bg" onMouseDown={e => e.target === e.currentTarget && onClose()} onKeyDown={e => e.key === 'Escape' && !aj && onClose()}>
       <section className="modal vd-lousa" role="dialog" aria-label="Quadro de quartos">
         <div className="vd-gbar">
           <b className="grow">Quartos livres</b>
@@ -527,6 +528,6 @@ export function Lousa({ onClose }: { onClose: () => void }) {
         </>}
       </section>
       {aj && <AjusteForm q={aj.q} dia={aj.dia} atual={livre(aj.q, aj.dia)} aj={s.rows.ajustes[`${aj.q.id}:${aj.dia}`]} vendidos={vs.filter(v => v.quarto_id === aj.q.id && cobre(v, aj.dia)).reduce((n, v) => n + v.qtd, 0)} onClose={() => setAj(null)} />}
-    </div>
+    </Fundo>
   )
 }

@@ -11,6 +11,7 @@ import { FolderBox } from './DriveFolder'
 import { Ph } from './Icon'
 import MiniAvatar from './MiniAvatar'
 import { ReviewBox, ReviewHistory } from './Revisao'
+import { Fundo } from './Fundo'
 
 const STATUS: Record<Task['status'], string> = { inbox: 'pedido aguardando', todo: 'a fazer', doing: 'fazendo', review: 'em aprovação ⏳', done: 'feita ✅', declined: 'recusada' }
 /** ISO → valor de input datetime-local (hora local) */
@@ -182,7 +183,7 @@ export default function TaskDetail() {
   )
 
   return (
-    <div className="modal-bg" onMouseDown={e => e.target === e.currentTarget && close()}>
+    <Fundo className="modal-bg" onMouseDown={e => e.target === e.currentTarget && close()}>
       <div
         className="task-modal td2"
         onPaste={e => { const f = [...e.clipboardData.files]; if (f.length && edit) { e.preventDefault(); upload(f) } }}
@@ -421,6 +422,6 @@ export default function TaskDetail() {
         </footer>
       </div>
       {zoom && <div className="zoom" onMouseDown={() => setZoom(null)}><img src={zoom} alt="" /></div>}
-    </div>
+    </Fundo>
   )
 }

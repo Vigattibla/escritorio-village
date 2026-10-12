@@ -135,7 +135,7 @@ input.pl-campo:focus, textarea.pl-campo:focus { background: rgba(36, 64, 255, .0
 .pl-st.s-feita { color: var(--ok, #1F9D55); }
 
 /* ---------- modais ---------- */
-.pl-modal { max-height: calc(100dvh - 32px); overflow: auto; }
+.pl-modal { max-height: 100%; overflow: auto; }
 .pl-modal.wide { max-width: 640px; }
 .pl-mh { display: flex; align-items: center; gap: 8px; }
 .pl-mh h2 { flex: 1; margin: 0; font-size: 18px; font-weight: 800; }
@@ -241,7 +241,8 @@ input.pl-campo:focus, textarea.pl-campo:focus { background: rgba(36, 64, 255, .0
 .pl-mx tr.pl-rrow th { padding: 10px 6px; }
 .pl-rrow .pl-quem { flex-direction: column; justify-content: flex-start; gap: 8px; }
 .pl-rrow .pl-quem-nm { flex: none; writing-mode: vertical-rl; transform: rotate(180deg); max-height: 260px; gap: 2px; }
-.pl-rrow .pl-quem-nm b { font-size: 14px; }
+.pl-rrow .pl-quem-nm b { font-size: 14px; white-space: normal; overflow: visible; overflow-wrap: anywhere; line-height: 1.15; }
+.pl-rrow .pl-quem-nm small { white-space: normal; overflow: visible; }
 @media (max-width: 720px) { .pl-mx.resp { --c: 96px; } }
 .pl-quem { all: unset; box-sizing: border-box; width: 100%; cursor: pointer; position: sticky; top: 48px; display: flex; align-items: center; gap: 8px; min-width: 0; }
 .pl-quem:disabled { cursor: default; }

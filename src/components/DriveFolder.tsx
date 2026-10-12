@@ -5,6 +5,7 @@ import type { DriveLink } from '../types'
 import { Thumb } from './Arquivos'
 import { Ph } from './Icon'
 import { pedirTexto } from './Dialogo'
+import { Fundo } from './Fundo'
 
 type Crumb = DriveLink['crumbs'][number]
 const ids = (c: Crumb[]) => c.map(x => x.id)
@@ -37,7 +38,7 @@ export function FolderPicker({ start, onPick, onClose }: { start?: DriveLink | n
   }
 
   return (
-    <div className="modal-bg fp-bg" onMouseDown={e => e.target === e.currentTarget && onClose()} onKeyDown={e => { if (e.key === 'Escape') { e.stopPropagation(); onClose() } }}>
+    <Fundo className="modal-bg fp-bg" onMouseDown={e => e.target === e.currentTarget && onClose()} onKeyDown={e => { if (e.key === 'Escape') { e.stopPropagation(); onClose() } }}>
       <div className="task-modal fp">
         <header className="task-top"><Ph n="folder-simple" size={18} fill /><b className="grow">Escolher pasta do Drive</b>
           <button className="btn ghost sm" onClick={onClose} aria-label="Fechar">✕</button></header>
@@ -58,7 +59,7 @@ export function FolderPicker({ start, onPick, onClose }: { start?: DriveLink | n
           <button className="btn primary sm" onClick={() => onPick({ crumbs })} disabled={!dirs || !crumbs.length}>Usar “{crumbs.at(-1)?.name ?? '…'}”</button>
         </footer>
       </div>
-    </div>
+    </Fundo>
   )
 }
 

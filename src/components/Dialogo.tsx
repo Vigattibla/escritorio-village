@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { Ph } from './Icon'
 import type { PhName } from './ph'
+import { Fundo } from './Fundo'
 
 /** Diálogo do próprio app no lugar do confirm()/prompt() do navegador (aquela janelinha no topo). */
 interface Pedido { title: string; text?: string; ok?: string; danger?: boolean; campo?: { ph?: string; v?: string; max?: number }; ic?: PhName; done: (v: string | null) => void }
@@ -28,7 +29,7 @@ function Caixa({ p }: { p: Pedido }) {
   const fim = (r: string | null) => { set(null); p.done(r) }
   useEffect(() => { if (!p.campo) okRef.current?.focus() }, [p.campo])
   return (
-    <div className="modal-bg dlg-bg" onMouseDown={e => e.target === e.currentTarget && fim(null)} onKeyDown={e => { if (e.key === 'Escape') { e.stopPropagation(); fim(null) } }}>
+    <Fundo className="modal-bg dlg-bg" onMouseDown={e => e.target === e.currentTarget && fim(null)} onKeyDown={e => { if (e.key === 'Escape') { e.stopPropagation(); fim(null) } }}>
       <form className="modal dlg" role="alertdialog" aria-label={p.title} onSubmit={e => { e.preventDefault(); if (!p.campo || v.trim()) fim(p.campo ? v : '') }}>
         <div className={'dlg-ic' + (p.danger ? ' danger' : '')}><Ph n={p.ic ?? (p.danger ? 'trash' : p.campo ? 'pencil-simple-line' : 'check-circle')} size={22} fill /></div>
         <div className="dlg-tx">
@@ -41,6 +42,6 @@ function Caixa({ p }: { p: Pedido }) {
           <button ref={okRef} className={'btn ' + (p.danger ? 'danger' : 'accent')} disabled={!!p.campo && !v.trim()}>{p.ok ?? (p.danger ? 'Apagar' : 'Confirmar')}</button>
         </footer>
       </form>
-    </div>
+    </Fundo>
   )
 }
