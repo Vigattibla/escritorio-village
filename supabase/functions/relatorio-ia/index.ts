@@ -19,6 +19,12 @@ async function member(req: Request) {
   if (!p) throw new Http(403, 'Sem perfil no escritório.')
 }
 
+// tamanho do texto acompanha o volume da semana: pouca coisa = texto curto, muita = mais longo, sempre em 1 folha
+function tam(n: number, resumo: string) {
+  const peso = n + Math.round(resumo.length / 250)
+  return peso <= 3 ? 'entre 120 e 180 palavras' : peso <= 8 ? 'entre 200 e 300 palavras' : peso <= 15 ? 'entre 300 e 400 palavras' : 'entre 400 e 480 palavras'
+}
+
 function pedido(b: { nome?: string; cargo?: string; semana?: string; tarefas?: Tarefa[]; resumo?: string }) {
   const ts = (b.tarefas ?? []).slice(0, 60).map(t => {
     const l = [`- ${corta(t.titulo, 160)}`]
@@ -39,7 +45,7 @@ ${resumo ? `Resumo da semana, nas palavras da pessoa (fonte principal):\n${resum
 
 Escreva o relatório em primeira pessoa, tom profissional e direto. Junte o resumo e as tarefas sem repetir a mesma entrega duas vezes. Organize e melhore a escrita, mas não exagere nem invente nada que não esteja acima.
 Formato: um parágrafo curto de resumo da semana; depois uma lista com "- " de uma linha por entrega (o que foi feito e para quê, quando der pra saber); no fim, uma linha "Próximos passos:" só se as descrições indicarem algo pendente.
-Cabe numa folha A4 junto com a lista de tarefas: no máximo umas 300 palavras; junte entregas parecidas numa linha só.
+Tamanho: ${tam(ts.length, resumo)}. O texto precisa caber numa folha A4 junto com a lista de tarefas; se houver muita coisa, junte entregas parecidas numa linha só. Termine sempre a última frase.
 Texto simples, sem markdown além dos "- ", sem títulos, sem emojis.`
 }
 
@@ -50,11 +56,13 @@ async function gemini(prompt: string) {
   const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
-    body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: prompt }] }], generationConfig: { temperature: 0.4, maxOutputTokens: 1500 } }),
+    body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: prompt }] }], generationConfig: { temperature: 0.4, maxOutputTokens: 8192 } }),
   })
   const j = await r.json().catch(() => null)
   if (r.status === 429) throw new Http(429, 'A IA gratuita chegou no limite agora. Tente de novo em um minuto.')
   if (!r.ok) throw new Http(502, `Gemini ${r.status}: ${corta(j?.error?.message, 200)}`)
+  // modelo que pensa gasta parte do limite pensando: se cortou, avisa em vez de entregar texto pela metade
+  if (j?.candidates?.[0]?.finishReason === 'MAX_TOKENS') throw new Http(502, 'A IA cortou o texto no meio. Tente de novo.')
   const txt = (j?.candidates?.[0]?.content?.parts ?? []).map((p: { text?: string }) => p.text ?? '').join('').trim()
   if (!txt) throw new Http(502, 'A IA não devolveu texto. Tente de novo.')
   return txt
