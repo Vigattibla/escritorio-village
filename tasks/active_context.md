@@ -148,3 +148,4 @@ Pendente: push (precisa da migration 202610080900_v4_agenda_metas.sql e do secre
 - Pendente: remake do chat (Chat.tsx/tc-*), remake de Arquivos.
 - 12/10 (6): modal Equipes via portal + feedback Pablo (canto, ordem por data, nome em pé, exemplos de equipe) — no ar (a4c0c87).
 - 12/10 (7): todas as janelas (.modal-bg) via portal Fundo.tsx + altura por % do fundo (sem vh/dvh, Opera espremia); nome em pé quebra linha.
+- 12/10 (8): cartão do plano na cor da sigla (quem faz); hover na sigla mostra o significado; nota na Legenda.

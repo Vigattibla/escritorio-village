@@ -6,10 +6,14 @@ import { useStore } from '../store'
 import type { Profile } from '../types'
 import { Ph } from '../components/Icon'
 import MiniAvatar from '../components/MiniAvatar'
-import { corSig } from './core'
+import { corSig, siglas } from './core'
 
+/** sigla na cor dela; passando o mouse mostra o que ela significa */
 export function Sig({ s, big }: { s: string; big?: boolean }) {
-  return <em className={'pl-sig' + (big ? ' big' : '')} style={{ ['--sc' as string]: corSig(s) }}>{s}</em>
+  const resp = useStore(st => st.rows.plano_resp)
+  const k = s.trim().toUpperCase()
+  const sig = resp[k]?.nome ? `${k} = ${resp[k].nome}` : siglas(k).map(c => resp[c]?.nome ? `${c} = ${resp[c].nome}` : c).join(' · ')
+  return <em className={'pl-sig' + (big ? ' big' : '')} style={{ ['--sc' as string]: corSig(s) }} title={sig}>{s}</em>
 }
 export function Rostos({ ids, profiles, size = 24, max = 4 }: { ids: string[]; profiles: Record<string, Profile>; size?: number; max?: number }) {
   return <span className="faces">{ids.slice(0, max).map(id => <MiniAvatar key={id} avatar={profiles[id]?.avatar ?? null} photo={profiles[id]?.photo ?? null} name={profiles[id]?.name} size={size} />)}{ids.length > max && <i className="pl-mais-n">+{ids.length - max}</i>}</span>

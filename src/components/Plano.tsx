@@ -232,7 +232,7 @@ function Matriz({ meses, nucleos, acoes, passa, can, mesAtual, agr, chaves, ctx,
             const r = ctx.resp[k], eq = membros(r, ctx.equipes, ctx.profiles)
             return (
               <tr key={'r:' + k} className="pl-rrow" style={{ ['--sc' as string]: corSig(k) }}>
-                <th><button className="pl-quem" onClick={() => onResp(k)} disabled={!can} title={can ? 'Quem recebe as tarefas desta sigla' : undefined}>
+                <th><button className="pl-quem" onClick={() => onResp(k)} disabled={!can} title={k ? `${k}${r?.nome ? ' = ' + r.nome : ''}${can ? ' · toque para escolher quem recebe as tarefas' : ''}` : undefined}>
                   {k ? <Sig s={k} /> : <span className="pl-sig sem"><Ph n="user-circle" size={14} /></span>}
                   <span className="pl-quem-nm"><b>{k ? r?.nome || k : 'Sem responsável'}</b>{k && <small>{r?.dept ? deptName(r.dept) : eq.length ? '' : 'falta quem faça'}</small>}</span>
                   {eq.length > 0 && <Rostos ids={eq} profiles={ctx.profiles} size={20} max={3} />}
@@ -258,7 +258,7 @@ function Matriz({ meses, nucleos, acoes, passa, can, mesAtual, agr, chaves, ctx,
 
 function Chip({ a, datas, sit, meta, onClick }: { a: PlanoAcao; datas?: boolean; sit: Sit; meta?: string; onClick: () => void }) {
   return (
-    <button className={'pl-chip' + (datas ? ' data' : ' s-' + sit)} onClick={onClick} title={`${a.dia ? a.dia + ' · ' : ''}${a.texto}${datas ? '' : '\n' + SIT[sit]}`}>
+    <button className={'pl-chip' + (datas ? ' data' : ' s-' + sit) + (a.resp && !datas ? ' sc' : '')} style={a.resp && !datas ? { ['--sc' as string]: corSig(a.resp) } : undefined} onClick={onClick} title={`${a.dia ? a.dia + ' · ' : ''}${a.texto}${a.resp ? '\n' + a.resp : ''}${datas ? '' : '\n' + SIT[sit]}`}>
       {(a.dia || a.resp || meta) && <span className="pl-meta">{a.dia && <b>{a.dia}</b>}{meta ? <small>{meta}</small> : a.resp && <em style={{ color: corSig(a.resp) }}>{a.resp}</em>}</span>}
       <span className="pl-tx">{a.texto}</span>
     </button>
@@ -585,7 +585,7 @@ function RespModal({ acoes, foco, onClose }: { acoes: PlanoAcao[]; foco: string 
   const [open, setOpen] = useState<string | null>(foco)
   return (
     <Modal title="Legenda de responsáveis" onClose={onClose} wide>
-      <small className="muted">Cada sigla da coluna RESP. aponta para uma sala e para as pessoas que recebem a tarefa. Dá pra editar também direto na coluna, na visão do mês.</small>
+      <small className="muted">Cada sigla tem uma cor, e o cartão da ação leva a cor de quem faz; a risca do lado mostra a situação. Cada sigla da coluna RESP. aponta para uma sala e para as pessoas que recebem a tarefa. Dá pra editar também direto na coluna, na visão do mês.</small>
       <div className="pl-resp">
         {ids.map(id => {
           const r = resp[id] ?? novoResp(id)
