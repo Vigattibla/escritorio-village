@@ -453,6 +453,13 @@ export async function setCurtains(id: string, open: boolean) {
   onRow('depts', { ...d, curtains_open: open })
   try { await backend.setCurtains(id, open) } catch (e) { onRow('depts', d); throw e }
 }
+/** sala só do gerente no andar (a mesa dele sai da sala do setor) */
+export async function setSalaGerente(id: string, on: boolean) {
+  const d = state.rows.depts[id]
+  if (!d || !!d.sala_gerente === on) return
+  onRow('depts', { ...d, sala_gerente: on })
+  try { await backend.setSalaGerente(id, on) } catch (e) { onRow('depts', d); throw e }
+}
 /** a sala trabalha com publicação? (posts, canais). Marketing antigo sem a coluna conta como sim */
 export const hasCanais = (id: string = state.sala, s: State = state) => s.rows.depts[id]?.canais ?? id === DEPT0
 /** bandeira da porta (ícone Phosphor) e se a sala publica: mesma regra da porta */

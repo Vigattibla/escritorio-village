@@ -2,7 +2,7 @@ import { backend } from '../data'
 import { dayKey } from '../game/xp'
 import { deptOf } from '../game/ranks'
 import type { Profile } from '../types'
-import { deskIds, deskOf, doorSpot, findPath, FW, getRooms, HY0, MH, roomOfId, T } from './world'
+import { deskIds, deskOf, doorSpot, findPath, FW, getRooms, HY0, roomOfId, T } from './world'
 
 /** trilha do dia: [segundo do dia, x, y, segundo, x, y, ...] */
 export type Pts = number[]
@@ -81,8 +81,8 @@ export function trilhaDeMentira(p: Profile, ate: number): Pts {
   let seed = [...p.id].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7)
   const rnd = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 2 ** 32)
   const ids = deskIds(r), mesa = deskOf(r, ids.includes(p.desk) ? p.desk : ids[0] ?? 0)
-  const salas = getRooms().filter(x => x.id)
-  const dentro = (x: typeof r) => { const d = doorSpot(x); return { tx: d.tx, ty: x.top ? x.oy + MH - 2 : x.oy + 2 } }
+  const salas = getRooms().filter(x => x.kind !== 'vaga')
+  const dentro = (x: typeof r) => { const d = doorSpot(x); return { tx: d.tx, ty: x.top ? x.oy + x.h - 2 : x.oy + 2 } }
   const destinos = () => {
     const q = rnd()
     if (q < 0.45) return { tx: Math.floor(FW / 2 + (rnd() - 0.5) * 10), ty: HY0 + 2 }

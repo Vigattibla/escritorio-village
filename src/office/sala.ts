@@ -17,8 +17,8 @@ export const PISOS: Record<Piso, { nome: string; draw: (c: C2D, x: number, y: nu
 }
 
 // ---------------- móveis ----------------
-export type Tema = 'Escritório' | 'Resort' | 'Casa de Campo' | 'Natal' | 'Gamer' | 'Café' | 'Jardim'
-export const TEMAS: Tema[] = ['Escritório', 'Resort', 'Casa de Campo', 'Natal', 'Gamer', 'Café', 'Jardim']
+export type Tema = 'Escritório' | 'Resort' | 'Casa de Campo' | 'Natal' | 'Gamer' | 'Café' | 'Jardim' | 'Cozinha' | 'Banheiro'
+export const TEMAS: Tema[] = ['Escritório', 'Resort', 'Casa de Campo', 'Natal', 'Gamer', 'Café', 'Jardim', 'Cozinha', 'Banheiro']
 export type Kind = {
   nome: string; tema: Tema; w: number; h: number
   /** quantos tiles a arte sobe acima do pé */ up?: number
@@ -208,6 +208,59 @@ export const KINDS: Record<string, Kind> = {
   },
   'banco-praca': { nome: 'Banco de praça', tema: 'Jardim', w: 2, h: 1, draw: (c, x, y) => { for (let k = 0; k < 2; k++) box(c, '#2f7a4f', x + 2, y - 5 + k * 3, 28, 2); box(c, '#3f9a62', x + 2, y + 4, 28, 4); r(c, OUT, x + 3, y - 5, 2, 20); r(c, OUT, x + 27, y - 5, 2, 20) } },
   'cerca-viva': { nome: 'Cerca viva', tema: 'Jardim', w: 1, h: 1, up: 1, draw: (c, x, y) => { box(c, '#2f7a4f', x, y - 6, 16, 21); for (const [a, b] of [[2, -4], [9, -2], [4, 3], [11, 6], [6, 10]]) r(c, '#3f9a62', x + a, y + b, 4, 3) } },
+
+  // ---- Cozinha ----
+  'geladeira': { nome: 'Geladeira', tema: 'Cozinha', w: 1, h: 1, up: 2, draw: (c, x, y) => { box(c, '#eef0f4', x + 1, y - 18, 14, 33); r(c, '#d3d7de', x + 1, y - 7, 14, 1); r(c, '#fbfbf8', x + 2, y - 17, 3, 9); r(c, '#9aa1ad', x + 11, y - 14, 1, 5); r(c, '#9aa1ad', x + 11, y - 4, 1, 7); box(c, '#FBC222', x + 4, y - 13, 3, 3); box(c, '#f59ab5', x + 6, y - 2, 3, 3); r(c, '#c8ccd3', x + 1, y + 13, 14, 2) } },
+  'fogao': { nome: 'Fogão', tema: 'Cozinha', w: 1, h: 1, up: 1, draw: (c, x, y, t) => { box(c, '#e6e8ee', x + 1, y - 2, 14, 17); r(c, '#2d2d33', x + 1, y - 2, 14, 4); for (const a of [3, 9]) r(c, '#5a5a63', x + a, y - 1, 4, 2); box(c, '#3b3a44', x + 3, y + 5, 10, 6); r(c, '#59586a', x + 4, y + 6, 8, 1); box(c, '#9aa1ad', x + 3, y - 7, 7, 5); r(c, '#c8ccd3', x + 3, y - 7, 7, 1); for (let k = 0; k < 2; k++) { const p = ((t / 1300) + k / 2) % 1; r(c, `rgba(255,255,255,${0.8 - p * 0.8})`, x + 5 + k * 3 + Math.round(Math.sin(p * 6)), y - 9 - p * 8, 1, 2) } } },
+  'pia-cozinha': { nome: 'Pia da cozinha', tema: 'Cozinha', w: 2, h: 1, up: 1, draw: (c, x, y) => { const w = 2 * T; box(c, '#8a5a36', x, y + 3, w, 12); r(c, '#a8774c', x + 15, y + 5, 1, 9); r(c, '#ece5d8', x - 1, y, w + 2, 4); r(c, OUT, x - 1, y - 1, w + 2, 1); box(c, '#b9bec7', x + 6, y, 14, 3); r(c, OUT, x + 12, y - 7, 2, 7); r(c, OUT, x + 12, y - 7, 6, 2); r(c, '#c8ccd3', x + 13, y - 6, 4, 1); box(c, '#fbfbf8', x + 23, y - 3, 4, 4); box(c, '#8ecbf5', x + 2, y - 3, 3, 4) } },
+  'micro-ondas': { nome: 'Micro-ondas', tema: 'Cozinha', w: 1, h: 1, up: 1, draw: (c, x, y, t) => { box(c, '#a8774c', x + 1, y + 3, 14, 12); box(c, '#e6e8ee', x + 1, y - 6, 14, 9); r(c, '#2d2d33', x + 2, y - 5, 8, 7); r(c, blink(t, 700) ? '#3a3944' : '#4a4955', x + 3, y - 4, 6, 5); r(c, '#5fd28a', x + 11, y - 4, 2, 1); r(c, '#9aa1ad', x + 11, y - 1, 2, 2) } },
+  'mesa-jantar': {
+    nome: 'Mesa de refeição', tema: 'Cozinha', w: 4, h: 2, draw: (c, x, y) => {
+      const w = 4 * T, h = 2 * T
+      box(c, '#c99566', x + 2, y, w - 4, h - 6); r(c, '#d9a87a', x + 2, y, w - 4, 2)
+      r(c, '#f1e6d2', x + 8, y + 4, w - 16, h - 16); r(c, '#e0d2b8', x + 8, y + 4, w - 16, 1)
+      r(c, OUT, x + 1, y + h - 6, w - 2, 4); r(c, '#8a5a36', x + 2, y + h - 6, w - 4, 3)
+      for (const a of [4, w - 6]) r(c, OUT, x + a, y + h - 2, 2, 2)
+      for (const [a, b] of [[14, 8], [w - 22, 8]]) { disc(c, x + a, y + b, 4, OUT); disc(c, x + a, y + b, 3, '#fbfbf8'); r(c, '#e0b04a', x + a - 1, y + b - 1, 3, 2) }
+      box(c, '#d9694a', x + w / 2 - 3, y + 6, 6, 5); r(c, '#3f9a62', x + w / 2 - 2, y + 3, 4, 3)
+    },
+  },
+  // ---- Gamer (sala de jogos) ----
+  'sinuca': {
+    nome: 'Mesa de sinuca', tema: 'Gamer', w: 4, h: 2, draw: (c, x, y) => {
+      const w = 4 * T, h = 2 * T
+      box(c, '#6e4529', x + 1, y, w - 2, h - 5); r(c, '#2f8a55', x + 4, y + 3, w - 8, h - 12); r(c, '#38a065', x + 4, y + 3, w - 8, 1)
+      for (const [a, b] of [[4, 3], [w / 2 - 1, 2], [w - 6, 3], [4, h - 10], [w / 2 - 1, h - 9], [w - 6, h - 10]]) r(c, OUT, x + a, y + b, 2, 2)
+      r(c, '#5a3820', x + 1, y + h - 5, w - 2, 3); r(c, OUT, x + 4, y + h - 2, 3, 2); r(c, OUT, x + w - 7, y + h - 2, 3, 2)
+      for (const [a, b, col] of [[18, 9, '#fbfbf8'], [36, 8, '#e05a47'], [39, 11, '#FBC222'], [42, 8, '#3a6fd8'], [39, 5, '#2d2d33']] as const) r(c, col, x + a, y + b, 2, 2)
+      r(c, '#e9d7a8', x + 8, y + 15, 22, 1); r(c, '#6e4529', x + 6, y + 15, 3, 1)
+    },
+  },
+  'pebolim': {
+    nome: 'Pebolim', tema: 'Gamer', w: 3, h: 1, up: 1, draw: (c, x, y, t) => {
+      const w = 3 * T
+      box(c, '#3b5aa8', x + 3, y - 6, w - 6, 15); r(c, '#3fa66b', x + 5, y - 4, w - 10, 11); r(c, '#86c76e', x + w / 2, y - 4, 1, 11)
+      for (let k = 0; k < 4; k++) { const rx = x + 9 + k * 9; r(c, '#c8ccd3', rx, y - 8, 1, 19); r(c, k % 2 ? '#e05a47' : '#FBC222', rx - 1, y - 2 + ((Math.floor(t / 400) + k) % 2), 3, 3) }
+      r(c, '#fbfbf8', x + 22 + Math.round(Math.sin(t / 300) * 6), y + 1, 2, 2)
+      r(c, OUT, x + 6, y + 9, 2, 6); r(c, OUT, x + w - 8, y + 9, 2, 6)
+    },
+  },
+  'console': { nome: 'Rack do videogame', tema: 'Gamer', w: 2, h: 1, up: 1, draw: (c, x, y, t) => { box(c, '#2d2d33', x + 1, y + 3, 30, 12); r(c, '#45454e', x + 15, y + 5, 1, 9); box(c, '#17171c', x + 4, y - 2, 12, 5); r(c, blink(t, 900) ? '#5ff2ff' : '#2a6a70', x + 5, y, 2, 1); box(c, '#e6e8ee', x + 20, y - 1, 8, 4); r(c, '#9aa1ad', x + 21, y, 1, 1); r(c, '#e8508a', x + 26, y, 1, 1); r(c, '#45454e', x + 4, y + 7, 9, 5); r(c, '#45454e', x + 18, y + 7, 9, 5) } },
+  'tv-grande': { nome: 'TV grande', tema: 'Gamer', w: 3, h: 1, camada: 'parede', draw: (c, x, _y, t) => { box(c, '#17171c', x + 1, 6, 46, 20); const f = Math.floor(t / 500) % 3; r(c, ['#3a6fd8', '#8e5bd6', '#2f8a55'][f], x + 2, 7, 44, 18); r(c, '#6fb35a', x + 2, 19, 44, 6); r(c, '#FBC222', x + 10 + f * 8, 14, 4, 5); r(c, '#e05a47', x + 30 - f * 5, 15, 4, 4); r(c, '#fbfbf8', x + 4, 9, 8, 1); r(c, OUT, x + 22, 27, 4, 2) } },
+  // ---- Banheiro ----
+  'cabine': {
+    nome: 'Cabine do banheiro', tema: 'Banheiro', w: 2, h: 2, up: 1, draw: (c, x, y) => {
+      const w = 2 * T, top = y - 12
+      box(c, '#7fa9c9', x + 1, top, w - 2, 2 * T + 9); r(c, '#95bcd8', x + 1, top, w - 2, 2)
+      r(c, '#6b93b3', x + 1, top + 2, 1, 2 * T + 7); r(c, '#6b93b3', x + w - 2, top + 2, 1, 2 * T + 7)
+      box(c, '#a9cbe2', x + 5, top + 6, w - 10, 2 * T - 2); r(c, '#c4dcec', x + 5, top + 6, w - 10, 1)
+      r(c, OUT, x + w - 10, top + 20, 2, 3); r(c, '#5fd28a', x + w - 9, top + 9, 2, 2)
+      r(c, SHADOW, x + 2, y + 2 * T - 2, w - 4, 2)
+    },
+  },
+  'pia-banheiro': { nome: 'Pia com espelho', tema: 'Banheiro', w: 2, h: 1, up: 2, draw: (c, x, y) => { const w = 2 * T; box(c, '#d8eef6', x + 6, y - 24, w - 12, 15); r(c, '#fbfbf8', x + 8, y - 22, 3, 6); r(c, '#bfe3f2', x + 7, y - 14, w - 14, 4); box(c, '#fbfbf8', x + 3, y - 3, w - 6, 8); r(c, '#c8ccd3', x + 9, y - 1, w - 18, 3); r(c, OUT, x + 15, y - 7, 2, 4); r(c, '#9aa1ad', x + 15, y - 7, 3, 1); r(c, '#e6e8ee', x + 12, y + 5, 8, 10); r(c, OUT, x + 11, y + 14, 10, 1); box(c, '#f59ab5', x + w - 8, y - 6, 3, 3) } },
+  'lixeira': { nome: 'Lixeira', tema: 'Banheiro', w: 1, h: 1, draw: (c, x, y) => { box(c, '#9aa1ad', x + 4, y + 4, 8, 10); r(c, '#b9bec7', x + 3, y + 3, 10, 2); r(c, '#7d8490', x + 6, y + 6, 1, 7); r(c, '#7d8490', x + 9, y + 6, 1, 7) } },
+  'toalheiro': { nome: 'Toalheiro', tema: 'Banheiro', w: 1, h: 1, camada: 'parede', draw: (c, x) => { r(c, OUT, x + 2, 12, 12, 2); box(c, '#fbfbf8', x + 4, 14, 8, 11); r(c, '#8ecbf5', x + 4, 22, 8, 2) } },
 }
 
 // ---------------- sala ----------------
@@ -330,9 +383,12 @@ export function parseSala(data: unknown, baia = false): Sala {
   } catch { return original(baia) }
 }
 
+/** tamanho da sala em tiles (o da planta; cômodos podem ser maiores ou menores que a sala do setor) */
+export const dimOf = (s: Sala) => ({ w: s.piso[0]?.length ?? MW, h: s.piso.length || MH })
+
 /** tiles com móvel que bloqueia (tapete, parede e cadeira solta não contam) */
 export function solidGrid(s: Sala, skip?: number) {
-  const g = Array.from({ length: MH }, () => Array<boolean>(MW).fill(false))
+  const { w, h } = dimOf(s), g = Array.from({ length: h }, () => Array<boolean>(w).fill(false))
   for (const o of s.objs) {
     const k = kd(o)
     if (o.id === skip || k.camada || k.passa) continue
@@ -390,6 +446,7 @@ export function reach(s: Sala, nameOf: NameOf): string | null {
 
 /** piso, paredes e divisórias */
 export function renderStatic(piso: Piso[][], div: boolean[][]) {
+  const MW = piso[0].length, MH = piso.length
   const cv = document.createElement('canvas'); cv.width = MW * T; cv.height = MH * T
   const c = cv.getContext('2d')!
   for (let ty = 2; ty < MH - 1; ty++) for (let tx = 1; tx < MW - 1; tx++) PISOS[piso[ty][tx]].draw(c, tx * T, ty * T)
@@ -416,7 +473,7 @@ export function renderStatic(piso: Piso[][], div: boolean[][]) {
 
 /** fundo do jogo: estático + luz das janelas + tapetes + sombras */
 export function renderRoom(s: Sala, grid = false, light = true) {
-  const cv = renderStatic(s.piso, s.div), c = cv.getContext('2d')!
+  const cv = renderStatic(s.piso, s.div), c = cv.getContext('2d')!, { w: MW, h: MH } = dimOf(s)
   if (light) for (const o of s.objs) if (o.k === 'janela') { c.fillStyle = 'rgba(255,248,225,.22)'; for (let k = 0; k < 22; k++) c.fillRect(o.x * T + 3 + Math.floor(k / 2), 2 * T + k, 26, 1) }
   for (const o of s.objs) if (kd(o).camada === 'chao') kd(o).draw(c, o.x * T, o.y * T, 0)
   if (grid) { c.globalAlpha = 0.1; for (let x = 1; x < MW; x++) r(c, '#000', x * T, 2 * T, 0.5, (MH - 3) * T); for (let y = 2; y < MH; y++) r(c, '#000', T, y * T, (MW - 2) * T, 0.5); c.globalAlpha = 1 }

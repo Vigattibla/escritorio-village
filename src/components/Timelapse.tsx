@@ -90,9 +90,9 @@ export default function Timelapse({ onClose }: { onClose: () => void }) {
       ctx.imageSmoothingEnabled = false
       ctx.drawImage(bg, 0, 0)
       const rooms = getRooms(), items: { key: number; draw: () => void }[] = []
-      for (const r of rooms) if (r.id) for (const o of wallObjs(r)) drawFurniture(ctx, shift(r, o), now)
+      for (const r of rooms) if (r.kind !== 'vaga') for (const o of wallObjs(r)) drawFurniture(ctx, shift(r, o), now)
       for (const r of rooms) {
-        if (!r.id) continue
+        if (r.kind === 'vaga') continue
         for (const i of deskIds(r)) {
           const d = deskOf(r, i)
           items.push({ key: d.ty * T + 15, draw: () => drawDesk(ctx, d, i === BOSS_DESK, { pile: 0, inbox: false, busy: false, owned: true, t: now }) })

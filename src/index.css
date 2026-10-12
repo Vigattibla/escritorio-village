@@ -131,7 +131,7 @@ legend { font-size: 12px; font-weight: 700; color: var(--navy); padding: 0 4px; 
 .game canvas { display: block; }
 .game-ctrl { position: absolute; top: 12px; left: 12px; display: flex; gap: 6px; }
 .game-ctrl button { border: 0; background: rgba(255, 255, 255, .92); border-radius: 9px; padding: 7px 11px; font-weight: 700; box-shadow: var(--shadow); color: var(--navy); }
-.game-help { position: absolute; left: 12px; bottom: 12px; font-size: 12px; color: rgba(255, 255, 255, .8); background: rgba(10, 14, 30, .55); padding: 5px 10px; border-radius: 8px; pointer-events: none; }
+.game-help { position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); white-space: nowrap; font-size: 12px; color: rgba(255, 255, 255, .8); background: rgba(10, 14, 30, .55); padding: 5px 10px; border-radius: 8px; pointer-events: none; }
 .game-tip { position: absolute; pointer-events: none; background: #fff; border-radius: 10px; padding: 8px 11px; box-shadow: var(--shadow); font-size: 13px; max-width: 260px; display: grid; gap: 2px; }
 
 .side { width: 400px; display: flex; flex-direction: column; background: var(--card); border-left: 1px solid var(--line); min-height: 0; }

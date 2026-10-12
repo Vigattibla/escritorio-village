@@ -1,31 +1,38 @@
 import { MH, MW, OUT, rect, SHADOW, T, WALL, WALL_HI, type C2D } from './base'
 import { exitX, glassDoorX, glassStrip, glassWall } from './andar'
 import { drawDecor, drawFloor, drawNotebook, MESA, mesaExtra, type DeskLook } from './props'
-import { defaultDesk, deskFrom, deskSides, isDesk, kd, renderRoom, solidGrid, type Desk, type Obj, type Sala } from './sala'
+import { defaultDesk, deskFrom, deskSides, dimOf, isDesk, kd, renderRoom, solidGrid, type Desk, type Obj, type Sala } from './sala'
+import type { Kind } from './comodos'
 
 export * from './base'
 
-/** O andar inteiro num mapa só: 2 salas em cima, corredor no meio, 2 salas embaixo (frente a frente). */
-export const FW = 2 * MW
+/** O andar inteiro num mapa só: uma fileira de salas em cima, corredor no meio, outra embaixo (frente a frente).
+ *  Cada sala tem o tamanho da própria planta; as de cima encostam no corredor por baixo. */
+export let FW = 2 * MW
 /** linhas do corredor (globais) */
 export const HY0 = MH, HY1 = MH + 4
 export const FH = HY1 + 1 + MH
 /** coisas do corredor (tiles globais): sofá e bancos encostados no vidro de cima, plantas e canteiros embaixo */
-const HALL_OBJS: [string, number, number][] = [
-  ['planta', 1, HY0], ['planta', FW - 2, HY0], ['planta', 1, HY1], ['planta', FW - 2, HY1],
-  ['planta', MW - 3, HY0], ['sofa', MW - 2, HY0], ['planta', MW + 2, HY0],
-  ['banco-madeira', 5, HY0], ['banco-madeira', FW - 7, HY0],
-  ['bebedouro', MW - 1, HY1], ['planta', MW, HY1],
-  ['canteiro', 5, HY1], ['canteiro', FW - 7, HY1],
-]
+function hallObjs(): [string, number, number][] {
+  const o: [string, number, number][] = [['planta', 1, HY0], ['planta', FW - 2, HY0], ['planta', 1, HY1], ['planta', FW - 2, HY1]]
+  for (const r of rooms) {
+    // na emenda entre duas salas: sofá entre plantas (em cima), bebedouro (embaixo)
+    if (r.ox > 0) o.push(...(r.top ? [['planta', r.ox - 3, HY0], ['sofa', r.ox - 2, HY0], ['planta', r.ox + 2, HY0]] : [['bebedouro', r.ox - 1, HY1], ['planta', r.ox, HY1]]) as [string, number, number][])
+    if (r.w >= 16) o.push([r.top ? 'banco-madeira' : 'canteiro', r.slot % 2 ? r.ox + r.w - 7 : r.ox + 5, r.top ? HY0 : HY1])
+  }
+  return o
+}
 
 export interface Room {
   slot: number
-  /** setor dono da sala; null = sala vazia (cinza, não entra) */
+  kind: Kind
+  /** setor (só na sala do setor; cômodos e sala do gerente = null) */
   id: string | null
+  /** setor do andar a que a sala pertence (sala do setor e do gerente) */
+  dept: string | null
   sala: Sala
-  /** origem em tiles no andar */
-  ox: number; oy: number
+  /** origem em tiles no andar e tamanho (o da planta da sala) */
+  ox: number; oy: number; w: number; h: number
   /** de cima do corredor (vidro embaixo) ou de baixo (vidro em cima) */
   top: boolean
   /** tile da esquerda da porta (local, 2 de largura) */
@@ -45,37 +52,54 @@ let hallSolid = new Set<number>()
 export const floorVersion = () => version
 export const getRooms = () => rooms
 export const roomOfId = (id: string) => rooms.find(r => r.id === id)
+export const roomOfKind = (k: Kind) => rooms.find(r => r.kind === k)
+/** sala com mesa de trabalho (do setor ou do gerente) */
+export const workRoom = (r: Room | undefined): r is Room => r?.kind === 'dept' || r?.kind === 'gerente'
 
-export function emptySala(): Sala {
-  return { piso: Array.from({ length: MH }, () => Array.from({ length: MW }, () => 'madeira' as const)), div: Array.from({ length: MH }, () => Array<boolean>(MW).fill(false)), objs: [] }
+export function emptySala(w = MW, h = MH): Sala {
+  return { piso: Array.from({ length: h }, () => Array.from({ length: w }, () => 'madeira' as const)), div: Array.from({ length: h }, () => Array<boolean>(w).fill(false)), objs: [] }
 }
 
-/** monta o andar: specs[k] = sala do slot k (id null = vazia) */
-export function setFloor(specs: { id: string | null; sala: Sala; baia?: boolean }[]) {
-  rooms = specs.map(({ id, sala, baia = false }, slot) => {
-    const top = slot < 2
-    const deskTile = Array.from({ length: MH }, () => Array<number | null>(MW).fill(null))
-    for (const o of sala.objs) if (isDesk(o.k) && o.d !== undefined) for (let k = 0; k < kd(o).w; k++) deskTile[o.y][o.x + k] = o.d
-    return { slot, id, sala, ox: (slot % 2) * MW, oy: top ? 0 : HY1 + 1, top, door: top ? exitX(sala) : glassDoorX(sala), solid: solidGrid(sala), baia, deskTile }
+/** monta o andar: specs[k] = sala do slot k; a primeira metade fica em cima do corredor, a outra embaixo */
+export function setFloor(specs: { kind: Kind; dept?: string | null; sala: Sala; baia?: boolean }[]) {
+  const n = Math.max(1, Math.ceil(specs.length / 2))
+  const rows = [specs.slice(0, n), specs.slice(n)].map(row => row.map(p => ({ ...p })))
+  const width = (row: typeof rows[0]) => row.reduce((a, p) => a + dimOf(p.sala).w, 0)
+  FW = Math.max(...rows.map(width))
+  // fileira mais curta: a sala vazia do fim estica até fechar a largura
+  for (const row of rows) {
+    const last = row[row.length - 1], falta = FW - width(row)
+    if (last?.kind === 'vaga' && falta > 0) { const { w, h } = dimOf(last.sala); last.sala = emptySala(w + falta, h) }
+  }
+  rooms = rows.flatMap((row, ri) => {
+    let x = 0
+    return row.map(({ kind, dept = null, sala, baia = false }, i) => {
+      const top = ri === 0, { w, h } = dimOf(sala), ox = x
+      x += w
+      const deskTile = Array.from({ length: h }, () => Array<number | null>(w).fill(null))
+      for (const o of sala.objs) if (isDesk(o.k) && o.d !== undefined) for (let k = 0; k < kd(o).w; k++) deskTile[o.y][o.x + k] = o.d
+      return { slot: ri * n + i, kind, id: kind === 'dept' ? dept : null, dept, sala, ox, oy: top ? HY0 - h : HY1 + 1, w, h, top, door: top ? exitX(sala) : glassDoorX(sala), solid: solidGrid(sala), baia, deskTile }
+    })
   })
   // nada do corredor pode ficar na frente de uma porta
   const front = new Set(rooms.flatMap(r => [0, 1].map(k => (r.top ? HY0 : HY1) * FW + r.ox + r.door + k)))
   const tilesOf = (o: Obj) => Array.from({ length: kd(o).w }, (_, k) => o.y * FW + o.x + k)
-  hall = HALL_OBJS.map(([k, x, y], i) => ({ id: -1 - i, k, x, y })).filter(o => !tilesOf(o).some(t => front.has(t)))
+  hall = hallObjs().map(([k, x, y], i) => ({ id: -1 - i, k, x, y })).filter(o => !tilesOf(o).some(t => front.has(t)))
   hallSolid = new Set(hall.filter(o => !kd(o).passa).flatMap(tilesOf))
   version++
 }
 /** por quais portas eu passo (por slot) */
 export function setPassable(open: boolean[]) { passable = open }
 
-/** -1 = corredor; senão o slot da sala (porta conta como sala) */
+/** -1 = corredor, -2 = fora das salas (sobra ao lado de sala mais baixa); senão o slot da sala (porta conta como sala) */
 export function regionAt(gx: number, gy: number) {
   if (gy >= HY0 && gy <= HY1) return -1
-  return (gx >= MW ? 1 : 0) + (gy > HY1 ? 2 : 0)
+  const r = rooms.find(r => gx >= r.ox && gx < r.ox + r.w && gy >= r.oy && gy < r.oy + r.h)
+  return r ? r.slot : -2
 }
 export const regionOfPx = (x: number, y: number) => regionAt(Math.floor(x / T), Math.floor(y / T))
 
-const isDoor = (r: Room, lx: number, ly: number) => (lx === r.door || lx === r.door + 1) && (r.top ? ly === MH - 1 : ly >= 0 && ly <= 1)
+const isDoor = (r: Room, lx: number, ly: number) => (lx === r.door || lx === r.door + 1) && (r.top ? ly === r.h - 1 : ly >= 0 && ly <= 1)
 /** slot da porta nesse tile global, ou -1 */
 export function doorAtTile(gx: number, gy: number) {
   const k = gx >= 0 && gy >= 0 && gx < FW && gy < FH ? regionAt(gx, gy) : -1, r = k >= 0 ? rooms[k] : undefined
@@ -84,18 +108,18 @@ export function doorAtTile(gx: number, gy: number) {
 /** centro da porta (px global, na borda com o corredor) e o tile do corredor bem na frente dela */
 export function doorSpot(r: Room) {
   const x = (r.ox + r.door + 1) * T
-  return r.top ? { x, y: MH * T, tx: r.ox + r.door, ty: HY0 } : { x, y: (HY1 + 1) * T, tx: r.ox + r.door, ty: HY1 }
+  return r.top ? { x, y: HY0 * T, tx: r.ox + r.door, ty: HY0 } : { x, y: (HY1 + 1) * T, tx: r.ox + r.door, ty: HY1 }
 }
 
 function tileSolid(gx: number, gy: number) {
   if (gx < 0 || gy < 0 || gx >= FW || gy >= FH) return true
   const k = regionAt(gx, gy)
-  if (k < 0) return gx < 1 || gx >= FW - 1 || hallSolid.has(gy * FW + gx)
+  if (k === -1) return gx < 1 || gx >= FW - 1 || hallSolid.has(gy * FW + gx)
   const r = rooms[k]
   if (!r) return true
   const lx = gx - r.ox, ly = gy - r.oy
-  if (isDoor(r, lx, ly)) return !r.id || !passable[k]
-  if (!r.id || lx < 1 || ly < 2 || lx >= MW - 1 || ly >= MH - 1) return true
+  if (isDoor(r, lx, ly)) return r.kind === 'vaga' || !passable[k]
+  if (r.kind === 'vaga' || lx < 1 || ly < 2 || lx >= r.w - 1 || ly >= r.h - 1) return true
   return r.sala.div[ly][lx] || r.solid[ly][lx]
 }
 
@@ -103,7 +127,7 @@ function tileSolid(gx: number, gy: number) {
 export function blocked(x: number, y: number) {
   const gx = Math.floor(x / T), gy = Math.floor(y / T), k = gx >= 0 && gy >= 0 && gx < FW && gy < FH ? regionAt(gx, gy) : -1
   const r = k >= 0 ? rooms[k] : undefined
-  if (r?.id && r.deskTile[gy - r.oy]?.[gx - r.ox] != null) return y - gy * T >= 9
+  if (r && r.deskTile[gy - r.oy]?.[gx - r.ox] != null) return y - gy * T >= 9
   return tileSolid(gx, gy)
 }
 
@@ -128,7 +152,7 @@ export function deskOf(r: Room, i: number): Desk {
 
 export function deskAtTile(gx: number, gy: number): { r: Room; i: number } | null {
   const k = gx >= 0 && gy >= 0 && gx < FW && gy < FH ? regionAt(gx, gy) : -1, r = k >= 0 ? rooms[k] : undefined
-  if (!r?.id) return null
+  if (!workRoom(r)) return null
   const lx = gx - r.ox, ly = gy - r.oy
   for (const o of desks(r)) if (lx >= o.x && lx < o.x + kd(o).w && (ly === o.y || ly === o.y - 1)) return { r, i: o.d! }
   return null
@@ -195,7 +219,7 @@ export function renderFloor() {
     c.save(); c.translate(r.ox * T, r.oy * T)
     c.drawImage(renderRoom(r.sala, false, r.top), 0, 0)
     if (r.top) glassStrip(c, r.sala); else glassWall(c, r.sala)
-    if (!r.id) vacant(c)
+    if (r.kind === 'vaga') vacant(c, r.w, r.h)
     c.restore()
   }
   // corredor: piso de pedra clara, passadeira da marca no meio, parede nas pontas
@@ -246,18 +270,20 @@ function lata(c: C2D, x: number, y: number, tinta: string) {
   rect(c, '#e9ecf0', x + 1, y, 7, 2); rect(c, tinta, x + 2, y, 5, 1)
 }
 /** sala sem setor: caixas de mudança, móveis cobertos e material de pintura, um pouco apagada */
-function vacant(c: C2D) {
-  rect(c, 'rgba(255,255,255,.07)', T, 2 * T, (MW - 2) * T, (MH - 2) * T)
-  coberto(c, 9 * T, 6 * T, 3 * T, 22); coberto(c, 14 * T, 6 * T + 4, 2 * T + 6, 20)
-  coberto(c, 3 * T, 11 * T, 2 * T + 8, 24)
+function vacant(c: C2D, rw: number, rh: number) {
+  // posições pensadas numa sala 24x16; em outra medida, espalha na mesma proporção
+  const X = (tx: number) => Math.round(tx * rw / MW) * T, Y = (ty: number) => Math.round(ty * rh / MH) * T
+  rect(c, 'rgba(255,255,255,.07)', T, 2 * T, (rw - 2) * T, (rh - 2) * T)
+  coberto(c, X(9), Y(6), 3 * T, 22); if (rw >= 18) coberto(c, X(14), Y(6) + 4, 2 * T + 6, 20)
+  coberto(c, X(3), Y(11), 2 * T + 8, 24)
   const boxes: [number, number, number, number][] = [
-    [3 * T, 4 * T, 15, 12], [3 * T + 16, 4 * T + 4, 12, 9], [3 * T + 4, 4 * T - 9, 12, 9],
-    [18 * T, 10 * T, 16, 12], [18 * T + 18, 10 * T + 4, 12, 9], [18 * T + 6, 10 * T - 9, 12, 9],
-    [11 * T, 11 * T + 4, 13, 10], [9 * T, 12 * T, 15, 12],
+    [X(3), Y(4), 15, 12], [X(3) + 16, Y(4) + 4, 12, 9], [X(3) + 4, Y(4) - 9, 12, 9],
+    [X(18), Y(10), 16, 12], [X(18) + 18, Y(10) + 4, 12, 9], [X(18) + 6, Y(10) - 9, 12, 9],
+    [X(11), Y(11) + 4, 13, 10], [X(9), Y(12), 15, 12],
   ]
   for (const [x, y, w, h] of boxes) { rect(c, SHADOW, x, y + h + 1, w + 1, 3); caixa(c, x, y, w, h) }
-  escada(c, 19 * T + 4, 4 * T); lata(c, 17 * T + 6, 5 * T + 10, '#7fb2d8'); lata(c, 21 * T, 5 * T + 12, '#FFC600')
-  c.fillStyle = 'rgba(120,126,140,.22)'; c.fillRect(T, 0, (MW - 2) * T, MH * T)
+  escada(c, X(19) + 4, Y(4)); lata(c, X(17) + 6, Y(5) + 10, '#7fb2d8'); lata(c, X(21), Y(5) + 12, '#FFC600')
+  c.fillStyle = 'rgba(120,126,140,.22)'; c.fillRect(T, 0, (rw - 2) * T, rh * T)
 }
 /** coisas do corredor, pra entrar na ordem de profundidade */
 export const hallDecor = (): Obj[] => hall

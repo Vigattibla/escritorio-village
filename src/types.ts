@@ -144,7 +144,7 @@ export interface Group { id: string; name: string; icon: string; open: boolean; 
 /** sala do andar: id = rooms.id do layout dela; floor/slot = posição no andar */
 /** flag: ícone da bandeira na porta · canais: a sala publica (posts, canais, agenda de publicação)
  *  door_open: porta aberta (qualquer um entra pelo corredor); fechada só quem é da sala e a Chefe · curtains_open: cortina do vidro aberta (quem passa vê dentro) */
-export interface Dept { id: string; name: string; color: string; floor: number; slot: number; door_open?: boolean; curtains_open?: boolean; flag?: string | null; canais?: boolean; vendas?: boolean; created_at: string }
+export interface Dept { id: string; name: string; color: string; floor: number; slot: number; door_open?: boolean; curtains_open?: boolean; flag?: string | null; canais?: boolean; vendas?: boolean; sala_gerente?: boolean; created_at: string }
 /** layout de cada sala (id = id da sala; 'escritorio' = layout antigo do Marketing); data = Sala do editor */
 export interface Room { id: string; data: unknown; created_by: string; created_at: string }
 /** carpinteiro: pode editar o escritório até `until` */
@@ -213,6 +213,8 @@ export interface Pos {
   moving: boolean
   /** onde a pessoa está: id da sala ou 'andar' (corredor) */
   room?: string
+  /** andar (setor) em que a pessoa está andando */
+  a?: string
   /** 1 = x/y no mapa do andar inteiro (versão nova); sem isso, era coordenada da sala */
   f?: 1
 }
@@ -283,6 +285,7 @@ export interface Backend {
   setDept(target: string, dept: string, desk: number): Promise<void>
   setDoor(dept: string, open: boolean): Promise<void>
   setCurtains(dept: string, open: boolean): Promise<void>
+  setSalaGerente(dept: string, on: boolean): Promise<void>
   setDeptLook(dept: string, flag: string | null, canais: boolean, vendas?: boolean): Promise<void>
   /** só o adm: cria a conta já com perfil e cargo */
   createAccount(user: string, password: string, name: string, rank: number): Promise<Profile>

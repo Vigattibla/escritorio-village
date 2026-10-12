@@ -1,7 +1,7 @@
 /** O andar: 2 salas em cima, corredor, 2 salas embaixo, frente a frente; paredes de vidro pro corredor, com cortina. */
-import { MH, MW, OUT, rect as r, T, type C2D } from './base'
+import { OUT, rect as r, T, type C2D } from './base'
 import { drawBanner } from './bandeira'
-import { kd, PISOS, solidGrid, type Sala } from './sala'
+import { dimOf, kd, PISOS, solidGrid, type Sala } from './sala'
 
 export const HALL = 'andar'
 export const SLOTS = 4
@@ -9,7 +9,7 @@ export type DoorState = 'vazia' | 'aberta' | 'fechada'
 
 /** porta de saída da sala: meio da parede de baixo; se tiver móvel na frente, a porta anda pro lado */
 export function exitX(s: Sala) {
-  const solid = solidGrid(s), y = MH - 2
+  const { w: MW, h: MH } = dimOf(s), solid = solidGrid(s), y = MH - 2
   const free = (x: number) => x >= 1 && x < MW - 1 && !s.div[y][x] && !solid[y][x]
   for (let k = 0; k < 13; k++) {
     const x = MW / 2 - 1 + (k % 2 ? -(k + 1) / 2 : k / 2)
@@ -20,7 +20,7 @@ export function exitX(s: Sala) {
 
 /** porta das salas de baixo: na parede de vidro de cima, onde não tem quadro na parede e a frente está livre */
 export function glassDoorX(s: Sala) {
-  const solid = solidGrid(s)
+  const MW = dimOf(s).w, solid = solidGrid(s)
   const wall = (x: number) => s.objs.some(o => kd(o).camada === 'parede' && o.k !== 'janela' && x >= o.x && x < o.x + kd(o).w)
   const free = (x: number) => x >= 1 && x < MW - 1 && !wall(x) && !s.div[2][x] && !solid[2][x]
   for (let k = 0; k < 25; k++) {
@@ -74,9 +74,9 @@ export function drawMat(c: C2D, x: number, y: number, color: string) {
   for (let k = 4; k < w - 4; k += 3) r(c, hi, x + k, y + 3, 1, 1)
 }
 
-/** porta de saída na parede de baixo da sala (tile tx, 2 de largura) */
-export function drawExit(c: C2D, tx: number, st: DoorState, color = '#a3a8b3', flag?: string | null) {
-  const x = tx * T, y = (MH - 1) * T, open = st === 'aberta'
+/** porta de saída na parede de baixo da sala (tile tx, 2 de largura; sala com h tiles de altura) */
+export function drawExit(c: C2D, tx: number, h: number, st: DoorState, color = '#a3a8b3', flag?: string | null) {
+  const x = tx * T, y = (h - 1) * T, open = st === 'aberta'
   r(c, OUT, x, y, 2 * T, T)
   r(c, st === 'vazia' ? '#a3a8b3' : '#6b4a33', x + 1, y + 1, 2 * T - 2, T - 1)
   if (st === 'vazia') { r(c, '#c3c7cf', x + 3, y + 3, 2 * T - 6, T - 3); return }
@@ -92,7 +92,7 @@ const FRAME = '#8794a8', FRAME_D = '#5d6b80', TINT = 'rgba(170,215,238,.42)', GL
 
 /** vidro da sala de cima: faixa fina na parede de baixo (linha MH-1), de lx0 a lx1 (exclusive) */
 export function glassStrip(c: C2D, s: Sala) {
-  const y = (MH - 1) * T
+  const { w: MW, h: MH } = dimOf(s), y = (MH - 1) * T
   for (let tx = 1; tx < MW - 1; tx++) PISOS[s.piso[MH - 2][tx]].draw(c, tx * T, y)
   const x = T, w = (MW - 2) * T
   r(c, TINT, x, y, w, 12)
@@ -106,6 +106,7 @@ export function glassStrip(c: C2D, s: Sala) {
 
 /** vidro da sala de baixo: a parede alta de cima (linhas 0-1) vira painéis de vidro */
 export function glassWall(c: C2D, s: Sala) {
+  const MW = dimOf(s).w
   for (let tx = 1; tx < MW - 1; tx++) for (const ty of [0, 1]) PISOS[s.piso[2][tx]].draw(c, tx * T, ty * T)
   const x = T, w = (MW - 2) * T
   r(c, OUT, x, 0, w, 1); r(c, FRAME, x, 1, w, 3); r(c, '#a9b4c4', x, 1, w, 1)
@@ -117,8 +118,8 @@ export function glassWall(c: C2D, s: Sala) {
   r(c, OUT, x, 28, w, 1); r(c, FRAME, x, 29, w, 2); r(c, FRAME_D, x, 31, w, 1)
 }
 
-/** cortina fechada na cor da sala, deixando o vão da porta (tile dx, 2 de largura) */
-export function drawCurtain(c: C2D, top: boolean, dx: number, color: string) {
+/** cortina fechada na cor da sala (MW x MH tiles), deixando o vão da porta (tile dx, 2 de largura) */
+export function drawCurtain(c: C2D, top: boolean, dx: number, color: string, MW: number, MH: number) {
   const y0 = top ? (MH - 1) * T + 1 : 4, h = top ? 11 : 24, dk = darker(color, 0.78), hi = darker(color, 1.15)
   const seg = (a: number, b: number) => {
     if (b <= a) return
