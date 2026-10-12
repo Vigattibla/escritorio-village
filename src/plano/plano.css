@@ -290,3 +290,7 @@ input.pl-campo:focus, textarea.pl-campo:focus { background: rgba(36, 64, 255, .0
 .pl-pess .eq-pick.on .eq-ic { background: rgba(255, 255, 255, .2); color: #fff; }
 .pl-pess .eq-pick small { font-weight: 800; }
 .eq-ex { display: grid; gap: 6px; padding-top: 4px; }
+/* quem faz: setor à mostra + outros setores recolhidos */
+.pl-pess-w { display: grid; gap: 6px; }
+.pl-set { font-size: 10.5px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.pl-set-g { display: grid; gap: 6px; padding-top: 6px; border-top: 1px dashed var(--line, rgba(16, 16, 20, .1)); }

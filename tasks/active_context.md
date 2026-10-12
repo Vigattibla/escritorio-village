@@ -149,3 +149,8 @@ Pendente: push (precisa da migration 202610080900_v4_agenda_metas.sql e do secre
 - 12/10 (6): modal Equipes via portal + feedback Pablo (canto, ordem por data, nome em pé, exemplos de equipe) — no ar (a4c0c87).
 - 12/10 (7): todas as janelas (.modal-bg) via portal Fundo.tsx + altura por % do fundo (sem vh/dvh, Opera espremia); nome em pé quebra linha.
 - 12/10 (8): cartão do plano na cor da sigla (quem faz); hover na sigla mostra o significado; nota na Legenda.
+- 12/10 (9): 06d0fcb Fundo mede e corrige em px (top/left/width/height) quando a caixa do fixed não bate com a tela (Opera GX do usuário espremia; GX limpo ok). Modal do plano usa Fundo. No ar (run 38294571811). Falta usuário confirmar no GX.
+- 12/10 (10): causa real das janelas espremidas = extensão FastSave injeta .modal{position:fixed;top:0;height:0vh;overflow:hidden}. Classe modal→jan. Nunca usar nomes genéricos (modal, popup…) em classe.
+- 12/10 (10) no ar (run 38295299498: build/deploy/migrate ok; job functions falhou 2x com erro 500 interno do Supabase, sem mudança em functions).
+- 12/10 (11): src/avisos.ts (checagens no checkReminders, a cada 20s): datas comemorativas a 7 dias e véspera (quem edita o plano); ação do plano sem tarefa a 7 e ≤2 dias; tarefa minha amanhã/hoje/atrasada (até 3 dias). Dedupe em localStorage ev:avisos:<id>, máx. 4 por rodada.
+- 12/10 (12): Pessoas (plano/ui) mostra só o setor (sala da ação/equipe ou o meu); demais em "Outros setores (n)", agrupados por sala.
