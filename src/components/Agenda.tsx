@@ -112,13 +112,14 @@ export default function Agenda() {
         {WD.map(w => <div key={w} className="mwd">{w}</div>)}
         {Array.from({ length: n }, (_, k) => {
           const d = addD(start, k); const kd = key(d); const list = byDay(kd); const pl = pByDay(kd)
-          const nl = Math.min(list.length, pl.length ? 2 : 3), np = Math.min(pl.length, 3 - nl), resto = list.length + pl.length - nl - np
           return (
             <div key={kd} className={'mcell' + (d.getMonth() !== cur.getMonth() ? ' out' : '') + (d.getDay() % 6 === 0 ? ' we' : '') + (kd === today ? ' today' : '') + (kd === day ? ' sel' : '')} onClick={() => { setDay(kd); setSel(null); setSelP(null) }} {...alvo(solta(kd))}>
               <span className="mnum">{d.getDate()}</span>
-              {list.slice(0, nl).map(chip)}
-              {pl.slice(0, np).map(i => <PChip key={i.a.id} i={i} on={selP === i.a.id} onPick={pickP} />)}
-              {resto > 0 && <small className="more">+{resto} mais</small>}
+              {/* tudo do dia; passou de 3, rola dentro do quadradinho */}
+              {list.length + pl.length > 0 && <div className={'mitens' + (list.length + pl.length > 3 ? ' rola' : '')} onWheel={e => e.currentTarget.scrollHeight > e.currentTarget.clientHeight && e.stopPropagation()}>
+                {list.map(chip)}
+                {pl.map(i => <PChip key={i.a.id} i={i} on={selP === i.a.id} onPick={pickP} />)}
+              </div>}
             </div>
           )
         })}
