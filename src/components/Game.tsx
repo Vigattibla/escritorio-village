@@ -10,7 +10,7 @@ import { addMark, boardMarks, takeErrands, type Errand } from '../office/errands
 import { drawAnim, plateFill, PLATE_CV } from '../office/anim'
 import { drawChair } from '../office/props'
 import { drawFurniture, kd, parseSala, type Obj } from '../office/sala'
-import { blocked, boardSpot, BOSS_DESK, deskAtTile, deskIds, deskOf, deskSidesOf, doorAtTile, doorSpot, drawBoardMarks, drawCarry, drawDesk, emptySala, FH, findPath, floorVersion, furniture, FW, getRooms, hallDecor, hasDesk, roomOfKind, HY0, MAX_DESKS, painelAt, paineisOf, pathToSeat, regionOfPx, renderFloor, roomOfId, setFloor, setPassable, shelfSpot, T, wallObjs, type Room } from '../office/world'
+import { blocked, boardSpot, BOSS_DESK, deskAtTile, deskIds, deskOf, deskSidesOf, doorAtTile, doorSpot, drawBoardMarks, drawCarry, drawDesk, emptySala, FH, findPath, floorVersion, furniture, FW, getRooms, hallDecor, hasDesk, jogoAt, roomOfKind, HY0, MAX_DESKS, painelAt, paineisOf, pathToSeat, regionOfPx, renderFloor, roomOfId, setFloor, setPassable, shelfSpot, T, wallObjs, type Room } from '../office/world'
 import { bubbles, canDoor, canEnter, curtainsOpen, deptName, doorOpen, getState, goTo, knock, myDept, positions, roomOf, run, setCurtains, setDoor, setSalaGerente, setUi, useStore, type State } from '../store'
 import type { Dir, Pos, Profile, Task } from '../types'
 import Icon from './Icon'
@@ -119,6 +119,12 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
       const d0 = new Date(), dia = d0.toISOString().slice(0, 10), meia = new Date(d0.getFullYear(), d0.getMonth(), d0.getDate()).getTime()
       void backend.loadTrails(dia).then(ts => { for (const t of ts) { const sec = t.pts[t.pts.length - 3]; if (sec !== undefined && !lastOn.has(t.user_id)) lastOn.set(t.user_id, meia + sec * 1000) } }).catch(() => {})
     }
+    // sai do passeio: o balão do cômodo some junto (voltou online, foi embora, pegou tarefa)
+    const stopWander = (id: string) => {
+      const w = wander.get(id)
+      if (w?.spot && bubbles.get(id)?.text === w.spot.act) bubbles.delete(id)
+      wander.delete(id)
+    }
     const gone = (id: string) => !turno() && Date.now() - (lastOn.get(id) ?? 0) > FOI_EMBORA
     let atK = -2
     let path: { x: number; y: number }[] = []
@@ -183,6 +189,7 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
 
     const onKey = (e: KeyboardEvent) => {
       if (typing()) return
+      if (getState().jogo) return keys.clear()
       const k = e.key.toLowerCase()
       if (!['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(k)) return
       e.preventDefault()
@@ -202,6 +209,13 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
         if (owner) setUi({ viewing: owner.id })
         if (owner?.id === meId) goSeat.current()
         return
+      }
+      // máquina da sala de jogos: vai até ela e abre o jogo
+      const jg = hiddenAt(w.x, w.y) ? null : jogoAt(tx, ty)
+      if (jg) {
+        const p = findPath(meS.x, meS.y, jg.tx, jg.ty)
+        if (p) { path = p; jobs.delete(meId) }
+        return setUi({ jogo: jg.jogo })
       }
       // painel de quartos: abre o quadro de Quartos
       const pq = hiddenAt(w.x, w.y) ? null : painelAt(tx, ty), s = getState()
@@ -225,7 +239,7 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
       const id = avatarAt(w.x, w.y)
       const r = canvas.getBoundingClientRect()
       const tx = Math.floor(w.x / T), ty = Math.floor(w.y / T)
-      canvas.style.cursor = id || doorAtTile(tx, ty) >= 0 || (!hiddenAt(w.x, w.y) && painelAt(tx, ty)) || (!hiddenAt(w.x, w.y) && deskAtTile(tx, ty)) ? 'pointer' : 'default'
+      canvas.style.cursor = id || doorAtTile(tx, ty) >= 0 || (!hiddenAt(w.x, w.y) && (painelAt(tx, ty) || jogoAt(tx, ty))) || (!hiddenAt(w.x, w.y) && deskAtTile(tx, ty)) ? 'pointer' : 'default'
       setHover(h => (id ? { id, sx: e.clientX - r.left, sy: e.clientY - r.top } : h ? null : h))
     }
     const onLeave = () => setHover(null)
@@ -363,14 +377,14 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
         if (online) lastOn.set(p.id, wall)
         const seat = seatOf(p)
         // visita de outro setor só aparece enquanto está aqui
-        if (!live && !seat) { shown.delete(p.id); wander.delete(p.id); continue }
-        if (!online && gone(p.id) && !jobs.has(p.id)) { shown.delete(p.id); wander.delete(p.id); continue }
+        if (!live && !seat) { shown.delete(p.id); stopWander(p.id); continue }
+        if (!online && gone(p.id) && !jobs.has(p.id)) { shown.delete(p.id); stopWander(p.id); continue }
         const tgt = live ?? { ...seat!, dir: 'down' as Dir, moving: false }
         let o = shown.get(p.id)
         if (!o) { o = { x: tgt.x, y: tgt.y, dir: tgt.dir, moving: false, anim: 0 }; shown.set(p.id, o) }
-        if (online) wander.delete(p.id)
+        if (online) stopWander(p.id)
         if (!online && (jobs.has(p.id) || waiting.get(p.id)?.length)) {
-          wander.delete(p.id)
+          stopWander(p.id)
           o.moving = runJob(p.id, o, p, dt, tnow)
           o.anim = o.moving ? o.anim + dt : 0
           continue
@@ -416,7 +430,7 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
         o.dir = tgt.dir; o.moving = tgt.moving
         o.anim = o.moving ? o.anim + dt : 0
       }
-      for (const id of wander.keys()) if (!shown.has(id)) wander.delete(id)
+      for (const id of wander.keys()) if (!shown.has(id)) stopWander(id)
       for (const id of shown.keys()) if (!s.profiles[id]) shown.delete(id)
     }
 

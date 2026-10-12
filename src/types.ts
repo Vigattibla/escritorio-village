@@ -167,9 +167,11 @@ export interface VendasCfg { id: 'cfg'; pts_venda: number; pts_mil: number; tier
 export interface Campanha { id: string; titulo: string; texto: string; inicio: string | null; fim: string | null; cor: string; pasta: DriveLink | null; link: string | null; created_by: string | null; created_at: string }
 /** anotação do caderninho (só o dono vê; some em 7 dias se não for fixada) */
 export interface Nota { id: string; user_id: string; texto: string; fixa: boolean; created_at: string }
-export interface Rows { events: CalEvent; goals: Goal; stickers: Sticker; flows: Flow; stages: Stage; groups: Group; rooms: Room; carpenters: Carpenter; depts: Dept; brand: Brand; quartos: Quarto; vendas: Venda; ajustes: Ajuste; metas_venda: MetaVenda; vendas_cfg: VendasCfg; campanhas: Campanha; caderno: Nota }
+/** recorde de uma pessoa num jogo da sala de jogos no mês (id = user:jogo:aaaa-mm) */
+export interface JogoPonto { id: string; user_id: string; dept: string; jogo: string; mes: string; pontos: number; partidas: number; created_at: string; updated_at: string }
+export interface Rows { events: CalEvent; goals: Goal; stickers: Sticker; flows: Flow; stages: Stage; groups: Group; rooms: Room; carpenters: Carpenter; depts: Dept; brand: Brand; quartos: Quarto; vendas: Venda; ajustes: Ajuste; metas_venda: MetaVenda; vendas_cfg: VendasCfg; campanhas: Campanha; caderno: Nota; jogos_pontos: JogoPonto }
 export type RowTable = keyof Rows
-export const ROW_TABLES: RowTable[] = ['events', 'goals', 'stickers', 'flows', 'stages', 'groups', 'rooms', 'carpenters', 'depts', 'brand', 'quartos', 'vendas', 'ajustes', 'metas_venda', 'vendas_cfg', 'campanhas', 'caderno']
+export const ROW_TABLES: RowTable[] = ['events', 'goals', 'stickers', 'flows', 'stages', 'groups', 'rooms', 'carpenters', 'depts', 'brand', 'quartos', 'vendas', 'ajustes', 'metas_venda', 'vendas_cfg', 'campanhas', 'caderno', 'jogos_pontos']
 
 export type Priority = 'alta' | 'media' | 'baixa'
 export interface CheckItem {

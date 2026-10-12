@@ -2,7 +2,7 @@ import { MH, MW, OUT, rect, SHADOW, T, WALL, WALL_HI, type C2D } from './base'
 import { exitX, glassDoorX, glassStrip, glassWall } from './andar'
 import { drawDecor, drawFloor, drawNotebook, MESA, mesaExtra, type DeskLook } from './props'
 import { defaultDesk, deskFrom, deskSides, dimOf, isDesk, kd, renderRoom, solidGrid, type Desk, type Obj, type Sala } from './sala'
-import type { Kind } from './comodos'
+import { comodoOf, type Kind } from './comodos'
 
 export * from './base'
 
@@ -207,6 +207,23 @@ export const paineisOf = (r: Room) => (r.baia ? r.sala.objs.filter(o => o.k in P
 export function painelAt(gx: number, gy: number) {
   for (const r of rooms) for (const o of paineisOf(r))
     if (gx >= r.ox + o.x && gx < r.ox + o.x + PAINEIS[o.k] && gy >= r.oy + o.y - 2 && gy <= r.oy + o.y) return o.k
+  return null
+}
+/** jogos da sala de jogos: o móvel que abre cada um e o balão de onde o boneco joga */
+export type Jogo = 'cobrinha' | 'penalti' | 'memoria' | 'reflexo'
+const MAQUINAS: Record<string, [Jogo, string]> = { fliperama: ['cobrinha', 'No fliperama'], pebolim: ['penalti', 'No pebolim'], 'mesa-jantar': ['memoria', 'Jogo de tabuleiro'], console: ['reflexo', 'No videogame'], 'tapete-gamer': ['reflexo', 'No videogame'] }
+/** clique num móvel de jogo (tile do mundo): qual jogo e o lugar livre mais perto pra jogar */
+export function jogoAt(gx: number, gy: number) {
+  for (const r of rooms) {
+    if (r.kind !== 'jogos') continue
+    for (const o of r.sala.objs) {
+      const m = MAQUINAS[o.k], d = kd(o)
+      if (!m || !d || gx < r.ox + o.x || gx >= r.ox + o.x + d.w || gy < r.oy + o.y - (d.up ?? 0) || gy >= r.oy + o.y + d.h) continue
+      const sp = (comodoOf('jogos')?.spots ?? []).filter(s => s.act === m[1])
+        .sort((a, b) => Math.hypot(a.x - o.x, a.y - o.y) - Math.hypot(b.x - o.x, b.y - o.y))[0]
+      return { jogo: m[0], tx: r.ox + (sp?.x ?? o.x), ty: r.oy + (sp?.y ?? o.y + d.h) }
+    }
+  }
   return null
 }
 export function shelfSpot(r: Room) { const e = r.sala.objs.find(o => o.k === 'estante'); return e ? near(r.ox + e.x + 1, r.oy + e.y + 1) : null }

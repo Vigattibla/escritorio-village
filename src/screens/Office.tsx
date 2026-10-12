@@ -22,6 +22,8 @@ import SalaEditor, { canEditOffice } from '../components/SalaEditor'
 import Fluxos from '../components/Fluxos'
 import Arquivos from '../components/Arquivos'
 import Vendas, { Lousa } from '../components/Vendas'
+import Jogos from '../components/Jogos'
+import type { Jogo } from '../office/world'
 import Caderno from '../components/Caderno'
 import Accounts from '../components/Accounts'
 import { vende } from '../game/vendas'
@@ -218,6 +220,7 @@ export default function Office() {
               <button className={'btn sm game-tl' + (new Date().getHours() >= 17 ? ' accent' : ' soft')} onClick={() => setTl(true)} title="Ver como todo mundo se movimentou hoje, acelerado"><Ph n="film-strip" size={16} />Timelapse do dia</button></div>
             {tl && <Timelapse onClose={() => setTl(false)} />}
             {s.lousa && <Lousa onClose={() => setUi({ lousa: false })} />}
+            {s.jogo && <Jogos inicio={s.jogo as Jogo} onClose={() => setUi({ jogo: null })} />}
             <aside className="side">
               {sv ? <div className="pane"><Caderno /></div> : <>
               <nav className="who-strip" aria-label="Ver a mesa de">
