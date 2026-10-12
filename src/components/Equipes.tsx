@@ -9,8 +9,9 @@ import { Ph } from './Icon'
 import type { PhName } from './ph'
 
 export const SUGERIDAS: [string, PhName, string][] = [
-  ['Design', 'sparkle', '#2440FF'], ['Edição de vídeo', 'film-strip', '#C2189B'], ['Social Media', 'instagram-logo', '#E8620C'],
-  ['Storymaker', 'video-camera', '#7B4DFF'], ['Fotógrafo', 'images', '#0E8FA8'], ['Análise de dados', 'target', '#1F9D55'], ['Merchandising', 'storefront', '#B88A00'],
+  // lista do Pablo (12/10): só as equipes do marketing; o resto é outra linha de produto
+  ['Comercial', 'storefront', '#B88A00'], ['Agentes de viagem', 'paper-plane-tilt', '#0E8FA8'], ['Edição de vídeo', 'film-strip', '#C2189B'],
+  ['Design', 'sparkle', '#2440FF'], ['Performance (Tráfego Pago)', 'target', '#1F9D55'], ['Social Media', 'instagram-logo', '#E8620C'],
 ]
 const slug = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 32) || 'equipe'
 const nova = (nome: string, dept: string | null, icone: string | null = 'users-three', cor: string | null = null): Equipe =>
