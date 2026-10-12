@@ -826,8 +826,8 @@ export async function removeProject(id: string) {
   await backend.deleteProject(id)
 }
 
-/** aceitou o pedido = já começou a fazer */
-export const acceptRequest = (id: string) => setStatus(id, 'doing')
+/** aceitou o pedido: entra no A fazer de quem aceitou */
+export const acceptRequest = (id: string) => setStatus(id, 'todo')
 export const declineRequest = (id: string) => setStatus(id, 'declined')
 
 export async function setRank(target: string, rank: number) {
