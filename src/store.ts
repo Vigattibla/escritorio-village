@@ -208,7 +208,7 @@ export function unread(s: State, ch: string) {
 }
 
 // ---------- avisos (mascote, PiP, notificação do sistema) ----------
-function notify(text: string, extra: Omit<Notice, 'id' | 'text' | 'at'> = {}) {
+export function notify(text: string, extra: Omit<Notice, 'id' | 'text' | 'at'> = {}) {
   const n: Notice = { id: crypto.randomUUID(), text, at: Date.now(), ...extra }
   set({ notices: [n, ...state.notices].slice(0, 30) })
   if (document.hidden && !state.pipOpen && 'Notification' in window && Notification.permission === 'granted') {
@@ -353,6 +353,8 @@ let disconnect: (() => void) | null = null
 // ---------- lembretes ----------
 let remindTimer = 0
 let coffeeTimer = 0
+/** verificações extras que rodam junto com os lembretes (ver avisos.ts) */
+export const checagens: (() => void)[] = []
 /** Avisa uma vez cada lembrete vencido das minhas tarefas (o "já avisei" fica no navegador). */
 function checkReminders() {
   const my = state.meId
@@ -370,6 +372,7 @@ function checkReminders() {
     notify(`⏰ Lembrete: “${t.title}”`, { go: { task: t.id } })
   }
   if (changed) try { localStorage.setItem(key, JSON.stringify(seen)) } catch { /* sem espaço */ }
+  for (const c of checagens) try { c() } catch { /* aviso não pode derrubar o app */ }
 }
 
 export async function boot() {

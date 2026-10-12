@@ -3,6 +3,7 @@ import Auth from './screens/Auth'
 import Creator from './screens/Creator'
 import Office from './screens/Office'
 import { boot, useStore } from './store'
+import './avisos'
 
 export default function App() {
   const phase = useStore(s => s.phase)
