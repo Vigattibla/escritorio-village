@@ -297,6 +297,11 @@ button.tlogo.img:hover { box-shadow: inset 0 0 0 2px var(--acc2); }
 .rel-top small { color: var(--muted); font-size: 14px; }
 .rel-sem { display: inline-flex; align-items: center; gap: 4px; padding: 3px; border-radius: 99px; background: #fff; }
 .rel-sem b { font-size: 14px; min-width: 120px; text-align: center; }
+.rel-dias { padding: 3px 4px 3px 12px; gap: 8px; }
+.rel-dias label { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--muted, #6b6b6b); }
+.rel-dias input { font: inherit; font-size: 13px; color: inherit; border: 1px solid rgba(0,0,0,.12); border-radius: 8px; padding: 3px 6px; background: #fff; }
+.rel-ia-salvo { display: flex; align-items: center; gap: 6px; margin: 0 0 8px; font-size: 13px; color: var(--muted, #6b6b6b); }
+.rel-ia-salvo .btn { margin-left: auto; }
 .rel-lista { overflow: auto; padding: 0 24px 24px; display: grid; gap: 12px; }
 .rel-p { background: #fff; border-radius: 18px; padding: 14px 16px; }
 .rel-p > header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
