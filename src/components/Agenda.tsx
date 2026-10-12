@@ -258,7 +258,8 @@ export default function Agenda() {
         )}
         {!pSel && others.length > 0 && (
           <div className="panel">
-            <div className="eyebrow">Também no dia {Number(day.slice(8))}</div>
+            <div className="eyebrow">Também no dia {Number(day.slice(8))}{others.length > 4 && ` · ${others.length}`}</div>
+            <div className={'ag-outros' + (others.length > 4 ? ' rola' : '')}>
             {others.map(i => (
               <button key={itemId(i)} className="post" onClick={() => pick(i)}>
                 <i className={'bar-l ' + (i.kind === 'post' && i.t.channel ? CHANNELS[i.t.channel].tag : i.kind)} />
@@ -266,6 +267,7 @@ export default function Agenda() {
                 {i.kind !== 'evento' && <StatusTag t={i.t} />}
               </button>
             ))}
+            </div>
           </div>
         )}
       </aside>

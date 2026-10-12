@@ -152,6 +152,11 @@ button.panel { width: 100%; border: 0; text-align: left; font: inherit; color: i
 .mitens.rola { max-height: 82px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: #D8D4CB transparent; padding-right: 2px;
   mask-image: linear-gradient(#000 calc(100% - 10px), transparent); }
 .mitens.rola:hover { mask-image: none; }
+.ag-outros { display: flex; flex-direction: column; }
+.ag-outros > * { flex: none; }
+.ag-outros.rola { max-height: 330px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: #D8D4CB transparent; padding: 2px 4px 2px 2px; margin: -2px -4px -2px -2px;
+  mask-image: linear-gradient(#000 calc(100% - 16px), transparent); }
+.ag-outros.rola:hover { mask-image: none; }
 .wk { padding: 0 32px 96px; display: grid; gap: 14px; max-width: 760px; }
 .week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; background: #fff; border-radius: 20px; padding: 8px; box-shadow: var(--sh); }
 .wd { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 8px 0 7px; border: 0; border-radius: 14px; background: none; cursor: pointer; font: inherit; }
