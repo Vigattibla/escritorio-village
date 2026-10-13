@@ -494,6 +494,8 @@ button.panel { width: 100%; border: 0; text-align: left; font: inherit; color: i
 .quadro .qtabs .qchip { padding: 0 11px; }
 .quadro .qtabs .qchip select { field-sizing: content; }
 .quadro .tc-ask { flex-wrap: wrap; } .quadro .tc-ask .btn { flex: 1 1 auto; justify-content: center; }
+.quadro .tc-funil { display: inline-flex; align-items: center; gap: 4px; width: 100%; font-size: 11px; font-weight: 700; color: #8a6200; }
+.quadro .tc-passar { flex: 2 1 auto; min-width: 0; border: 1.5px solid #2440FF; border-radius: 8px; padding: 4px 6px; font: 600 12px inherit; background: #fff; color: #2440FF; cursor: pointer; }
 
 /* ===== revisão de layout: fluxos ===== */
 .fl-head { padding: 24px 32px 0; gap: 10px; flex-wrap: nowrap; }
@@ -1043,3 +1045,6 @@ button.panel { width: 100%; border: 0; text-align: left; font: inherit; color: i
   .quadro .qlist .qcards { overflow: visible; }
   .quadro .qnew { flex-basis: 64px; }
 }
+.td-aviso { display: inline-flex; align-items: center; gap: 2px; }
+.td-aviso button { border: 0; background: transparent; padding: 2px; cursor: pointer; color: #8a8a92; display: grid; place-items: center; }
+.td-aviso button:hover { color: #FF7A1A; }

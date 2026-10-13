@@ -7,7 +7,7 @@ import { MAX_DESKS } from './office/base'
 import { parseSala } from './office/sala'
 import { ITEM, type Slot } from './shop/catalog'
 import { REASON } from './shop/economy'
-import type { Snapshot, Group, RowTable, Rows, Stage, StageKind, Sticker, AccountEdit, AiContext, AiItem, AiProposal, AiStage, Attachment, Avatar, CoffeeLine, Gear, Message, Pos, Profile, Project, Review, Task, TaskNote, TaskStatus, Wallet } from './types'
+import type { Equipe, Snapshot, Group, RowTable, Rows, Stage, StageKind, Sticker, AccountEdit, AiContext, AiItem, AiProposal, AiStage, Attachment, Avatar, CoffeeLine, Gear, Message, Pos, Profile, Project, Review, Task, TaskNote, TaskStatus, Wallet } from './types'
 import { ROW_TABLES } from './types'
 
 export type Phase = 'loading' | 'auth' | 'creator' | 'office'
@@ -255,6 +255,9 @@ function onTask(raw: Task) {
     else if (t.status === 'declined') notify(`${who} recusou seu pedido: “${t.title}”`, { kind: 'pedido', from: t.owner_id, go })
     else if (prev?.status === 'inbox' && (t.status === 'todo' || t.status === 'doing')) notify(`${who} aceitou seu pedido: “${t.title}”`, { kind: 'pedido', from: t.owner_id, go })
   }
+  // entrega aprovada/concluída: avisa os setores marcados (menos quem fez)
+  if (prev && prev.status !== 'done' && t.status === 'done' && t.owner_id !== my && (t.avisar ?? []).some(id => state.rows.equipes[id]?.pessoas.includes(my)))
+    notify(`Pronto pra usar: ${nameOf(t.owner_id)} entregou “${t.title}”`, { kind: 'pedido', from: t.owner_id, go: { task: t.id } })
   if (prev && prev.owner_id !== my && t.owner_id === my) notify(`Uma tarefa passou para você: “${t.title}”`, { kind: 'pedido', go: { task: t.id } })
   if (prev && prev.status !== 'review' && t.status === 'review' && (approverOf(t) === my || (approverOf(t) === CHEFIA && canApprove(t, my))) && t.owner_id !== my)
     notify(`${nameOf(t.owner_id)} enviou para aprovação: “${t.title}”`, { kind: 'aprov', from: t.owner_id, go: { tab: 'aprovar' } })
@@ -596,7 +599,7 @@ async function putTask(t: Task) {
  * Na própria pasta ou de quem tem cargo menor: entra direto (na etapa pedida).
  * Senão (ou se `status` = 'inbox') vira pedido para a pessoa aceitar.
  */
-export async function addTask(owner: string, title: string, due: string | null = null, notes = '', status: TaskStatus = 'todo', project: string | null = null, extra: Pick<Partial<Task>, 'id' | 'priority' | 'remind_at' | 'due_time' | 'channel' | 'publish_at' | 'notes' | 'stage' | 'drive' | 'start' | 'collaborators'> = {}) {
+export async function addTask(owner: string, title: string, due: string | null = null, notes = '', status: TaskStatus = 'todo', project: string | null = null, extra: Pick<Partial<Task>, 'id' | 'priority' | 'remind_at' | 'due_time' | 'channel' | 'publish_at' | 'notes' | 'stage' | 'drive' | 'start' | 'collaborators' | 'equipe' | 'avisar'> = {}) {
   const direct = canAssign(me(), state.profiles[owner])
   if (status === 'review' || status === 'done') status = 'todo' // entrega passa pela etapa certa
   const t: Task = {
@@ -606,9 +609,40 @@ export async function addTask(owner: string, title: string, due: string | null =
     priority: extra.priority ?? null, checklist: [], remind_at: extra.remind_at ?? null,
     channel: extra.channel ?? null, publish_at: extra.publish_at ?? null, stage: extra.stage ?? null, drive: extra.drive ?? null,
     dept: deptOf(state.profiles[owner]),
+    ...(extra.equipe ? { equipe: extra.equipe, status: 'inbox' as const } : {}),
+    ...(extra.avisar?.length ? { avisar: extra.avisar } : {}),
   }
   await putTask(t)
   return t
+}
+
+// ---------- funil do setor ----------
+/** quem recebe os pedidos da equipe: gestor que é da equipe; senão gerência da sala dela; senão a Chefe */
+export function gestorDe(e: Equipe | undefined, profiles = state.profiles): string | null {
+  if (!e) return null
+  const sala = e.dept ?? state.sala
+  const ps = Object.values(profiles).sort((a, b) => rankOf(b) - rankOf(a) || a.name.localeCompare(b.name))
+  return (ps.find(p => e.pessoas.includes(p.id) && rankOf(p) >= 3)
+    ?? ps.find(p => deptOf(p) === sala && rankOf(p) === 3)
+    ?? ps.find(p => rankOf(p) === 4)
+    ?? ps.find(p => e.pessoas.includes(p.id)))?.id ?? null
+}
+/** pedido que ainda está no funil do setor */
+export const noFunil = (t: Task) => !!t.equipe && t.status === 'inbox'
+export const podeRepassar = (t: Task, uid = state.meId) => {
+  const my = uid ? state.profiles[uid] : undefined
+  return noFunil(t) && !!my && (t.owner_id === my.id || outranks(my, state.profiles[t.owner_id]))
+}
+/** gestor tira do funil e passa para alguém (já entra em A fazer) */
+export async function repassar(id: string, to: string) {
+  const t = state.tasks[id]
+  if (!t || !podeRepassar(t)) throw new Error('Só quem gerencia o setor passa esse pedido.')
+  await putTask({ ...t, owner_id: to, status: 'todo', stage: null, collaborators: t.collaborators.filter(x => x !== to), position: Date.now() })
+}
+export async function setAvisar(id: string, avisar: string[]) {
+  const t = state.tasks[id]
+  if (!t) return
+  await putTask({ ...t, avisar })
 }
 
 /** XP conta ao entregar (aprovação ou feito). Reenvio depois de reprovar não paga de novo. */

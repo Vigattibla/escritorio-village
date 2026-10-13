@@ -111,6 +111,10 @@ export interface Task {
   drive?: DriveLink | null
   /** sala de quem é responsável (o banco decide) */
   dept?: string
+  /** pedido feito para um setor (equipe): fica no funil até o gestor passar para alguém */
+  equipe?: string | null
+  /** setores (equipes) avisados quando a entrega é aprovada/concluída */
+  avisar?: string[]
 }
 
 export type Channel = 'feed' | 'reels' | 'stories' | 'facebook' | 'site'

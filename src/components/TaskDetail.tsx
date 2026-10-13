@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { isChief, rankName } from '../game/ranks'
 import {
   acceptRequest, addNote, approverOf, attachFiles, canApprove, canAskReview, canFinish, CHEFIA, canEditTask, canMove, canReassign, declineRequest, reassign, fileUrl, removeAttachment, removeNote, removeTask, run,
-  setCriteria, setProject, setStatus, setUi, stageList, stageOf, updateTask, useStore,
+  setAvisar, setCriteria, setProject, setStatus, setUi, stageList, stageOf, updateTask, useStore,
 } from '../store'
 import { hasCanais } from '../store'
 import type { Attachment, Channel, CheckItem, Priority, Task } from '../types'
@@ -12,6 +12,7 @@ import { Ph } from './Icon'
 import MiniAvatar from './MiniAvatar'
 import { ReviewBox, ReviewHistory } from './Revisao'
 import { Fundo } from './Fundo'
+import { EqTag } from './Equipes'
 
 const STATUS: Record<Task['status'], string> = { inbox: 'pedido aguardando', todo: 'a fazer', doing: 'fazendo', review: 'em aprovação ⏳', done: 'feita ✅', declined: 'recusada' }
 /** ISO → valor de input datetime-local (hora local) */
@@ -103,6 +104,7 @@ export default function TaskDetail() {
   const id = useStore(s => s.task)!
   const t = useStore(s => s.tasks[id])
   const profiles = useStore(s => s.profiles)
+  const equipes = useStore(s => s.rows.equipes)
   const meId = useStore(s => s.meId)!
   const allNotes = useStore(s => s.notes)
   const projects = useStore(s => s.projects)
@@ -332,6 +334,24 @@ export default function TaskDetail() {
                   {!edit && !t.collaborators.length && <small className="muted">—</small>}
                 </div>
               </div>
+              {t.equipe && equipes[t.equipe] && <div className="prop"><span>Setor</span><div className="people"><EqTag e={equipes[t.equipe]} sm /></div></div>}
+              {(edit || (t.avisar ?? []).length > 0) && Object.keys(equipes).length > 0 && (
+                <div className="prop" title="Esses setores recebem aviso quando a entrega for aprovada"><span>Avisar</span>
+                  <div className="people">
+                    {(t.avisar ?? []).filter(id => equipes[id]).map(id => (
+                      <span key={id} className="td-aviso"><EqTag e={equipes[id]} sm />
+                        {edit && <button type="button" onClick={() => run(setAvisar(t.id, (t.avisar ?? []).filter(x => x !== id)))} aria-label={'Não avisar ' + equipes[id].nome}><Ph n="x" size={11} /></button>}
+                      </span>
+                    ))}
+                    {edit && (
+                      <select className="add-person" value="" onChange={e => e.target.value && run(setAvisar(t.id, [...(t.avisar ?? []), e.target.value]))}>
+                        <option value="">+ setor</option>
+                        {Object.values(equipes).filter(e => !(t.avisar ?? []).includes(e.id)).sort((a, b) => a.nome.localeCompare(b.nome)).map(e => <option key={e.id} value={e.id}>{e.nome}</option>)}
+                      </select>
+                    )}
+                  </div>
+                </div>
+              )}
               <label className="prop"><span>Início</span>
                 <input type="date" value={t.start ?? ''} disabled={!edit} max={t.due ?? undefined} onChange={e => run(updateTask(t.id, { start: e.target.value || null }))} />
               </label>
