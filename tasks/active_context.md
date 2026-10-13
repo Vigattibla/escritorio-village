@@ -172,3 +172,8 @@ Pendente: push (precisa da migration 202610080900_v4_agenda_metas.sql e do secre
 - 220bd26 LinkedIn: canal 'linkedin'; tarefa aprovada (última revisão ok + done) entra em `postagens` e sai na data (pg_cron 5 min / pg_net na hora). Função `linkedin` (conectar OAuth, /callback, /tick, agora). Tokens cifrados em social_tokens. Caixa LinkedInBox no TaskDetail.
   - Pendente humano: app no LinkedIn, redirect `https://dfqcdyjovwncpvdwvioo.supabase.co/functions/v1/linkedin/callback`, secrets LINKEDIN_CLIENT_ID/SECRET; depois da aprovação do Community Management: LINKEDIN_MODO=empresa.
 - b98b74d Funil por setor: pedido ao setor fica na faixa "Funil · Equipe" no topo do quadro; qualquer um da equipe "Pegar pra mim", gestor "Passar para…". Tarefas do plano seguem iguais. Migration 202610141000_funil_pegar (na_equipe, policies, guard_task).
+
+### 13/10 (tarde) — aba Redes + funil por setor
+- Aba **Redes** (src/components/Redes.tsx): conta LinkedIn, "Novo post" (tarefa canal linkedin), colunas produção/aprovação/agendado/publicado/não saiu.
+- Funil: a tarefa puxada continua no funil da equipe ("Fazendo: nome", feitas da semana); por padrão só o setor da pessoa, botão "Todos os setores" (pref funilTodos). Sem setor ou com filtro de equipe: vê tudo.
+- Não testado no navegador.
