@@ -177,3 +177,10 @@ Pendente: push (precisa da migration 202610080900_v4_agenda_metas.sql e do secre
 - Aba **Redes** (src/components/Redes.tsx): conta LinkedIn, "Novo post" (tarefa canal linkedin), colunas produção/aprovação/agendado/publicado/não saiu.
 - Funil: a tarefa puxada continua no funil da equipe ("Fazendo: nome", feitas da semana); por padrão só o setor da pessoa, botão "Todos os setores" (pref funilTodos). Sem setor ou com filtro de equipe: vê tudo.
 - Não testado no navegador.
+
+### 13/10 (noite) — aba Redes vira Publicações
+- Menu e cabeçalho "Publicações" (id interno continua `redes`). Lista todo post com canal; filtro por rede (Instagram=feed/reels/stories, Facebook, LinkedIn, Site) com contagem.
+- Contas por rede: LinkedIn conecta e publica sozinho; demais "Postagem manual" (concluída com data futura = Agendado, senão Publicado). Coluna "Não saiu" só aparece se houver.
+- Novo post = cartão inline no topo de Em produção, com escolha do canal. Cards com capa (1ª imagem) ou capa vazia na cor da rede.
+- Visual segue referência limpa (Sinta, enviada pelo usuário 13/10): capa no topo, corpo cinza claro, botão com borda escura. Só nesta aba por enquanto.
+- Testado no ?demo (desktop e 375px sem overflow).

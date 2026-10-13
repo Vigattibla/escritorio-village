@@ -113,7 +113,7 @@ export default function Office() {
     { id: 'quadro', label: 'Quadro', ic: 'quadro', n: pend, tip: pend ? `${pend} pedido(s) esperando você aceitar` : undefined },
     { id: 'agenda', label: 'Agenda', ic: 'agenda' },
     { id: 'plano', label: 'Plano', ic: 'plano' },
-    { id: 'redes', label: 'Redes', ic: 'redes', tip: 'Posts do LinkedIn: criar, aprovar e publicar' },
+    { id: 'redes', label: 'Publicações', ic: 'redes', tip: 'Posts de todas as redes: criar, aprovar e publicar' },
     { id: 'chatwin', label: 'Chat', ic: 'chat', n: msgs },
     { id: 'escritorio', label: 'Escritório', ic: 'escritorio' },
     { id: 'arquivos', label: 'Arquivos', ic: 'arquivos' },
