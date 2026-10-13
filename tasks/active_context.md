@@ -191,3 +191,10 @@ Pendente: push (precisa da migration 202610080900_v4_agenda_metas.sql e do secre
 - App 2 "Escritório Village - Página" (264986610), página Village Resort verificada; pedido Community Management API (Development Tier) enviado 13/10 — aguarda e-mail da LinkedIn/Microsoft Vetting no e-mail corporativo.
 - Quando aprovar: callback no Auth do app 2, trocar LINKEDIN_CLIENT_ID/SECRET pro app 2, adm da página conecta em Publicações.
 - Bug visto: após OAuth a aba mostrou "Não conectado" com linha já gravada em redes (provável tela sem recarregar) — conferir no próximo conectar.
+
+## 13/10 — Cassino dos cafezinhos (2352339)
+- Migration 202610142000_cassino: tabela cassino_rodadas + RPCs SECURITY DEFINER cassino_jogar (caça-níquel/roleta/crash), cassino_abrir/cassino_acao/cassino_estado (blackjack/minas). Lança no coffee_log com reason 'aposta'/'premio'; saldo via cafe_saldo(). Aposta 1–100.
+- Regras: caça-níquel 7 símbolos com pesos (3 iguais 4x–100x, 2 iguais 1x–8x); roleta europeia (número 36x, cor/par/metade 2x, dúzia 3x); crash alvo 1,01–100x, 3% da casa; blackjack paga 2,5x no natural, banca para em 17, dobrar; minas 1–24 em 5×5, mult com 3% da casa, sacar.
+- Telas: src/components/Cassino.tsx + cs-* no index.css; motor espelho da demo em src/cassino/regras.ts (classe Mesa). Rodada aberta de blackjack/minas é retomada.
+- Entradas: menu do avatar, Mais (MoreMenu) e botão "Apostar no cassino" na Loja.
+- Testado: demo nos 5 jogos (desktop + 375px), migration em begin…rollback no Supabase real. Aviso na tela: só diversão, cafezinho não vale dinheiro.
