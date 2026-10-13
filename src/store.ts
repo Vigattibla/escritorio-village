@@ -633,6 +633,13 @@ export const podeRepassar = (t: Task, uid = state.meId) => {
   const my = uid ? state.profiles[uid] : undefined
   return noFunil(t) && !!my && (t.owner_id === my.id || outranks(my, state.profiles[t.owner_id]))
 }
+/** alguém da equipe pega o pedido do funil para si */
+export const podePegar = (t: Task, uid = state.meId) => noFunil(t) && !!uid && t.owner_id !== uid && !!state.rows.equipes[t.equipe!]?.pessoas.includes(uid)
+export async function pegar(id: string) {
+  const t = state.tasks[id], me = state.meId
+  if (!t || !me || !(podePegar(t) || (noFunil(t) && t.owner_id === me))) throw new Error('Esse pedido não está no funil da sua equipe.')
+  await putTask({ ...t, owner_id: me, status: 'todo', stage: null, collaborators: t.collaborators.filter(x => x !== me), position: Date.now() })
+}
 /** gestor tira do funil e passa para alguém (já entra em A fazer) */
 export async function repassar(id: string, to: string) {
   const t = state.tasks[id]

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { canAssign, deptOf, rankName, rankOf } from '../game/ranks'
 import { atrasada, hm } from '../game/prazo'
 import { dayKey } from '../game/xp'
-import { acceptRequest, addTask, podeRepassar, repassar, approverOf, canApprove, canAskReview, canCreateProject, canEditProject, canEditStages, canEditTask, canFinish, canMove, canReassign, canUseAI, CHEFIA, comigo, declineRequest, involved, placeTask, reassign, removeStage, run, saveStages, setStatus, setUi, STAGE_KINDS, stageList, stageOf, team as salaTeam, teamOf, toApprove, useStore } from '../store'
+import { acceptRequest, addTask, noFunil, pegar, podePegar, podeRepassar, repassar, approverOf, canApprove, canAskReview, canCreateProject, canEditProject, canEditStages, canEditTask, canFinish, canMove, canReassign, canUseAI, CHEFIA, comigo, declineRequest, involved, placeTask, reassign, removeStage, run, saveStages, setStatus, setUi, STAGE_KINDS, stageList, stageOf, team as salaTeam, teamOf, toApprove, useStore } from '../store'
 import type { DriveLink, Priority, Profile, Project, Stage, StageKind, Task, TaskStatus } from '../types'
 import { Bell } from './Avisos'
 import { folderName, FolderPicker } from './DriveFolder'
@@ -165,6 +165,7 @@ export default function Quadro() {
 
   const shown = Object.values(tasksMap).filter(t => {
     if (t.status === 'declined') return false
+    if (noFunil(t)) return false
     if (t.status === 'done' && (!t.done_at || dayKey(t.done_at) < since)) return false
     if (project === NONE ? !!t.project_id : project && t.project_id !== project) return false
     if (mine && !involved(t, meId)) return false
@@ -382,7 +383,7 @@ export default function Quadro() {
             {gereEq && <option value="+">{eqList.length ? 'Gerir equipes…' : '＋ Criar equipes…'}</option>}
           </select>
         </label>}
-        {eqSet && <button className="qchip" onClick={() => setUi({ requestTo: 'eq:' + eq })} title="Cai no funil do setor e o gestor passa para alguém"><Ph n="paper-plane-tilt" size={14} />Pedir ao setor</button>}
+        {eqSet && <button className="qchip" onClick={() => setUi({ requestTo: 'eq:' + eq })} title="Cai no funil do setor: alguém da equipe pega ou o gestor passa"><Ph n="paper-plane-tilt" size={14} />Pedir ao setor</button>}
         <div className="qwho" aria-label="Filtrar por pessoa">
           {people.map(p => (
             <button key={p.id} className={who.includes(p.id) ? 'on' : ''} onClick={() => toggleWho(p.id)} title={`Só de ${p.name}`}>
@@ -395,6 +396,7 @@ export default function Quadro() {
 
       {eqModal && <EquipesModal onClose={() => setEqModal(false)} />}
       {proj && <ProjectBar p={proj} profiles={profiles} tasks={Object.values(tasksMap).filter(t => t.project_id === proj.id)} />}
+      <Funil tasks={Object.values(tasksMap).filter(t => noFunil(t) && (eq ? t.equipe === eq : true))} profiles={profiles} meId={meId} />
 
       {group === 'raias' ? (
         <div className="qlanes" style={{ '--ncol': cols.length } as React.CSSProperties}>
@@ -575,6 +577,45 @@ const friday = () => { const d = new Date(); d.setDate(d.getDate() + ((5 - d.get
 type Tool = 'owner' | 'prio' | 'due' | 'remind'
 
 /** Criar tarefa no jeito Trello: um cartão com o título; o resto em ícones que abrem um painelzinho. */
+/** funil de cada setor: pedidos esperando alguém da equipe pegar (ou o gestor passar) */
+function Funil({ tasks, profiles, meId }: { tasks: Task[]; profiles: Record<string, Profile>; meId: string }) {
+  const equipes = useStore(s => s.rows.equipes)
+  if (!tasks.length) return null
+  const grupos = new Map<string, Task[]>()
+  for (const t of [...tasks].sort((a, b) => (a.due ?? '9').localeCompare(b.due ?? '9') || a.created_at.localeCompare(b.created_at))) grupos.set(t.equipe!, [...(grupos.get(t.equipe!) ?? []), t])
+  return (
+    <section className="qfunil">
+      {[...grupos].map(([id, ts]) => (
+        <div key={id} className="qfunil-eq">
+          <h4><Ph n="funnel" size={14} />Funil · {equipes[id]?.nome ?? 'Setor'} <span className="qcount">{ts.length}</span></h4>
+          <div className="qfunil-row">
+            {ts.map(t => (
+              <article key={t.id} className="qfunil-card" onClick={() => setUi({ task: t.id })}>
+                <b>{t.title}</b>
+                <small>↩ {t.created_by === meId ? 'você' : first(profiles[t.created_by])}{t.due ? ' · ' + (t.due === dayKey(new Date()) ? 'Hoje' : shortDate(t.due)) : ''}</small>
+                <div className="tc-ask" onClick={ev => ev.stopPropagation()}>
+                  {(podePegar(t, meId) || t.owner_id === meId) && <button className="btn primary sm" onClick={() => run(pegar(t.id))}>Pegar pra mim</button>}
+                  {podeRepassar(t, meId) && <Passar t={t} profiles={profiles} />}
+                </div>
+              </article>
+            ))}
+          </div>
+        </div>
+      ))}
+    </section>
+  )
+}
+function Passar({ t, profiles }: { t: Task; profiles: Record<string, Profile> }) {
+  const e = useStore(s => t.equipe ? s.rows.equipes[t.equipe] : undefined)
+  const gente = (e?.pessoas ?? []).map(id => profiles[id]).filter(Boolean).sort((a, b) => a.name.localeCompare(b.name))
+  return (
+    <select className="tc-passar" value="" onChange={ev => ev.target.value && run(repassar(t.id, ev.target.value))} aria-label="Passar para">
+      <option value="">Passar para…</option>
+      {gente.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+    </select>
+  )
+}
+
 /** pedido no funil do setor: o gestor escolhe quem faz */
 function Repassar({ t, profiles }: { t: Task; profiles: Record<string, Profile> }) {
   const e = useStore(s => t.equipe ? s.rows.equipes[t.equipe] : undefined)

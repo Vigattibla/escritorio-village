@@ -1063,3 +1063,12 @@ button.panel { width: 100%; border: 0; text-align: left; font: inherit; color: i
 .li-link { display: inline-flex; align-items: center; gap: 4px; color: #0a66c2; font-weight: 600; font-size: 12px; }
 .li-acoes { display: flex; gap: 6px; flex-wrap: wrap; }
 .li-acoes:empty { display: none; }
+
+/* funil de cada setor (topo do quadro) */
+.qfunil { display: grid; gap: 10px; margin: 0 0 14px; }
+.qfunil-eq h4 { display: flex; align-items: center; gap: 6px; margin: 0 0 6px; font-size: 13px; color: #8a6200; }
+.qfunil-row { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
+.qfunil-card { flex: 0 0 230px; display: grid; gap: 6px; padding: 10px; border: 1.5px dashed #e3b341; border-radius: 10px; background: #fffaf0; cursor: pointer; font-size: 13px; }
+.qfunil-card small { color: var(--muted); font-size: 12px; }
+.qfunil-card .tc-ask { display: flex; gap: 6px; flex-wrap: wrap; }
+.qfunil-card .tc-passar { flex: 1 1 auto; min-width: 0; border: 1.5px solid #2440FF; border-radius: 8px; padding: 4px 6px; font: 600 12px inherit; background: #fff; color: #2440FF; cursor: pointer; }
