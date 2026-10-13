@@ -2,6 +2,7 @@ import { createClient, type RealtimeChannel, type SupabaseClient } from '@supaba
 import { slugUser, toEmail } from './login'
 import type { CoffeeLine, Wallet, RowTable, Rows, AccountEdit, AiContext, AiProposal, AiStage, Backend, Handlers, Message, Pos, Profile, Project, Snapshot, Task, TaskNote } from '../types'
 import { ROW_TABLES } from '../types'
+import type { Escolha, JogoCassino, Rodada } from '../cassino/regras'
 
 function pt(e: { message: string }): Error {
   const m = e.message
@@ -202,12 +203,18 @@ export class SupabaseBackend implements Backend {
     if (error) throw pt(error)
   }
 
-  /** carteira: saldo = soma do extrato; itens = compras (o crédito é só do servidor) */
+  /** carteira: saldo (somado no banco), itens comprados e o extrato recente (o crédito é só do servidor) */
   async wallet(): Promise<Wallet> {
-    const { data, error } = await this.sb.from('coffee_log').select('amount,reason,ref,created_at').order('created_at', { ascending: false }).limit(2000)
-    if (error) { if (/does not exist|schema cache/i.test(error.message)) return { balance: 0, owned: [], log: [] }; throw pt(error) }
-    const log = (data ?? []) as CoffeeLine[]
-    return { balance: log.reduce((n, l) => n + l.amount, 0), owned: log.filter(l => l.reason === 'compra').map(l => l.ref), log }
+    const [log, own, sal] = await Promise.all([
+      this.sb.from('coffee_log').select('amount,reason,ref,created_at').order('created_at', { ascending: false }).limit(200),
+      this.sb.from('coffee_log').select('ref').eq('reason', 'compra'),
+      this.sb.rpc('cafe_saldo'),
+    ])
+    if (log.error) { if (/does not exist|schema cache/i.test(log.error.message)) return { balance: 0, owned: [], log: [] }; throw pt(log.error) }
+    const lines = (log.data ?? []) as CoffeeLine[]
+    // sem a função nova (antes da migration) soma o que veio
+    const balance = sal.error ? lines.reduce((n, l) => n + l.amount, 0) : (sal.data as number)
+    return { balance, owned: (own.data ?? []).map(l => l.ref as string), log: lines }
   }
 
   async claimCoffee(): Promise<CoffeeLine[]> {
@@ -220,6 +227,16 @@ export class SupabaseBackend implements Backend {
     const { error } = await this.sb.rpc('buy_item', { item })
     if (error) throw pt(error)
   }
+
+  private async cassino(fn: string, args: Record<string, unknown>) {
+    const { data, error } = await this.sb.rpc(fn, args)
+    if (error) throw pt(error)
+    return data as Rodada
+  }
+  cassinoJogar(jogo: JogoCassino, aposta: number, e: Escolha) { return this.cassino('cassino_jogar', { p_jogo: jogo, p_aposta: aposta, p_escolha: e }) }
+  cassinoAbrir(jogo: JogoCassino, aposta: number, e: Escolha) { return this.cassino('cassino_abrir', { p_jogo: jogo, p_aposta: aposta, p_escolha: e }) }
+  cassinoAcao(id: string, acao: string, casa?: number) { return this.cassino('cassino_acao', { p_rodada: id, p_acao: acao, p_casa: casa ?? null }) }
+  async cassinoEstado(jogo: JogoCassino) { return (await this.cassino('cassino_estado', { p_jogo: jogo })) ?? null }
 
   async joinGroup(gid: string, join: boolean) {
     const { error } = await this.sb.rpc('group_join', { gid, p_join: join })

@@ -5,6 +5,7 @@ import type { CoffeeLine, Dept, Goal, Wallet, Group, RowTable, Rows, AccountEdit
 import { ROW_TABLES } from '../types'
 import { counts, DAY, MAX_GOALS, payouts, WELCOME } from '../shop/economy'
 import { ITEM } from '../shop/catalog'
+import { Mesa, type Escolha, type JogoCassino } from '../cassino/regras'
 import { localDay } from '../components/v4'
 
 // Modo demonstração: tudo no localStorage deste navegador. Abas diferentes = pessoas diferentes
@@ -446,6 +447,21 @@ export class DemoBackend implements Backend {
     this.credit(log, -it.price, 'compra', id, [])
     write('ev:coffee:' + me, log)
   }
+
+  /** cassino da demo: o mesmo motor do SQL rodando aqui, extrato na carteira da pessoa */
+  private mesa() {
+    const me = sessionStorage.getItem(K.session)
+    if (!me) throw new Error('Entre de novo para apostar.')
+    const ck = 'ev:coffee:' + me, rk = 'ev:cassino:' + me
+    return new Mesa({
+      saldo: () => read<CoffeeLine[]>(ck, []).reduce((n, l) => n + l.amount, 0),
+      lanca: (amount, reason, ref) => { const log = read<CoffeeLine[]>(ck, []); this.credit(log, amount, reason, ref, []); write(ck, log) },
+    }, read(rk, []), r => write(rk, r))
+  }
+  async cassinoJogar(jogo: JogoCassino, aposta: number, e: Escolha) { return this.mesa().jogar(jogo, aposta, e) }
+  async cassinoAbrir(jogo: JogoCassino, aposta: number, e: Escolha) { return this.mesa().abrir(jogo, aposta, e) }
+  async cassinoAcao(id: string, acao: string, casa?: number) { return this.mesa().acao(id, acao, casa) }
+  async cassinoEstado(jogo: JogoCassino) { return this.mesa().estado(jogo) }
 
   async joinGroup(id: string, join: boolean) {
     const all = read<Record<string, Group>>(K.row + 'groups', {})

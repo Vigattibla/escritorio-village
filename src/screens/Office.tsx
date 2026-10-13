@@ -26,6 +26,7 @@ import Redes from '../components/Redes'
 import Arquivos from '../components/Arquivos'
 import Vendas, { Lousa } from '../components/Vendas'
 import Jogos from '../components/Jogos'
+import Cassino from '../components/Cassino'
 import type { Jogo } from '../office/world'
 import Caderno from '../components/Caderno'
 import Accounts from '../components/Accounts'
@@ -181,6 +182,7 @@ export default function Office() {
               <div className="me-pop-h"><b>{me.name}</b><small>{me.role || rankName(me)}</small></div>
               <button onClick={() => { setMeOpen(false); setUi({ editing: true }) }}><Ph n="smiley" size={20} /><b className="grow">Meu personagem</b></button>
               <button onClick={() => { setMeOpen(false); goTo('loja') }}><Ph n="coffee" size={20} /><b className="grow">Almoxarifado</b>{s.wallet && <small className="me-pop-cf">☕ {s.wallet.balance}</small>}</button>
+              <button onClick={() => { setMeOpen(false); setUi({ cassino: true }) }}><Ph n="sparkle" size={20} /><b className="grow">Cassino</b></button>
               {(me.is_admin || rankOf(me) >= 3) && <button onClick={() => { setMeOpen(false); setContas(true) }}><Ph n="users-three" size={20} /><b className="grow">Contas da equipe</b></button>}
               <button onClick={() => setPref('dev', !dev)} aria-pressed={dev}><Ph n="gear-six" size={20} /><b className="grow">Modo desenvolvedor</b><i className={'tswitch' + (dev ? ' on' : '')} /></button>
               {dev && chief && depts.length > 1 && <div className="me-pop-salas">
@@ -271,6 +273,7 @@ export default function Office() {
       <FloatChat unread={msgs} />
       <Toast />
       {s.editing && <div className="overlay"><Creator /></div>}
+      {s.cassino && <Cassino onClose={() => setUi({ cassino: false })} />}
     </div>
   )
 }

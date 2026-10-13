@@ -1,3 +1,4 @@
+import type { Escolha, JogoCassino, Rodada } from './cassino/regras'
 export type Dir = 'down' | 'up' | 'left' | 'right'
 /** básicos: camiseta, moletom, social, vestido, terno; o resto vem do Almoxarifado */
 export type Outfit = string
@@ -22,7 +23,7 @@ export interface Avatar {
 }
 
 /** cafezinhos: extrato só da própria pessoa; itens comprados = linhas 'compra' */
-export interface CoffeeLine { amount: number; reason: 'dia' | 'boasvindas' | 'fase' | 'meta' | 'compra'; ref: string; created_at: string }
+export interface CoffeeLine { amount: number; reason: 'dia' | 'boasvindas' | 'fase' | 'meta' | 'compra' | 'aposta' | 'premio'; ref: string; created_at: string }
 export interface Wallet { balance: number; owned: string[]; log: CoffeeLine[] }
 
 export interface Profile {
@@ -346,6 +347,11 @@ export interface Backend {
   /** credita o cafezinho do dia e as metas batidas que faltam; devolve o que entrou agora */
   claimCoffee(): Promise<CoffeeLine[]>
   buyItem(id: string): Promise<void>
+  /** cassino: o servidor sorteia, guarda cartas/minas e paga */
+  cassinoJogar(jogo: JogoCassino, aposta: number, e: Escolha): Promise<Rodada>
+  cassinoAbrir(jogo: JogoCassino, aposta: number, e: Escolha): Promise<Rodada>
+  cassinoAcao(id: string, acao: string, casa?: number): Promise<Rodada>
+  cassinoEstado(jogo: JogoCassino): Promise<Rodada | null>
   /** IA do Gerente: manda o pedido e espera a proposta (servidor: a ponte no PC roda o Claude) */
   askAI(prompt: string, ctx: AiContext, onStage: (s: AiStage) => void, signal: AbortSignal): Promise<AiProposal>
   /** a ponte do PC deu sinal de vida há pouco? */

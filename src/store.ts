@@ -9,6 +9,8 @@ import { ITEM, type Slot } from './shop/catalog'
 import { REASON } from './shop/economy'
 import type { Equipe, Snapshot, Group, RowTable, Rows, Stage, StageKind, Sticker, AccountEdit, AiContext, AiItem, AiProposal, AiStage, Attachment, Avatar, CoffeeLine, Gear, Message, Pos, Profile, Project, Review, Task, TaskNote, TaskStatus, Wallet } from './types'
 import { ROW_TABLES } from './types'
+import type { Backend } from './types'
+import type { Rodada } from './cassino/regras'
 
 export type Phase = 'loading' | 'auth' | 'creator' | 'office'
 export type Tab = 'mesa' | 'aprovar' | 'avisos' | 'equipe' | 'chat' | 'geral'
@@ -59,6 +61,8 @@ export interface State {
   lousa: boolean
   /** jogo aberto na sala de jogos */
   jogo: string | null
+  /** cassino dos cafezinhos aberto */
+  cassino: boolean
   /** sino de avisos aberto */
   bellOpen: boolean
   /** quadro filtrado só no que espera minha aprovação */
@@ -79,7 +83,7 @@ export interface State {
 const initial: State = {
   phase: 'loading', meId: null, accountName: '', error: '', profiles: {}, tasks: {}, messages: [], notes: [], projects: {}, rows: { events: {}, goals: {}, stickers: {}, flows: {}, stages: {}, groups: {}, rooms: {}, carpenters: {}, depts: {}, brand: {}, quartos: {}, vendas: {}, ajustes: {}, metas_venda: {}, vendas_cfg: {}, campanhas: {}, caderno: {}, jogos_pontos: {}, plano_meses: {}, plano_nucleos: {}, plano_acoes: {}, plano_resp: {}, equipes: {}, relatorios: {}, redes: {}, postagens: {} }, online: new Set(),
   tab: 'mesa', viewing: null, channel: 'geral', reads: {}, requestTo: null, task: null, editing: false, notices: [], pipOpen: false, view: 'quadro' as View, wallet: null, drawer: false,
-  project: '', projectEdit: null, aiOpen: false, chatOpen: false, lousa: false, jogo: null, bellOpen: false, qApprove: false, flow: null, sheet: false, stickTo: null, sala: DEPT0, here: DEPT0,
+  project: '', projectEdit: null, aiOpen: false, chatOpen: false, lousa: false, jogo: null, cassino: false, bellOpen: false, qApprove: false, flow: null, sheet: false, stickTo: null, sala: DEPT0, here: DEPT0,
 }
 
 let state = initial
@@ -539,7 +543,7 @@ export async function signOut() {
   set({ ...initial, phase: 'auth' })
 }
 
-export function setUi(p: Partial<Pick<State, 'tab' | 'viewing' | 'channel' | 'requestTo' | 'editing' | 'pipOpen' | 'error' | 'task' | 'view' | 'drawer' | 'project' | 'projectEdit' | 'aiOpen' | 'chatOpen' | 'lousa' | 'jogo' | 'bellOpen' | 'qApprove' | 'flow' | 'sheet' | 'stickTo'>>) {
+export function setUi(p: Partial<Pick<State, 'tab' | 'viewing' | 'channel' | 'requestTo' | 'editing' | 'pipOpen' | 'error' | 'task' | 'view' | 'drawer' | 'project' | 'projectEdit' | 'aiOpen' | 'chatOpen' | 'lousa' | 'jogo' | 'cassino' | 'bellOpen' | 'qApprove' | 'flow' | 'sheet' | 'stickTo'>>) {
   // chat, avisos e aprovação não são mais páginas: viram painel flutuante, sino e filtro do quadro
   if (p.tab === 'chat') { const { tab: _, ...rest } = p; p = { ...rest, chatOpen: true } }
   else if (p.tab === 'avisos') { const { tab: _, ...rest } = p; p = { ...rest, bellOpen: true } }
@@ -1048,6 +1052,13 @@ async function claim() {
 export async function buyItem(id: string) {
   await backend.buyItem(id)
   await refreshWallet()
+}
+
+/** cassino: a jogada vai ao servidor e o saldo volta junto com o resultado */
+export async function apostar(fn: (b: Backend) => Promise<Rodada | null>) {
+  const r = await fn(backend)
+  if (r && state.wallet) set({ wallet: { ...state.wallet, balance: r.saldo } })
+  return r
 }
 
 /** o que a pessoa já tem: comprado ou dado de graça no criador */

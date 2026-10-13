@@ -4,7 +4,7 @@ import { drawAnim } from '../office/anim'
 import { drawChair, drawDecor, drawFloor, drawNotebook, MESA, mesaExtra } from '../office/props'
 import { ITEMS, SLOTS, TIER_NAME, type Item, type Slot } from '../shop/catalog'
 import { DAY, FINAL, MAX_GOALS, PHASE, REASON, WELCOME } from '../shop/economy'
-import { buyItem, equip, itemName, owns, run, useStore } from '../store'
+import { buyItem, equip, itemName, owns, run, setUi, useStore } from '../store'
 import type { Avatar, CoffeeLine, Gear } from '../types'
 import { Bell } from './Avisos'
 import { Ph } from './Icon'
@@ -76,6 +76,7 @@ function why(l: CoffeeLine, goalTitle: (id: string) => string | undefined) {
   if (l.reason === 'compra') return `Comprou ${itemName(l.ref)}`
   if (l.reason === 'dia') return 'Bateu o ponto'
   if (l.reason === 'boasvindas') return 'Boas-vindas ao escritório'
+  if (l.reason === 'aposta' || l.reason === 'premio') return REASON[l.reason]
   const [, gid, i] = l.ref.split(':'), t = goalTitle(gid)
   return l.reason === 'meta' ? `Meta${t ? ` “${t}”` : ''} batida` : `${REASON.fase} ${i}${t ? ` de “${t}”` : ''}`
 }
@@ -118,6 +119,7 @@ export default function Loja() {
       <div className="lj-shop panel">
         <aside className="lj-prev">
           <div className="lj-coins"><Ph n="coffee" size={20} fill /> <b>{wallet ? coins : '…'}</b> cafezinhos</div>
+          <button className="btn soft sm lj-cass" onClick={() => setUi({ cassino: true })}><Ph n="sparkle" size={16} /> Apostar no cassino</button>
           <div className="lj-stage">
             <Px w={40} h={44} s={5} draw={(c, t) => { drawAvatar(c, prev, null, 12, 12, 'down', Math.floor(t / 400) % 3 === 1 ? 1 : 0); drawAnim(c, prev.gear?.animacao, 20, 15, t) }} />
             <Plate kind={prev.gear?.plaquinha} name={first} />
