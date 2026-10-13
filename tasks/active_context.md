@@ -198,3 +198,4 @@ Pendente: push (precisa da migration 202610080900_v4_agenda_metas.sql e do secre
 - Telas: src/components/Cassino.tsx + cs-* no index.css; motor espelho da demo em src/cassino/regras.ts (classe Mesa). Rodada aberta de blackjack/minas é retomada.
 - Entradas: menu do avatar, Mais (MoreMenu) e botão "Apostar no cassino" na Loja.
 - Testado: demo nos 5 jogos (desktop + 375px), migration em begin…rollback no Supabase real. Aviso na tela: só diversão, cafezinho não vale dinheiro.
+- Sala de jogos (7beb42e): 28x16 com canto do cassino (tapete, 4 caça-níqueis, roleta, blackjack, totens crash/minas, caixa de fichas, letreiro, máquina de latinhas) + lanchonete. Clicar na máquina abre o Cassino no jogo certo (MAQUINAS.cassino em world.ts → ui.cassino string). Pendente: latinhas ⚡, bolão/sorteio, loja de latinhas, elevador, roupas iniciais/loja.
