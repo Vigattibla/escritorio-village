@@ -32,20 +32,29 @@ export async function mkdir(path: string[], name: string) {
 const thumbs = new Map<string, Promise<string>>()
 let busy = 0
 const waiting: (() => void)[] = []
-export function thumb(path: string[], id: string, px = 400) {
-  if (!driveOn) return demo.thumb(path, id)
+/** path null = foto do acervo (Drive todo, só adm) */
+export function thumb(path: string[] | null, id: string, px = 400) {
+  if (!driveOn) return path ? demo.thumb(path, id) : Promise.reject(new Error('Sem Drive na demonstração.'))
   const k = id + '@' + px
   if (!thumbs.has(k)) {
     const p = (async () => {
       if (busy >= 4) await new Promise<void>(r => waiting.push(r))
       busy++
-      try { return URL.createObjectURL(await (await call({ a: 'thumb', path, id, px })).blob()) }
+      try { return URL.createObjectURL(await (await call(path ? { a: 'thumb', path, id, px } : { a: 'athumb', id, px })).blob()) }
       finally { busy--; waiting.shift()?.() }
     })()
     p.catch(() => thumbs.delete(k))
     thumbs.set(k, p)
   }
   return thumbs.get(k)!
+}
+
+/** foto do acervo: [id, nome, pasta, dia AAAA-MM-DD, md5, bytes] · pasta: [id, nome, pasta-mãe] */
+export type AFoto = [string, string, string, string, string, number]
+export type APasta = [string, string, string]
+export async function acervo<K extends 'fotos' | 'pastas'>(k: K, page?: string) {
+  if (!driveOn) throw new Error('O acervo só funciona no site oficial, com o Drive ligado.')
+  return (await call({ a: 'acervo', k, page })).json() as Promise<{ items: (K extends 'fotos' ? AFoto : APasta)[]; next: string | null }>
 }
 
 export async function download(path: string[], f: DFile) {

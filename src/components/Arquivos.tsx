@@ -6,6 +6,8 @@ import Meo from './Meo'
 import SegInd from './SegInd'
 import type { PhName } from './ph'
 import { pedirTexto } from './Dialogo'
+import Acervo from './Acervo'
+import { useStore } from '../store'
 
 type Crumb = { id: string; name: string }
 type Sending = { key: string; name: string; p: number; err?: string }
@@ -42,6 +44,13 @@ const lerModo = (): 'grade' | 'lista' => { try { return localStorage.getItem('ev
 
 /** Pasta "Escritório Village" do Google Drive do Village: ver, enviar e baixar sem sair do site. */
 export default function Arquivos() {
+  const adm = useStore(s => !!s.meId && !!s.profiles[s.meId]?.is_admin)
+  const [acervo, setAcervo] = useState(false)
+  if (acervo) return <Acervo onClose={() => setAcervo(false)} />
+  return <Pasta adm={adm} onAcervo={() => setAcervo(true)} />
+}
+
+function Pasta({ adm, onAcervo }: { adm: boolean; onAcervo: () => void }) {
   const [crumbs, setCrumbs] = useState<Crumb[]>([])
   const [files, setFiles] = useState<DFile[] | null>(null)
   const [next, setNext] = useState<string | null>(null)
@@ -143,6 +152,7 @@ export default function Arquivos() {
       onDragLeave={e => e.currentTarget === e.target && setOver(false)}
       onDrop={e => { e.preventDefault(); setOver(false); if (here && e.dataTransfer.files.length) send(e.dataTransfer.files) }}>
       <div className="qbar"><span className="grow" /><Bell />
+        {adm && driveOn && <button className="btn soft" onClick={onAcervo} title="Todas as fotos do Drive, organizadas (só adm)"><Ph n="images" size={18} />Fotos do Drive</button>}
         <button className="btn soft" onClick={newFolder} disabled={!here}><Ph n="plus" size={18} />Nova pasta</button>
         <button className="btn accent" onClick={() => pick.current?.click()} disabled={!here}><Ph n="upload-simple" size={18} fill />Enviar</button>
         <input ref={pick} type="file" multiple hidden onChange={e => { if (e.target.files?.length) send(e.target.files); e.target.value = '' }} />

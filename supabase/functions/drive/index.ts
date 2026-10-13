@@ -1,7 +1,7 @@
 // Ponte com o Google Drive do Village: lista pastas, mostra miniaturas, baixa e recebe arquivos.
 // Acessa o Drive em nome da conta do Village (refresh token nos secrets da função); quem chama
 // precisa estar logado no escritório. Só enxerga a pasta raiz e o que estiver dentro dela
-// (ou atalhos colocados nela). Não apaga nada.
+// (ou atalhos colocados nela). Não apaga nada. Exceção: o adm pode listar as fotos do Drive todo (acervo), só leitura.
 // Secrets: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REFRESH_TOKEN, DRIVE_ROOT_ID (opcional).
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 
@@ -105,8 +105,24 @@ async function member(req: Request) {
   const sb = createClient(env('SUPABASE_URL'), env('SUPABASE_ANON_KEY'), { global: { headers: { Authorization: 'Bearer ' + jwt } } })
   const { data } = await sb.auth.getUser(jwt)
   if (!data.user) throw new Http(401, 'Entre no escritório primeiro.')
-  const { data: p } = await sb.from('profiles').select('id').eq('id', data.user.id).maybeSingle()
+  const { data: p } = await sb.from('profiles').select('id,is_admin').eq('id', data.user.id).maybeSingle()
   if (!p) throw new Http(403, 'Sem perfil no escritório.')
+  return p as { id: string; is_admin: boolean }
+}
+
+const ALL = '&corpora=allDrives&includeItemsFromAllDrives=true&supportsAllDrives=true'
+/** acervo do adm: uma página (até 1000) de fotos ou de pastas do Drive todo, em formato enxuto */
+async function acervo(k: unknown, page: unknown) {
+  const tk = typeof page === 'string' && /^[\w-]+$/.test(page) ? `&pageToken=${page}` : ''
+  if (k === 'pastas') {
+    const j = await (await g(`/files?q=${q(`mimeType = '${FOLDER}' and trashed = false`)}&pageSize=1000&fields=nextPageToken,files(id,name,parents)${ALL}${tk}`)).json()
+    return { items: j.files.map((f: { id: string; name: string; parents?: string[] }) => [f.id, f.name, f.parents?.[0] ?? '']), next: j.nextPageToken ?? null }
+  }
+  const j = await (await g(`/files?q=${q(`mimeType contains 'image/' and trashed = false`)}&pageSize=1000&fields=nextPageToken,files(id,name,parents,createdTime,md5Checksum,size,imageMediaMetadata(time))${ALL}${tk}`)).json()
+  type F = { id: string; name: string; parents?: string[]; createdTime: string; md5Checksum?: string; size?: string; imageMediaMetadata?: { time?: string } }
+  // data da foto: a da câmera (EXIF "2023:05:12 10:00:00") quando existe, senão a de envio
+  const dia = (f: F) => { const t = f.imageMediaMetadata?.time?.match(/^(\d{4}):(\d{2}):(\d{2})/); return t && t[1] > '1990' ? `${t[1]}-${t[2]}-${t[3]}` : f.createdTime.slice(0, 10) }
+  return { items: (j.files as F[]).map(f => [f.id, f.name, f.parents?.[0] ?? '', dia(f), f.md5Checksum ?? '', Number(f.size ?? 0)]), next: j.nextPageToken ?? null }
 }
 
 Deno.serve(async req => {
@@ -123,28 +139,34 @@ Deno.serve(async req => {
   try {
     const u = new URL(req.url)
     if (u.searchParams.get('a') === 'backup') return json(await backup(req, u.searchParams.get('name') ?? ''))
-    await member(req)
+    const eu = await member(req)
     const b = await req.json()
+    const thumbOf = async (id: string) => {
+      const f = await (await g(`/files/${id}?fields=thumbnailLink,mimeType,size&supportsAllDrives=true`)).json()
+      // foto recém-enviada: o Google ainda não gerou a miniatura, manda a própria imagem (até 15 MB)
+      if (!f.thumbnailLink && f.mimeType?.startsWith('image/') && Number(f.size ?? 0) < 15e6) {
+        const img = await g(`/files/${id}?alt=media&supportsAllDrives=true`)
+        return new Response(img.body, { headers: { ...cors, 'Content-Type': f.mimeType, 'Cache-Control': 'private, max-age=600' } })
+      }
+      if (!f.thumbnailLink) throw new Http(404, 'Sem miniatura.')
+      const px = Math.min(Math.max(Number(b.px) || 400, 100), 1600)
+      const img = await g(f.thumbnailLink.replace(/=s\d+$/, `=s${px}`))
+      return new Response(img.body, { headers: { ...cors, 'Content-Type': img.headers.get('Content-Type') ?? 'image/jpeg', 'Cache-Control': 'private, max-age=3600' } })
+    }
+    if ((b.a === 'acervo' || b.a === 'athumb') && !eu.is_admin) throw new Http(403, 'Só o adm vê o Drive todo.')
     switch (b.a) {
+      case 'acervo': return json(await acervo(b.k, b.page))
+      case 'athumb': {
+        if (typeof b.id !== 'string' || !ID.test(b.id)) throw new Http(400, 'Arquivo inválido.')
+        return await thumbOf(b.id)
+      }
       case 'list': {
         const dir = await walk(b.path)
         const page = typeof b.page === 'string' && /^[\w-]+$/.test(b.page) ? `&pageToken=${b.page}` : ''
         const j = await (await g(`/files?q=${q(`'${dir}' in parents and trashed = false`)}&orderBy=folder,name_natural&pageSize=200&fields=nextPageToken,files(${FIELDS})${page}`)).json()
         return json({ root: await root(), files: j.files.map(shape), next: j.nextPageToken ?? null })
       }
-      case 'thumb': {
-        const id = await fileIn(b.path, b.id)
-        const f = await (await g(`/files/${id}?fields=thumbnailLink,mimeType,size`)).json()
-        // foto recém-enviada: o Google ainda não gerou a miniatura, manda a própria imagem (até 15 MB)
-        if (!f.thumbnailLink && f.mimeType?.startsWith('image/') && Number(f.size ?? 0) < 15e6) {
-          const img = await g(`/files/${id}?alt=media`)
-          return new Response(img.body, { headers: { ...cors, 'Content-Type': f.mimeType, 'Cache-Control': 'private, max-age=600' } })
-        }
-        if (!f.thumbnailLink) throw new Http(404, 'Sem miniatura.')
-        const px = Math.min(Math.max(Number(b.px) || 400, 100), 1600)
-        const img = await g(f.thumbnailLink.replace(/=s\d+$/, `=s${px}`))
-        return new Response(img.body, { headers: { ...cors, 'Content-Type': img.headers.get('Content-Type') ?? 'image/jpeg', 'Cache-Control': 'private, max-age=3600' } })
-      }
+      case 'thumb': return await thumbOf(await fileIn(b.path, b.id))
       case 'file': {
         const id = await fileIn(b.path, b.id)
         const f = await (await g(`/files/${id}?fields=name,mimeType`)).json()

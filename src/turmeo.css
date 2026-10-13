@@ -760,6 +760,26 @@ button.tlogo.img:hover { box-shadow: inset 0 0 0 2px var(--acc2); }
 /* visualizador com setas */
 .ar-view-img { position: relative; display: grid; place-items: center; min-height: 0; }
 .ar-view-img img { max-width: 100%; max-height: calc(100vh - 140px); border-radius: 16px; object-fit: contain; }
+.acervo .ac-chips { flex-wrap: wrap; margin: 0 0 8px; }
+.acervo .ac-info { display: block; margin: 4px 0 14px; }
+.acervo .ac-uni { display: inline-flex; align-items: center; gap: 6px; font: 600 14px var(--tf); cursor: pointer; }
+.acervo .ac-uni small { padding: 1px 7px; border-radius: 999px; background: var(--areia-3); }
+.ac-lendo { display: flex; align-items: center; gap: 10px; padding: 12px 16px; margin-bottom: 14px; }
+.ac-lendo > svg { animation: spin 1.2s linear infinite; }
+.ac-sec h4 { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.ac-prod { flex: none; font: 700 11px var(--tf); letter-spacing: .04em; text-transform: uppercase; padding: 3px 9px; border-radius: 999px; background: var(--cobalto); color: #fff; }
+.ac-cam { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ac-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
+.ac-foto { position: relative; padding: 0; border: 0; border-radius: 12px; overflow: hidden; background: var(--areia-3); cursor: pointer; aspect-ratio: 1; }
+.ac-foto .ac-mini { width: 100%; height: 100%; display: grid; place-items: center; color: var(--muted); }
+.ac-foto img { width: 100%; height: 100%; object-fit: cover; transition: transform .4s var(--ease); }
+.ac-foto:hover img { transform: scale(1.05); }
+.ac-foto:focus-visible { outline: 3px solid var(--cobalto); outline-offset: 2px; }
+.ac-rep { position: absolute; right: 6px; top: 6px; display: inline-flex; align-items: center; gap: 3px; padding: 2px 7px; border-radius: 999px; background: rgba(16, 16, 20, .7); color: #fff; font: 700 11px var(--tf); }
+.ac-mais { margin-top: 8px; }
+.ar-view-img .ac-mini { display: grid; place-items: center; min-height: 200px; color: #fff; }
+.ac-vtxt { display: flex; flex-direction: column; min-width: 0; }
+.ac-vtxt b, .ac-vtxt small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ar-nav { position: absolute; top: 50%; transform: translateY(-50%); width: 48px; height: 48px; border: 0; border-radius: 50%; display: grid; place-items: center; background: rgba(255, 255, 255, .92); color: var(--tinta); cursor: pointer; box-shadow: 0 4px 14px rgba(0, 0, 0, .2); }
 .ar-nav.prev { left: 12px; } .ar-nav.next { right: 12px; }
 .ar-nav:hover { background: #fff; }
