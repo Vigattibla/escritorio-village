@@ -184,3 +184,10 @@ Pendente: push (precisa da migration 202610080900_v4_agenda_metas.sql e do secre
 - Novo post = cartão inline no topo de Em produção, com escolha do canal. Cards com capa (1ª imagem) ou capa vazia na cor da rede.
 - Visual segue referência limpa (Sinta, enviada pelo usuário 13/10): capa no topo, corpo cinza claro, botão com borda escura. Só nesta aba por enquanto.
 - Testado no ?demo (desktop e 375px sem overflow).
+
+## 13/10 — LinkedIn: app criado, modo empresa aguardando aprovação
+- App 1 "Escritório Village" (264982645): Share + OpenID liberados, callback salvo. Secrets LINKEDIN_CLIENT_ID/SECRET são DESTE app.
+- Usuário NÃO quer postar no perfil pessoal: conexão pessoal apagada (redes/social_tokens), LINKEDIN_MODO=empresa.
+- App 2 "Escritório Village - Página" (264986610), página Village Resort verificada; pedido Community Management API (Development Tier) enviado 13/10 — aguarda e-mail da LinkedIn/Microsoft Vetting no e-mail corporativo.
+- Quando aprovar: callback no Auth do app 2, trocar LINKEDIN_CLIENT_ID/SECRET pro app 2, adm da página conecta em Publicações.
+- Bug visto: após OAuth a aba mostrou "Não conectado" com linha já gravada em redes (provável tela sem recarregar) — conferir no próximo conectar.
