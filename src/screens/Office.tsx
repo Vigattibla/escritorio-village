@@ -273,7 +273,7 @@ export default function Office() {
       <FloatChat unread={msgs} />
       <Toast />
       {s.editing && <div className="overlay"><Creator /></div>}
-      {s.cassino && <Cassino onClose={() => setUi({ cassino: false })} />}
+      {s.cassino && <Cassino inicial={typeof s.cassino === 'string' ? s.cassino : undefined} onClose={() => setUi({ cassino: false })} />}
     </div>
   )
 }

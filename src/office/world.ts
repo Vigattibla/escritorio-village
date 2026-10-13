@@ -3,6 +3,7 @@ import { exitX, glassDoorX, glassStrip, glassWall } from './andar'
 import { drawDecor, drawFloor, drawNotebook, MESA, mesaExtra, type DeskLook } from './props'
 import { defaultDesk, deskFrom, deskSides, dimOf, isDesk, kd, renderRoom, solidGrid, type Desk, type Obj, type Sala } from './sala'
 import { comodoOf, type Kind } from './comodos'
+import type { JogoCassino } from '../cassino/regras'
 
 export * from './base'
 
@@ -209,9 +210,15 @@ export function painelAt(gx: number, gy: number) {
     if (gx >= r.ox + o.x && gx < r.ox + o.x + PAINEIS[o.k] && gy >= r.oy + o.y - 2 && gy <= r.oy + o.y) return o.k
   return null
 }
-/** jogos da sala de jogos: o móvel que abre cada um e o balão de onde o boneco joga */
+/** jogos da sala de jogos: o móvel que abre cada um e o balão de onde o boneco joga (cassino abre o jogo de aposta) */
 export type Jogo = 'cobrinha' | 'penalti' | 'memoria' | 'reflexo'
-const MAQUINAS: Record<string, [Jogo, string]> = { fliperama: ['cobrinha', 'No fliperama'], pebolim: ['penalti', 'No pebolim'], 'mesa-jantar': ['memoria', 'Jogo de tabuleiro'], console: ['reflexo', 'No videogame'], 'tapete-gamer': ['reflexo', 'No videogame'] }
+type Maq = { jogo?: Jogo; cassino?: JogoCassino; act: string }
+const MAQUINAS: Record<string, Maq> = {
+  fliperama: { jogo: 'cobrinha', act: 'No fliperama' }, pebolim: { jogo: 'penalti', act: 'No pebolim' }, 'mesa-jantar': { jogo: 'memoria', act: 'Jogo de tabuleiro' },
+  console: { jogo: 'reflexo', act: 'No videogame' }, 'tapete-gamer': { jogo: 'reflexo', act: 'No videogame' },
+  'caca-niquel': { cassino: 'caca', act: 'No caça-níquel' }, 'mesa-roleta': { cassino: 'roleta', act: 'Na roleta' }, 'mesa-cartas': { cassino: 'blackjack', act: 'No blackjack' },
+  'totem-crash': { cassino: 'crash', act: 'No crash' }, 'totem-minas': { cassino: 'minas', act: 'Nas minas' }, 'caixa-fichas': { cassino: 'caca', act: 'No caça-níquel' },
+}
 /** clique num móvel de jogo (tile do mundo): qual jogo e o lugar livre mais perto pra jogar */
 export function jogoAt(gx: number, gy: number) {
   for (const r of rooms) {
@@ -219,9 +226,9 @@ export function jogoAt(gx: number, gy: number) {
     for (const o of r.sala.objs) {
       const m = MAQUINAS[o.k], d = kd(o)
       if (!m || !d || gx < r.ox + o.x || gx >= r.ox + o.x + d.w || gy < r.oy + o.y - (d.up ?? 0) || gy >= r.oy + o.y + d.h) continue
-      const sp = (comodoOf('jogos')?.spots ?? []).filter(s => s.act === m[1])
+      const sp = (comodoOf('jogos')?.spots ?? []).filter(s => s.act === m.act)
         .sort((a, b) => Math.hypot(a.x - o.x, a.y - o.y) - Math.hypot(b.x - o.x, b.y - o.y))[0]
-      return { jogo: m[0], tx: r.ox + (sp?.x ?? o.x), ty: r.oy + (sp?.y ?? o.y + d.h) }
+      return { jogo: m.jogo, cassino: m.cassino, tx: r.ox + (sp?.x ?? o.x), ty: r.oy + (sp?.y ?? o.y + d.h) }
     }
   }
   return null

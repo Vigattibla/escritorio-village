@@ -215,7 +215,7 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
       if (jg) {
         const p = findPath(meS.x, meS.y, jg.tx, jg.ty)
         if (p) { path = p; jobs.delete(meId) }
-        return setUi({ jogo: jg.jogo })
+        return setUi(jg.cassino ? { cassino: jg.cassino } : { jogo: jg.jogo ?? null })
       }
       // painel de quartos: abre o quadro de Quartos
       const pq = hiddenAt(w.x, w.y) ? null : painelAt(tx, ty), s = getState()

@@ -17,8 +17,8 @@ export const PISOS: Record<Piso, { nome: string; draw: (c: C2D, x: number, y: nu
 }
 
 // ---------------- móveis ----------------
-export type Tema = 'Escritório' | 'Resort' | 'Casa de Campo' | 'Natal' | 'Gamer' | 'Café' | 'Jardim' | 'Cozinha' | 'Banheiro'
-export const TEMAS: Tema[] = ['Escritório', 'Resort', 'Casa de Campo', 'Natal', 'Gamer', 'Café', 'Jardim', 'Cozinha', 'Banheiro']
+export type Tema = 'Escritório' | 'Resort' | 'Casa de Campo' | 'Natal' | 'Gamer' | 'Café' | 'Jardim' | 'Cozinha' | 'Banheiro' | 'Cassino'
+export const TEMAS: Tema[] = ['Escritório', 'Resort', 'Casa de Campo', 'Natal', 'Gamer', 'Café', 'Jardim', 'Cozinha', 'Banheiro', 'Cassino']
 export type Kind = {
   nome: string; tema: Tema; w: number; h: number
   /** quantos tiles a arte sobe acima do pé */ up?: number
@@ -31,6 +31,25 @@ export const isDesk = (k: string) => k === 'mesa' || k === 'mesa-chefe'
 function rug(c: C2D, x: number, y: number, w: number, h: number, dk: string, base: string, line: string) {
   r(c, dk, x, y, w, h); r(c, base, x + 2, y + 2, w - 4, h - 4)
   r(c, line, x + 4, y + 4, w - 8, 1); r(c, line, x + 4, y + h - 5, w - 8, 1); r(c, line, x + 4, y + 4, 1, h - 8); r(c, line, x + w - 5, y + 4, 1, h - 8)
+}
+
+/** letras 3x5 do letreiro */
+const GLIFO: Record<string, string[]> = {
+  C: ['111', '100', '100', '100', '111'], A: ['010', '101', '111', '101', '101'], S: ['111', '100', '111', '001', '111'],
+  I: ['111', '010', '010', '010', '111'], N: ['1001', '1101', '1011', '1001', '1001'], O: ['111', '101', '101', '101', '111'],
+}
+/** totem de tela: crash (linha subindo) ou minas (grade abrindo) */
+function totem(c: C2D, x: number, y: number, t: number, modo: 'crash' | 'minas') {
+  box(c, '#17171c', x + 3, y - 15, 10, 30); r(c, modo === 'crash' ? '#3fe08a' : '#FBC222', x + 3, y - 15, 10, 1)
+  r(c, '#0d1b2a', x + 4, y - 12, 8, 10)
+  if (modo === 'crash') {
+    const p = (t % 2600) / 2600, n = Math.floor(p * 9), boom = p > 0.86
+    for (let i = 0; i < Math.min(n, 8); i++) r(c, boom ? '#e05a47' : '#3fe08a', x + 4 + i, y - 3 - Math.round(i * i / 8), 1, 1)
+  } else {
+    const n = Math.floor(t / 400) % 10
+    for (let k = 0; k < 9; k++) r(c, k < n ? (k === 7 ? '#e05a47' : '#FBC222') : '#3a4a5c', x + 4 + (k % 3) * 3, y - 11 + Math.floor(k / 3) * 3, 2, 2)
+  }
+  r(c, '#2d2d33', x + 4, y + 1, 8, 2); r(c, '#45454e', x + 5, y + 5, 6, 8); r(c, SHADOW, x + 3, y + 15, 10, 1)
 }
 
 export const KINDS: Record<string, Kind> = {
@@ -247,6 +266,90 @@ export const KINDS: Record<string, Kind> = {
   },
   'console': { nome: 'Rack do videogame', tema: 'Gamer', w: 2, h: 1, up: 1, draw: (c, x, y, t) => { box(c, '#2d2d33', x + 1, y + 3, 30, 12); r(c, '#45454e', x + 15, y + 5, 1, 9); box(c, '#17171c', x + 4, y - 2, 12, 5); r(c, blink(t, 900) ? '#5ff2ff' : '#2a6a70', x + 5, y, 2, 1); box(c, '#e6e8ee', x + 20, y - 1, 8, 4); r(c, '#9aa1ad', x + 21, y, 1, 1); r(c, '#e8508a', x + 26, y, 1, 1); r(c, '#45454e', x + 4, y + 7, 9, 5); r(c, '#45454e', x + 18, y + 7, 9, 5) } },
   'tv-grande': { nome: 'TV grande', tema: 'Gamer', w: 3, h: 1, camada: 'parede', draw: (c, x, _y, t) => { box(c, '#17171c', x + 1, 6, 46, 20); const f = Math.floor(t / 500) % 3; r(c, ['#3a6fd8', '#8e5bd6', '#2f8a55'][f], x + 2, 7, 44, 18); r(c, '#6fb35a', x + 2, 19, 44, 6); r(c, '#FBC222', x + 10 + f * 8, 14, 4, 5); r(c, '#e05a47', x + 30 - f * 5, 15, 4, 4); r(c, '#fbfbf8', x + 4, 9, 8, 1); r(c, OUT, x + 22, 27, 4, 2) } },
+  // ---- Cassino (canto da sala de jogos) ----
+  'caca-niquel': {
+    nome: 'Caça-níquel', tema: 'Cassino', w: 1, h: 1, up: 2, draw: (c, x, y, t) => {
+      box(c, '#b8202e', x + 2, y - 15, 11, 30); r(c, '#d63a48', x + 2, y - 15, 11, 1); r(c, '#FBC222', x + 2, y - 13, 11, 2)
+      for (let k = 0; k < 3; k++) r(c, blink(t, 260, k) ? '#fff3c4' : '#a8741a', x + 3 + k * 4, y - 13, 1, 1)
+      r(c, OUT, x + 3, y - 9, 9, 7); r(c, '#fbfbf8', x + 4, y - 8, 7, 5)
+      const spin = t % 3600 < 1500, SYM = ['#e05a47', '#FBC222', '#3fa66b', '#8e5bd6']
+      for (let k = 0; k < 3; k++) {
+        const col = SYM[spin ? (Math.floor(t / 80) + k * 3) % 4 : (Math.floor(t / 3600) * (k === 1 ? 1 : 2)) % 4]
+        r(c, col, x + 4 + k * 3, y - 7 + (spin ? Math.floor(t / 40) % 2 : 0), 1, 3)
+      }
+      r(c, '#8e1622', x + 3, y - 1, 9, 2); r(c, OUT, x + 6, y + 3, 3, 1); r(c, '#e0b04a', x + 4, y + 9, 7, 2)
+      const pull = t % 3600 < 250 ? 3 : 0
+      r(c, '#c8ccd3', x + 14, y - 10 + pull, 1, 7 - pull); disc(c, x + 14, y - 11 + pull, 1, '#e05a47')
+      r(c, SHADOW, x + 2, y + 15, 11, 1)
+    },
+  },
+  'mesa-roleta': {
+    nome: 'Mesa de roleta', tema: 'Cassino', w: 4, h: 2, draw: (c, x, y, t) => {
+      const w = 4 * T
+      box(c, '#6e4529', x + 1, y, w - 2, 26); r(c, '#1f7a48', x + 3, y + 2, w - 6, 21); r(c, '#2b9358', x + 3, y + 2, w - 6, 1)
+      const cx = x + 14, cy = y + 12, a0 = -t / 500
+      disc(c, cx, cy, 10, OUT); disc(c, cx, cy, 9, '#8a5a36')
+      for (let k = 0; k < 14; k++) {
+        c.fillStyle = k === 0 ? '#2f8a55' : k % 2 ? '#c0283a' : '#1d1a24'
+        c.beginPath(); c.moveTo(cx + 0.5, cy + 0.5); c.arc(cx + 0.5, cy + 0.5, 7.5, a0 + k * 0.449, a0 + (k + 1) * 0.449); c.closePath(); c.fill()
+      }
+      disc(c, cx, cy, 3, '#c99412'); r(c, '#ffe27a', cx, cy - 1, 1, 1)
+      const ab = t / 260
+      r(c, '#fbfbf8', Math.round(cx + Math.cos(ab) * 6), Math.round(cy + Math.sin(ab) * 6), 1, 1)
+      r(c, '#e0b04a', x + 28, y + 4, 31, 17)
+      for (let j = 0; j < 3; j++) for (let i = 0; i < 6; i++) r(c, (i + j) % 2 ? '#c0283a' : '#1d1a24', x + 29 + i * 5, y + 5 + j * 5, 4, 4)
+      for (const [a, b, col] of [[33, 7, '#3a6fd8'], [44, 12, '#FBC222'], [52, 17, '#e8508a']] as const) { disc(c, x + a, y + b, 1, OUT); r(c, col, x + a, y + b, 1, 1) }
+      r(c, '#5a3820', x + 1, y + 23, w - 2, 3); r(c, OUT, x + 5, y + 27, 3, 4); r(c, OUT, x + w - 8, y + 27, 3, 4)
+    },
+  },
+  'mesa-cartas': {
+    nome: 'Mesa de blackjack', tema: 'Cassino', w: 3, h: 2, draw: (c, x, y, t) => {
+      const w = 3 * T
+      box(c, '#6e4529', x + 1, y + 1, w - 2, 24); r(c, '#1f7a48', x + 3, y + 3, w - 6, 19); r(c, '#2b9358', x + 3, y + 3, w - 6, 1)
+      c.strokeStyle = '#e0b04a'; c.lineWidth = 1; c.beginPath(); c.arc(x + w / 2, y + 2, 17, Math.PI * 0.18, Math.PI * 0.82); c.stroke()
+      box(c, '#3a2a1c', x + 5, y + 4, 6, 4)
+      const n = 2 + Math.floor(t / 900) % 2
+      for (let k = 0; k < n; k++) { box(c, '#fbfbf8', x + 17 + k * 5, y + 5, 4, 6); r(c, k % 2 ? '#1d1a24' : '#c0283a', x + 18 + k * 5, y + 7, 2, 2) }
+      for (const [a, col] of [[10, '#e05a47'], [24, '#3a6fd8'], [37, '#FBC222']] as const) { box(c, col, x + a, y + 16, 3, 2); r(c, '#fbfbf8', x + a + 1, y + 16, 1, 1) }
+      r(c, '#5a3820', x + 1, y + 22, w - 2, 3); r(c, OUT, x + 5, y + 26, 3, 4); r(c, OUT, x + w - 8, y + 26, 3, 4)
+    },
+  },
+  'totem-crash': { nome: 'Totem do crash', tema: 'Cassino', w: 1, h: 1, up: 2, draw: (c, x, y, t) => totem(c, x, y, t, 'crash') },
+  'totem-minas': { nome: 'Totem das minas', tema: 'Cassino', w: 1, h: 1, up: 2, draw: (c, x, y, t) => totem(c, x, y, t, 'minas') },
+  'letreiro-cassino': {
+    nome: 'Letreiro do cassino', tema: 'Cassino', w: 4, h: 1, camada: 'parede', draw: (c, x, _y, t) => {
+      box(c, '#17171c', x + 2, 5, 60, 21)
+      for (let i = 0; i < 15; i++) for (const yy of [6, 24]) r(c, blink(t, 300, i) ? '#FBC222' : '#6a4d12', x + 4 + i * 4, yy, 1, 1)
+      const col = Math.floor(t / 140) % 29 !== 0 ? '#ff5fa2' : '#7a2a4c'
+      let gx = x + 5
+      for (const ch of 'CASSINO') { const g = GLIFO[ch]; g.forEach((row, j) => [...row].forEach((b, i) => { if (b === '1') r(c, col, gx + i * 2, 10 + j * 2, 2, 2) })); gx += g[0].length * 2 + 2 }
+    },
+  },
+  'alvo-dardos': { nome: 'Alvo de dardos', tema: 'Gamer', w: 1, h: 1, camada: 'parede', draw: (c, x) => { disc(c, x + 8, 15, 7, OUT); disc(c, x + 8, 15, 6, '#2d2d33'); disc(c, x + 8, 15, 5, '#e05a47'); disc(c, x + 8, 15, 3, '#f1e6d2'); disc(c, x + 8, 15, 1, '#3fa66b'); r(c, '#FBC222', x + 10, 12, 3, 1); r(c, '#e8508a', x + 12, 11, 1, 1) } },
+  'tapete-cassino': {
+    nome: 'Tapete do cassino', tema: 'Cassino', w: 10, h: 7, camada: 'chao', draw: (c, x, y) => {
+      rug(c, x + 2, y + 2, 10 * T - 4, 7 * T - 4, '#4a1622', '#7a1f30', '#FBC222')
+      for (let j = 0; j < 6; j++) for (let i = 0; i < 9; i++) if ((i + j) % 2 === 0) { const a = x + 12 + i * 16, b = y + 12 + j * 16; r(c, '#8f2a3d', a, b - 1, 1, 3); r(c, '#8f2a3d', a - 1, b, 3, 1) }
+    },
+  },
+  'caixa-fichas': {
+    nome: 'Caixa de fichas', tema: 'Cassino', w: 3, h: 1, up: 1, draw: (c, x, y) => {
+      const w = 3 * T
+      box(c, '#3a3f4a', x + 2, y - 13, w - 4, 13); r(c, '#9fd8f5', x + 4, y - 11, w - 8, 9)
+      for (let k = 0; k < 7; k++) r(c, '#c8ccd3', x + 7 + k * 6, y - 11, 1, 9)
+      box(c, '#6e4529', x, y + 1, w, 14); r(c, '#e0b04a', x, y + 1, w, 2)
+      for (const [a, col] of [[6, '#e05a47'], [12, '#3a6fd8'], [18, '#FBC222'], [34, '#3fa66b']] as const) for (let s = 0; s < 3; s++) { r(c, OUT, x + a - 1, y - 2 - s * 2, 5, 2); r(c, col, x + a, y - 2 - s * 2, 3, 1) }
+    },
+  },
+  'maquina-refri': {
+    nome: 'Máquina de latinhas', tema: 'Cassino', w: 1, h: 1, up: 2, draw: (c, x, y, t) => {
+      box(c, '#26324F', x + 1, y - 15, 14, 30); r(c, blink(t, 1200) ? '#5ff2ff' : '#3a8a96', x + 1, y - 15, 14, 2)
+      r(c, '#bfe3f2', x + 3, y - 11, 8, 18)
+      for (let j = 0; j < 4; j++) for (let i = 0; i < 3; i++) { const a = x + 3 + i * 3; r(c, ['#FBC222', '#3a6fd8', '#e05a47', '#3fa66b'][(i + j) % 4], a, y - 10 + j * 4, 2, 3); r(c, '#fbfbf8', a, y - 10 + j * 4, 1, 1) }
+      r(c, '#45454e', x + 12, y - 10, 2, 9); for (let k = 0; k < 3; k++) r(c, '#FBC222', x + 12, y - 9 + k * 3, 2, 1)
+      r(c, OUT, x + 3, y + 9, 9, 3); r(c, SHADOW, x + 1, y + 15, 14, 1)
+    },
+  },
   // ---- Banheiro ----
   'cabine': {
     nome: 'Cabine do banheiro', tema: 'Banheiro', w: 2, h: 2, up: 1, draw: (c, x, y) => {

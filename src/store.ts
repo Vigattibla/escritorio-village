@@ -10,7 +10,7 @@ import { REASON } from './shop/economy'
 import type { Equipe, Snapshot, Group, RowTable, Rows, Stage, StageKind, Sticker, AccountEdit, AiContext, AiItem, AiProposal, AiStage, Attachment, Avatar, CoffeeLine, Gear, Message, Pos, Profile, Project, Review, Task, TaskNote, TaskStatus, Wallet } from './types'
 import { ROW_TABLES } from './types'
 import type { Backend } from './types'
-import type { Rodada } from './cassino/regras'
+import type { JogoCassino, Rodada } from './cassino/regras'
 
 export type Phase = 'loading' | 'auth' | 'creator' | 'office'
 export type Tab = 'mesa' | 'aprovar' | 'avisos' | 'equipe' | 'chat' | 'geral'
@@ -62,7 +62,7 @@ export interface State {
   /** jogo aberto na sala de jogos */
   jogo: string | null
   /** cassino dos cafezinhos aberto */
-  cassino: boolean
+  cassino: boolean | JogoCassino
   /** sino de avisos aberto */
   bellOpen: boolean
   /** quadro filtrado só no que espera minha aprovação */

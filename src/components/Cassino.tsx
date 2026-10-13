@@ -243,8 +243,8 @@ function Minas({ aposta, busy, jogada, fim, trava }: P) {
 
 const TELAS = { caca: Caca, roleta: Roleta, blackjack: Blackjack, crash: Crash, minas: Minas }
 
-export default function Cassino({ onClose }: { onClose: () => void }) {
-  const [jogo, setJogo] = useState<JogoCassino>('caca')
+export default function Cassino({ onClose, inicial }: { onClose: () => void; inicial?: JogoCassino }) {
+  const [jogo, setJogo] = useState<JogoCassino>(inicial ?? 'caca')
   const [aposta, setAposta] = useState(5)
   const [busy, setBusy] = useState(false)
   const [travado, setTravado] = useState(false)
