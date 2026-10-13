@@ -617,10 +617,14 @@ const paid = (s: TaskStatus) => s === 'done' || s === 'review'
 /** Etapas do quadro: as padrão até alguém da coordenação mexer; depois, as gravadas. */
 export const DEFAULT_STAGES: Stage[] = [
   { id: 'todo', label: 'A fazer', kind: 'todo', pos: 1, created_by: '', created_at: '' },
-  { id: 'doing', label: 'Fazendo', kind: 'doing', pos: 2, created_by: '', created_at: '' },
+  { id: 'doing', label: 'Em andamento', kind: 'doing', pos: 2, created_by: '', created_at: '' },
   { id: 'review', label: 'Aprovação', kind: 'review', pos: 3, created_by: '', created_at: '' },
-  { id: 'done', label: 'Feito', kind: 'done', pos: 4, created_by: '', created_at: '' },
+  { id: 'reprovado', label: 'Reprovado', kind: 'doing', pos: 4, created_by: '', created_at: '' },
+  { id: 'aprovado', label: 'Aprovado', kind: 'done', pos: 5, created_by: '', created_at: '' },
+  { id: 'done', label: 'Concluído', kind: 'done', pos: 6, created_by: '', created_at: '' },
 ]
+/** etapa pelo nome (Reprovado/Aprovado): é para onde a decisão do aprovador manda a tarefa */
+const etapaPorNome = (nome: string, kind: StageKind) => stageList().find(x => x.kind === kind && x.label.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase() === nome)?.id ?? null
 export const STAGE_KINDS: { kind: StageKind; label: string; hint: string }[] = [
   { kind: 'todo', label: 'A fazer', hint: 'Ainda não começou' },
   { kind: 'doing', label: 'Fazendo', hint: 'Em andamento' },
@@ -666,7 +670,7 @@ export function stageList(rows = state.rows.stages): Stage[] {
 export function stageOf(t: Task, list = stageList()): string | null {
   const s = t.stage ? list.find(x => x.id === t.stage) : undefined
   if (s && s.kind === t.status) return s.id
-  return (list.find(x => x.id === t.status) ?? list.find(x => x.kind === t.status))?.id ?? null
+  return (list.find(x => x.id === t.status || x.id.endsWith('-' + t.status)) ?? list.find(x => x.kind === t.status))?.id ?? null
 }
 export const canEditStages = (p = me()) => rankOf(p) >= 2
 /** grava a lista inteira (a primeira edição tira as etapas padrão do papel) */
@@ -710,6 +714,7 @@ export async function setStatus(id: string, status: TaskStatus, position = Date.
   } else if (!canMove(t)) throw new Error('Só quem é responsável (ou um cargo acima) muda a etapa dessa tarefa.')
   const review: Review[] = t.status === 'review' && status === 'done' && canApprove(t) && t.owner_id !== my.id
     ? [{ by: my.id, at: new Date().toISOString(), ok: true, reason: '', failed: [] }] : []
+  if (review.length && !stage) stage = etapaPorNome('aprovado', 'done')
   await putTask({ ...t, status, stage, position, done_at: status === 'done' ? new Date().toISOString() : null, reviews: [...t.reviews, ...review] })
   if (t.owner_id !== my.id) return // XP é de quem faz
   const redo = t.reviews.at(-1)?.ok === false
@@ -747,7 +752,8 @@ export async function review(id: string, ok: boolean, reason = '', failed: strin
   if (!ok && reason.length < 3) throw new Error('Explique por que está reprovando.')
   const r: Review = { by: my.id, at: new Date().toISOString(), ok, reason: reason.slice(0, 1000), failed }
   await putTask({
-    ...t, status: ok ? 'done' : 'doing', position: Date.now(), done_at: ok ? r.at : null, reviews: [...t.reviews, r],
+    ...t, status: ok ? 'done' : 'doing', stage: ok ? etapaPorNome('aprovado', 'done') : etapaPorNome('reprovado', 'doing'),
+    position: Date.now(), done_at: ok ? r.at : null, reviews: [...t.reviews, r],
   })
 }
 
@@ -871,6 +877,7 @@ export async function saveDept(d: { id?: string; name: string; color: string; sl
 export async function createAccount(user: string, pass: string, name: string, rank: number, dept?: string) {
   const p = await backend.createAccount(user, pass, name, rank, dept)
   set({ profiles: { ...state.profiles, [p.id]: p } })
+  return p
 }
 
 export const setPassword = (target: string, pass: string) => backend.setPassword(target, pass)

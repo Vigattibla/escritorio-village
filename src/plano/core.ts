@@ -22,7 +22,7 @@ export const gereEquipe = (p: Profile | undefined, dept: string | null) => !!p &
 
 export interface Ctx { resp: Record<string, PlanoResp>; profiles: Record<string, Profile>; meses: Record<string, PlanoMes>; nucleos: Record<string, PlanoNucleo>; equipes: Record<string, Equipe> }
 
-const respsDe = (a: PlanoAcao, resp: Record<string, PlanoResp>) => resp[a.resp.trim().toUpperCase()] ? [resp[a.resp.trim().toUpperCase()]] : siglas(a.resp).map(c => resp[c]).filter(Boolean)
+export const respsDe = (a: PlanoAcao, resp: Record<string, PlanoResp>) => resp[a.resp.trim().toUpperCase()] ? [resp[a.resp.trim().toUpperCase()]] : siglas(a.resp).map(c => resp[c]).filter(Boolean)
 
 /** quem recebe pela sigla: as pessoas dela e as das equipes ligadas a ela */
 export const membros = (r: PlanoResp | undefined, equipes: Record<string, Equipe>, profiles: Record<string, Profile>) =>

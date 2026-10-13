@@ -16,7 +16,7 @@ import { Live } from './Side'
 import { CHANNELS, currentGoal, goalProgress } from './v4'
 import { confirmar } from './Dialogo'
 import { EqTag, EquipesModal } from './Equipes'
-import { gereEquipe } from '../plano/core'
+import { gereEquipe, norm, respsDe } from '../plano/core'
 
 type Group = 'etapa' | 'raias' | 'pessoa'
 type Due = '' | 'late' | 'today' | 'week' | 'none'
@@ -72,6 +72,8 @@ export default function Quadro() {
   const tasksMap = useStore(s => s.tasks)
   const goalsMap = useStore(s => s.rows.goals)
   const equipes = useStore(s => s.rows.equipes)
+  const acoesMap = useStore(s => s.rows.plano_acoes)
+  const respMap = useStore(s => s.rows.plano_resp)
   const stageRows = useStore(s => s.rows.stages)
   const stages = useMemo(() => stageList(stageRows), [stageRows])
   const cols = useMemo(() => colsOf(stages), [stages])
@@ -86,7 +88,9 @@ export default function Quadro() {
   const [mine, setMine] = useState<boolean>(() => load('ev:q:mine', false))
   const [who, setWho] = useState<string[]>([])
   const [due, setDue] = useState<Due>('')
-  const [eq, setEq] = useState('')
+  // setor: null = automático (a equipe de quem abre); '' = todas
+  const [eqPick, setEq] = useState<string | null>(() => load<string | null>('ev:q:eq', null))
+  const [orig, setOrig] = useState<'' | 'plano' | 'geral'>(() => load('ev:q:orig', ''))
   const [eqModal, setEqModal] = useState(false)
   // busca vinda do Início: lê uma vez e limpa
   const [q, setQ] = useState(() => { try { const v = sessionStorage.getItem('ev:q:find') ?? ''; sessionStorage.removeItem('ev:q:find'); return v } catch { return '' } })
@@ -100,6 +104,8 @@ export default function Quadro() {
 
   useEffect(() => save('ev:q:group', group), [group])
   useEffect(() => save('ev:q:mine', mine), [mine])
+  useEffect(() => save('ev:q:eq', eqPick), [eqPick])
+  useEffect(() => save('ev:q:orig', orig), [orig])
   useEffect(() => {
     const k = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement
@@ -122,12 +128,30 @@ export default function Quadro() {
   const everyone = salaTeam(profiles)
     .sort((a, b) => a.id === meId ? -1 : b.id === meId ? 1 : rankOf(b) - rankOf(a) || a.name.localeCompare(b.name))
   // com projeto aberto: só quem está no time (mestre, donos, ajudantes) + quem eu acabei de colocar
+  const eq = eqPick ?? (Object.values(equipes).filter(e => e.pessoas.includes(meId)).sort((a, b) => a.nome.localeCompare(b.nome))[0]?.id ?? '')
   const eqSet = eq && equipes[eq] ? new Set(equipes[eq].pessoas) : null
+  // tarefas que vieram do plano → setores (equipes) da sigla da ação
+  const planoEq = useMemo(() => {
+    const m = new Map<string, Set<string>>()
+    const eqs = Object.values(equipes)
+    for (const a of Object.values(acoesMap)) {
+      if (!a.tarefas.length) continue
+      const ids = new Set<string>()
+      for (const r of respsDe(a, respMap)) {
+        for (const id of r.equipes ?? []) ids.add(id)
+        if (!r.equipes?.length && r.nome) for (const e of eqs) if (norm(e.nome) === norm(r.nome)) ids.add(e.id)
+      }
+      for (const tid of a.tarefas) { const s = m.get(tid) ?? new Set<string>(); ids.forEach(i => s.add(i)); m.set(tid, s) }
+    }
+    return m
+  }, [acoesMap, respMap, equipes])
+  const doSetor = (t: Task) => !!eq && !!planoEq.get(t.id)?.has(eq)
   const eqsDe = (id: string) => Object.values(equipes).filter(e => e.pessoas.includes(id)).sort((a, b) => a.nome.localeCompare(b.nome))
   const eqList = Object.values(equipes).sort((a, b) => a.nome.localeCompare(b.nome))
   const euP = profiles[meId]
   const gereEq = !!euP && (gereEquipe(euP, deptOf(euP)) || gereEquipe(euP, null))
-  const people = everyone.filter(p => (!team || team.has(p.id) || p.id === meId || extra.includes(p.id)) && (!eqSet || eqSet.has(p.id)))
+  const donosSetor = new Set(eq ? Object.values(tasksMap).filter(doSetor).map(t => t.owner_id) : [])
+  const people = everyone.filter(p => (!team || team.has(p.id) || p.id === meId || extra.includes(p.id)) && (!eqSet || eqSet.has(p.id) || donosSetor.has(p.id)))
   const outside = team ? everyone.filter(p => !people.includes(p)) : []
   const destaque = usePref('destaque')
   const [rel, setRel] = useState(false)
@@ -136,7 +160,7 @@ export default function Quadro() {
   // concluídas só da semana atual; as de antes ficam no Relatório da semana
   const since = dayKey(segunda())
   const term = q.trim().toLowerCase()
-  const filtered = mine || qApprove || who.length > 0 || !!due || !!term || !!eqSet
+  const filtered = mine || qApprove || who.length > 0 || !!due || !!term || !!eqSet || !!orig
   const projList = Object.values(projects).filter(p => !p.archived || p.id === project).sort((a, b) => a.name.localeCompare(b.name))
 
   const shown = Object.values(tasksMap).filter(t => {
@@ -146,7 +170,8 @@ export default function Quadro() {
     if (mine && !involved(t, meId)) return false
     if (qApprove && !(t.status === 'review' && canApprove(t))) return false
     if (who.length && !who.some(id => t.owner_id === id || t.collaborators.includes(id))) return false
-    if (eqSet && !eqSet.has(t.owner_id) && !t.collaborators.some(id => eqSet.has(id))) return false
+    if (eqSet && !eqSet.has(t.owner_id) && !t.collaborators.some(id => eqSet.has(id)) && !doSetor(t)) return false
+    if (orig && (orig === 'plano') !== planoEq.has(t.id)) return false
     if (term && !`${t.title} ${t.notes}`.toLowerCase().includes(term)) return false
     if (due === 'none') return !t.due
     if (due) {
@@ -234,7 +259,7 @@ export default function Quadro() {
     })())
   }
   const toggleWho = (id: string) => setWho(w => (w.includes(id) ? w.filter(x => x !== id) : [...w, id]))
-  const clear = () => { setMine(false); setWho([]); setDue(''); setQ(''); setEq(''); setUi({ qApprove: false }) }
+  const clear = () => { setMine(false); setWho([]); setDue(''); setQ(''); setEq(''); setOrig(''); setUi({ qApprove: false }) }
 
   /** área que recebe cartões (coluna inteira ou célula da raia) */
   const zone = (l: List, cls: string, header?: ReactNode) => {
@@ -341,10 +366,18 @@ export default function Quadro() {
             <option value="none">Sem prazo</option>
           </select>
         </label>
-        {(eqList.length > 0 || gereEq) && <label className={'qchip' + (eqSet ? ' on' : '')} title="Só as tarefas de quem é da equipe">
+        <label className={'qchip' + (orig ? ' on' : '')} title="Tarefas que vieram do Plano de marketing ou as de fora dele">
+          <Ph n="calendar-dots" size={14} />
+          <select value={orig} onChange={e => setOrig(e.target.value as '' | 'plano' | 'geral')} aria-label="Origem">
+            <option value="">Plano + gerais</option>
+            <option value="plano">Só do plano</option>
+            <option value="geral">Só gerais</option>
+          </select>
+        </label>
+        {(eqList.length > 0 || gereEq) && <label className={'qchip' + (eqSet ? ' on' : '')} title="Kanban do setor: tarefas de quem é da equipe e as do plano atribuídas a ela">
           <Ph n="users-three" size={14} />
           <select value={eqSet ? eq : ''} onChange={e => e.target.value === '+' ? setEqModal(true) : setEq(e.target.value)} aria-label="Equipe">
-            <option value="">Equipe</option>
+            <option value="">Todos os setores</option>
             {eqList.map(e => <option key={e.id} value={e.id}>{e.nome} ({e.pessoas.length})</option>)}
             {gereEq && <option value="+">{eqList.length ? 'Gerir equipes…' : '＋ Criar equipes…'}</option>}
           </select>

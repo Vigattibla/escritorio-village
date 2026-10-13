@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { makePassword, slugUser } from '../data/login'
 import { RANKS, outranks, rankOf } from '../game/ranks'
-import { accountLogins, createAccount, deleteAccount, deptList, deptName, hasCanais, run, saveDept, setDept, setDeptLook, setDoor, setPassword, updateAccount, useStore } from '../store'
+import { accountLogins, createAccount, putRow, deleteAccount, deptList, deptName, hasCanais, run, saveDept, setDept, setDeptLook, setDoor, setPassword, updateAccount, useStore } from '../store'
 import { FlagPicker } from './Bandeira'
 import { SLOTS } from '../office/andar'
 import { deptOf } from '../game/ranks'
@@ -17,6 +17,7 @@ export default function Accounts({ open }: { open?: boolean }) {
   const [rank, setRank] = useState(1)
   const sala = useStore(s => s.sala)
   const [novaSala, setNovaSala] = useState(sala)
+  const [setor, setSetor] = useState('')
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
   const [who, setWho] = useState('')
@@ -28,6 +29,9 @@ export default function Accounts({ open }: { open?: boolean }) {
   const depts = deptList({ rows: useStore(s => s.rows) })
   const me = profiles[meId ?? '']
   const adm = !!me?.is_admin
+  const equipes = useStore(s => s.rows.equipes)
+  const salaConta = adm ? novaSala : sala
+  const setores = Object.values(equipes).filter(e => !e.dept || e.dept === salaConta).sort((a, b) => a.nome.localeCompare(b.nome))
   const all = Object.values(profiles).sort((a, b) => a.name.localeCompare(b.name))
   const people = adm ? all : all.filter(p => p.id !== me?.id && !p.is_admin && outranks(me, p))
   const ranks = RANKS.map((r, i) => ({ r, i })).filter(({ i }) => i > 0 && (adm || i < rankOf(me)))
@@ -43,10 +47,12 @@ export default function Accounts({ open }: { open?: boolean }) {
     e.preventDefault()
     setBusy(true); setMsg('')
     const n = name.trim()
+    const eqNova = setor ? equipes[setor] : undefined
     run(createAccount(login, pass, n, rank, adm ? novaSala : undefined)
+      .then(p => eqNova && putRow('equipes', { ...eqNova, pessoas: [...new Set([...eqNova.pessoas, p.id])] }))
       .then(() => {
         setMsg(`Conta de ${n} criada. Passe para a pessoa: usuário "${login}" e a senha ${pass}`)
-        setName(''); setUser(''); setPass(makePassword()); setRank(1); loadLogins()
+        setName(''); setUser(''); setPass(makePassword()); setRank(1); setSetor(''); loadLogins()
       })
       .finally(() => setBusy(false)))
   }
@@ -104,6 +110,12 @@ export default function Accounts({ open }: { open?: boolean }) {
         {adm && <label>Sala
           <select value={novaSala} onChange={e => setNovaSala(e.target.value)}>
             {depts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+          </select>
+        </label>}
+        {setores.length > 0 && <label>Setor
+          <select value={setor} onChange={e => setSetor(e.target.value)}>
+            <option value="">Nenhum por enquanto</option>
+            {setores.map(e => <option key={e.id} value={e.id}>{e.nome}</option>)}
           </select>
         </label>}
         <button className="btn primary" disabled={busy || login.length < 2}>{busy ? 'Criando…' : `Criar conta${login ? ` "${login}"` : ''}`}</button>
