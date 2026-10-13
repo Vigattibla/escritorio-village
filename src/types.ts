@@ -306,7 +306,7 @@ export interface Backend {
   planoReservar(id: string, tarefa: string): Promise<boolean>
   planoSoltar(id: string, tarefa: string): Promise<void>
   /** só o adm: cria a conta já com perfil e cargo */
-  createAccount(user: string, password: string, name: string, rank: number): Promise<Profile>
+  createAccount(user: string, password: string, name: string, rank: number, dept?: string): Promise<Profile>
   /** só o adm */
   setPassword(target: string, password: string): Promise<void>
   /** só o adm: id → usuário de login */

@@ -868,8 +868,8 @@ export async function saveDept(d: { id?: string; name: string; color: string; sl
   await putRow('depts', { id, name, color: d.color, floor: prev?.floor ?? 1, slot, created_at: prev?.created_at ?? new Date().toISOString() })
 }
 
-export async function createAccount(user: string, pass: string, name: string, rank: number) {
-  const p = await backend.createAccount(user, pass, name, rank)
+export async function createAccount(user: string, pass: string, name: string, rank: number, dept?: string) {
+  const p = await backend.createAccount(user, pass, name, rank, dept)
   set({ profiles: { ...state.profiles, [p.id]: p } })
 }
 

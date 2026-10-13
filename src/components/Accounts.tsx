@@ -15,6 +15,8 @@ export default function Accounts({ open }: { open?: boolean }) {
   const [user, setUser] = useState('')
   const [pass, setPass] = useState(makePassword)
   const [rank, setRank] = useState(1)
+  const sala = useStore(s => s.sala)
+  const [novaSala, setNovaSala] = useState(sala)
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
   const [who, setWho] = useState('')
@@ -41,7 +43,7 @@ export default function Accounts({ open }: { open?: boolean }) {
     e.preventDefault()
     setBusy(true); setMsg('')
     const n = name.trim()
-    run(createAccount(login, pass, n, rank)
+    run(createAccount(login, pass, n, rank, adm ? novaSala : undefined)
       .then(() => {
         setMsg(`Conta de ${n} criada. Passe para a pessoa: usuário "${login}" e a senha ${pass}`)
         setName(''); setUser(''); setPass(makePassword()); setRank(1); loadLogins()
@@ -99,6 +101,11 @@ export default function Accounts({ open }: { open?: boolean }) {
             {ranks.map(({ r, i }) => <option key={i} value={i}>{r}</option>)}
           </select>
         </label>
+        {adm && <label>Sala
+          <select value={novaSala} onChange={e => setNovaSala(e.target.value)}>
+            {depts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+          </select>
+        </label>}
         <button className="btn primary" disabled={busy || login.length < 2}>{busy ? 'Criando…' : `Criar conta${login ? ` "${login}"` : ''}`}</button>
       </form>
 

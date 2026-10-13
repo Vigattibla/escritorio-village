@@ -196,7 +196,7 @@ export class DemoBackend implements Backend {
     if (a) await this.upsertRow('plano_acoes', { ...a, tarefas: a.tarefas.filter(t => t !== tarefa) })
   }
 
-  async createAccount(user: string, password: string, name: string, rank: number) {
+  async createAccount(user: string, password: string, name: string, rank: number, dept?: string) {
     const me = this.manager(undefined, rank)
     if (!validUser(user)) throw new Error('Usuário inválido: use letras, números, ponto ou traço.')
     if (password.length < 6) throw new Error('A senha precisa de pelo menos 6 caracteres.')
@@ -206,7 +206,7 @@ export class DemoBackend implements Backend {
     const id = crypto.randomUUID()
     accs.push({ id, email, hash: await sha(password), name: name.trim() })
     write(K.acc, accs)
-    const p: Profile = { id, name: name.trim() || user, role: '', avatar: null, photo: null, xp: 0, desk: -1, rank, created_at: new Date().toISOString(), ...(me.is_admin ? {} : { dept: deptOf(me) }) }
+    const p: Profile = { id, name: name.trim() || user, role: '', avatar: null, photo: null, xp: 0, desk: -1, rank, created_at: new Date().toISOString(), ...(me.is_admin ? (dept ? { dept } : {}) : { dept: deptOf(me) }) }
     await this.upsertProfileRaw(p)
     return p
   }

@@ -144,8 +144,8 @@ export class SupabaseBackend implements Backend {
     if (error) throw pt(error)
   }
 
-  async createAccount(user: string, password: string, name: string, rank: number) {
-    const { data, error } = await this.sb.rpc('admin_create_user', { p_user: user, p_pass: password, p_name: name, p_rank: rank })
+  async createAccount(user: string, password: string, name: string, rank: number, dept?: string) {
+    const { data, error } = await this.sb.rpc('admin_create_user', { p_user: user, p_pass: password, p_name: name, p_rank: rank, ...(dept ? { p_dept: dept } : {}) })
     if (error) throw pt(error)
     const p = await this.sb.from('profiles').select('*').eq('id', data as string).single()
     if (p.error) throw pt(p.error)
