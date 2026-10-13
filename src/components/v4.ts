@@ -9,6 +9,7 @@ export const CHANNELS: Record<Channel, { label: string; ic: PhName; tag: string 
   stories: { label: 'Stories', ic: 'circle-dashed', tag: 'amber' },
   facebook: { label: 'Facebook', ic: 'facebook-logo', tag: 'blue' },
   site: { label: 'Site', ic: 'globe-simple', tag: 'green' },
+  linkedin: { label: 'LinkedIn', ic: 'linkedin-logo', tag: 'blue' },
 }
 export const CHANNEL_KEYS = Object.keys(CHANNELS) as Channel[]
 

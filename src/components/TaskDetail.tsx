@@ -13,6 +13,7 @@ import MiniAvatar from './MiniAvatar'
 import { ReviewBox, ReviewHistory } from './Revisao'
 import { Fundo } from './Fundo'
 import { EqTag } from './Equipes'
+import { LinkedinBox } from './Linkedin'
 
 const STATUS: Record<Task['status'], string> = { inbox: 'pedido aguardando', todo: 'a fazer', doing: 'fazendo', review: 'em aprovação ⏳', done: 'feita ✅', declined: 'recusada' }
 /** ISO → valor de input datetime-local (hora local) */
@@ -391,6 +392,7 @@ export default function TaskDetail() {
                 <input type="datetime-local" value={localDT(t.publish_at)} disabled={!edit} onChange={e => run(updateTask(t.id, { publish_at: e.target.value ? new Date(e.target.value).toISOString() : null }))} />
               </label>}
             </div>
+            {t.channel === 'linkedin' && <LinkedinBox t={t} />}
 
             <div className="field td2-chat">
               <h3>Conversa <span className="count">{notes.length}</span></h3>

@@ -117,7 +117,7 @@ export interface Task {
   avisar?: string[]
 }
 
-export type Channel = 'feed' | 'reels' | 'stories' | 'facebook' | 'site'
+export type Channel = 'feed' | 'reels' | 'stories' | 'facebook' | 'site' | 'linkedin'
 
 /** evento da agenda (não é tarefa) */
 export interface CalEvent { id: string; title: string; day: string; time: string | null; created_by: string; created_at: string; dept?: string }
@@ -184,9 +184,13 @@ export interface PlanoResp { id: string; nome: string; dept: string | null; pess
 export interface Equipe { id: string; nome: string; cor: string | null; icone: string | null; dept: string | null; pessoas: string[]; created_at: string }
 /** último relatório da IA de cada pessoa (id = pessoa; ate exclusivo) */
 export interface Relatorio { id: string; de: string; ate: string; semana: string; texto: string; resumo: string; em: string; feito_por?: string | null }
-export interface Rows { events: CalEvent; goals: Goal; stickers: Sticker; flows: Flow; stages: Stage; groups: Group; rooms: Room; carpenters: Carpenter; depts: Dept; brand: Brand; quartos: Quarto; vendas: Venda; ajustes: Ajuste; metas_venda: MetaVenda; vendas_cfg: VendasCfg; campanhas: Campanha; caderno: Nota; jogos_pontos: JogoPonto; plano_meses: PlanoMes; plano_nucleos: PlanoNucleo; plano_acoes: PlanoAcao; plano_resp: PlanoResp; equipes: Equipe; relatorios: Relatorio }
+/** conta de rede social conectada (sem segredo; os tokens ficam só no servidor) */
+export interface Rede { id: 'linkedin'; nome: string; autor: string; modo: 'pessoal' | 'empresa'; expira: string | null; refresh_expira: string | null; conectado_por: string | null; em: string }
+/** fila de publicação: uma por tarefa (id = tarefa) */
+export interface Postagem { id: string; rede: string; quando: string; estado: 'agendado' | 'publicando' | 'publicado' | 'erro'; urn: string | null; link: string | null; erro: string | null; tentativas: number; aprovado_por: string | null; em: string }
+export interface Rows { events: CalEvent; goals: Goal; stickers: Sticker; flows: Flow; stages: Stage; groups: Group; rooms: Room; carpenters: Carpenter; depts: Dept; brand: Brand; quartos: Quarto; vendas: Venda; ajustes: Ajuste; metas_venda: MetaVenda; vendas_cfg: VendasCfg; campanhas: Campanha; caderno: Nota; jogos_pontos: JogoPonto; plano_meses: PlanoMes; plano_nucleos: PlanoNucleo; plano_acoes: PlanoAcao; plano_resp: PlanoResp; equipes: Equipe; relatorios: Relatorio; redes: Rede; postagens: Postagem }
 export type RowTable = keyof Rows
-export const ROW_TABLES: RowTable[] = ['events', 'goals', 'stickers', 'flows', 'stages', 'groups', 'rooms', 'carpenters', 'depts', 'brand', 'quartos', 'vendas', 'ajustes', 'metas_venda', 'vendas_cfg', 'campanhas', 'caderno', 'jogos_pontos', 'plano_meses', 'plano_nucleos', 'plano_acoes', 'plano_resp', 'equipes', 'relatorios']
+export const ROW_TABLES: RowTable[] = ['events', 'goals', 'stickers', 'flows', 'stages', 'groups', 'rooms', 'carpenters', 'depts', 'brand', 'quartos', 'vendas', 'ajustes', 'metas_venda', 'vendas_cfg', 'campanhas', 'caderno', 'jogos_pontos', 'plano_meses', 'plano_nucleos', 'plano_acoes', 'plano_resp', 'equipes', 'relatorios', 'redes', 'postagens']
 
 export type Priority = 'alta' | 'media' | 'baixa'
 export interface CheckItem {
