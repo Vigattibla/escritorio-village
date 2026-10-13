@@ -396,7 +396,7 @@ export default function Quadro() {
 
       {eqModal && <EquipesModal onClose={() => setEqModal(false)} />}
       {proj && <ProjectBar p={proj} profiles={profiles} tasks={Object.values(tasksMap).filter(t => t.project_id === proj.id)} />}
-      <Funil tasks={Object.values(tasksMap).filter(t => !!t.equipe && t.status !== 'declined' && !(t.status === 'done' && (!t.done_at || dayKey(t.done_at) < since)) && (eq ? t.equipe === eq : true))} profiles={profiles} meId={meId} />
+      <Funil tasks={Object.values(tasksMap).filter(t => !!t.equipe && t.status !== 'declined' && !(t.status === 'done' && (!t.done_at || dayKey(t.done_at) < since)) && (eq ? t.equipe === eq : true))} profiles={profiles} meId={meId} fixo={!!eq} />
 
       {group === 'raias' ? (
         <div className="qlanes" style={{ '--ncol': cols.length } as React.CSSProperties}>
@@ -578,14 +578,24 @@ type Tool = 'owner' | 'prio' | 'due' | 'remind'
 
 /** Criar tarefa no jeito Trello: um cartão com o título; o resto em ícones que abrem um painelzinho. */
 /** funil de cada setor: pedidos esperando alguém da equipe pegar (ou o gestor passar) */
-function Funil({ tasks, profiles, meId }: { tasks: Task[]; profiles: Record<string, Profile>; meId: string }) {
+function Funil({ tasks: todas, profiles, meId, fixo }: { tasks: Task[]; profiles: Record<string, Profile>; meId: string; fixo: boolean }) {
   const equipes = useStore(s => s.rows.equipes)
-  if (!tasks.length) return null
+  const todos = usePref('funilTodos')
+  const minhas = Object.values(equipes).filter(e => e.pessoas.includes(meId)).map(e => e.id)
+  // sem setor (adm, chefia) ou filtro de equipe ligado: vê tudo; senão, só o seu, com opção de ver todos
+  const escolhe = !fixo && minhas.length > 0 && todas.some(t => !minhas.includes(t.equipe!))
+  const tasks = escolhe && !todos ? todas.filter(t => minhas.includes(t.equipe!)) : todas
+  if (!todas.length) return null
   const grupos = new Map<string, Task[]>()
   const ordem = (t: Task) => noFunil(t) ? 0 : t.status === 'done' ? 2 : 1
   for (const t of [...tasks].sort((a, b) => ordem(a) - ordem(b) || (a.due ?? '9').localeCompare(b.due ?? '9') || a.created_at.localeCompare(b.created_at))) grupos.set(t.equipe!, [...(grupos.get(t.equipe!) ?? []), t])
   return (
     <section className="qfunil">
+      {escolhe && <div className="qfunil-ver">
+        <button className={!todos ? 'on' : ''} onClick={() => setPref('funilTodos', false)}>Meu setor</button>
+        <button className={todos ? 'on' : ''} onClick={() => setPref('funilTodos', true)}>Todos os setores</button>
+        {!tasks.length && <small>Nada no funil do seu setor.</small>}
+      </div>}
       {[...grupos].map(([id, ts]) => (
         <div key={id} className="qfunil-eq">
           <h4><Ph n="funnel" size={14} />Funil · {equipes[id]?.nome ?? 'Setor'} <span className="qcount" title="Esperando alguém pegar">{ts.filter(noFunil).length}</span>{ts.some(t => !noFunil(t)) && <small>{ts.filter(t => !noFunil(t) && t.status !== 'done').length} em andamento</small>}</h4>

@@ -1,9 +1,9 @@
 import { useSyncExternalStore } from 'react'
 
 /** preferências deste aparelho (modo desenvolvedor, destacar minhas tarefas…) */
-type Prefs = { dev: boolean; destaque: boolean; navMini: boolean }
+type Prefs = { dev: boolean; destaque: boolean; navMini: boolean; funilTodos: boolean }
 const KEY = 'ev:prefs'
-const DEF: Prefs = { dev: false, destaque: true, navMini: false }
+const DEF: Prefs = { dev: false, destaque: true, navMini: false, funilTodos: false }
 let cur: Prefs = (() => { try { return { ...DEF, ...JSON.parse(localStorage.getItem(KEY) ?? '{}') } } catch { return DEF } })()
 const subs = new Set<() => void>()
 
