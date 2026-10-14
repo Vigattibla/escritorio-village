@@ -28,6 +28,8 @@ import Vendas, { Lousa } from '../components/Vendas'
 import Jogos from '../components/Jogos'
 import Cassino from '../components/Cassino'
 import Bingo from '../components/Bingo'
+import Sorteios from '../components/Sorteios'
+import Armario from '../components/Armario'
 import type { Jogo } from '../office/world'
 import Caderno from '../components/Caderno'
 import Accounts from '../components/Accounts'
@@ -184,6 +186,7 @@ export default function Office() {
             <div className="menu-pop more-pop me-pop">
               <div className="me-pop-h"><b>{me.name}</b><small>{me.role || rankName(me)}</small></div>
               <button onClick={() => { setMeOpen(false); setUi({ editing: true }) }}><Ph n="smiley" size={20} /><b className="grow">Meu personagem</b></button>
+              <button onClick={() => { setMeOpen(false); setUi({ armario: true }) }}><Ph n="smiley" size={20} /><b className="grow">Meu armário</b></button>
               <button onClick={() => { setMeOpen(false); goTo('loja') }}><Ph n="coffee" size={20} /><b className="grow">Almoxarifado</b>{s.wallet && <small className="me-pop-cf">☕ {s.wallet.balance}</small>}</button>
               <button onClick={() => { setMeOpen(false); setUi({ cassino: true }) }}><Ph n="sparkle" size={20} /><b className="grow">Cassino</b></button>
               <button onClick={() => { setMeOpen(false); setUi({ bingo: true }) }}><Ph n="confetti" size={20} /><b className="grow">Bingo</b></button>
@@ -232,7 +235,7 @@ export default function Office() {
           {page === 'loja' && <Loja />}
           {office && arrumando && <SalaEditor onClose={() => setArrumando(false)} />}
           {office && !arrumando && <>
-            <div className="game-wrap"><Game />{canEdit && s.here === s.sala && <button className="btn primary sm game-edit" onClick={() => setArrumando(true)}>🪚 Arrumar sala</button>}
+            <div className="game-wrap"><Game /><Sorteios />{canEdit && s.here === s.sala && <button className="btn primary sm game-edit" onClick={() => setArrumando(true)}>🪚 Arrumar sala</button>}
               <button className={'btn sm game-tl' + (new Date().getHours() >= 17 ? ' accent' : ' soft')} onClick={() => setTl(true)} title="Ver como todo mundo se movimentou hoje, acelerado"><Ph n="film-strip" size={16} />Timelapse do dia</button></div>
             {tl && <Timelapse onClose={() => setTl(false)} />}
             {s.lousa && <Lousa onClose={() => setUi({ lousa: false })} />}
@@ -279,6 +282,7 @@ export default function Office() {
       <Toast />
       {s.editing && <div className="overlay"><Creator /></div>}
       {s.bingo && <Bingo onClose={() => setUi({ bingo: false })} />}
+      {s.armario && <Armario onClose={() => setUi({ armario: false })} />}
       {s.cassino && <Cassino inicial={typeof s.cassino === 'string' ? s.cassino : undefined} onClose={() => setUi({ cassino: false })} />}
     </div>
   )

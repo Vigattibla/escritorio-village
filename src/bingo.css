@@ -93,3 +93,30 @@
 .bg-hist li { display: flex; gap: 8px; align-items: center; }
 .bg-hist li span:first-child { color: #6b6478; font-variant-numeric: tabular-nums; }
 @media (prefers-reduced-motion: reduce) { .bg-globo .bg-esfera i, .bg-titulo span, .bg-festa { animation: none !important } }
+/* ---------- bolão e bingo à vista no escritório ---------- */
+.sorteios { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; z-index: 3; pointer-events: none; }
+.srt { pointer-events: auto; display: flex; align-items: center; gap: 8px; border: 0; border-radius: 999px; padding: 5px 14px 5px 6px; cursor: pointer; font: inherit; color: #fff; box-shadow: 0 4px 14px #0004; transition: transform .15s; }
+.srt:hover { transform: translateY(-2px); }
+.srt-bolao { background: linear-gradient(90deg, #2a8a52, #3fa66b); }
+.srt-bingo { background: linear-gradient(90deg, #8e2a7a, #d6457f); }
+.srt-ic { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: #fff3; font-size: 17px; }
+.srt-tx { display: flex; flex-direction: column; line-height: 1.15; text-align: left; }
+.srt-tx b { font-size: 13px; white-space: nowrap; }
+.srt-tx small { font-size: 11px; opacity: .9; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.srt.quente { animation: srt-pulsa 1.4s ease-in-out infinite; }
+@keyframes srt-pulsa { 50% { box-shadow: 0 0 0 4px #FBC22288, 0 4px 14px #0004; } }
+@media (max-width: 860px) { .sorteios { top: auto; bottom: 64px; } .srt-tx small { display: none; } }
+@media (prefers-reduced-motion: reduce) { .srt.quente { animation: none } }
+/* ---------- armário ---------- */
+.jan.jg.ar { max-width: 980px; width: min(980px, 96vw); max-height: 92vh; overflow: auto; }
+.ar-sub { color: var(--muted, #6b6478); font-size: 13px; }
+.ar-corpo { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 760px) { .ar-corpo { grid-template-columns: 1fr; } }
+.ar-espelho { position: sticky; top: 0; display: flex; flex-direction: column; gap: 10px; align-items: center; text-align: center; background: linear-gradient(180deg, #f3ecdf, #fff); border-radius: 16px; padding: 14px; box-shadow: inset 0 0 0 6px #b98a5a33; }
+.ar-espelho .lj-stage, .ar-espelho .lj-desk { width: 100%; max-width: 100%; height: auto; }
+.ar-espelho canvas { max-width: 100%; height: auto; image-rendering: pixelated; }
+.ar-gavetas { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.ar-gaveta h4 { margin: 0 0 8px; display: flex; gap: 6px; align-items: baseline; border-bottom: 2px solid #ece4d6; padding-bottom: 4px; }
+.ar-gaveta h4 small { color: #6b6478; font-weight: 600; }
+.ar-vazio { display: flex; flex-direction: column; gap: 6px; padding: 30px; text-align: center; color: #6b6478; border: 2px dashed #e4dccd; border-radius: 16px; }
+.ar-vazio b { color: inherit; font-size: 16px; }

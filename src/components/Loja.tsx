@@ -21,10 +21,10 @@ const PLATE: Record<string, React.CSSProperties> = {
   neon: { background: '#17171c', color: '#5ff2ff', boxShadow: '0 0 6px #5ff2ff, inset 0 0 4px #5ff2ff' },
   arco: { background: 'linear-gradient(90deg,#e05a47,#f39c35,#FBC222,#3fa66b,#3a6fd8,#8e5bd6,#e05a47)', backgroundSize: '200% 100%', animation: 'lj-shine 3s linear infinite', color: '#fff', textShadow: '0 1px 0 #0006' },
 }
-const Plate = ({ kind, name }: { kind?: string; name: string }) =>
+export const Plate = ({ kind, name }: { kind?: string; name: string }) =>
   <span className="lj-plate" style={kind ? PLATE[kind] : { background: '#fff', color: '#1d1a2b' }}>{name}</span>
 
-function wear(av: Avatar, slot: Slot, art: string): Avatar {
+export function wear(av: Avatar, slot: Slot, art: string): Avatar {
   if (slot === 'cabelo') return { ...av, hair: art as Avatar['hair'] }
   if (slot === 'roupa') return { ...av, outfit: art as Avatar['outfit'] }
   return { ...av, gear: { ...av.gear, [slot]: art } }
@@ -37,7 +37,7 @@ function mesaTop(c: C2D, mesa: string | undefined, x: number, y: number, w: numb
 }
 
 /** mesa completa: cadeira atrás, boneco sentado, tampo, notebook, enfeite e item do chão */
-function deskScene(c: C2D, av: Avatar, t: number, ox: number, oy: number) {
+export function deskScene(c: C2D, av: Avatar, t: number, ox: number, oy: number) {
   const g: Gear = av.gear ?? {}, w = 40, x = ox + 20, y = oy + 30, m = x + w / 2
   drawChair(c, g.cadeira, m, y + 6, false)
   drawAvatar(c, av, null, m - 8, y - 20, 'down', 0)
@@ -47,7 +47,7 @@ function deskScene(c: C2D, av: Avatar, t: number, ox: number, oy: number) {
   if (g.chao) drawFloor(c, g.chao, x + w + 3, y + 16, t)
 }
 
-function Thumb({ it, av, name }: { it: Item; av: Avatar; name: string }) {
+export function Thumb({ it, av, name }: { it: Item; av: Avatar; name: string }) {
   if (it.slot === 'plaquinha') return <div className="lj-thumb"><Plate kind={it.art} name={name} /></div>
   if (it.slot === 'cadeira') return <div className="lj-thumb"><Px w={24} h={42} s={1.6} draw={c => drawChair(c, it.art, 12, 40, false)} /></div>
   const full = wear({ ...av, gear: {} }, it.slot, it.art)
@@ -124,6 +124,7 @@ export default function Loja() {
           <div className="lj-coins"><Ph n="coffee" size={20} fill /> <b>{wallet ? coins : '…'}</b> cafezinhos <span className="lj-lata" title="Latinhas: moeda rara">⚡ <b>{wallet ? wallet.latinhas : '…'}</b></span></div>
           <div className="lj-cass">
             <button className="btn soft sm" onClick={() => setUi({ cassino: true })}><Ph n="sparkle" size={16} /> Cassino</button>
+            <button className="btn soft sm" onClick={() => setUi({ armario: true })}>🚪 Meu armário</button>
             <button className="btn soft sm lj-bolao" onClick={() => setUi({ cassino: 'bolao' })}>🍀 Bolão{bolao ? ` · ☕ ${bolao.pote}` : ''}</button>
           </div>
           <div className="lj-stage">

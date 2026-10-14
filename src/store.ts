@@ -69,6 +69,7 @@ export interface State {
   bolao: Bolao | null
   /** salão de bingo aberto */
   bingo: boolean
+  armario: boolean
   /** rodada atual/próxima do bingo */
   bingoDados: Bingo | null
   /** sino de avisos aberto */
@@ -91,7 +92,7 @@ export interface State {
 const initial: State = {
   phase: 'loading', meId: null, accountName: '', error: '', profiles: {}, tasks: {}, messages: [], notes: [], projects: {}, rows: { events: {}, goals: {}, stickers: {}, flows: {}, stages: {}, groups: {}, rooms: {}, carpenters: {}, depts: {}, brand: {}, quartos: {}, vendas: {}, ajustes: {}, metas_venda: {}, vendas_cfg: {}, campanhas: {}, caderno: {}, jogos_pontos: {}, plano_meses: {}, plano_nucleos: {}, plano_acoes: {}, plano_resp: {}, equipes: {}, relatorios: {}, redes: {}, postagens: {} }, online: new Set(),
   tab: 'mesa', viewing: null, channel: 'geral', reads: {}, requestTo: null, task: null, editing: false, notices: [], pipOpen: false, view: 'quadro' as View, wallet: null, drawer: false,
-  project: '', projectEdit: null, aiOpen: false, chatOpen: false, lousa: false, jogo: null, cassino: false, bolao: null, bingo: false, bingoDados: null, bellOpen: false, qApprove: false, flow: null, sheet: false, stickTo: null, sala: DEPT0, here: DEPT0,
+  project: '', projectEdit: null, aiOpen: false, chatOpen: false, lousa: false, jogo: null, cassino: false, bolao: null, bingo: false, armario: false, bingoDados: null, bellOpen: false, qApprove: false, flow: null, sheet: false, stickTo: null, sala: DEPT0, here: DEPT0,
 }
 
 let state = initial
@@ -554,7 +555,7 @@ export async function signOut() {
   set({ ...initial, phase: 'auth' })
 }
 
-export function setUi(p: Partial<Pick<State, 'tab' | 'viewing' | 'channel' | 'requestTo' | 'editing' | 'pipOpen' | 'error' | 'task' | 'view' | 'drawer' | 'project' | 'projectEdit' | 'aiOpen' | 'chatOpen' | 'lousa' | 'jogo' | 'cassino' | 'bingo' | 'bellOpen' | 'qApprove' | 'flow' | 'sheet' | 'stickTo'>>) {
+export function setUi(p: Partial<Pick<State, 'tab' | 'viewing' | 'channel' | 'requestTo' | 'editing' | 'pipOpen' | 'error' | 'task' | 'view' | 'drawer' | 'project' | 'projectEdit' | 'aiOpen' | 'chatOpen' | 'lousa' | 'jogo' | 'cassino' | 'bingo' | 'armario' | 'bellOpen' | 'qApprove' | 'flow' | 'sheet' | 'stickTo'>>) {
   // chat, avisos e aprovação não são mais páginas: viram painel flutuante, sino e filtro do quadro
   if (p.tab === 'chat') { const { tab: _, ...rest } = p; p = { ...rest, chatOpen: true } }
   else if (p.tab === 'avisos') { const { tab: _, ...rest } = p; p = { ...rest, bellOpen: true } }
