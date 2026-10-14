@@ -621,7 +621,9 @@ export function renderRoom(s: Sala, grid = false, light = true) {
 /** móvel comum (mesa de trabalho quem desenha é o jogo, com cadeira e gente) */
 export function drawFurniture(c: C2D, o: Obj, t: number) {
   const k = kd(o)
-  k.draw(c, o.x * T, k.camada === 'parede' ? 0 : o.y * T, t)
+  if (k.camada !== 'parede') return k.draw(c, o.x * T, o.y * T, t)
+  // parede desenha em y fixo da sala: sala de baixo do andar (o.y deslocado) precisa descer junto
+  c.save(); c.translate(0, o.y * T); k.draw(c, o.x * T, 0, t); c.restore()
 }
 
 export function bbox(o: Obj) {
