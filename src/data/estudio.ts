@@ -25,7 +25,7 @@ async function rest<T>(caminho: string, init: { method?: string; body?: unknown;
   return (t ? JSON.parse(t) : null) as T
 }
 
-export const lerChat = () => rest<ChatMsg[]>('estudio_chat?select=id,papel,texto,estado,criado_em&order=criado_em.desc&limit=60').then(l => l.reverse())
+export const lerChat = () => rest<ChatMsg[]>('estudio_chat?select=id,papel,texto,estado,criado_em&fio=eq.turmeo&order=criado_em.desc&limit=60').then(l => l.reverse())
 export const mandarChat = (texto: string) => rest('estudio_chat', { method: 'POST', body: { papel: 'eu', texto }, prefer: 'return=minimal' })
 const CAMPOS = 'id,task_id,molde,pilar,texto,quando,estado,passo,erro,criado_em,criado_por,canal,origem,gerar_em'
 export const lerCanais = () => rest<Canal[]>('estudio_canais?select=*&order=ordem')
