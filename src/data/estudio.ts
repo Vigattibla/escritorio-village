@@ -5,7 +5,7 @@ import { SupabaseBackend } from './supabase'
 const URL_ = (import.meta.env.VITE_SUPABASE_URL as string) + '/rest/v1/'
 
 export type ChatMsg = { id: string; papel: 'eu' | 'estudio'; texto: string; estado: 'novo' | 'lendo' | 'feito' | 'erro'; criado_em: string }
-export type Pedido = { id: string; task_id: string | null; molde: string; pilar: string | null; texto: string; quando: string | null; estado: 'fila' | 'gerando' | 'pronto' | 'erro' | 'pulado'; passo: string | null; erro: string | null; criado_em: string; criado_por: string; canal: string | null; origem: 'avulso' | 'calendario' | 'extra'; gerar_em: string | null }
+export type Pedido = { id: string; task_id: string | null; molde: string; pilar: string | null; texto: string; quando: string | null; estado: 'espera' | 'fila' | 'gerando' | 'pronto' | 'erro' | 'pulado'; passo: string | null; erro: string | null; criado_em: string; criado_por: string; canal: string | null; origem: 'avulso' | 'calendario' | 'extra'; gerar_em: string | null }
 export type Pilar = { id: string; nome: string; temas: string[] }
 export type Canal = { id: string; nome: string; rede: string; molde: string | null; ativo: boolean; dias: number[]; hora: string; antecedencia: number; pilares: Pilar[]; ordem: number }
 export type Sinal = { id: string; visto: string; info: { ocupado?: boolean; moldes?: string[] } }

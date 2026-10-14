@@ -6,7 +6,7 @@ import { Ph } from './Icon'
 import { rankOf } from '../game/ranks'
 import '../estudio.css'
 
-const ESTADO: Record<Pedido['estado'], string> = { fila: 'Na fila', gerando: 'Gerando', pronto: 'Pronto', erro: 'Deu erro', pulado: 'Pulado' }
+const ESTADO: Record<Pedido['estado'], string> = { espera: 'Falta material', fila: 'Na fila', gerando: 'Gerando', pronto: 'Pronto', erro: 'Deu erro', pulado: 'Pulado' }
 const SEMANA = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb']
 /** moldes que o adm cria no Estúdio (a VPS anuncia os prontos no sinal) */
 const MOLDE: Record<string, string> = { 'convention-linkedin': 'Convention · LinkedIn', 'meudestino-guia': 'MeuDestino · guia' }
@@ -131,7 +131,7 @@ function CanalView({ canal, adm, moldes, recarregar }: { canal: Canal; adm: bool
             <li key={p.id} className={'es-ped ' + (agendado ? 'agendado' : p.estado)}>
               <span className="es-dia">{p.quando ? dia(p.quando) : '—'}</span>
               <div className="grow">
-                <Assunto p={p} editar={adm && p.estado === 'fila'} salvar={texto => acao(() => mudarPedido(p.id, { texto }))} />
+                <Assunto p={p} editar={adm && (p.estado === 'fila' || p.estado === 'espera')} salvar={texto => acao(() => mudarPedido(p.id, { texto }))} />
                 <small>
                   {p.origem === 'extra' ? 'No meio' + (nomes[p.criado_por]?.name ? ' · ' + nomes[p.criado_por].name : '') : 'Calendário'}
                   {p.pilar && ' · ' + pilarNome(p.pilar)}
@@ -144,8 +144,9 @@ function CanalView({ canal, adm, moldes, recarregar }: { canal: Canal; adm: bool
               {p.estado === 'pronto' && p.task_id && <button className="tlink" onClick={() => setUi({ task: p.task_id! })}>Abrir</button>}
               {adm && agendado && <button className="tlink" onClick={() => acao(() => mudarPedido(p.id, { gerar_em: new Date().toISOString() }))} title="Gera já, sem esperar a antecedência">Gerar já</button>}
               {adm && p.estado === 'erro' && <button className="tlink" onClick={() => acao(() => mudarPedido(p.id, { estado: 'fila', gerar_em: new Date().toISOString() }))}>Tentar de novo</button>}
-              {adm && p.origem === 'calendario' && p.estado === 'fila' && <button className="tlink" onClick={() => acao(() => mudarPedido(p.id, { estado: 'pulado' }))} title="Não publica nesse dia">Pular</button>}
-              {adm && p.estado === 'pulado' && <button className="tlink" onClick={() => acao(() => mudarPedido(p.id, { estado: 'fila' }))}>Voltar</button>}
+              {adm && p.estado === 'espera' && <button className="tlink" onClick={() => acao(() => mudarPedido(p.id, { estado: 'fila' }))} title="Fotos e assunto prontos: o Estúdio gera na antecedência do canal">Liberar</button>}
+              {adm && p.origem === 'calendario' && (p.estado === 'fila' || p.estado === 'espera') && <button className="tlink" onClick={() => acao(() => mudarPedido(p.id, { estado: 'pulado' }))} title="Não publica nesse dia">Pular</button>}
+              {adm && p.estado === 'pulado' && <button className="tlink" onClick={() => acao(() => mudarPedido(p.id, { estado: p.origem === 'calendario' ? 'espera' : 'fila' }))}>Voltar</button>}
               {p.origem !== 'calendario' && (adm || meu) && (p.estado === 'fila' || p.estado === 'erro') && <button className="tlink" onClick={() => acao(() => cancelarPedido(p.id))} title="Tira do calendário">Tirar</button>}
             </li>
           )

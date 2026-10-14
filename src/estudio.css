@@ -35,6 +35,7 @@
 .es-editavel:hover { background: #fff; }
 .es-assunto { height: 32px; padding: 0 8px; border: 1px solid var(--line); border-radius: 8px; font: inherit; font-size: 14px; width: 100%; box-sizing: border-box; }
 .es-ped.agendado .es-est { background: #E8EEFB; color: var(--acc); }
+.es-ped.espera .es-est { background: #FFF4D6; color: #8A5A00; }
 .es-ped.pulado { opacity: .55; }
 .es-ped.pulado b { text-decoration: line-through; }
 .es-ajustes { display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 12px; background: var(--areia-3); }
