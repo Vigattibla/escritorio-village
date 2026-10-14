@@ -94,7 +94,7 @@
 .bg-hist li span:first-child { color: #6b6478; font-variant-numeric: tabular-nums; }
 @media (prefers-reduced-motion: reduce) { .bg-globo .bg-esfera i, .bg-titulo span, .bg-festa { animation: none !important } }
 /* ---------- bolão e bingo à vista no escritório ---------- */
-.sorteios { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; z-index: 3; pointer-events: none; }
+.sorteios { position: absolute; bottom: 16px; right: 16px; display: flex; gap: 8px; z-index: 3; pointer-events: none; }
 .srt { pointer-events: auto; display: flex; align-items: center; gap: 8px; border: 0; border-radius: 999px; padding: 5px 14px 5px 6px; cursor: pointer; font: inherit; color: #fff; box-shadow: 0 4px 14px #0004; transition: transform .15s; }
 .srt:hover { transform: translateY(-2px); }
 .srt-bolao { background: linear-gradient(90deg, #2a8a52, #3fa66b); }
@@ -145,3 +145,7 @@
 .cx-lista { display: grid; gap: 6px; border-top: 1px solid var(--line); padding-top: 10px; }
 .cx-ch { display: flex; gap: 8px; align-items: center; font-size: 13px; }
 .cx-ch small { color: var(--muted); }
+
+.sorteios .srt { animation: srt-entra .35s ease-out, srt-sai .4s ease-in 6.6s forwards; }
+@keyframes srt-entra { from { opacity: 0; transform: translateY(12px); } }
+@keyframes srt-sai { to { opacity: 0; transform: translateY(12px); } }

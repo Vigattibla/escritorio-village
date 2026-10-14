@@ -13,7 +13,7 @@ import { ACOES, altDe, drawBoneco, drawEfeitoAcao, lugarNaAcao, montariaDe, type
 import { drawChair } from '../office/props'
 import { drawFurniture, kd, parseSala, type Obj } from '../office/sala'
 import { blocked, boardSpot, BOSS_DESK, deskAtTile, deskIds, deskOf, deskSidesOf, doorAtTile, doorSpot, drawBoardMarks, drawCarry, drawDesk, emptySala, FH, findPath, floorVersion, furniture, FW, getRooms, hallDecor, hasDesk, jogoAt, bingoAt, roomOfKind, HY0, MAX_DESKS, painelAt, paineisOf, pathToSeat, regionOfPx, renderFloor, roomOfId, setFloor, setPassable, shelfSpot, T, wallObjs, type Room } from '../office/world'
-import { bubbles, owns, canDoor, canEnter, curtainsOpen, deptName, doorOpen, getState, goTo, knock, myDept, positions, roomOf, run, setCurtains, setDoor, setSalaGerente, setUi, useStore, type State } from '../store'
+import { bubbles, owns, canDoor, canEnter, curtainsOpen, doorOpen, getState, goTo, knock, positions, roomOf, run, setCurtains, setDoor, setSalaGerente, setUi, useStore, type State } from '../store'
 import type { Dir, Pos, Profile, Task } from '../types'
 import Icon from './Icon'
 import { addDia, CFG0, hoje, livres, mesDe, placar, ve } from '../game/vendas'
@@ -107,11 +107,9 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
   const zoomRef = useRef(zoom)
   const [hover, setHover] = useState<Hover | null>(null)
   const [doorUi, setDoorUi] = useState<{ slot: number; x: number; y: number; up: boolean } | null>(null)
-  const [comodo, setComodo] = useState<{ nome: string; cor: string } | null>(null)
   const [pessoaUi, setPessoaUi] = useState<{ id: string; x: number; y: number } | null>(null)
   const fazAcao = useRef<(k: string, id: string) => void>(() => {})
   const goSeat = useRef<() => void>(() => {})
-  const here = useStore(s => s.here)
   useStore(s => s.rows.depts)
 
   useEffect(() => { zoomRef.current = cine ? 3 : zoom; if (!cine) localStorage.setItem('ev:zoom', String(zoom)) }, [zoom, cine])
@@ -144,7 +142,6 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
       wander.delete(id)
     }
     const gone = (id: string) => !turno() && Date.now() - (lastOn.get(id) ?? 0) > FOI_EMBORA
-    let atK = -2
     let path: { x: number; y: number }[] = []
     let cam = { x: 0, y: 0 }
     let W = 0, H = 0, dpr = 1
@@ -409,8 +406,6 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
         }
         const k2 = regionOfPx(meS.x, meS.y), r2 = k2 >= 0 ? getRooms()[k2] : undefined, where = r2?.dept || HALL
         if (where !== s.here) { at = where; goTo(where) }
-        // cômodo onde estou, pra barra de baixo
-        if (k2 !== atK) { atK = k2; const c = r2 && comodoOf(r2.kind); setComodo(c ? { nome: c.nome, cor: c.cor } : null) }
       }
 
       const now = performance.now(), here = getState().here
@@ -803,7 +798,6 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
   }, [cine])
 
   const s = getState()
-  const mine = myDept(s), away = here !== mine
   const hp = hover ? s.profiles[hover.id] : null
   const dr = doorUi ? getRooms()[doorUi.slot] : undefined, dd = dr?.dept ? s.rows.depts[dr.dept] : undefined
   const dSala = s.rows.depts[s.sala], me = s.meId ? s.profiles[s.meId] : undefined
@@ -839,6 +833,7 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
               <button onClick={() => run(setDoor(dd.id, !doorOpen(dd.id, s)))}>{doorOpen(dd.id, s) ? 'Fechar a porta' : 'Abrir a porta'}</button>
               <button onClick={() => run(setCurtains(dd.id, !curtainsOpen(dd.id, s)))}>{curtainsOpen(dd.id, s) ? 'Fechar a cortina' : 'Abrir a cortina'}</button>
             </div>}
+            {podeGerente && dd.id === s.sala && <div className="gd-row"><button onClick={() => run(setSalaGerente(s.sala, !dSala!.sala_gerente))} title="Sala só do gerente, do outro lado do corredor">{dSala!.sala_gerente ? 'Tirar sala do gerente' : 'Criar sala do gerente'}</button></div>}
             {canDoor(dd.id, s) && <div className="gd-sec"><span>Bandeira da porta</span><FlagPicker d={dd} /></div>}
           </> : <>
             <div className="gd-head">
@@ -859,21 +854,6 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
           <button onClick={() => { setUi({ tab: 'mesa', viewing: pessoaUi.id }); setPessoaUi(null) }}>Ver a mesa</button>
         </div>
       )}
-      <div className="game-ctrl">
-        <span className="game-where" title={comodo ? 'Cômodo do andar, de todo mundo' : here === HALL ? 'Você está no corredor do andar' : away ? 'Você está visitando esta sala' : 'Sua sala'}>
-          <i style={{ background: comodo?.cor ?? (here === HALL ? '#8a8f98' : s.rows.depts[here]?.color ?? '#0B235D') }} />
-          {comodo ? comodo.nome : here === HALL ? 'Andar ' + deptName(s.sala, s) + ' · Corredor' : deptName(here, s) + (away ? ' · visita' : '')}
-        </span>
-        <span className="sep" />
-        <button onClick={() => goSeat.current()} title={away ? 'Andar de volta até a sua sala, pelas portas' : 'Andar até a sua mesa'}><Icon n="locate" size={15} />{away ? 'Voltar pra minha sala' : 'Ir para minha mesa'}</button>
-        {here !== HALL && canDoor(here, s) && <button onClick={() => run(setDoor(here, !doorOpen(here, s)))} title="Quem está fora só entra se a porta estiver aberta (ou batendo)">{doorOpen(here, s) ? 'Fechar a porta' : 'Abrir a porta'}</button>}
-        {here !== HALL && canDoor(here, s) && <button onClick={() => run(setCurtains(here, !curtainsOpen(here, s)))} title="Cortina fechada: quem está no corredor não vê o que acontece aqui dentro">{curtainsOpen(here, s) ? 'Fechar a cortina' : 'Abrir a cortina'}</button>}
-        {podeGerente && <button onClick={() => run(setSalaGerente(s.sala, !dSala!.sala_gerente))} title="Sala só do gerente, do outro lado do corredor (a mesa dele sai da sala do setor)">{dSala!.sala_gerente ? 'Tirar sala do gerente' : 'Sala do gerente'}</button>}
-        <span className="sep" />
-        <button className="sq" onClick={() => setZoom(z => Math.max(ZMIN, z - 1))} aria-label="Afastar" title="Afastar"><Icon n="minus" size={15} /></button>
-        <button className="sq" onClick={() => setZoom(z => Math.min(ZMAX, z + 1))} aria-label="Aproximar" title="Aproximar"><Icon n="plus" size={15} /></button>
-      </div>
-      <div className="game-help">Clique no chão para andar (ou WASD/setas) · cozinha, banheiro e jogos são de todo mundo · quem está fora no horário passeia pelo andar · cortina fechada: só quem está dentro vê</div>
       </>}
     </div>
   )
