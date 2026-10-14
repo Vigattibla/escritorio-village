@@ -98,3 +98,7 @@
   .es-msg { max-width: 94%; }
 }
 .es-tit { display: inline-flex; align-items: center; gap: 8px; }
+/* topo do dono: Conversa | Peças */
+.es-topo { margin: 12px auto 0; }
+.es-grade.so-chat { grid-template-columns: minmax(0, 900px); justify-content: center; }
+@media (max-width: 760px) { .es-topo { margin: 10px 16px 0; } .es-grade.so-chat { grid-template-columns: 1fr; } }

@@ -37,6 +37,10 @@ export default function Estudio() {
   const [msgs, puxarChat, erroChat] = usePuxar(() => dono ? lerChat() : Promise.resolve([] as ChatMsg[]), 2500)
   const [fila, puxarFila] = usePuxar(() => aprova ? lerAprovar() : Promise.resolve([] as ParaAprovar[]), 15000)
   const [aba, setAba] = useState<'canais' | 'aprovar' | null>(null)
+  // dono alterna Conversa (chat em tela cheia) e Peças (canais + aprovar); quem não é dono só vê Peças
+  const [topo, setTopo] = useState<'conversa' | 'pecas' | null>(() => { try { return localStorage.getItem('es-topo') as 'conversa' | 'pecas' | null } catch { return null } })
+  const irTopo = (t: 'conversa' | 'pecas') => { setTopo(t); try { localStorage.setItem('es-topo', t) } catch { /* sem storage */ } }
+  const tela = !dono ? 'pecas' : topo ?? ((fila?.length ?? 0) > 0 ? 'pecas' : 'conversa')
   const vendo = aba ?? (aprova && (!(adm || coord) || (fila?.length ?? 0) > 0) ? 'aprovar' : 'canais')
   const [canais, puxarCanais] = usePuxar(lerCanais, 60000)
   const [escolha, setEscolha] = useState('')
@@ -55,8 +59,12 @@ export default function Estudio() {
         </span>
         <Bell />
       </div>
-      <div className={'es-grade' + (dono ? '' : ' so-canal') + (vendo === 'aprovar' ? ' aprovando' : '')}>
-        {dono && <Conversa msgs={msgs ?? []} erro={erroChat} puxar={puxarChat} />}
+      {dono && <nav className="es-abas es-topo">
+        <button className={tela === 'conversa' ? 'on' : ''} onClick={() => irTopo('conversa')}><Ph n="chat-circle-dots" size={16} /> Conversa</button>
+        <button className={tela === 'pecas' ? 'on' : ''} onClick={() => irTopo('pecas')}><Ph n="images" size={16} /> Peças{!!fila?.length && <i>{fila.length}</i>}</button>
+      </nav>}
+      {tela === 'conversa' ? <div className="es-grade so-chat"><Conversa msgs={msgs ?? []} erro={erroChat} puxar={puxarChat} /></div> :
+      <div className={'es-grade so-canal' + (vendo === 'aprovar' ? ' aprovando' : '')}>
         <div className="es-lado">
         {aprova && (adm || coord) && <nav className="es-abas">
           <button className={vendo === 'aprovar' ? 'on' : ''} onClick={() => setAba('aprovar')}>Aprovar{!!fila?.length && <i>{fila.length}</i>}</button>
@@ -74,7 +82,7 @@ export default function Estudio() {
             : <p className="es-vazio">{canais ? 'Nenhum canal ainda.' : 'Carregando…'}</p>}
         </section>}
         </div>
-      </div>
+      </div>}
     </div>
   )
 }
