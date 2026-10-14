@@ -41,6 +41,7 @@ import MoreMenu from '../components/MoreMenu'
 import Sheet from '../components/Sheet'
 import { StickerLayer, StickerPicker } from '../components/Stickers'
 import Creator from './Creator'
+import Estudio from '../components/Estudio'
 import { backend } from '../data'
 import { isChief, rankName, rankOf } from '../game/ranks'
 import { deptList, deptName, myDept, openSala, run, setUi, signOut, team, unread, useStore, type Tab, type View } from '../store'
@@ -120,6 +121,7 @@ export default function Office() {
     { id: 'arquivos', label: 'Arquivos', ic: 'arquivos' },
     // Vendas fora do setor de vendas: só o admin, no modo desenvolvedor
     ...(depts.some(d => d.vendas) && me.is_admin && dev ? ([['vendas', 'Quartos'], ['placar', 'Placar'], ['kit', 'Kit de vendas']] as const).map(([id, label]) => ({ id: id as Page, label, ic: (id === 'vendas' ? 'vendas' : id) as TName, more: true })) : []),
+    ...(me.is_admin ? [{ id: 'estudio' as Page, label: 'Estúdio', ic: 'kudos' as TName, tip: 'Converse com o Estúdio da VPS e peça carrosséis' }] : []),
     { id: 'metas', label: 'Metas', ic: 'metas', more: true },
     { id: 'fluxos', label: 'Fluxos', ic: 'fluxos', more: true },
   ]
@@ -211,7 +213,7 @@ export default function Office() {
         </div>}
         {s.sala !== myDept(s) && s.here === s.sala && <div className="banner sala-visit" onClick={() => run(openSala(myDept(s)))}>Você está na sala {deptName(s.sala, s)} <small>(clique para voltar para a sua)</small></div>}
         {s.error && <div className="banner" onClick={() => setUi({ error: '' })}>{s.error} <small>(clique para fechar)</small></div>}
-        {page !== 'quadro' && page !== 'agenda' && page !== 'metas' && page !== 'fluxos' && page !== 'plano' && page !== 'redes' && page !== 'arquivos' && !VD_PAGES.includes(page) && page !== 'inicio' && page !== 'loja' && <div className="ptop"><h1 className="grow">{items.find(i => i.id === page)?.label}</h1><Bell /></div>}
+        {page !== 'quadro' && page !== 'agenda' && page !== 'metas' && page !== 'fluxos' && page !== 'plano' && page !== 'redes' && page !== 'estudio' && page !== 'arquivos' && !VD_PAGES.includes(page) && page !== 'inicio' && page !== 'loja' && <div className="ptop"><h1 className="grow">{items.find(i => i.id === page)?.label}</h1><Bell /></div>}
         <main className="main">
           {page === 'quadro' && <Quadro />}
           {page === 'inicio' && (isNarrow ? <Inicio /> : <InicioDesk />)}
@@ -220,6 +222,7 @@ export default function Office() {
           {page === 'fluxos' && <Fluxos />}
           {page === 'plano' && <Plano />}
           {page === 'redes' && <Redes />}
+          {page === 'estudio' && <Estudio />}
           {page === 'arquivos' && <Arquivos />}
           {page === 'vendas' && <Vendas aba="quartos" />}
           {page === 'placar' && <Vendas aba="placar" />}

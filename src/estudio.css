@@ -1,0 +1,46 @@
+/* Estúdio (VPS) dentro do Turmeo: conversa + pedidos. Prefixo es- */
+.es-grade { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 16px; padding: 16px 32px 32px; flex: 1; min-height: 0; }
+.es .tbox header { display: flex; align-items: center; gap: 8px; }
+.es-sinal { display: inline-flex; align-items: center; gap: 7px; height: 30px; padding: 0 12px; border-radius: 99px; background: var(--areia-2); color: var(--muted); font-size: 13px; font-weight: 700; }
+.es-sinal i { width: 8px; height: 8px; border-radius: 50%; background: #B9B2A3; }
+.es-sinal.on { background: #E3F4EA; color: var(--ok); }
+.es-sinal.on i { background: var(--ok); box-shadow: 0 0 0 3px rgba(31, 157, 85, .18); }
+.es-vazio { color: var(--muted); font-size: 14px; padding: 8px 0; list-style: none; }
+.quadro > .es-vazio { padding: 24px 32px; }
+
+.es-chat { min-height: 520px; max-height: calc(100vh - 140px); }
+.es-msgs { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding: 4px 2px; }
+.es-msg { max-width: 86%; display: flex; flex-direction: column; gap: 3px; }
+.es-msg p { margin: 0; padding: 10px 14px; border-radius: 16px; font-size: 14px; line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; }
+.es-msg small { font-size: 11px; color: var(--muted); padding: 0 6px; }
+.es-msg.eu { align-self: flex-end; align-items: flex-end; }
+.es-msg.eu p { background: var(--acc); color: var(--creme); border-bottom-right-radius: 4px; }
+.es-msg.estudio p { background: var(--areia-3); color: var(--tinta); border-bottom-left-radius: 4px; }
+.es-msg.erro p { background: #FFE8E3; color: #A3260E; }
+.es-escrever { display: flex; gap: 8px; align-items: flex-end; }
+.es-escrever textarea, .es-form textarea { flex: 1; resize: vertical; min-height: 44px; max-height: 200px; padding: 10px 14px; border: 1px solid var(--line); border-radius: 14px; font: inherit; font-size: 14px; background: #fff; }
+.es-escrever .tbtn { height: 44px; width: 44px; padding: 0; justify-content: center; }
+
+.es-pedidos { align-self: start; }
+.es-form { display: flex; flex-direction: column; gap: 8px; }
+.es-form textarea { width: 100%; box-sizing: border-box; }
+.es-linha { display: flex; gap: 8px; flex-wrap: wrap; }
+.es-linha select, .es-linha input { height: 40px; padding: 0 10px; border: 1px solid var(--line); border-radius: 12px; background: #fff; font: inherit; font-size: 14px; min-width: 0; }
+.es-linha select { flex: 1 1 180px; }
+.es-lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.es-ped { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border-radius: 12px; background: var(--areia-3); }
+.es-ped .grow { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.es-ped b { font-size: 14px; overflow-wrap: anywhere; }
+.es-ped small { font-size: 12px; color: var(--muted); }
+.es-est { flex: none; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; padding: 4px 8px; border-radius: 99px; background: #fff; color: var(--muted); }
+.es-ped.gerando .es-est { background: var(--postit); color: var(--tinta); }
+.es-ped.pronto .es-est { background: #E3F4EA; color: var(--ok); }
+.es-ped.erro .es-est { background: #FFE8E3; color: #A3260E; }
+.es-ped .tlink { margin-left: 0; flex: none; }
+
+@media (max-width: 900px) {
+  .es-grade { grid-template-columns: 1fr; padding: 12px 16px 96px; }
+  .es-chat { min-height: 60vh; max-height: none; }
+  .es-msg { max-width: 94%; }
+}
+.es-tit { display: inline-flex; align-items: center; gap: 8px; }
