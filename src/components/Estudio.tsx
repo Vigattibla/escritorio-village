@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { cancelarPedido, encaixar, estudioReal, lerAgenda, lerCanais, lerChat, lerSinal, mandarChat, mudarPedido, planejar, salvarCanal, type Canal, type ChatMsg, type Pedido, type Sinal } from '../data/estudio'
-import { notify, setUi, useStore } from '../store'
+import { cancelarPedido, decidir, encaixar, lerAprovar, marcarAprovador, type ParaAprovar, estudioReal, lerAgenda, lerCanais, lerChat, lerSinal, mandarChat, mudarPedido, planejar, salvarCanal, type Canal, type ChatMsg, type Pedido, type Sinal } from '../data/estudio'
+import { fileUrl, notify, setUi, useStore } from '../store'
+import type { Attachment } from '../types'
 import { Bell } from './Avisos'
 import { Ph } from './Icon'
 import { rankOf } from '../game/ranks'
@@ -30,7 +31,13 @@ function usePuxar<T>(ler: () => Promise<T>, ms: number): [T | null, () => void, 
 export default function Estudio() {
   const adm = useStore(s => !!(s.meId && s.profiles[s.meId]?.is_admin))
   const coord = useStore(s => !!s.meId && rankOf(s.profiles[s.meId]) >= 2)
-  const [msgs, puxarChat, erroChat] = usePuxar(() => adm ? lerChat() : Promise.resolve([] as ChatMsg[]), 2500)
+  // a conversa é só do dono do Estúdio (sem dono marcado ainda, vale o adm)
+  const dono = useStore(s => !!s.meId && (!!s.profiles[s.meId]?.estudio_dono || (adm && !Object.values(s.profiles).some(p => p.estudio_dono))))
+  const aprova = useStore(s => dono || !!(s.meId && s.profiles[s.meId]?.aprova_estudio))
+  const [msgs, puxarChat, erroChat] = usePuxar(() => dono ? lerChat() : Promise.resolve([] as ChatMsg[]), 2500)
+  const [fila, puxarFila] = usePuxar(() => aprova ? lerAprovar() : Promise.resolve([] as ParaAprovar[]), 15000)
+  const [aba, setAba] = useState<'canais' | 'aprovar' | null>(null)
+  const vendo = aba ?? (aprova && (!(adm || coord) || (fila?.length ?? 0) > 0) ? 'aprovar' : 'canais')
   const [canais, puxarCanais] = usePuxar(lerCanais, 60000)
   const [escolha, setEscolha] = useState('')
   const canal = canais?.find(c => c.id === escolha) ?? canais?.[0] ?? null
@@ -38,7 +45,7 @@ export default function Estudio() {
   const [agora, setAgora] = useState(() => Date.now())
   useEffect(() => { const i = setInterval(() => setAgora(Date.now()), 10000); return () => clearInterval(i) }, [])
   const online = !!sinal && agora - new Date(sinal.visto).getTime() < 90000
-  if (!adm && !coord) return <div className="quadro"><div className="qbar"><b className="grow">Estúdio</b><Bell /></div><p className="es-vazio">O Estúdio é da coordenação. Peça uma publicação pra sua coordenação.</p></div>
+  if (!adm && !coord && !aprova) return <div className="quadro"><div className="qbar"><b className="grow">Estúdio</b><Bell /></div><p className="es-vazio">O Estúdio é da coordenação. Peça uma publicação pra sua coordenação.</p></div>
   return (
     <div className="quadro es">
       <div className="qbar">
@@ -48,9 +55,14 @@ export default function Estudio() {
         </span>
         <Bell />
       </div>
-      <div className={'es-grade' + (adm ? '' : ' so-canal')}>
-        {adm && <Conversa msgs={msgs ?? []} erro={erroChat} puxar={puxarChat} />}
-        <section className="es-canal tbox">
+      <div className={'es-grade' + (dono ? '' : ' so-canal') + (vendo === 'aprovar' ? ' aprovando' : '')}>
+        {dono && <Conversa msgs={msgs ?? []} erro={erroChat} puxar={puxarChat} />}
+        <div className="es-lado">
+        {aprova && (adm || coord) && <nav className="es-abas">
+          <button className={vendo === 'aprovar' ? 'on' : ''} onClick={() => setAba('aprovar')}>Aprovar{!!fila?.length && <i>{fila.length}</i>}</button>
+          <button className={vendo === 'canais' ? 'on' : ''} onClick={() => setAba('canais')}>Canais</button>
+        </nav>}
+        {vendo === 'aprovar' ? <Aprovar fila={fila} puxar={puxarFila} dono={dono} /> : <section className="es-canal tbox">
           <nav className="es-canais">
             {(canais ?? []).map(c => (
               <button key={c.id} className={'es-aba' + (c.id === canal?.id ? ' on' : '')} onClick={() => setEscolha(c.id)}>
@@ -60,7 +72,8 @@ export default function Estudio() {
           </nav>
           {canal ? <CanalView key={canal.id} canal={canal} adm={adm} moldes={sinal?.info.moldes ?? []} recarregar={puxarCanais} />
             : <p className="es-vazio">{canais ? 'Nenhum canal ainda.' : 'Carregando…'}</p>}
-        </section>
+        </section>}
+        </div>
       </div>
     </div>
   )
@@ -219,6 +232,124 @@ function Ajustes({ canal, moldes, pronto }: { canal: Canal; moldes: string[]; pr
         <button className="tbtn acc" disabled={busy} onClick={salvar}>Salvar</button>
       </div>
       {!f.molde && <small className="muted">Sem molde o canal não gera. Crie o molde pela conversa e escolha aqui.</small>}
+    </div>
+  )
+}
+
+/** fila de aprovação: só peça gerada, slides grandes lado a lado, legenda e dia de publicar */
+function Aprovar({ fila, puxar, dono }: { fila: ParaAprovar[] | null; puxar: () => void; dono: boolean }) {
+  const [quem, setQuem] = useState(false)
+  return (
+    <section className="es-aprovar tbox">
+      <header>
+        <b className="grow">Aprovar</b>
+        {dono && <button className="tlink" onClick={() => setQuem(!quem)}>{quem ? 'Fechar' : 'Quem aprova'}</button>}
+      </header>
+      {dono && quem && <QuemAprova />}
+      {fila && !fila.length && <p className="es-vazio">Nada esperando aprovação. Quando o Estúdio terminar uma peça, ela aparece aqui.</p>}
+      {!fila && <p className="es-vazio">Carregando…</p>}
+      {(fila ?? []).map(p => <Peca key={p.task_id + p.ajustes} p={p} puxar={puxar} />)}
+    </section>
+  )
+}
+
+function Peca({ p, puxar }: { p: ParaAprovar; puxar: () => void }) {
+  const [ajuste, setAjuste] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [aberta, setAberta] = useState<number | null>(null)
+  const slides = p.anexos.filter(a => a.type.startsWith('image/') || a.type.startsWith('video/'))
+  const outros = p.anexos.filter(a => !slides.includes(a))
+  const vai = async (ok: boolean) => {
+    if (busy) return
+    if (!ok && (ajuste ?? '').trim().length < 3) { notify('Diga o que ajustar.'); return }
+    setBusy(true)
+    try {
+      await decidir(p.task_id, ok, ok ? '' : ajuste!.trim())
+      notify(ok ? 'Aprovada.' + (p.canal_nome ? ' Vai pra fila de publicar.' : '') : 'Pedido de ajuste enviado: o Estúdio refaz e volta pra cá.')
+      puxar()
+    } catch (e) { notify((e as Error).message) } finally { setBusy(false) }
+  }
+  return (
+    <article className="es-peca">
+      <div className="es-peca-top">
+        <div className="grow">
+          <b>{p.titulo}</b>
+          <small className="muted">{[p.canal_nome, p.assunto, p.ajustes ? `${p.ajustes}º ajuste` : ''].filter(Boolean).join(' · ')}</small>
+        </div>
+        <span className="es-quando"><Ph n="calendar-blank" size={14} />{p.publicar ? 'Publica ' + hora(p.publicar) : 'Sem data'}</span>
+      </div>
+      <div className="es-slides">
+        {slides.map((a, i) => <Slide key={a.id} a={a} n={i + 1} abrir={() => setAberta(i)} />)}
+        {!slides.length && <p className="es-vazio">Sem imagem anexada.</p>}
+      </div>
+      {outros.length > 0 && <small className="muted">+ {outros.map(a => a.name).join(', ')}</small>}
+      {p.legenda && <div className="es-legenda"><small>Legenda</small><p>{p.legenda}</p></div>}
+      {ajuste === null
+        ? <div className="es-decidir">
+            <button className="tbtn" disabled={busy} onClick={() => setAjuste('')}>Pedir ajuste</button>
+            <button className="tbtn acc" disabled={busy} onClick={() => vai(true)}><Ph n="check" size={16} /> Aprovar</button>
+          </div>
+        : <div className="es-form">
+            <textarea autoFocus rows={3} maxLength={1000} value={ajuste} onChange={e => setAjuste(e.target.value)} placeholder="O que ajustar? Ex.: trocar a foto do slide 2, título mais curto, tirar o número 1.400" />
+            <div className="es-decidir">
+              <button className="tbtn" disabled={busy} onClick={() => setAjuste(null)}>Cancelar</button>
+              <button className="tbtn acc" disabled={busy || ajuste.trim().length < 3} onClick={() => vai(false)}>Mandar ajuste</button>
+            </div>
+          </div>}
+      {aberta !== null && slides[aberta] && <Grande a={slides[aberta]} fechar={() => setAberta(null)}
+        ir={d => setAberta((aberta + d + slides.length) % slides.length)} />}
+    </article>
+  )
+}
+
+function useUrl(a: Attachment) {
+  const [url, setUrl] = useState('')
+  useEffect(() => { let vivo = true; fileUrl(a).then(u => vivo && setUrl(u), () => {}); return () => { vivo = false } }, [a.path]) // eslint-disable-line react-hooks/exhaustive-deps
+  return url
+}
+
+function Slide({ a, n, abrir }: { a: Attachment; n: number; abrir: () => void }) {
+  const url = useUrl(a)
+  return (
+    <button className="es-slide" onClick={abrir} title="Ver grande">
+      {url ? (a.type.startsWith('video/') ? <video src={url} muted playsInline preload="metadata" /> : <img src={url} alt={a.name} loading="lazy" />) : <span className="es-slide-vazio" />}
+      <i>{n}</i>
+    </button>
+  )
+}
+
+function Grande({ a, fechar, ir }: { a: Attachment; fechar: () => void; ir: (d: number) => void }) {
+  const url = useUrl(a)
+  useEffect(() => {
+    const k = (e: KeyboardEvent) => { if (e.key === 'Escape') fechar(); if (e.key === 'ArrowRight') ir(1); if (e.key === 'ArrowLeft') ir(-1) }
+    addEventListener('keydown', k); return () => removeEventListener('keydown', k)
+  })
+  return (
+    <div className="es-grande" onClick={fechar}>
+      <button className="es-seta" onClick={e => { e.stopPropagation(); ir(-1) }} aria-label="Anterior"><Ph n="caret-left" size={28} /></button>
+      {url && (a.type.startsWith('video/') ? <video src={url} controls autoPlay onClick={e => e.stopPropagation()} /> : <img src={url} alt={a.name} onClick={e => e.stopPropagation()} />)}
+      <button className="es-seta" onClick={e => { e.stopPropagation(); ir(1) }} aria-label="Próximo"><Ph n="caret-right" size={28} /></button>
+    </div>
+  )
+}
+
+/** só o dono: marca quem pode aprovar as peças do Estúdio */
+function QuemAprova() {
+  const profiles = useStore(s => s.profiles)
+  const [marca, setMarca] = useState<Record<string, boolean>>({})
+  const pessoas = Object.values(profiles).filter(p => !p.estudio_dono).sort((a, b) => a.name.localeCompare(b.name))
+  const tem = (id: string) => marca[id] ?? !!profiles[id]?.aprova_estudio
+  const trocar = (id: string) => {
+    const sim = !tem(id)
+    setMarca(m => ({ ...m, [id]: sim }))
+    marcarAprovador(id, sim).catch(e => { setMarca(m => ({ ...m, [id]: !sim })); notify((e as Error).message) })
+  }
+  return (
+    <div className="es-ajustes">
+      <small className="muted">Quem tem a marca <b>Aprova Estúdio</b> vê esta fila e decide. Você sempre pode.</small>
+      <div className="es-dias">
+        {pessoas.map(p => <button key={p.id} className={'es-d' + (tem(p.id) ? ' on' : '')} onClick={() => trocar(p.id)}>{p.name}</button>)}
+      </div>
     </div>
   )
 }

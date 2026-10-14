@@ -182,7 +182,7 @@ export function approverOf(t: Task): string | null {
 /** Aprova ou reprova: o aprovador ou a Chefe; "chefia" = qualquer cargo acima do responsável. */
 export function canApprove(t: Task, uid = state.meId) {
   const a = approverOf(t)
-  if (!uid || !a) return false
+  if (!uid || !a || t.estudio) return false // peça do Estúdio: aba Aprovar do Estúdio
   if (a === CHEFIA) return uid !== t.owner_id && outranks(state.profiles[uid], state.profiles[t.owner_id])
   return a === uid || isChief(state.profiles[uid])
 }
@@ -204,7 +204,7 @@ export function teamOf(pid: string) {
 }
 /** Tarefas esperando a minha aprovação. */
 /** Leva para Feito: quem aprova; no card que o próprio dono criou (aprovação da chefia é opcional), o dono também. */
-export const canFinish = (t: Task, uid = state.meId) => canApprove(t, uid) || (approverOf(t) === CHEFIA && !!uid && t.owner_id === uid)
+export const canFinish = (t: Task, uid = state.meId) => !t.estudio && canApprove(t, uid) || (approverOf(t) === CHEFIA && !!uid && t.owner_id === uid)
 export const toApprove = (s: State) => Object.values(s.tasks).filter(t => t.status === 'review' && canApprove(t, s.meId))
 /** O chat está na tela? */
 const chatShown = () => state.chatOpen

@@ -1,5 +1,6 @@
 import { backend } from '.'
 import { SupabaseBackend } from './supabase'
+import type { Attachment } from '../types'
 
 /** Estúdio da VPS: chat (só adm) e canais com calendário (coordenação encaixa publicação no meio) pelo REST; RLS garante */
 const URL_ = (import.meta.env.VITE_SUPABASE_URL as string) + '/rest/v1/'
@@ -40,3 +41,9 @@ export const salvarCanal = (id: string, campos: Partial<Omit<Canal, 'id'>>) => r
 export const planejar = () => rest<number>('rpc/estudio_planejar', { method: 'POST', body: {} })
 export const cancelarPedido = (id: string) => rest(`estudio_pedidos?id=eq.${id}`, { method: 'DELETE', prefer: 'return=minimal' })
 export const lerSinal = () => rest<Sinal[]>('estudio_sinal?select=id,visto,info&order=visto.desc&limit=1').then(l => l[0] ?? null)
+
+/** peça do Estúdio esperando decisão (só quem tem a marca Aprova Estúdio recebe) */
+export type ParaAprovar = { pedido: string; task_id: string; titulo: string; legenda: string; anexos: Attachment[]; publicar: string | null; canal: string | null; canal_nome: string | null; pilar: string | null; assunto: string; ajustes: number; entregue: string }
+export const lerAprovar = () => rest<ParaAprovar[]>('rpc/estudio_para_aprovar', { method: 'POST', body: {} })
+export const decidir = (tid: string, ok: boolean, motivo = '') => rest('rpc/estudio_decidir', { method: 'POST', body: { tid, ok, motivo } })
+export const marcarAprovador = (alvo: string, sim: boolean) => rest('rpc/estudio_marcar', { method: 'POST', body: { alvo, sim } })

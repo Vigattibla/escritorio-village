@@ -39,6 +39,10 @@ export interface Profile {
   rank: number
   /** adm: cria contas, troca senhas e define cargos (não é o mesmo que Chefe) */
   is_admin?: boolean
+  /** dono do Estúdio (a conversa é só dele) */
+  estudio_dono?: boolean
+  /** aprova as peças do Estúdio (o dono marca) */
+  aprova_estudio?: boolean
   /** sala (departamento); só o adm ou a Chefe muda (setDept) */
   dept?: string
   created_at: string
@@ -117,6 +121,8 @@ export interface Task {
   equipe?: string | null
   /** setores (equipes) avisados quando a entrega é aprovada/concluída */
   avisar?: string[]
+  /** peça do Estúdio: aprovação só na aba Aprovar do Estúdio */
+  estudio?: boolean
 }
 
 export type Channel = 'feed' | 'reels' | 'stories' | 'facebook' | 'site' | 'linkedin'

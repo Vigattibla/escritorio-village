@@ -166,6 +166,7 @@ export default function Quadro() {
   const shown = Object.values(tasksMap).filter(t => {
     if (t.status === 'declined') return false
     if (noFunil(t)) return false
+    if (t.estudio) return false // peça do Estúdio: fica no Estúdio (aba Aprovar) e na Agenda
     if (t.status === 'done' && (!t.done_at || dayKey(t.done_at) < since)) return false
     if (project === NONE ? !!t.project_id : project && t.project_id !== project) return false
     if (mine && !involved(t, meId)) return false
