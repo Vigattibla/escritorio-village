@@ -1,5 +1,6 @@
 /* Estúdio (VPS) dentro do Turmeo: conversa + pedidos. Prefixo es- */
 .es-grade { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 16px; padding: 16px 32px 32px; flex: 1; min-height: 0; }
+.es-grade.so-pedidos { grid-template-columns: minmax(0, 760px); justify-content: center; }
 .es .tbox header { display: flex; align-items: center; gap: 8px; }
 .es-sinal { display: inline-flex; align-items: center; gap: 7px; height: 30px; padding: 0 12px; border-radius: 99px; background: var(--areia-2); color: var(--muted); font-size: 13px; font-weight: 700; }
 .es-sinal i { width: 8px; height: 8px; border-radius: 50%; background: #B9B2A3; }

@@ -121,7 +121,7 @@ export default function Office() {
     { id: 'arquivos', label: 'Arquivos', ic: 'arquivos' },
     // Vendas fora do setor de vendas: só o admin, no modo desenvolvedor
     ...(depts.some(d => d.vendas) && me.is_admin && dev ? ([['vendas', 'Quartos'], ['placar', 'Placar'], ['kit', 'Kit de vendas']] as const).map(([id, label]) => ({ id: id as Page, label, ic: (id === 'vendas' ? 'vendas' : id) as TName, more: true })) : []),
-    ...(me.is_admin ? [{ id: 'estudio' as Page, label: 'Estúdio', ic: 'kudos' as TName, tip: 'Converse com o Estúdio da VPS e peça carrosséis' }] : []),
+    ...(me.is_admin || rankOf(me) >= 2 ? [{ id: 'estudio' as Page, label: 'Estúdio', ic: 'kudos' as TName, tip: me.is_admin ? 'Converse com o Estúdio da VPS e peça carrosséis' : 'Peça carrosséis pelos moldes do Estúdio' }] : []),
     { id: 'metas', label: 'Metas', ic: 'metas', more: true },
     { id: 'fluxos', label: 'Fluxos', ic: 'fluxos', more: true },
   ]

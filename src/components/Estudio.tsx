@@ -3,10 +3,14 @@ import { cancelarPedido, estudioReal, lerChat, lerPedidos, lerSinal, mandarChat,
 import { notify, setUi, useStore } from '../store'
 import { Bell } from './Avisos'
 import { Ph } from './Icon'
+import { rankOf } from '../game/ranks'
 import '../estudio.css'
 
 const PILARES = [['', 'Pilar: o Estúdio escolhe'], ['rh', 'RH: integração e treinamento'], ['estrutura', 'Estrutura e capacidade'], ['prova', 'Prova e confiança'], ['experiencia', 'Experiência completa'], ['logistica', 'Logística sem dor']] as const
 const ESTADO: Record<Pedido['estado'], string> = { fila: 'Na fila', gerando: 'Gerando', pronto: 'Pronto', erro: 'Deu erro' }
+/** moldes que o adm cria no Estúdio; a coordenação só escolhe entre os que a VPS anuncia no sinal */
+const MOLDE: Record<string, string> = { 'convention-linkedin': 'Convention · LinkedIn', 'meudestino-guia': 'MeuDestino · guia' }
+const nomeMolde = (m: string) => MOLDE[m] ?? m
 const hora = (iso: string) => new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }).replace('.', '')
 
 /** liga a cada poucos segundos enquanto a tela está aberta e visível */
@@ -20,16 +24,17 @@ function usePuxar<T>(ler: () => Promise<T>, ms: number): [T | null, () => void, 
   return [v, puxar, erro]
 }
 
-/** Estúdio da VPS dentro do Turmeo: conversa (o Claude roda lá) + pedidos de carrossel. Só adm. */
+/** Estúdio da VPS dentro do Turmeo. Adm: conversa (o Claude roda lá, cria moldes) + pedidos. Coordenação: só pede pelos moldes prontos e abre o que ficou pronto. */
 export default function Estudio() {
   const adm = useStore(s => !!(s.meId && s.profiles[s.meId]?.is_admin))
-  const [msgs, puxarChat, erroChat] = usePuxar(lerChat, 2500)
+  const coord = useStore(s => !!s.meId && rankOf(s.profiles[s.meId]) >= 2)
+  const [msgs, puxarChat, erroChat] = usePuxar(() => adm ? lerChat() : Promise.resolve([] as ChatMsg[]), 2500)
   const [pedidos, puxarPedidos] = usePuxar(lerPedidos, 4000)
   const [sinal] = usePuxar<Sinal | null>(lerSinal, 15000)
   const [agora, setAgora] = useState(() => Date.now())
   useEffect(() => { const i = setInterval(() => setAgora(Date.now()), 10000); return () => clearInterval(i) }, [])
   const online = !!sinal && agora - new Date(sinal.visto).getTime() < 90000
-  if (!adm) return <div className="quadro"><div className="qbar"><b className="grow">Estúdio</b><Bell /></div><p className="es-vazio">Só o adm usa o Estúdio por aqui.</p></div>
+  if (!adm && !coord) return <div className="quadro"><div className="qbar"><b className="grow">Estúdio</b><Bell /></div><p className="es-vazio">O Estúdio é da coordenação. Peça um carrossel pra sua coordenação.</p></div>
   return (
     <div className="quadro es">
       <div className="qbar">
@@ -39,9 +44,9 @@ export default function Estudio() {
         </span>
         <Bell />
       </div>
-      <div className="es-grade">
-        <Conversa msgs={msgs ?? []} erro={erroChat} puxar={puxarChat} />
-        <Pedidos lista={pedidos ?? []} puxar={puxarPedidos} />
+      <div className={'es-grade' + (adm ? '' : ' so-pedidos')}>
+        {adm && <Conversa msgs={msgs ?? []} erro={erroChat} puxar={puxarChat} />}
+        <Pedidos lista={pedidos ?? []} puxar={puxarPedidos} moldes={sinal?.info.moldes?.length ? sinal.info.moldes : ['convention-linkedin']} adm={adm} />
       </div>
     </div>
   )
@@ -83,7 +88,9 @@ function Conversa({ msgs, erro, puxar }: { msgs: ChatMsg[]; erro: string; puxar:
   )
 }
 
-function Pedidos({ lista, puxar }: { lista: Pedido[]; puxar: () => void }) {
+function Pedidos({ lista, puxar, moldes, adm }: { lista: Pedido[]; puxar: () => void; moldes: string[]; adm: boolean }) {
+  const [escolha, setMolde] = useState('')
+  const molde = moldes.includes(escolha) ? escolha : moldes[0]
   const [texto, setTexto] = useState('')
   const [pilar, setPilar] = useState('')
   const [dia, setDia] = useState('')
@@ -92,17 +99,18 @@ function Pedidos({ lista, puxar }: { lista: Pedido[]; puxar: () => void }) {
     if (texto.trim().length < 3 || busy) return
     setBusy(true)
     try {
-      await pedir({ texto: texto.trim(), pilar: pilar || null, quando: dia ? new Date(dia + 'T10:00:00-03:00').toISOString() : null })
+      await pedir({ molde, texto: texto.trim(), pilar: molde === 'convention-linkedin' ? pilar || null : null, quando: dia ? new Date(dia + 'T10:00:00-03:00').toISOString() : null })
       setTexto(''); setDia(''); puxar()
     } catch (e) { notify((e as Error).message) } finally { setBusy(false) }
   }
   return (
     <section className="es-pedidos tbox">
-      <header><b className="grow">Carrossel Convention · LinkedIn</b></header>
+      <header><b className="grow">Pedir carrossel</b>{!adm && <small className="muted">Os moldes são criados pelo adm; escolha um e diga o assunto.</small>}</header>
       <div className="es-form">
         <textarea value={texto} onChange={e => setTexto(e.target.value)} maxLength={2000} rows={2} placeholder="Assunto (ex.: integração de novos funcionários sem sair da cidade)" />
         <div className="es-linha">
-          <select value={pilar} onChange={e => setPilar(e.target.value)}>{PILARES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
+          <select value={molde} onChange={e => setMolde(e.target.value)} title="Molde">{moldes.map(m => <option key={m} value={m}>{nomeMolde(m)}</option>)}</select>
+          {molde === 'convention-linkedin' && <select value={pilar} onChange={e => setPilar(e.target.value)}>{PILARES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>}
           <input type="date" value={dia} onChange={e => setDia(e.target.value)} title="Dia de publicar (opcional)" />
           <button className="tbtn acc" disabled={texto.trim().length < 3 || busy} onClick={mandar}>Pedir</button>
         </div>
@@ -114,7 +122,7 @@ function Pedidos({ lista, puxar }: { lista: Pedido[]; puxar: () => void }) {
             <span className="es-est">{ESTADO[p.estado]}</span>
             <div className="grow">
               <b>{p.texto}</b>
-              <small>{p.pilar ? p.pilar + ' · ' : ''}{p.quando ? 'publicar ' + hora(p.quando) : 'sem data'}{p.estado === 'gerando' && p.passo ? ' · ' + p.passo : ''}</small>
+              <small>{nomeMolde(p.molde)} · {p.pilar ? p.pilar + ' · ' : ''}{p.quando ? 'publicar ' + hora(p.quando) : 'sem data'}{p.estado === 'gerando' && p.passo ? ' · ' + p.passo : ''}</small>
               {p.estado === 'erro' && p.erro && <small className="li-erro">{p.erro}</small>}
             </div>
             {p.estado === 'pronto' && p.task_id && <button className="tlink" onClick={() => setUi({ task: p.task_id! })}>Abrir</button>}

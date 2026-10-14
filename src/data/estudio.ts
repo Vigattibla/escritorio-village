@@ -1,12 +1,12 @@
 import { backend } from '.'
 import { SupabaseBackend } from './supabase'
 
-/** Estúdio da VPS: chat e fila de pedidos pelo REST (só adm; RLS garante) */
+/** Estúdio da VPS: chat (só adm) e fila de pedidos (coordenação também) pelo REST; RLS garante */
 const URL_ = (import.meta.env.VITE_SUPABASE_URL as string) + '/rest/v1/'
 
 export type ChatMsg = { id: string; papel: 'eu' | 'estudio'; texto: string; estado: 'novo' | 'lendo' | 'feito' | 'erro'; criado_em: string }
 export type Pedido = { id: string; task_id: string | null; molde: string; pilar: string | null; texto: string; quando: string | null; estado: 'fila' | 'gerando' | 'pronto' | 'erro'; passo: string | null; erro: string | null; criado_em: string }
-export type Sinal = { id: string; visto: string; info: { ocupado?: boolean } }
+export type Sinal = { id: string; visto: string; info: { ocupado?: boolean; moldes?: string[] } }
 
 export const estudioReal = () => backend instanceof SupabaseBackend
 
@@ -26,6 +26,6 @@ export const lerChat = () => rest<ChatMsg[]>('estudio_chat?select=id,papel,texto
 export const mandarChat = (texto: string) => rest('estudio_chat', { method: 'POST', body: { papel: 'eu', texto }, prefer: 'return=minimal' })
 export const lerPedidos = () => rest<Pedido[]>('estudio_pedidos?select=id,task_id,molde,pilar,texto,quando,estado,passo,erro,criado_em&order=criado_em.desc&limit=15')
 export const pedir = (p: { texto: string; pilar: string | null; quando: string | null; molde?: string }) =>
-  rest('estudio_pedidos', { method: 'POST', body: { molde: 'convention-linkedin', ...p }, prefer: 'return=minimal' })
+  rest('estudio_pedidos', { method: 'POST', body: { ...p, molde: p.molde || 'convention-linkedin' }, prefer: 'return=minimal' })
 export const cancelarPedido = (id: string) => rest(`estudio_pedidos?id=eq.${id}`, { method: 'DELETE', prefer: 'return=minimal' })
 export const lerSinal = () => rest<Sinal[]>('estudio_sinal?select=id,visto,info&order=visto.desc&limit=1').then(l => l[0] ?? null)
