@@ -27,12 +27,22 @@ interface P { aposta: number; busy: boolean; jogada: Jogada; fim: (r: Rodada) =>
 /** faixa com o resultado da rodada */
 function Resultado({ r, txt }: { r: Rodada; txt?: string }) {
   const lucro = r.premio - r.aposta * (r.dobrou ? 2 : 1)
+  const tipo = r.premio > 0 ? (lucro >= 0 ? 'win' : 'meio') : 'lose'
   return (
-    <div className={'cs-res ' + (r.premio > 0 ? (lucro >= 0 ? 'win' : 'meio') : 'lose')}>
-      {txt && <span>{txt}</span>}
-      <b>{r.premio > 0 ? `+${r.premio}` : `−${r.aposta * (r.dobrou ? 2 : 1)}`} <Ph n="coffee" size={14} fill /></b>
-    </div>
+    <>
+      <Fx tipo={tipo} />
+      <div className={'cs-res ' + tipo}>
+        {txt && <span>{txt}</span>}
+        <b>{r.premio > 0 ? `+${r.premio}` : `−${r.aposta * (r.dobrou ? 2 : 1)}`} <Ph n="coffee" size={14} fill /></b>
+      </div>
+    </>
   )
+}
+
+/** efeito de vitória (moedas e brilhos caindo) ou derrota (fumaça e tremida), só CSS; o visual muda por jogo (.cs-slot, .cs-mesa...) */
+function Fx({ tipo }: { tipo: 'win' | 'meio' | 'lose' }) {
+  const [p] = useState(() => Array.from({ length: tipo === 'lose' ? 6 : 16 }, (_, i) => ({ x: 4 + ((i * 37 + Math.random() * 20) % 92), d: Math.random() * 0.5, s: 0.8 + Math.random() * 0.7 })))
+  return <div className={'cs-fx ' + tipo} aria-hidden>{p.map((q, i) => <i key={i} style={{ left: q.x + '%', animationDelay: q.d + 's', transform: `scale(${q.s})` }} />)}</div>
 }
 
 // ---------- caça-níquel ----------

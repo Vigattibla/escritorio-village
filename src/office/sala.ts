@@ -1,3 +1,4 @@
+import { drawParapeito, drawSky } from './clima'
 import { BASE, BOOKS, BOSS_DESK, box, disc, frame, MAX_DESKS, MH, MW, OUT, PAPER, plant, SHADOW, T, tiles, upperWall, WAIN, WAIN_D, WAIN_HI, WALL, WALL_HI, wallFace, wood, type C2D } from './base'
 
 /** A sala vira dados: piso por tile, divisórias e móveis. Salva em rooms/escritorio. */
@@ -113,11 +114,11 @@ export const KINDS: Record<string, Kind> = {
   'tapete-reuniao': { nome: 'Tapete grande', tema: 'Escritório', w: 8, h: 7, camada: 'chao', draw: (c, x, y) => { rug(c, x + 10, y - 2, 8 * T - 4, 7 * T - 8, '#7f8655', '#9aa06a', '#c9b98a') } },
   'tapete-chefe': { nome: 'Tapete vinho', tema: 'Escritório', w: 5, h: 4, camada: 'chao', draw: (c, x, y) => { rug(c, x + 6, y + 10, 4 * T + 4, 3 * T + 2, '#5a1f2c', '#7a2e3a', '#FBC222') } },
   'janela': {
-    nome: 'Janela', tema: 'Escritório', w: 2, h: 1, camada: 'parede', draw: (c, x) => {
+    nome: 'Janela', tema: 'Escritório', w: 2, h: 1, camada: 'parede', draw: (c, x, _y, t) => {
       const x0 = x + 2, y0 = 6, w = 2 * T - 4, h = 17
-      box(c, '#f7f1e6', x0, y0, w, h); r(c, '#bfe3f2', x0 + 2, y0 + 2, w - 4, h - 4); r(c, '#a6d6ec', x0 + 2, y0 + 9, w - 4, h - 11)
-      r(c, '#e3f4fb', x0 + 4, y0 + 4, 2, 2); r(c, '#f7f1e6', x0 + w / 2 - 1, y0, 2, h); r(c, '#f7f1e6', x0, y0 + 8, w, 1)
-      r(c, OUT, x0 - 2, y0 + h + 1, w + 4, 3); r(c, '#efe3cf', x0 - 1, y0 + h + 1, w + 2, 2)
+      box(c, '#f7f1e6', x0, y0, w, h); drawSky(c, x0 + 2, y0 + 2, w - 4, h - 4, t, x)
+      r(c, '#f7f1e6', x0 + w / 2 - 1, y0, 2, h); r(c, '#f7f1e6', x0, y0 + 8, w, 1)
+      r(c, OUT, x0 - 2, y0 + h + 1, w + 4, 3); r(c, '#efe3cf', x0 - 1, y0 + h + 1, w + 2, 2); drawParapeito(c, x, y0 + h + 1, t)
     },
   },
   'quadro-branco': {
