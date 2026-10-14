@@ -3,7 +3,8 @@ import { gravar } from '../office/trilha'
 import { drawAvatar, onPhotoLoad, SPRITE_H } from '../chibi/sprite'
 import { backend } from '../data'
 import { deptOf, isChief, managerOf } from '../game/ranks'
-import { COMODOS, comodoOf, type Kind, type Spot } from '../office/comodos'
+import { COMODOS, comodoOf, DESENTUPIDOR, type Kind, type Spot } from '../office/comodos'
+import { drawPapel, drawProp, pulo, type Prop } from '../office/vida'
 import { drawCurtain, drawDoor, drawExit, drawMat, HALL, inkOn } from '../office/andar'
 import { Emblema, FlagPicker } from './Bandeira'
 import { addMark, boardMarks, takeErrands, type Errand } from '../office/errands'
@@ -70,7 +71,17 @@ const turno = (d = new Date()) => d.getDay() > 0 && d.getDay() < 6 && d.getHours
 const FOI_EMBORA = 60 * 60e3
 const rand = (a: number, b: number) => a + Math.random() * (b - a)
 /** boneco de quem está fora, no turno: fica na mesa, às vezes vai na cozinha, banheiro ou jogos */
-interface Wander { phase: 'idle' | 'go' | 'stay' | 'back'; until: number; path: { x: number; y: number }[]; spot?: Spot }
+interface Etapa extends Partial<Spot> { spot?: Spot }
+interface Wander {
+  phase: 'idle' | 'go' | 'stay' | 'back'; until: number; path: { x: number; y: number }[]
+  /** lugar sorteado (é ele que fica reservado) e o que se faz nele agora (pode mudar no meio da visita) */
+  spot?: Spot; cur?: Spot; room?: Room
+  /** próximas paradas da mesma visita (espelho, desentupidor...) */
+  fila: Etapa[]
+  /** desde quando está sentado, objeto na mão (e até quando segura na mesa), papel no sapato até quando, susto, texto do balão */
+  sentou: number; prop?: Prop; propAte: number; papelAte: number; suste: number; txt?: string
+  cafe?: boolean; rolou?: boolean
+}
 const frameOf = (s: { moving: boolean; anim: number }): 0 | 1 | 2 => (s.moving ? ([1, 0, 2, 0] as const)[Math.floor(s.anim * 8) % 4] : 0)
 const doingOf = (tasks: Task[], id: string) => tasks.filter(t => t.owner_id === id && t.status === 'doing').sort((a, b) => b.position - a.position)[0]
 const dirTo = (dx: number, dy: number): Dir => (Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 'left' : 'right') : dy < 0 ? 'up' : 'down')
@@ -122,7 +133,7 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
     // sai do passeio: o balão do cômodo some junto (voltou online, foi embora, pegou tarefa)
     const stopWander = (id: string) => {
       const w = wander.get(id)
-      if (w?.spot && bubbles.get(id)?.text === w.spot.act) bubbles.delete(id)
+      if (w?.txt && bubbles.get(id)?.text === w.txt) bubbles.delete(id)
       wander.delete(id)
     }
     const gone = (id: string) => !turno() && Date.now() - (lastOn.get(id) ?? 0) > FOI_EMBORA
@@ -391,35 +402,74 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
         }
         if (!online && seat) {
           let w = wander.get(p.id)
-          if (!w) { w = { phase: 'idle', until: tnow + rand(8e3, 60e3), path: [] }; wander.set(p.id, w) }
+          if (!w) { w = { phase: 'idle', until: tnow + rand(8e3, 60e3), path: [], fila: [], sentou: tnow, propAte: 0, papelAte: 0, suste: 0 }; wander.set(p.id, w) }
           let moved = false
+          /** fala o que está fazendo (com o ícone, ex.: ☕ Tomando um café) */
+          const fala = (txt: string, ms: number) => { w.txt = txt; bubbles.set(p.id, { text: txt, until: wall + ms }) }
           if (w.phase === 'idle') {
+            if (w.prop && tnow > w.propAte) w.prop = undefined
             if (tnow > w.until) {
-              // sorteia um cômodo e um lugar livre nele
+              // sorteia um cômodo e um lugar livre nele; quem está há muito tempo sentado vai buscar café
               const rs = getRooms().filter(r => comodoOf(r.kind)?.spots.length)
-              const r = rs[Math.floor(Math.random() * rs.length)], c = r && comodoOf(r.kind)
-              const free = c ? c.spots.filter(x => !busySpots.has(x)) : []
+              const cafe = tnow - w.sentou > 100e3 && Math.random() < 0.6
+              const r = cafe ? rs.find(x => x.kind === 'cozinha') : rs[Math.floor(Math.random() * rs.length)], c = r && comodoOf(r.kind)
+              const free = c ? c.spots.filter(x => !busySpots.has(x) && (!cafe || x.act === 'Tomando um café')) : []
               const sp = free[Math.floor(Math.random() * free.length)]
-              const route = sp && findPath(o.x, o.y, r.ox + sp.x, r.oy + sp.y)
-              if (route) { w.phase = 'go'; w.path = route; w.spot = sp; busySpots.add(sp) }
-              else w.until = tnow + rand(20e3, 60e3)
+              const route = sp && r && findPath(o.x, o.y, r.ox + sp.x, r.oy + sp.y)
+              if (route) {
+                w.phase = 'go'; w.path = route; w.spot = sp; w.cur = sp; w.room = r; w.fila = []; w.cafe = cafe; w.rolou = false; busySpots.add(sp)
+                if (cafe) fala('☕ Vou buscar um café', 2500)
+              } else w.until = tnow + rand(20e3, 60e3)
             }
             if (w.phase === 'idle') {
+              // já na mesa: se algo deixou o boneco longe (caminho sumiu), ele aparece na cadeira em vez de atravessar a sala deslizando
               const k = Math.min(1, dt * 12)
-              if (Math.hypot(seat.x - o.x, seat.y - o.y) > 200) { o.x = seat.x; o.y = seat.y }
+              if (Math.hypot(seat.x - o.x, seat.y - o.y) > 24) { o.x = seat.x; o.y = seat.y }
               o.x += (seat.x - o.x) * k; o.y += (seat.y - o.y) * k; o.dir = 'down'
             }
           } else if (w.phase === 'go' || w.phase === 'back') {
             moved = walk(o, w.path, dt)
-            if (!moved && w.phase === 'go' && w.spot) {
-              w.phase = 'stay'; w.until = tnow + rand(...w.spot.ms); o.dir = w.spot.dir
-              if (!w.spot.some) bubbles.set(p.id, { text: w.spot.act, until: wall + (w.until - tnow) })
-            } else if (!moved && w.phase === 'back') { w.phase = 'idle'; w.spot = undefined; w.until = tnow + rand(40e3, 150e3); o.dir = 'down' }
+            if (!moved && w.phase === 'go' && w.cur) {
+              w.phase = 'stay'; w.until = tnow + rand(...w.cur.ms); o.dir = w.cur.dir
+              if (w.cur.prop) w.prop = w.cur.prop
+              if (w.cur.susto) w.suste = wall
+              if (!w.cur.some) fala((w.cur.icon ? w.cur.icon + ' ' : '') + w.cur.act, w.until - tnow)
+            } else if (!moved && w.phase === 'back') {
+              w.phase = 'idle'; w.spot = w.cur = undefined; w.until = tnow + rand(40e3, 150e3); o.dir = 'down'
+              w.sentou = tnow; w.cafe = false; w.propAte = tnow + 25e3
+            }
           } else if (tnow > w.until) {
-            const r = homeRoom(p)
-            w.phase = 'back'; w.path = (r && pathToSeat(o.x, o.y, r, deskIdx(p, r))) ?? []
+            const r = w.room, sp = w.spot, cur = w.cur, home = homeRoom(p)
             bubbles.delete(p.id)
-          } else if (w.spot) o.dir = w.spot.dir
+            // o que continua na mão depois de sair
+            w.prop = w.cafe ? 'caneca' : cur?.leva
+            // banheiro: depois da cabine, às vezes entope (raro) ou para no espelho
+            if (r?.kind === 'banheiro' && sp?.some && !w.fila.length && !w.rolou) {
+              w.rolou = true
+              const dado = Math.random()
+              const pia = COMODOS.banheiro.spots.find(x => !x.some && !busySpots.has(x))
+              if (dado < 0.07) {
+                w.fila = [
+                  { act: 'Ih... entupiu!', ms: [2500, 3500], some: false, susto: true, icon: '😱' },
+                  { spot: DESENTUPIDOR },
+                  { act: 'Desentupindo...', ms: [8000, 14000], some: true, leva: undefined },
+                  ...(pia ? [{ spot: pia, act: 'Lavando bem as mãos', ms: [10000, 18000] as [number, number], icon: '🧼' }] : []),
+                ]
+              } else if (dado < 0.5 && pia) w.fila = [{ spot: pia, act: 'Ajeitando a roupa', ms: [5000, 9000], icon: '👔' }]
+            }
+            let next = w.fila.shift(), route: { x: number; y: number }[] | null | undefined
+            while (next && !route) {
+              const to = next.spot ?? sp
+              route = to && r && findPath(o.x, o.y, r.ox + to.x, r.oy + to.y)
+              if (route && to) { const { spot: _s, ...extra } = next; w.spot = to; w.cur = { ...to, ...extra }; busySpots.add(to) }
+              else next = w.fila.shift()
+            }
+            if (route) { w.phase = 'go'; w.path = route }
+            else {
+              w.phase = 'back'; w.path = (home && pathToSeat(o.x, o.y, home, deskIdx(p, home))) ?? []
+              if (r?.kind === 'banheiro' && Math.random() < 0.2) { w.papelAte = tnow + 14e3; fala('Ops... papel no sapato', 3000) }
+            }
+          } else if (w.cur) o.dir = w.cur.dir
           o.moving = moved
           o.anim = moved ? o.anim + dt : 0
           continue
@@ -499,7 +549,7 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
         if (!p?.avatar || (id !== meId && hiddenAt(o.x, o.y))) continue
         // na cabine do banheiro: some de vista
         const w = wander.get(id)
-        if (w?.phase === 'stay' && w.spot?.some) continue
+        if (w?.phase === 'stay' && w.cur?.some) continue
         seen.add(id)
         if (p.photo && !watched.has(p.photo)) { watched.add(p.photo); offPhotos.push(onPhotoLoad(p.photo, () => {})) }
         const job = jobs.get(id)
@@ -510,7 +560,10 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
             ctx.beginPath(); ctx.ellipse(o.x, o.y, 6, 2, 0, 0, Math.PI * 2); ctx.fill()
             // fora do escritório: boneco opaco e desbotado (transparente deixava a cadeira aparecer pela cabeça)
             if (away) ctx.filter = 'saturate(.3) brightness(.9)'
-            drawAvatar(ctx, p.avatar!, p.photo, Math.round(o.x - 8), Math.round(o.y - SPRITE_H + 1), o.dir, frameOf(o))
+            const wv = away ? wander.get(id) : undefined, jump = wv ? pulo(Date.now(), wv.suste) : 0
+            if (wv && t < wv.papelAte) drawPapel(ctx, o.x, o.y, o.dir, t)
+            drawAvatar(ctx, p.avatar!, p.photo, Math.round(o.x - 8), Math.round(o.y - SPRITE_H + 1 - jump), o.dir, frameOf(o))
+            if (wv?.prop) drawProp(ctx, wv.prop, o.x, o.y - jump, o.dir, t)
             if (away) ctx.filter = 'none'
             if (job?.carry && o.dir !== 'up') drawCarry(ctx, Math.round(o.x + (o.dir === 'left' ? -9 : 2)), Math.round(o.y - 11))
             if (!away) drawAnim(ctx, p.avatar!.gear?.animacao, Math.round(o.x), Math.round(o.y - SPRITE_H + 1), t)

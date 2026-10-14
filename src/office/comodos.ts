@@ -1,6 +1,7 @@
 import { BOSS_DESK } from './base'
 import type { Obj, Piso, Sala } from './sala'
 import type { Dir } from '../types'
+import type { Prop } from './vida'
 
 /** o que cada sala do andar é: o setor, a sala do gerente, os cômodos de uso comum e a sala ainda vazia */
 export type Kind = 'dept' | 'gerente' | 'cozinha' | 'jogos' | 'banheiro' | 'vaga'
@@ -16,6 +17,14 @@ export interface Spot {
   ms: [number, number]
   /** some de vista enquanto está lá (cabine do banheiro) */
   some?: boolean
+  /** objeto na mão enquanto está lá */
+  prop?: Prop
+  /** objeto que continua na mão depois de sair (caneca de café indo pra mesa) */
+  leva?: Prop
+  /** emoji no balão (☕, 💧) */
+  icon?: string
+  /** pula de susto ao chegar */
+  susto?: boolean
 }
 
 export interface Comodo { nome: string; cor: string; top: boolean; sala: () => Sala; spots: Spot[] }
@@ -30,7 +39,10 @@ function monta(piso: Piso, w: number, h: number, itens: [string, number, number,
   }
 }
 
-const S = (x: number, y: number, dir: Dir, act: string, a: number, b: number, some?: boolean): Spot => ({ x, y, dir, act, ms: [a * 1000, b * 1000], ...(some ? { some } : {}) })
+const S = (x: number, y: number, dir: Dir, act: string, a: number, b: number, some?: boolean, extra?: Partial<Spot>): Spot => ({ x, y, dir, act, ms: [a * 1000, b * 1000], ...(some ? { some } : {}), ...extra })
+
+/** onde fica o desentupidor, no banheiro (ponto de passagem da cena do vaso entupido; não é sorteado) */
+export const DESENTUPIDOR: Spot = S(12, 3, 'up', 'Cadê o desentupidor?', 2, 3, false, { leva: 'desentupidor' })
 
 /** Pra crescer o andar no futuro: novo tipo aqui + móveis em sala.ts + entrar na ordem do andar (Game.tsx). */
 export const COMODOS: Record<Exclude<Kind, 'dept' | 'vaga'>, Comodo> = {
@@ -45,12 +57,13 @@ export const COMODOS: Record<Exclude<Kind, 'dept' | 'vaga'>, Comodo> = {
       ['planta', 1, 14], ['planta', 20, 14], ['planta', 8, 7], ['planta', 11, 7],
     ]),
     spots: [
-      S(14, 3, 'up', 'Tomando um café', 20, 60), S(15, 3, 'up', 'Escolhendo um doce', 15, 40),
+      S(14, 3, 'up', 'Tomando um café', 20, 60, false, { prop: 'caneca', icon: '☕' }), S(15, 3, 'up', 'Escolhendo um doce', 15, 40),
       S(1, 3, 'up', 'Pegando um lanche', 10, 30), S(3, 3, 'up', 'Esquentando o almoço', 30, 90),
-      S(6, 3, 'up', 'Esquentando a marmita', 30, 80), S(20, 3, 'up', 'Bebendo água', 8, 20),
+      S(6, 3, 'up', 'Esquentando a marmita', 30, 80), S(20, 3, 'up', 'Bebendo água', 8, 20, false, { prop: 'copo', icon: '💧' }),
+      S(4, 3, 'up', 'Lavando a louça', 20, 50, false, { prop: 'louca', icon: '🍽️' }), S(5, 3, 'up', 'Lavando a caneca', 10, 25, false, { prop: 'lavaCaneca', icon: '🧼' }),
       S(4, 6, 'down', 'Almoçando', 60, 180), S(5, 9, 'up', 'Almoçando', 60, 180),
       S(14, 6, 'down', 'Lanchando', 40, 120), S(15, 9, 'up', 'Conversando', 40, 120),
-      S(2, 10, 'down', 'Café rapidinho', 20, 60), S(17, 10, 'down', 'Café rapidinho', 20, 60),
+      S(2, 10, 'down', 'Café rapidinho', 20, 60, false, { prop: 'caneca', icon: '☕' }), S(17, 10, 'down', 'Café rapidinho', 20, 60, false, { prop: 'caneca', icon: '☕' }),
     ],
   },
   banheiro: {
@@ -92,7 +105,7 @@ export const COMODOS: Record<Exclude<Kind, 'dept' | 'vaga'>, Comodo> = {
       S(23, 3, 'up', 'No caça-níquel', 30, 90), S(25, 3, 'up', 'No caça-níquel', 30, 90),
       S(18, 6, 'right', 'Na roleta', 40, 120), S(23, 7, 'left', 'Na roleta', 40, 120), S(21, 8, 'up', 'Na roleta', 40, 120),
       S(19, 12, 'up', 'No blackjack', 40, 120), S(21, 12, 'up', 'No blackjack', 40, 120),
-      S(12, 14, 'left', 'Pegando um café', 10, 30), S(14, 14, 'up', 'Lanchando', 30, 90),
+      S(12, 14, 'left', 'Pegando um café', 10, 30, false, { prop: 'caneca', icon: '☕' }), S(14, 14, 'up', 'Lanchando', 30, 90),
       S(26, 7, 'up', 'No crash', 20, 60), S(26, 10, 'up', 'Nas minas', 20, 60),
     ],
   },
