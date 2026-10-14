@@ -126,3 +126,22 @@
 .gp-acoes button:hover, .game-door.gp > button:not(.x):hover { background: var(--hover); }
 .gp-acoes span { font-size: 16px; }
 .game-door.gp > button:not(.x) { height: 30px; border: 1px solid var(--line); border-radius: 7px; background: #fff; font-weight: 600; font-size: 12.5px; cursor: pointer; }
+/* Conectar IA */
+.modal-bg .jan.cx { width: min(640px, calc(100vw - 32px)); max-height: calc(100vh - 48px); overflow: auto; display: grid; gap: 12px; padding: 18px; }
+.cx-h { display: flex; align-items: flex-start; gap: 10px; }
+.cx-h b { display: block; font-size: 17px; }
+.cx-h small { color: var(--muted); font-size: 12.5px; }
+.cx-abas { display: flex; gap: 4px; flex-wrap: wrap; }
+.cx-abas button { height: 30px; padding: 0 12px; border: 1px solid var(--line); border-radius: 99px; background: #fff; font-weight: 600; font-size: 12.5px; cursor: pointer; color: var(--text); }
+.cx-abas button.on { background: var(--text); color: #fff; border-color: var(--text); }
+.cx-gerar { display: flex; gap: 8px; }
+.cx-gerar input { flex: 1; min-width: 0; }
+.cx-nova { display: flex; gap: 8px; align-items: center; padding: 10px 12px; border-radius: 8px; background: #e8f7ee; color: #17663a; font-size: 13px; }
+.cx-passos { margin: 0; font-size: 13px; line-height: 1.5; }
+.cx-cod { position: relative; }
+.cx-cod pre { margin: 0; padding: 12px 70px 12px 12px; border-radius: 8px; background: #16181d; color: #e8e8e8; font-size: 12px; line-height: 1.5; white-space: pre-wrap; word-break: break-all; }
+.cx-cod .btn { position: absolute; top: 8px; right: 8px; background: #fff; }
+.cx-aviso { margin: 0; font-size: 12px; color: var(--muted); }
+.cx-lista { display: grid; gap: 6px; border-top: 1px solid var(--line); padding-top: 10px; }
+.cx-ch { display: flex; gap: 8px; align-items: center; font-size: 13px; }
+.cx-ch small { color: var(--muted); }

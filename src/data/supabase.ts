@@ -32,6 +32,22 @@ export class SupabaseBackend implements Backend {
     return data.session?.access_token ?? ''
   }
 
+  // chaves pessoais da ponte de tarefas (Conectar IA)
+  async chaves() {
+    const { data, error } = await this.sb.from('api_tokens').select('id, nome, dica, criado, usado').order('criado', { ascending: false })
+    if (error) throw pt(error)
+    return data as { id: string; nome: string; dica: string; criado: string; usado: string | null }[]
+  }
+  async criarChave(nome: string) {
+    const { data, error } = await this.sb.rpc('criar_token', { p_nome: nome })
+    if (error) throw pt(error)
+    return data as string
+  }
+  async apagarChave(id: string) {
+    const { error } = await this.sb.from('api_tokens').delete().eq('id', id)
+    if (error) throw pt(error)
+  }
+
   async currentUserId() {
     const { data } = await this.sb.auth.getSession()
     return data.session?.user.id ?? null

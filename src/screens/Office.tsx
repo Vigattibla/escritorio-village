@@ -30,6 +30,7 @@ import Cassino from '../components/Cassino'
 import Bingo from '../components/Bingo'
 import Sorteios from '../components/Sorteios'
 import Armario from '../components/Armario'
+import Conectar from '../components/Conectar'
 import type { Jogo } from '../office/world'
 import Caderno from '../components/Caderno'
 import Accounts from '../components/Accounts'
@@ -190,6 +191,7 @@ export default function Office() {
               <button onClick={() => { setMeOpen(false); goTo('loja') }}><Ph n="coffee" size={20} /><b className="grow">Almoxarifado</b>{s.wallet && <small className="me-pop-cf">☕ {s.wallet.balance}</small>}</button>
               <button onClick={() => { setMeOpen(false); setUi({ cassino: true }) }}><Ph n="sparkle" size={20} /><b className="grow">Cassino</b></button>
               <button onClick={() => { setMeOpen(false); setUi({ bingo: true }) }}><Ph n="confetti" size={20} /><b className="grow">Bingo</b></button>
+              <button onClick={() => { setMeOpen(false); setUi({ conectar: true }) }}><Ph n="link" size={20} /><b className="grow">Conectar IA</b></button>
               {(me.is_admin || rankOf(me) >= 3) && <button onClick={() => { setMeOpen(false); setContas(true) }}><Ph n="users-three" size={20} /><b className="grow">Contas da equipe</b></button>}
               <button onClick={() => setPref('dev', !dev)} aria-pressed={dev}><Ph n="gear-six" size={20} /><b className="grow">Modo desenvolvedor</b><i className={'tswitch' + (dev ? ' on' : '')} /></button>
               {dev && chief && depts.length > 1 && <div className="me-pop-salas">
@@ -283,6 +285,7 @@ export default function Office() {
       {s.editing && <div className="overlay"><Creator /></div>}
       {s.bingo && <Bingo onClose={() => setUi({ bingo: false })} />}
       {s.armario && <Armario onClose={() => setUi({ armario: false })} />}
+      {s.conectar && <Conectar onClose={() => setUi({ conectar: false })} />}
       {s.cassino && <Cassino inicial={typeof s.cassino === 'string' ? s.cassino : undefined} onClose={() => setUi({ cassino: false })} />}
     </div>
   )

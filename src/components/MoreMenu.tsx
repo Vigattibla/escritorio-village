@@ -39,6 +39,7 @@ export default function MoreMenu() {
         <div className="menu-pop more-pop">
           {items.map(([ic, l, fn, n]) => <button key={l} onClick={go(fn)}><Ph n={ic} size={20} /><b className="grow">{l}</b>{!!n && <i className="nav-n">{n > 9 ? '9+' : n}</i>}</button>)}
           <button onClick={go(() => setUi({ editing: true }))}><Ph n="smiley" size={20} /><b className="grow">Meu personagem</b></button>
+          <button onClick={go(() => setUi({ conectar: true }))}><Ph n="link" size={20} /><b className="grow">Conectar IA</b></button>
           <button onClick={() => setPref('dev', !dev)} aria-pressed={dev}><Ph n="gear-six" size={20} /><b className="grow">Modo desenvolvedor</b><i className={'tswitch' + (dev ? ' on' : '')} /></button>
           <button onClick={go(() => signOut())}><Icon n="logout" size={20} /><b className="grow">Sair</b></button>
         </div>
