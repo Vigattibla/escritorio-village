@@ -1,7 +1,7 @@
 import { toEmail, validUser } from './login'
 import { dayKey } from '../game/xp'
 import { deptOf, outranks, rankOf } from '../game/ranks'
-import type { CoffeeLine, Dept, Goal, Wallet, Group, RowTable, Rows, AccountEdit, AiContext, AiProposal, AiStage, Avatar, Backend, Handlers, Message, Pos, Profile, Project, Snapshot, Task, TaskNote } from '../types'
+import type { CoffeeLine, Dept, JogoRes, Goal, Wallet, Group, RowTable, Rows, AccountEdit, AiContext, AiProposal, AiStage, Avatar, Backend, Handlers, Message, Pos, Profile, Project, Snapshot, Task, TaskNote } from '../types'
 import { ROW_TABLES } from '../types'
 import { counts, DAY, MAX_GOALS, payouts, WELCOME } from '../shop/economy'
 import { ITEM } from '../shop/catalog'
@@ -465,6 +465,28 @@ export class DemoBackend implements Backend {
   async cassinoAbrir(jogo: JogoCassino, aposta: number, e: Escolha) { return this.mesa().abrir(jogo, aposta, e) }
   async cassinoAcao(id: string, acao: string, casa?: number) { return this.mesa().acao(id, acao, casa) }
   async cassinoEstado(jogo: JogoCassino) { return this.mesa().estado(jogo) }
+
+  /** sala de jogos da demo: mesmo jogo do SQL, sem teto; quem grava o recorde é o app */
+  private partidas = new Map<string, { cartas: number[]; t0: number; pend: number | null; achadas: number[]; erros: number }>()
+  async jogos(fn: 'iniciar' | 'fim' | 'virar', a: Record<string, unknown>): Promise<JogoRes> {
+    if (fn === 'iniciar') {
+      const id = crypto.randomUUID()
+      this.partidas.set(id, { cartas: Array.from({ length: 16 }, (_, i) => i % 8).map(f => ({ f, k: Math.random() })).sort((x, y) => x.k - y.k).map(x => x.f), t0: 0, pend: null, achadas: [], erros: 0 })
+      return { id }
+    }
+    const p = this.partidas.get(String(a.p_id))
+    if (!p) throw new Error('Partida não encontrada.')
+    if (fn === 'fim') { this.partidas.delete(String(a.p_id)); return { pontos: Math.max(0, Math.round(Number(a.p_pontos) || 0)), valeu: true, local: true } }
+    const pos = Number(a.p_pos)
+    if (!p.t0) p.t0 = Date.now()
+    if (p.pend === null || p.pend === pos) { p.pend = pos; return { pos, f: p.cartas[pos], erros: p.erros } }
+    const outra = p.pend, par = p.cartas[outra] === p.cartas[pos]
+    p.pend = null
+    if (par) p.achadas.push(outra, pos); else p.erros++
+    if (p.achadas.length < 16) return { pos, f: p.cartas[pos], outra, par, erros: p.erros }
+    const seg = Math.floor((Date.now() - p.t0) / 1000)
+    return { pos, f: p.cartas[pos], outra, par, erros: p.erros, fim: true, seg, pontos: Math.max(100, 1000 - p.erros * 30 - seg * 5), local: true }
+  }
 
   /** bolão da demo: o resto do time entra com bilhetes fixos por semana */
   private bolao() {

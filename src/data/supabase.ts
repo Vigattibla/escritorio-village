@@ -1,6 +1,6 @@
 import { createClient, type RealtimeChannel, type SupabaseClient } from '@supabase/supabase-js'
 import { slugUser, toEmail } from './login'
-import type { CoffeeLine, Wallet, RowTable, Rows, AccountEdit, AiContext, AiProposal, AiStage, Backend, Handlers, Message, Pos, Profile, Project, Snapshot, Task, TaskNote } from '../types'
+import type { CoffeeLine, JogoRes, Wallet, RowTable, Rows, AccountEdit, AiContext, AiProposal, AiStage, Backend, Handlers, Message, Pos, Profile, Project, Snapshot, Task, TaskNote } from '../types'
 import { ROW_TABLES } from '../types'
 import type { Escolha, JogoCassino, Rodada } from '../cassino/regras'
 import type { Bolao } from '../cassino/bolao'
@@ -256,6 +256,12 @@ export class SupabaseBackend implements Backend {
   cassinoAbrir(jogo: JogoCassino, aposta: number, e: Escolha) { return this.cassino('cassino_abrir', { p_jogo: jogo, p_aposta: aposta, p_escolha: e }) }
   cassinoAcao(id: string, acao: string, casa?: number) { return this.cassino('cassino_acao', { p_rodada: id, p_acao: acao, p_casa: casa ?? null }) }
   async cassinoEstado(jogo: JogoCassino) { return (await this.cassino('cassino_estado', { p_jogo: jogo })) ?? null }
+
+  async jogos(fn: 'iniciar' | 'fim' | 'virar', args: Record<string, unknown>) {
+    const { data, error } = await this.sb.rpc('jogos_' + fn, args)
+    if (error) throw pt(error)
+    return data as JogoRes
+  }
 
   private async rpc<T>(fn: string) {
     const { data, error } = await this.sb.rpc(fn)

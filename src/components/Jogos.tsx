@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { getState, myDept, putRow, run, useStore } from '../store'
+import { getState, jogos, myDept, putRow, run, useStore } from '../store'
+import type { JogoRes } from '../types'
 import type { Jogo } from '../office/world'
 import { Ph } from './Icon'
 import type { PhName } from './ph'
@@ -17,7 +18,7 @@ const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julh
 const mesAgora = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}` }
 const mesNome = (m: string) => MESES[Number(m.slice(5)) - 1] ?? m
 
-/** grava a partida: o recorde do mês só sobe (o banco garante também) */
+/** só na demo: grava a partida aqui (no banco quem grava é o servidor) */
 function salvar(jogo: Jogo, pontos: number) {
   const s = getState(), me = s.meId
   if (!me) return false
@@ -27,7 +28,7 @@ function salvar(jogo: Jogo, pontos: number) {
   return pontos > 0 && pontos > (old?.pontos ?? 0)
 }
 
-interface GameProps { onPts: (n: number) => void; onFim: (n: number) => void }
+interface GameProps { partida: string; onPts: (n: number) => void; onFim: (n: number, r?: JogoRes) => void; onErro: (msg: string) => void }
 const W = 288
 const rnd = (n: number) => Math.floor(Math.random() * n)
 /** posição do clique em pixels do jogo (o canvas é esticado no CSS) */
@@ -172,36 +173,41 @@ function Penalti({ onPts, onFim }: GameProps) {
 const FIGURAS: PhName[] = ['coffee', 'star', 'trophy', 'crown', 'medal', 'gift', 'smiley', 'confetti']
 const CORES = ['#7a4a2a', '#e0a400', '#8e5bd6', '#d68a00', '#3a6fd8', '#e8508a', '#3fa66b', '#26324F']
 
-function Memoria({ onPts, onFim }: GameProps) {
-  const [cartas] = useState(() => [...FIGURAS.keys(), ...FIGURAS.keys()].map(f => ({ f, k: Math.random() })).sort((a, b) => a.k - b.k).map(x => x.f))
+function Memoria({ partida, onPts, onFim, onErro }: GameProps) {
+  // as cartas ficam no servidor: aqui só o que já foi virado
+  const [vistas, setVistas] = useState<Record<number, number>>({})
   const [abertas, setAbertas] = useState<number[]>([])
   const [achadas, setAchadas] = useState<Set<number>>(new Set())
   const [erros, setErros] = useState(0)
   const [t0, setT0] = useState(0)
   const [seg, setSeg] = useState(0)
+  const ocupado = useRef(false)
   const nota = (e: number, s: number) => Math.max(100, 1000 - e * 30 - s * 5)
   useEffect(() => {
     if (!t0 || achadas.size === 16) return
     const iv = setInterval(() => { const s = Math.floor((Date.now() - t0) / 1000); setSeg(s); onPts(nota(erros, s)) }, 500)
     return () => clearInterval(iv)
   }, [t0, achadas.size, erros, onPts])
-  const vira = (i: number) => {
-    if (abertas.length === 2 || abertas.includes(i) || achadas.has(i)) return
+  const vira = async (i: number) => {
+    if (ocupado.current || abertas.length === 2 || abertas.includes(i) || achadas.has(i)) return
+    ocupado.current = true
     if (!t0) setT0(Date.now())
-    const ab = [...abertas, i]
-    setAbertas(ab)
-    if (ab.length < 2) return
-    if (cartas[ab[0]] === cartas[ab[1]]) {
-      const ac = new Set(achadas).add(ab[0]).add(ab[1])
-      setAchadas(ac); setAbertas([])
-      if (ac.size === 16) { const s = Math.floor((Date.now() - (t0 || Date.now())) / 1000); setSeg(s); onPts(nota(erros, s)); onFim(nota(erros, s)) }
-    } else { setErros(e => e + 1); setTimeout(() => setAbertas([]), 650) }
+    try {
+      const r = await jogos('virar', { p_id: partida, p_pos: i })
+      setVistas(v => ({ ...v, [i]: r.f ?? 0 }))
+      setErros(r.erros ?? 0)
+      if (r.outra === undefined || r.outra === null) { setAbertas([i]); return }
+      const outra = r.outra
+      if (r.par) { setAchadas(a => new Set(a).add(outra).add(i)); setAbertas([]) }
+      else { setAbertas([outra, i]); setTimeout(() => setAbertas([]), 650) }
+      if (r.fim) { setSeg(r.seg ?? 0); onPts(r.pontos ?? 0); onFim(r.pontos ?? 0, r) }
+    } catch (e) { onErro(e instanceof Error ? e.message : String(e)) } finally { ocupado.current = false }
   }
   return (
     <div className="jg-col">
       <div className="jg-mem" role="grid" aria-label="Memória">
-        {cartas.map((f, i) => {
-          const vis = abertas.includes(i) || achadas.has(i)
+        {Array.from({ length: 16 }, (_, i) => {
+          const vis = abertas.includes(i) || achadas.has(i), f = vistas[i] ?? 0
           return (
             <button key={i} className={`jg-card${vis ? ' on' : ''}${achadas.has(i) ? ' ok' : ''}`} onClick={() => vira(i)} aria-label={vis ? FIGURAS[f] : 'Carta virada'} style={vis ? { color: CORES[f] } : undefined}>
               {vis ? <Ph n={FIGURAS[f]} size={30} fill /> : <span className="jg-back" />}
@@ -272,6 +278,9 @@ export default function Jogos({ inicio, onClose }: { inicio: Jogo; onClose: () =
   const [pts, setPts] = useState(0)
   const [rec, setRec] = useState(false)
   const [aba, setAba] = useState<'jogo' | 'geral'>('jogo')
+  const [partida, setPartida] = useState('')
+  const [aviso, setAviso] = useState('')
+  const [abrindo, setAbrindo] = useState(false)
   const meId = useStore(s => s.meId)
   const dept = useStore(s => s.sala)
   const linhas = useStore(s => s.rows.jogos_pontos)
@@ -287,9 +296,26 @@ export default function Jogos({ inicio, onClose }: { inicio: Jogo; onClose: () =
     return () => window.removeEventListener('keydown', k)
   }, [onClose])
 
-  const troca = (j: Jogo) => { setJogo(j); setFase('pronto'); setPts(0); setRodada(r => r + 1) }
-  const joga = () => { setPts(0); setRec(false); setFase('jogando'); setRodada(r => r + 1) }
-  const fim = useCallback((n: number) => { setPts(n); setRec(salvar(jogo, n)); setFase('fim') }, [jogo])
+  const troca = (j: Jogo) => { setJogo(j); setFase('pronto'); setAviso(''); setPts(0); setRodada(r => r + 1) }
+  // a partida nasce no servidor (relógio e cartas ficam lá)
+  const joga = async () => {
+    if (abrindo) return
+    setAbrindo(true); setAviso('')
+    try {
+      const r = await jogos('iniciar', { p_jogo: jogo })
+      setPartida(r.id ?? ''); setPts(0); setRec(false); setFase('jogando'); setRodada(n => n + 1)
+    } catch (e) { setAviso(e instanceof Error ? e.message : String(e)) } finally { setAbrindo(false) }
+  }
+  const erro = useCallback((msg: string) => { setAviso(msg); setFase('fim') }, [])
+  const fim = useCallback(async (n: number, pronto?: JogoRes) => {
+    setPts(n); setFase('fim')
+    try {
+      const r = pronto ?? await jogos('fim', { p_id: partida, p_pontos: n })
+      setPts(r.pontos ?? 0)
+      setRec(r.local ? salvar(jogo, r.pontos ?? 0) : !!r.recorde)
+      if (r.valeu === false) setAviso('Essa partida não valeu: pontuação fora do possível.')
+    } catch (e) { setAviso(e instanceof Error ? e.message : String(e)) }
+  }, [jogo, partida])
 
   // ranking do setor do andar no mês: recorde de cada um no jogo, ou a soma dos recordes dos 4 jogos
   const ranking = useMemo(() => {
@@ -321,16 +347,18 @@ export default function Jogos({ inicio, onClose }: { inicio: Jogo; onClose: () =
                   <small>{info.onde}</small>
                   <b>{info.nome}</b>
                   <p>{info.dica}</p>
-                  <button className="btn" onClick={joga}><Ph n="play" size={16} fill /> Jogar</button>
+                  {aviso && <p className="jg-aviso" role="alert">{aviso}</p>}
+                  <button className="btn" onClick={joga} disabled={abrindo}><Ph n="play" size={16} fill /> {abrindo ? 'Abrindo…' : 'Jogar'}</button>
                 </div>
               ) : (
                 <>
-                  <Tela key={rodada} onPts={setPts} onFim={fim} />
+                  <Tela key={rodada} partida={partida} onPts={setPts} onFim={fim} onErro={erro} />
                   {fase === 'fim' && (
                     <div className="jg-over dim">
                       {rec && <span className="jg-rec"><Ph n="trophy" size={16} fill /> Novo recorde do mês</span>}
                       <b>{pts} pontos</b>
-                      <button className="btn" onClick={joga}><Ph n="play" size={16} fill /> Jogar de novo</button>
+                      {aviso && <p className="jg-aviso" role="alert">{aviso}</p>}
+                      <button className="btn" onClick={joga} disabled={abrindo}><Ph n="play" size={16} fill /> {abrindo ? 'Abrindo…' : 'Jogar de novo'}</button>
                     </div>
                   )}
                 </>

@@ -1143,6 +1143,9 @@ export async function apostar(fn: (b: Backend) => Promise<Rodada | null>) {
   return r
 }
 
+/** sala de jogos: partida e pontuação passam pelo servidor */
+export const jogos = (fn: 'iniciar' | 'fim' | 'virar', args: Record<string, unknown> = {}) => backend.jogos(fn, args)
+
 /** o que a pessoa já tem: comprado ou dado de graça no criador */
 export const owns = (id: string, w = state.wallet) => !!w?.owned.includes(id)
 
