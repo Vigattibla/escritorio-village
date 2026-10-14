@@ -415,9 +415,10 @@ export function original(baia = false): Sala {
   if (baia) { add('painel-quartos', PAINEL.x, PAINEL.y); add('painel-placar', PLACAR.x, PLACAR.y) }
   for (const [x, y] of [[1, 2], [22, 2], [1, 14], [22, 14], [5, 14], [18, 14]]) add('planta', x, y)
   add('estante', 2, 2); add('arquivo', 19, 2); add('impressora', 20, 2); add('bebedouro', 21, 2)
-  for (const x of [3, 17]) add('janela', x, 0)
-  add('quadro-branco', 10, 0); add('quadro-paisagem', 1, 0); add('cartaz', 6, 0); add('foto-piscina', 7, 0)
-  add('calendario', 13, 0); add('relogio', 14, 0); add('arte', 15, 0); add('tv', 20, 0)
+  // parede só entre a estante (2-4) e o arquivo (19): móvel alto na frente tapa o quadro
+  for (const x of [5, 17]) add('janela', x, 0)
+  add('cartaz', 7, 0); add('foto-piscina', 8, 0); add('quadro-branco', 10, 0)
+  add('relogio', 13, 0); add('calendario', 14, 0); add('arte', 15, 0)
   return { piso, div, objs }
 }
 
@@ -482,7 +483,7 @@ export function parseSala(data: unknown, baia = false): Sala {
       objs.push(d === undefined ? { id: o.id, k: o.k, x: o.x, y: o.y } : { id: o.id, k: o.k, x: o.x, y: o.y, d })
     }
     const out = { piso: s.piso.map(r => [...r]), div: s.div.map(r => [...r]), objs }
-    return old ? fitSala(out, W, H) : baia ? baiaNova(out) : out
+    return arrumaParede(old ? fitSala(out, W, H) : baia ? baiaNova(out) : out)
   } catch { return original(baia) }
 }
 
@@ -500,6 +501,37 @@ export function solidGrid(s: Sala, skip?: number) {
   return g
 }
 
+/** quanto a arte do móvel sobe acima do próprio tile (px, medido no desenho) */
+const ALTURA: Record<string, number> = {
+  planta: 10, balcao: 8, estante: 21, bebedouro: 14, arquivo: 7, impressora: 8, 'painel-quartos': 31, 'painel-placar': 31,
+  'guarda-sol': 26, coqueiro: 20, 'fogao-lenha': 24, lampiao: 24, 'arvore-natal': 31, 'boneco-neve': 14, fliperama: 15,
+  espresso: 11, 'vitrine-doces': 8, geladeira: 19, fogao: 8, 'pia-cozinha': 7, 'micro-ondas': 7, pebolim: 8, 'caca-niquel': 16,
+  'totem-crash': 16, 'totem-minas': 16, 'caixa-fichas': 14, 'maquina-refri': 16, cabine: 13, 'pia-banheiro': 25, rede: 10, fonte: 10, 'cerca-viva': 7,
+}
+/** decoração de parede desce até y 26: móvel cuja arte passa disso fica na frente dela */
+const tapa = (o: Obj, w: Obj) => !kd(o).camada && o.y * T - (ALTURA[o.k] ?? 0) < 26 && o.x < w.x + kd(w).w && w.x < o.x + kd(o).w
+
+/** decoração de parede atrás de móvel alto ou em cima de outra vai pro lugar livre mais perto (se tiver) */
+export function arrumaParede(s: Sala): Sala {
+  const objs = [...s.objs], out = { ...s, objs }
+  for (const w of objs.filter(o => kd(o).camada === 'parede')) {
+    const i = objs.indexOf(w)
+    if (!check(out, w, () => null)) continue
+    for (let d = 1; d < MW; d++) {
+      const c = [w.x - d, w.x + d].map(x => ({ ...w, x })).find(c => !check(out, c, () => null))
+      if (c) { objs[i] = c; break }
+    }
+    // sem lugar na parede: o móvel alto da frente desce um tile (se couber e todo mundo ainda chegar na mesa)
+    const cur = objs[i]
+    if (check(out, cur, () => null)) for (const p of objs.filter(p => tapa(p, cur))) {
+      const j = objs.indexOf(p), c = { ...p, y: p.y + 1 }
+      objs[j] = c
+      if (check(out, c, () => null) || reach(out, () => null)) objs[j] = p
+    }
+  }
+  return out
+}
+
 const deskName = (o: Obj, nameOf: NameOf) => o.d === undefined ? null : nameOf(o.d)
 
 /** motivo de não poder ficar ali, ou null */
@@ -508,10 +540,12 @@ export function check(s: Sala, o: Obj, nameOf: NameOf): string | null {
   if (k.camada === 'parede') {
     if (o.x < 1 || o.x + k.w > MW - 1) return 'Fora da parede'
     for (const p of s.objs) if (p.id !== o.id && kd(p).camada === 'parede' && o.x < p.x + kd(p).w && p.x < o.x + k.w) return 'Já tem coisa nesse pedaço da parede'
+    if (s.objs.some(p => p.id !== o.id && tapa(p, o))) return 'Tem móvel alto na frente desse pedaço da parede'
     return null
   }
   if (o.x < 1 || o.y < 2 || o.x + k.w > MW - 1 || o.y + k.h > MH - 1) return 'Fora da sala'
   if (k.camada === 'chao') return null
+  if (s.objs.some(p => p.id !== o.id && kd(p).camada === 'parede' && tapa(o, p))) return 'Ia tapar a decoração da parede'
   const solid = solidGrid(s, o.id)
   for (let j = 0; j < k.h; j++) for (let i = 0; i < k.w; i++) {
     if (s.div[o.y + j][o.x + i]) return 'Em cima da parede'
