@@ -69,17 +69,18 @@ export const COMODOS: Record<Exclude<Kind, 'dept' | 'vaga'>, Comodo> = {
     nome: 'Sala de jogos', cor: '#8e5bd6', top: false,
     // esquerda: videogame, pebolim, sinuca, tabuleiro e fliperamas; direita: o cassino; meio livre pra porta
     sala: () => monta('carpete', 28, 16, [
-      ['tv-grande', 2, 0], ['alvo-dardos', 6, 0], ['neon', 11, 0], ['letreiro-cassino', 18, 0],
+      // parede de vidro: nada de móvel alto embaixo da decoração; porta fica no meio (13-14)
+      ['tv-grande', 2, 0], ['neon', 6, 0], ['alvo-dardos', 11, 0], ['letreiro-cassino', 18, 0],
       ['tapete-gamer', 1, 3], ['console', 2, 2], ['pufe', 1, 4], ['pufe', 4, 4], ['sofa', 1, 6],
       ['estante', 8, 2], ['pebolim', 8, 5],
       ['sinuca', 3, 9], ['mesa-jantar', 8, 10], ['cadeira-reuniao', 8, 12], ['cadeira-reuniao', 11, 12],
       ['fliperama', 2, 13], ['fliperama', 3, 13], ['fliperama', 4, 13], ['fliperama', 5, 13],
+      ['vitrine-doces', 9, 14], ['espresso', 11, 14], ['bistro', 13, 13],
       ['tapete-cassino', 17, 5],
       ['caca-niquel', 23, 2], ['caca-niquel', 24, 2], ['caca-niquel', 25, 2], ['caca-niquel', 26, 2],
       ['mesa-roleta', 19, 6], ['mesa-cartas', 19, 10], ['totem-crash', 26, 6], ['totem-minas', 26, 9],
       ['caixa-fichas', 22, 13], ['maquina-refri', 26, 13],
-      ['vitrine-doces', 9, 14], ['espresso', 11, 14], ['bistro', 15, 9],
-      ['planta', 5, 2], ['planta', 16, 2], ['planta', 7, 14], ['planta', 16, 14], ['planta', 1, 11],
+      ['planta', 5, 2], ['planta', 12, 2], ['planta', 15, 2], ['planta', 1, 11], ['planta', 7, 14], ['planta', 16, 14],
     ]),
     spots: [
       S(2, 4, 'up', 'No videogame', 60, 200), S(3, 4, 'up', 'No videogame', 60, 200),
@@ -91,7 +92,7 @@ export const COMODOS: Record<Exclude<Kind, 'dept' | 'vaga'>, Comodo> = {
       S(23, 3, 'up', 'No caça-níquel', 30, 90), S(25, 3, 'up', 'No caça-níquel', 30, 90),
       S(18, 6, 'right', 'Na roleta', 40, 120), S(23, 7, 'left', 'Na roleta', 40, 120), S(21, 8, 'up', 'Na roleta', 40, 120),
       S(19, 12, 'up', 'No blackjack', 40, 120), S(21, 12, 'up', 'No blackjack', 40, 120),
-      S(12, 14, 'left', 'Pegando um café', 10, 30), S(15, 10, 'up', 'Lanchando', 30, 90),
+      S(12, 14, 'left', 'Pegando um café', 10, 30), S(14, 14, 'up', 'Lanchando', 30, 90),
       S(26, 7, 'up', 'No crash', 20, 60), S(26, 10, 'up', 'Nas minas', 20, 60),
     ],
   },

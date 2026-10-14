@@ -317,11 +317,11 @@ export const KINDS: Record<string, Kind> = {
   'totem-crash': { nome: 'Totem do crash', tema: 'Cassino', w: 1, h: 1, up: 2, draw: (c, x, y, t) => totem(c, x, y, t, 'crash') },
   'totem-minas': { nome: 'Totem das minas', tema: 'Cassino', w: 1, h: 1, up: 2, draw: (c, x, y, t) => totem(c, x, y, t, 'minas') },
   'letreiro-cassino': {
-    nome: 'Letreiro do cassino', tema: 'Cassino', w: 4, h: 1, camada: 'parede', draw: (c, x, _y, t) => {
-      box(c, '#17171c', x + 2, 5, 60, 21)
-      for (let i = 0; i < 15; i++) for (const yy of [6, 24]) r(c, blink(t, 300, i) ? '#FBC222' : '#6a4d12', x + 4 + i * 4, yy, 1, 1)
+    nome: 'Letreiro do cassino', tema: 'Cassino', w: 5, h: 1, camada: 'parede', draw: (c, x, _y, t) => {
+      box(c, '#17171c', x + 4, 5, 72, 21)
+      for (let i = 0; i < 17; i++) for (const yy of [6, 24]) r(c, blink(t, 300, i) ? '#FBC222' : '#6a4d12', x + 7 + i * 4, yy, 1, 1)
       const col = Math.floor(t / 140) % 29 !== 0 ? '#ff5fa2' : '#7a2a4c'
-      let gx = x + 5
+      let gx = x + 13
       for (const ch of 'CASSINO') { const g = GLIFO[ch]; g.forEach((row, j) => [...row].forEach((b, i) => { if (b === '1') r(c, col, gx + i * 2, 10 + j * 2, 2, 2) })); gx += g[0].length * 2 + 2 }
     },
   },
