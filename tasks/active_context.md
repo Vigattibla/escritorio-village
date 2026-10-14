@@ -202,4 +202,4 @@ Pendente: push (precisa da migration 202610080900_v4_agenda_metas.sql e do secre
 - Bolão + latinhas ⚡ (9439209, migration 202610150900): pote = 30 + ganho líquido da casa na semana + 15/bilhete comprado + acumulado; sorteio sexta 17h Brasília, preguiçoso (bolao_estado dispara bolao_sortear com trava); 1º sorteio 16/10. Bilhetes: fase 1, meta 2, compra 15 (máx 5). Prêmio: pote + min(10, 3+pote/50) latinhas + 1º raro que não tem (trevo, pote-ouro, trono-sortudo; compra de 0). Latinhas: latinha_log, troca 150 → 1 (2/semana). UI: aba 🍀 Bolão no Cassino (Bolao.tsx, bl-*), roleta de nomes, aviso via checarBolao() no store (localStorage ev:bolao:visto), Loja mostra ⚡ e "Só no bolão". Espelho demo: src/cassino/bolao.ts (BolaoDemo).
 
 ## Próximo (14/10)
-- Estúdio em abas + Vídeo & Motion na VPS: plano em `docs/plano-estudio-abas.md`. Começar pela separação das abas.
+- Abas Conversa/Peças + Vídeo & Motion são do Estúdio CRNK (D:/Projetos/estudio), não do Turmeo; plano em `docs/plano-estudio-abas.md`. Chat do Estúdio no Turmeo só com modo desenvolvedor.

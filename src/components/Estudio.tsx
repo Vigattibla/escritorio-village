@@ -1,3 +1,4 @@
+import { usePref } from '../prefs'
 import { useEffect, useRef, useState } from 'react'
 import { cancelarPedido, decidir, encaixar, lerAprovar, marcarAprovador, type ParaAprovar, estudioReal, lerAgenda, lerCanais, lerChat, lerSinal, mandarChat, mudarPedido, planejar, salvarCanal, type Canal, type ChatMsg, type Pedido, type Sinal } from '../data/estudio'
 import { fileUrl, notify, setUi, useStore } from '../store'
@@ -32,15 +33,14 @@ export default function Estudio() {
   const adm = useStore(s => !!(s.meId && s.profiles[s.meId]?.is_admin))
   const coord = useStore(s => !!s.meId && rankOf(s.profiles[s.meId]) >= 2)
   // a conversa é só do dono do Estúdio (sem dono marcado ainda, vale o adm)
+  // e só aparece com o modo desenvolvedor ligado (menu do perfil)
+  const dev = usePref('dev')
   const dono = useStore(s => !!s.meId && (!!s.profiles[s.meId]?.estudio_dono || (adm && !Object.values(s.profiles).some(p => p.estudio_dono))))
+  const chat = dono && dev
   const aprova = useStore(s => dono || !!(s.meId && s.profiles[s.meId]?.aprova_estudio))
-  const [msgs, puxarChat, erroChat] = usePuxar(() => dono ? lerChat() : Promise.resolve([] as ChatMsg[]), 2500)
+  const [msgs, puxarChat, erroChat] = usePuxar(() => chat ? lerChat() : Promise.resolve([] as ChatMsg[]), 2500)
   const [fila, puxarFila] = usePuxar(() => aprova ? lerAprovar() : Promise.resolve([] as ParaAprovar[]), 15000)
   const [aba, setAba] = useState<'canais' | 'aprovar' | null>(null)
-  // dono alterna Conversa (chat em tela cheia) e Peças (canais + aprovar); quem não é dono só vê Peças
-  const [topo, setTopo] = useState<'conversa' | 'pecas' | null>(() => { try { return localStorage.getItem('es-topo') as 'conversa' | 'pecas' | null } catch { return null } })
-  const irTopo = (t: 'conversa' | 'pecas') => { setTopo(t); try { localStorage.setItem('es-topo', t) } catch { /* sem storage */ } }
-  const tela = !dono ? 'pecas' : topo ?? ((fila?.length ?? 0) > 0 ? 'pecas' : 'conversa')
   const vendo = aba ?? (aprova && (!(adm || coord) || (fila?.length ?? 0) > 0) ? 'aprovar' : 'canais')
   const [canais, puxarCanais] = usePuxar(lerCanais, 60000)
   const [escolha, setEscolha] = useState('')
@@ -59,12 +59,8 @@ export default function Estudio() {
         </span>
         <Bell />
       </div>
-      {dono && <nav className="es-abas es-topo">
-        <button className={tela === 'conversa' ? 'on' : ''} onClick={() => irTopo('conversa')}><Ph n="chat-circle-dots" size={16} /> Conversa</button>
-        <button className={tela === 'pecas' ? 'on' : ''} onClick={() => irTopo('pecas')}><Ph n="images" size={16} /> Peças{!!fila?.length && <i>{fila.length}</i>}</button>
-      </nav>}
-      {tela === 'conversa' ? <div className="es-grade so-chat"><Conversa msgs={msgs ?? []} erro={erroChat} puxar={puxarChat} /></div> :
-      <div className={'es-grade so-canal' + (vendo === 'aprovar' ? ' aprovando' : '')}>
+      <div className={'es-grade' + (chat ? '' : ' so-canal') + (vendo === 'aprovar' ? ' aprovando' : '')}>
+        {chat && <Conversa msgs={msgs ?? []} erro={erroChat} puxar={puxarChat} />}
         <div className="es-lado">
         {aprova && (adm || coord) && <nav className="es-abas">
           <button className={vendo === 'aprovar' ? 'on' : ''} onClick={() => setAba('aprovar')}>Aprovar{!!fila?.length && <i>{fila.length}</i>}</button>
@@ -82,7 +78,7 @@ export default function Estudio() {
             : <p className="es-vazio">{canais ? 'Nenhum canal ainda.' : 'Carregando…'}</p>}
         </section>}
         </div>
-      </div>}
+      </div>
     </div>
   )
 }
