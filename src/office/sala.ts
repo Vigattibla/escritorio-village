@@ -615,8 +615,33 @@ export function renderRoom(s: Sala, grid = false, light = true) {
   if (light) for (const o of s.objs) if (o.k === 'janela') { c.fillStyle = 'rgba(255,248,225,.22)'; for (let k = 0; k < 22; k++) c.fillRect(o.x * T + 3 + Math.floor(k / 2), 2 * T + k, 26, 1) }
   for (const o of s.objs) if (kd(o).camada === 'chao') kd(o).draw(c, o.x * T, o.y * T, 0)
   if (grid) { c.globalAlpha = 0.1; for (let x = 1; x < MW; x++) r(c, '#000', x * T, 2 * T, 0.5, (MH - 3) * T); for (let y = 2; y < MH; y++) r(c, '#000', T, y * T, (MW - 2) * T, 0.5); c.globalAlpha = 1 }
-  for (const o of s.objs) { const k = kd(o); if (!k.camada && !k.passa) r(c, SHADOW, o.x * T + 1, (o.y + k.h) * T, k.w * T - 2, 3) }
+  for (const o of s.objs) { const k = kd(o); if (k.camada || k.passa) continue; const m = sombraDe(o.k); if (m) r(c, SHADOW, o.x * T + m.x, o.y * T + m.y, m.w, 3) }
   return cv
+}
+
+/** sombra encostada no desenho do móvel (não no pé do tile): mede a arte uma vez e guarda */
+const SOMBRAS = new Map<string, { x: number; y: number; w: number } | null>()
+function sombraDe(kind: string) {
+  if (SOMBRAS.has(kind)) return SOMBRAS.get(kind)!
+  const k = KINDS[kind], up = k.up ?? 0, W = (k.w + 2) * T, H = (k.h + up + 2) * T, ox = T, oy = (up + 1) * T
+  let m: { x: number; y: number; w: number } | null = { x: 1, y: k.h * T, w: k.w * T - 2 }
+  try {
+    const cv = document.createElement('canvas'); cv.width = W; cv.height = H
+    const c = cv.getContext('2d', { willReadFrequently: true })!
+    k.draw(c, ox, oy, 0)
+    const px = c.getImageData(0, 0, W, H).data, a = (x: number, y: number) => px[(y * W + x) * 4 + 3] > 200
+    let y1 = -1
+    for (let y = H - 1; y >= 0 && y1 < 0; y--) for (let x = 0; x < W; x++) if (a(x, y)) { y1 = y; break }
+    if (y1 < 0) m = null
+    else {
+      // largura da base: o que tem nas últimas linhas do desenho (pés contam)
+      let x0 = W, x1 = -1
+      for (let y = Math.max(0, y1 - 3); y <= y1; y++) for (let x = 0; x < W; x++) if (a(x, y)) { x0 = Math.min(x0, x); x1 = Math.max(x1, x) }
+      m = { x: x0 - ox + 1, y: y1 + 1 - oy, w: Math.max(2, x1 - x0 - 1) }
+    }
+  } catch { /* sem canvas: fica no pé do tile */ }
+  SOMBRAS.set(kind, m)
+  return m
 }
 
 /** móvel comum (mesa de trabalho quem desenha é o jogo, com cadeira e gente) */

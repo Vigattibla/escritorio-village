@@ -161,27 +161,56 @@ export function deskAtTile(gx: number, gy: number): { r: Room; i: number } | nul
 
 const walkable = (tx: number, ty: number) => !tileSolid(tx, ty)
 
-/** BFS em tiles; devolve centros dos tiles do caminho (sem o inicial). */
+/** custo de pisar no tile: no corredor o caminho é pela passadeira do meio; nas salas, longe de parede e móvel */
+function stepCost(tx: number, ty: number) {
+  if (ty >= HY0 && ty <= HY1) { const m = (HY0 + HY1) / 2, d = Math.abs(ty - m); return d < 1 ? 2 : d < 2 ? 3 : 8 }
+  let c = 2
+  for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (tileSolid(tx + dx, ty + dy) && doorAtTile(tx + dx, ty + dy) < 0) c++
+  return c
+}
+
+/** porta de 2 tiles: quem passa por ela (ou logo antes/depois) anda pelo meio dela, não pela lateral */
+function doorCenterX(tx: number, ty: number) {
+  for (const r of rooms) {
+    if (tx !== r.ox + r.door && tx !== r.ox + r.door + 1) continue
+    const y0 = r.top ? r.oy + r.h - 2 : HY1 - 1, y1 = r.top ? HY0 + 1 : r.oy + 2
+    if (ty < y0 || ty > y1) continue
+    if (walkable(r.ox + r.door, ty) && walkable(r.ox + r.door + 1, ty)) return (r.ox + r.door + 1) * T
+  }
+  return null
+}
+
+/** Dijkstra em tiles (custo prefere o meio); devolve centros dos tiles do caminho (sem o inicial). */
 export function findPath(sx: number, sy: number, gx: number, gy: number): { x: number; y: number }[] | null {
   const s = [Math.floor(sx / T), Math.floor(sy / T)]
   if (!walkable(gx, gy)) return null
-  const key = (x: number, y: number) => y * FW + x
-  const prev = new Map<number, number>([[key(s[0], s[1]), -1]])
-  const q = [[s[0], s[1]]]
-  for (let h = 0; h < q.length; h++) {
-    const [x, y] = q[h]
-    if (x === gx && y === gy) break
-    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-      const nx = x + dx, ny = y + dy
-      if (!walkable(nx, ny) || prev.has(key(nx, ny))) continue
-      prev.set(key(nx, ny), key(x, y))
-      q.push([nx, ny])
+  const key = (x: number, y: number) => y * FW + x, sk = key(s[0], s[1]), gk = key(gx, gy)
+  const prev = new Map<number, number>([[sk, -1]]), dist = new Map<number, number>([[sk, 0]])
+  // fila por custo (custos inteiros pequenos: baldes)
+  const buckets: number[][] = [[sk]]
+  for (let c = 0; c < buckets.length; c++) {
+    const b = buckets[c]
+    if (!b) continue
+    for (let i = 0; i < b.length; i++) {
+      const k = b[i]
+      if (dist.get(k) !== c) continue
+      if (k === gk) { c = buckets.length; break }
+      const x = k % FW, y = Math.floor(k / FW)
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nx = x + dx, ny = y + dy
+        if (!walkable(nx, ny)) continue
+        const nk = key(nx, ny), nd = c + stepCost(nx, ny)
+        if (nd >= (dist.get(nk) ?? Infinity)) continue
+        dist.set(nk, nd); prev.set(nk, k);
+        (buckets[nd] ??= []).push(nk)
+      }
     }
   }
-  if (!prev.has(key(gx, gy))) return null
+  if (!prev.has(gk)) return null
   const out: { x: number; y: number }[] = []
-  for (let k = key(gx, gy); k !== key(s[0], s[1]) && k !== -1; k = prev.get(k)!) {
-    out.unshift({ x: (k % FW + 0.5) * T, y: (Math.floor(k / FW) + 0.5) * T })
+  for (let k = gk; k !== sk && k !== -1; k = prev.get(k)!) {
+    const tx = k % FW, ty = Math.floor(k / FW)
+    out.unshift({ x: doorCenterX(tx, ty) ?? (tx + 0.5) * T, y: (ty + 0.5) * T })
   }
   return out
 }
