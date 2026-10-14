@@ -4,6 +4,7 @@ import type { CoffeeLine, Wallet, RowTable, Rows, AccountEdit, AiContext, AiProp
 import { ROW_TABLES } from '../types'
 import type { Escolha, JogoCassino, Rodada } from '../cassino/regras'
 import type { Bolao } from '../cassino/bolao'
+import type { Bingo } from '../cassino/bingo'
 
 function pt(e: { message: string }): Error {
   const m = e.message
@@ -247,6 +248,12 @@ export class SupabaseBackend implements Backend {
   }
   bolaoEstado() { return this.rpc<Bolao>('bolao_estado') }
   bolaoComprar() { return this.rpc<Bolao>('bolao_comprar') }
+  bingoEstado() { return this.rpc<Bingo>('bingo_estado') }
+  async bingoComprar(gratis: boolean) {
+    const { data, error } = await this.sb.rpc('bingo_comprar', { gratis })
+    if (error) throw new Error(error.message)
+    return data as Bingo
+  }
   trocarLatinha() { return this.rpc<number>('trocar_latinha') }
 
   async joinGroup(gid: string, join: boolean) {

@@ -21,6 +21,8 @@ export function drawAnim(c: C2D, kind: string | undefined, cx: number, top: numb
   }
   if (kind === 'borboletas') loop(2, 4000, (p, k) => { const a = p * 6.28 + k * 3, x = Math.round(cx + Math.cos(a) * 12), y = Math.round(top + 10 + Math.sin(a * 2) * 6), o = Math.floor(t / 150) % 2; r(c, k ? '#f39c35' : '#8e5bd6', x - 2 + o, y, 2 - o, 2); r(c, k ? '#f39c35' : '#8e5bd6', x + 1, y, 2 - o, 2); r(c, OUT, x, y, 1, 2) })
   if (kind === 'arco') ['#e05a47', '#f39c35', '#FBC222', '#3fa66b', '#3a6fd8', '#8e5bd6'].forEach((col, k) => { c.strokeStyle = col; c.lineWidth = 1; c.beginPath(); c.arc(cx, top + 8, 14 - k, Math.PI * 1.08, Math.PI * 1.92); c.stroke() })
+  if (kind === 'confete') loop(8, 2200, (p, k) => { const x = cx - 14 + ((k * 11) % 29) + Math.round(Math.sin(p * 9 + k) * 2), y = top - 10 + p * 26; if (p < 0.85) r(c, ['#ff5fa2', '#FBC222', '#38c6e8', '#3fa66b', '#a77bff'][k % 5], x, y, (k + Math.floor(p * 6)) % 2 ? 2 : 1, (k + Math.floor(p * 6)) % 2 ? 1 : 2) })
+  if (kind === 'bolinhas') loop(5, 3000, (p, k) => { const a = p * 6.28 + k * 1.256, x = Math.round(cx + Math.cos(a) * 12) - 1, y = Math.round(top + 2 + Math.sin(a) * 4) - 1; const col = ['#3a6fd8', '#e05a47', '#f2f2f2', '#3fa66b', '#FBC222'][k]; r(c, OUT, x - 1, y, 5, 3); r(c, OUT, x, y - 1, 3, 5); r(c, col, x, y, 3, 3); r(c, '#fff', x + 1, y + 1, 1, 1) })
   if (kind === 'aureola') { const y = top - 4 + Math.round(Math.sin(t / 400)); r(c, '#c99412', cx - 5, y, 10, 2); r(c, '#ffe27a', cx - 4, y, 8, 1); if (Math.floor(t / 300) % 3 === 0) plus(cx + 6, y - 2, '#fff3c4', 0) }
 }
 

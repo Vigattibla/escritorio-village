@@ -7,6 +7,7 @@ import { counts, DAY, MAX_GOALS, payouts, WELCOME } from '../shop/economy'
 import { ITEM } from '../shop/catalog'
 import { Mesa, type Escolha, type JogoCassino } from '../cassino/regras'
 import { BolaoDemo, type Sorteio } from '../cassino/bolao'
+import { BingoDemo, SLOT } from '../cassino/bingo'
 import { localDay } from '../components/v4'
 
 // Modo demonstração: tudo no localStorage deste navegador. Abas diferentes = pessoas diferentes
@@ -485,6 +486,27 @@ export class DemoBackend implements Backend {
   async bolaoEstado() { return this.bolao().estado() }
   async bolaoComprar() { return this.bolao().comprar() }
   async trocarLatinha() { return this.bolao().trocar() }
+
+  /** bingo da demo: o resto do time joga toda rodada; ev:bingo:slot (segundos) acelera pra teste */
+  private bingo() {
+    const me = sessionStorage.getItem(K.session)
+    if (!me) throw new Error('Entre de novo.')
+    const ck = 'ev:coffee:' + me, lk = 'ev:latinhas:' + me
+    const lat = () => read<{ amount: number; ref: string }[]>(lk, [])
+    return new BingoDemo({
+      me,
+      extrato: () => read<CoffeeLine[]>(ck, []),
+      lanca: (amount, reason, ref) => { const log = read<CoffeeLine[]>(ck, []); this.credit(log, amount, reason, ref, []); write(ck, log) },
+      latinhas: () => lat().reduce((n, l) => n + l.amount, 0),
+      lancaLatinha: (amount, ref) => { const l = lat(); if (!l.some(x => x.ref === ref)) write(lk, [{ amount, ref }, ...l]) },
+      rodadas: () => read('ev:bingo', []),
+      salva: v => write('ev:bingo', v),
+      outros: () => Object.keys(read<Record<string, Profile>>(K.prof, {})).filter(id => id !== me).slice(0, 4),
+      slot: (Number(localStorage.getItem('ev:bingo:slot')) || SLOT / 1000) * 1000,
+    })
+  }
+  async bingoEstado() { return this.bingo().estado() }
+  async bingoComprar(gratis: boolean) { return this.bingo().comprar(gratis) }
 
   async joinGroup(id: string, join: boolean) {
     const all = read<Record<string, Group>>(K.row + 'groups', {})

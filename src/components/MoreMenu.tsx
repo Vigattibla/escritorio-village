@@ -19,12 +19,14 @@ export default function MoreMenu() {
     ['folder-simple', 'Arquivos', () => setUi({ view: 'arquivos', drawer: false })],
     ['coffee', 'Almoxarifado', () => setUi({ view: 'loja', drawer: false })],
     ['sparkle', 'Cassino', () => setUi({ cassino: true })],
+    ['confetti', 'Bingo', () => setUi({ bingo: true })],
   ] : [
     ['kanban', 'Quadro', () => setUi({ view: 'quadro', drawer: false }), pend],
     ['flow-arrow', 'Fluxos', () => setUi({ view: 'fluxos', drawer: false })],
     ['folder-simple', 'Arquivos', () => setUi({ view: 'arquivos', drawer: false })],
     ['coffee', 'Almoxarifado', () => setUi({ view: 'loja', drawer: false })],
     ['sparkle', 'Cassino', () => setUi({ cassino: true })],
+    ['confetti', 'Bingo', () => setUi({ bingo: true })],
     ['chat-circle-dots', 'Chat da equipe', () => setUi({ chatOpen: true })],
   ]
   if (dev && !sv) items.push(['users-three', 'Equipe', () => setUi({ view: 'quadro', tab: 'equipe', drawer: true })])

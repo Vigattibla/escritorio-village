@@ -71,6 +71,7 @@ export function setFloor(specs: { kind: Kind; dept?: string | null; sala: Sala; 
   for (const row of rows) {
     const last = row[row.length - 1], falta = FW - width(row)
     if (last?.kind === 'vaga' && falta > 0) { const { w, h } = dimOf(last.sala); last.sala = emptySala(w + falta, h) }
+    else if (last && falta > 0) last.sala = { ...last.sala, piso: last.sala.piso.map(l => [...l, ...Array(falta).fill(l[l.length - 1])]), div: last.sala.div.map(l => [...l, ...Array<boolean>(falta).fill(false)]) }
   }
   rooms = rows.flatMap((row, ri) => {
     let x = 0
@@ -258,6 +259,23 @@ export function jogoAt(gx: number, gy: number) {
       const sp = (comodoOf('jogos')?.spots ?? []).filter(s => s.act === m.act)
         .sort((a, b) => Math.hypot(a.x - o.x, a.y - o.y) - Math.hypot(b.x - o.x, b.y - o.y))[0]
       return { jogo: m.jogo, cassino: m.cassino, tx: r.ox + (sp?.x ?? o.x), ty: r.oy + (sp?.y ?? o.y + d.h) }
+    }
+  }
+  return null
+}
+/** clique num móvel do salão de bingo: abre o bingo e vai pra mesa livre mais perto */
+const BINGO_MOVEIS = new Set(['mesa-bingo', 'globo-bingo', 'banca-cartelas', 'painel-bingo', 'letreiro-bingo'])
+export function bingoAt(gx: number, gy: number) {
+  for (const r of rooms) {
+    if (r.kind !== 'bingo') continue
+    for (const o of r.sala.objs) {
+      const d = kd(o)
+      if (!BINGO_MOVEIS.has(o.k) || !d) continue
+      const parede = d.camada === 'parede', y0 = parede ? 0 : o.y - (d.up ?? 0), y1 = parede ? 2 : o.y + d.h
+      if (gx < r.ox + o.x || gx >= r.ox + o.x + d.w || gy < r.oy + y0 || gy >= r.oy + y1) continue
+      const sp = (comodoOf('bingo')?.spots ?? []).filter(s => s.act === 'Jogando bingo')
+        .sort((a, b) => Math.hypot(a.x - o.x, a.y - o.y) - Math.hypot(b.x - o.x, b.y - o.y))[0]
+      return { tx: r.ox + (sp?.x ?? o.x), ty: r.oy + (sp?.y ?? o.y + d.h) }
     }
   }
   return null

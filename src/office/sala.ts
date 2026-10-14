@@ -18,8 +18,8 @@ export const PISOS: Record<Piso, { nome: string; draw: (c: C2D, x: number, y: nu
 }
 
 // ---------------- móveis ----------------
-export type Tema = 'Escritório' | 'Resort' | 'Casa de Campo' | 'Natal' | 'Gamer' | 'Café' | 'Jardim' | 'Cozinha' | 'Banheiro' | 'Cassino'
-export const TEMAS: Tema[] = ['Escritório', 'Resort', 'Casa de Campo', 'Natal', 'Gamer', 'Café', 'Jardim', 'Cozinha', 'Banheiro', 'Cassino']
+export type Tema = 'Escritório' | 'Resort' | 'Casa de Campo' | 'Natal' | 'Gamer' | 'Café' | 'Jardim' | 'Cozinha' | 'Banheiro' | 'Cassino' | 'Bingo'
+export const TEMAS: Tema[] = ['Escritório', 'Resort', 'Casa de Campo', 'Natal', 'Gamer', 'Café', 'Jardim', 'Cozinha', 'Banheiro', 'Cassino', 'Bingo']
 export type Kind = {
   nome: string; tema: Tema; w: number; h: number
   /** quantos tiles a arte sobe acima do pé */ up?: number
@@ -37,7 +37,7 @@ function rug(c: C2D, x: number, y: number, w: number, h: number, dk: string, bas
 /** letras 3x5 do letreiro */
 const GLIFO: Record<string, string[]> = {
   C: ['111', '100', '100', '100', '111'], A: ['010', '101', '111', '101', '101'], S: ['111', '100', '111', '001', '111'],
-  I: ['111', '010', '010', '010', '111'], N: ['1001', '1101', '1011', '1001', '1001'], O: ['111', '101', '101', '101', '111'],
+  I: ['111', '010', '010', '010', '111'], B: ['110', '101', '110', '101', '110'], G: ['111', '100', '101', '101', '111'], N: ['1001', '1101', '1011', '1001', '1001'], O: ['111', '101', '101', '101', '111'],
 }
 /** totem de tela: crash (linha subindo) ou minas (grade abrindo) */
 function totem(c: C2D, x: number, y: number, t: number, modo: 'crash' | 'minas') {
@@ -342,6 +342,79 @@ export const KINDS: Record<string, Kind> = {
       for (const [a, col] of [[6, '#e05a47'], [12, '#3a6fd8'], [18, '#FBC222'], [34, '#3fa66b']] as const) for (let s = 0; s < 3; s++) { r(c, OUT, x + a - 1, y - 2 - s * 2, 5, 2); r(c, col, x + a, y - 2 - s * 2, 3, 1) }
     },
   },
+  // ---- Bingo ----
+  'letreiro-bingo': {
+    nome: 'Letreiro do bingo', tema: 'Bingo', w: 4, h: 1, camada: 'parede', draw: (c, x, _y, t) => {
+      box(c, '#2a0f3a', x + 4, 5, 56, 21)
+      for (let i = 0; i < 13; i++) for (const yy of [6, 24]) r(c, blink(t, 260, i) ? '#ff8ad1' : '#5a2a52', x + 7 + i * 4, yy, 1, 1)
+      let gx = x + 9
+      ;[...'BINGO'].forEach((ch, k) => {
+        const col = Math.floor(t / 400) % 5 === k ? '#fbfbf8' : ['#ff5fa2', '#FBC222', '#5ff2ff', '#7be07b', '#c79bff'][k]
+        GLIFO[ch].forEach((row, j) => [...row].forEach((b, i) => { if (b === '1') r(c, col, gx + i * 2, 10 + j * 2, 2, 2) })); gx += GLIFO[ch][0].length * 2 + 2
+      })
+    },
+  },
+  'painel-bingo': {
+    nome: 'Painel de números', tema: 'Bingo', w: 3, h: 1, camada: 'parede', draw: (c, x, _y, t) => {
+      box(c, '#17171c', x + 3, 4, 42, 23)
+      const fase = Math.floor(t / 700) % 40
+      for (let j = 0; j < 5; j++) {
+        r(c, ['#ff5fa2', '#FBC222', '#5ff2ff', '#7be07b', '#c79bff'][j], x + 5, 6 + j * 4, 2, 3)
+        for (let i = 0; i < 15; i++) { const n = j * 15 + i; r(c, (n * 37) % 40 < fase ? '#ffe27a' : '#3a3540', x + 9 + i * 2 + Math.floor(i / 5), 7 + j * 4, 1, 2) }
+      }
+    },
+  },
+  'globo-bingo': {
+    nome: 'Globo do bingo', tema: 'Bingo', w: 2, h: 1, up: 2, draw: (c, x, y, t) => {
+      const cx = x + 16, cy = y - 11
+      box(c, '#6e4529', x + 4, y + 2, 24, 12); r(c, '#e0b04a', x + 4, y + 2, 24, 2); r(c, SHADOW, x + 4, y + 15, 24, 1)
+      r(c, '#c8ccd3', cx - 1, cy + 8, 2, 7)
+      disc(c, cx, cy, 11, OUT); disc(c, cx, cy, 10, '#3a2a4a')
+      const a0 = t / 300
+      for (let k = 0; k < 12; k++) {
+        const a = a0 * (k % 2 ? 1 : -1.3) + k * 0.52, rr = 3 + (k * 5) % 6
+        r(c, ['#ff5fa2', '#FBC222', '#5ff2ff', '#7be07b', '#fbfbf8', '#c79bff'][k % 6], Math.round(cx + Math.cos(a) * rr), Math.round(cy + Math.sin(a) * rr * 0.8), 2, 2)
+      }
+      c.strokeStyle = '#e0b04a'; c.lineWidth = 1
+      for (let k = 0; k < 4; k++) { const w = Math.abs(Math.cos(a0 / 2 + k * 0.8)) * 10; c.beginPath(); c.ellipse(cx + 0.5, cy + 0.5, Math.max(0.5, w), 10, 0, 0, Math.PI * 2); c.stroke() }
+      r(c, '#c8ccd3', cx + 11, cy - 1, 4, 2); r(c, '#e05a47', cx + 14, cy - 2 + (Math.floor(t / 500) % 2) * 2, 2, 2)
+      // bola que acabou de sair, na bandejinha
+      disc(c, x + 26, y + 1, 2, OUT); r(c, ['#ff5fa2', '#FBC222', '#5ff2ff', '#7be07b', '#c79bff'][Math.floor(t / 3000) % 5], x + 25, y, 2, 2)
+    },
+  },
+  'mesa-bingo': {
+    nome: 'Mesa de bingo', tema: 'Bingo', w: 3, h: 1, draw: (c, x, y, t) => {
+      const w = 3 * T
+      box(c, '#f1e6d2', x + 1, y + 1, w - 2, 11); r(c, '#ff8ad1', x + 1, y + 1, w - 2, 1)
+      for (let k = 0; k < 3; k++) {
+        const a = x + 4 + k * 15
+        box(c, '#fbfbf8', a, y + 3, 10, 7)
+        for (let j = 0; j < 3; j++) for (let i = 0; i < 4; i++) r(c, ((i + j * 4 + k * 5 + Math.floor(t / 2500)) % 7) < 2 ? '#e05a47' : '#c8c0d0', a + 1 + i * 2 + (i > 1 ? 1 : 0), y + 4 + j * 2, 1, 1)
+      }
+      r(c, '#c4b6a0', x + 1, y + 12, w - 2, 2); r(c, OUT, x + 4, y + 14, 2, 2); r(c, OUT, x + w - 6, y + 14, 2, 2)
+    },
+  },
+  'palco-bingo': {
+    nome: 'Palco do bingo', tema: 'Bingo', w: 6, h: 3, camada: 'chao', draw: (c, x, y, t) => {
+      const w = 6 * T, h = 3 * T
+      r(c, '#3a1630', x + 1, y + 1, w - 2, h - 2); r(c, '#7a2a5c', x + 3, y + 3, w - 6, h - 8); r(c, '#5a1f45', x + 3, y + h - 6, w - 6, 3)
+      for (let i = 0; i < 23; i++) r(c, blink(t, 220, i) ? '#FBC222' : '#6a4d12', x + 4 + i * 4, y + h - 5, 1, 1)
+    },
+  },
+  'tapete-bingo': {
+    nome: 'Tapete do bingo', tema: 'Bingo', w: 12, h: 5, camada: 'chao', draw: (c, x, y) => {
+      rug(c, x + 2, y + 2, 12 * T - 4, 5 * T - 4, '#3a1630', '#5c2350', '#ff8ad1')
+      for (let j = 0; j < 4; j++) for (let i = 0; i < 11; i++) if ((i + j) % 2 === 0) disc(c, x + 12 + i * 16, y + 12 + j * 16, 1, '#7a3a6c')
+    },
+  },
+  'banca-cartelas': {
+    nome: 'Banca de cartelas', tema: 'Bingo', w: 2, h: 1, up: 1, draw: (c, x, y, t) => {
+      box(c, '#6e4529', x + 1, y + 1, 30, 14); r(c, '#ff5fa2', x + 1, y + 1, 30, 2)
+      box(c, '#2a0f3a', x + 3, y - 12, 26, 12); r(c, '#FBC222', x + 5, y - 10, 22, 1)
+      for (let k = 0; k < 3; k++) { box(c, '#fbfbf8', x + 6 + k * 7, y - 8, 5, 6); r(c, '#e05a47', x + 7 + k * 7, y - 6 + (Math.floor(t / 600 + k) % 2), 1, 1) }
+      r(c, SHADOW, x + 1, y + 15, 30, 1)
+    },
+  },
   'maquina-refri': {
     nome: 'Máquina de latinhas', tema: 'Cassino', w: 1, h: 1, up: 2, draw: (c, x, y, t) => {
       box(c, '#26324F', x + 1, y - 15, 14, 30); r(c, blink(t, 1200) ? '#5ff2ff' : '#3a8a96', x + 1, y - 15, 14, 2)
@@ -507,7 +580,7 @@ const ALTURA: Record<string, number> = {
   planta: 10, balcao: 8, estante: 21, bebedouro: 14, arquivo: 7, impressora: 8, 'painel-quartos': 31, 'painel-placar': 31,
   'guarda-sol': 26, coqueiro: 20, 'fogao-lenha': 24, lampiao: 24, 'arvore-natal': 31, 'boneco-neve': 14, fliperama: 15,
   espresso: 11, 'vitrine-doces': 8, geladeira: 19, fogao: 8, 'pia-cozinha': 7, 'micro-ondas': 7, pebolim: 8, 'caca-niquel': 16,
-  'totem-crash': 16, 'totem-minas': 16, 'caixa-fichas': 14, 'maquina-refri': 16, cabine: 13, 'pia-banheiro': 25, rede: 10, fonte: 10, 'cerca-viva': 7,
+  'totem-crash': 16, 'totem-minas': 16, 'caixa-fichas': 14, 'globo-bingo': 22, 'banca-cartelas': 12, 'maquina-refri': 16, cabine: 13, 'pia-banheiro': 25, rede: 10, fonte: 10, 'cerca-viva': 7,
 }
 /** decoração de parede desce até y 26: móvel cuja arte passa disso fica na frente dela */
 const tapa = (o: Obj, w: Obj) => !kd(o).camada && o.y * T - (ALTURA[o.k] ?? 0) < 26 && o.x < w.x + kd(w).w && w.x < o.x + kd(o).w

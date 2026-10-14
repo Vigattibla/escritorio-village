@@ -109,6 +109,7 @@ export default function Loja() {
   }
   const buy = (i: Item) => {
     if (i.bolao) { setUi({ cassino: 'bolao' }); return }
+    if (i.bingo) { setUi({ bingo: true }); return }
     if (coins < i.price) { setMsg({ text: `Faltam ${i.price - coins} cafezinhos para ${i.name}.`, err: true }); return }
     act(i.id, async () => { await buyItem(i.id); await equip(i.slot, i.art); setTrying(null) }, `Comprou ${i.name}! Já está usando.`)
   }
@@ -132,7 +133,7 @@ export default function Loja() {
           <Px w={90} h={60} s={3} className="lj-desk" draw={(c, t) => deskScene(c, prev, t, 6, 4)} />
           {trying && !owns(trying.id, wallet)
             ? <div className="lj-try">Provando <b>{trying.name}</b>
-              <div><button className="btn accent" disabled={!!busy} onClick={() => buy(trying)}>{trying.bolao ? '🍀 Só sai no bolão' : busy === trying.id ? 'Comprando…' : `Comprar · ☕ ${trying.price}`}</button>
+              <div><button className="btn accent" disabled={!!busy} onClick={() => buy(trying)}>{trying.bolao ? '🍀 Só sai no bolão' : trying.bingo ? '🎱 Só sai no bingo' : busy === trying.id ? 'Comprando…' : `Comprar · ☕ ${trying.price}`}</button>
                 <button className="btn" onClick={() => setTrying(null)}>Tirar</button></div></div>
             : <small className="muted lj-hint">Clique num item para provar. O que é seu, clique para usar ou tirar.</small>}
           {msg && <div className={'lj-msg' + (msg.err ? ' err' : '')}>{msg.text}</div>}
@@ -154,7 +155,7 @@ export default function Loja() {
                 <Thumb it={i} av={av} name={first} />
                 <b>{i.name}</b>
                 <span className="lj-tier">{TIER_NAME[i.tier]}</span>
-                <span className="lj-price">{busy === i.id ? '…' : on ? '✓ Usando' : have ? 'Seu' : i.bolao ? '🍀 Só no bolão' : `☕ ${i.price}`}</span>
+                <span className="lj-price">{busy === i.id ? '…' : on ? '✓ Usando' : have ? 'Seu' : i.bolao ? '🍀 Só no bolão' : i.bingo ? '🎱 Só no bingo' : `☕ ${i.price}`}</span>
               </button>
             })}
           </div>

@@ -11,7 +11,7 @@ import { addMark, boardMarks, takeErrands, type Errand } from '../office/errands
 import { drawAnim, plateFill, PLATE_CV } from '../office/anim'
 import { drawChair } from '../office/props'
 import { drawFurniture, kd, parseSala, type Obj } from '../office/sala'
-import { blocked, boardSpot, BOSS_DESK, deskAtTile, deskIds, deskOf, deskSidesOf, doorAtTile, doorSpot, drawBoardMarks, drawCarry, drawDesk, emptySala, FH, findPath, floorVersion, furniture, FW, getRooms, hallDecor, hasDesk, jogoAt, roomOfKind, HY0, MAX_DESKS, painelAt, paineisOf, pathToSeat, regionOfPx, renderFloor, roomOfId, setFloor, setPassable, shelfSpot, T, wallObjs, type Room } from '../office/world'
+import { blocked, boardSpot, BOSS_DESK, deskAtTile, deskIds, deskOf, deskSidesOf, doorAtTile, doorSpot, drawBoardMarks, drawCarry, drawDesk, emptySala, FH, findPath, floorVersion, furniture, FW, getRooms, hallDecor, hasDesk, jogoAt, bingoAt, roomOfKind, HY0, MAX_DESKS, painelAt, paineisOf, pathToSeat, regionOfPx, renderFloor, roomOfId, setFloor, setPassable, shelfSpot, T, wallObjs, type Room } from '../office/world'
 import { bubbles, canDoor, canEnter, curtainsOpen, deptName, doorOpen, getState, goTo, knock, myDept, positions, roomOf, run, setCurtains, setDoor, setSalaGerente, setUi, useStore, type State } from '../store'
 import type { Dir, Pos, Profile, Task } from '../types'
 import Icon from './Icon'
@@ -38,7 +38,7 @@ const deskIdx = (p: Profile, r: Room) => {
 }
 /** o andar é só do setor aberto: em cima a sala dele, cozinha e banheiro; embaixo a sala do gerente (se ele quiser), jogos e uma vaga.
  *  Pra crescer: troca uma 'vaga' por um cômodo novo de comodos.ts. */
-const ANDAR = (gerente: boolean): Kind[] => ['dept', 'cozinha', 'banheiro', gerente ? 'gerente' : 'vaga', 'jogos', 'vaga']
+const ANDAR = (gerente: boolean): Kind[] => ['dept', 'cozinha', 'banheiro', gerente ? 'gerente' : 'vaga', 'jogos', 'bingo']
 let floorSeen: unknown[] = []
 /** dá pra passar pela porta: vaga nunca, cômodos sempre, sala do setor/gerente pela regra da porta */
 const enterable = (r: Room | undefined, s: State = getState()) => !!r && r.kind !== 'vaga' && (!r.dept || canEnter(r.dept, s))
@@ -228,6 +228,13 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
         if (p) { path = p; jobs.delete(meId) }
         return setUi(jg.cassino ? { cassino: jg.cassino } : { jogo: jg.jogo ?? null })
       }
+      // salão de bingo: vai pra uma mesa e abre o bingo
+      const bg = hiddenAt(w.x, w.y) ? null : bingoAt(tx, ty)
+      if (bg) {
+        const p = findPath(meS.x, meS.y, bg.tx, bg.ty)
+        if (p) { path = p; jobs.delete(meId) }
+        return setUi({ bingo: true })
+      }
       // painel de quartos: abre o quadro de Quartos
       const pq = hiddenAt(w.x, w.y) ? null : painelAt(tx, ty), s = getState()
       if (pq && ve(s.profiles[meId], s)) return pq === 'painel-placar' ? setUi({ view: 'placar', drawer: false }) : setUi({ lousa: true })
@@ -250,7 +257,7 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
       const id = avatarAt(w.x, w.y)
       const r = canvas.getBoundingClientRect()
       const tx = Math.floor(w.x / T), ty = Math.floor(w.y / T)
-      canvas.style.cursor = id || doorAtTile(tx, ty) >= 0 || (!hiddenAt(w.x, w.y) && (painelAt(tx, ty) || jogoAt(tx, ty))) || (!hiddenAt(w.x, w.y) && deskAtTile(tx, ty)) ? 'pointer' : 'default'
+      canvas.style.cursor = id || doorAtTile(tx, ty) >= 0 || (!hiddenAt(w.x, w.y) && (painelAt(tx, ty) || jogoAt(tx, ty) || bingoAt(tx, ty))) || (!hiddenAt(w.x, w.y) && deskAtTile(tx, ty)) ? 'pointer' : 'default'
       setHover(h => (id ? { id, sx: e.clientX - r.left, sy: e.clientY - r.top } : h ? null : h))
     }
     const onLeave = () => setHover(null)

@@ -4,9 +4,9 @@ import type { Dir } from '../types'
 import type { Prop } from './vida'
 
 /** o que cada sala do andar é: o setor, a sala do gerente, os cômodos de uso comum e a sala ainda vazia */
-export type Kind = 'dept' | 'gerente' | 'cozinha' | 'jogos' | 'banheiro' | 'vaga'
+export type Kind = 'dept' | 'gerente' | 'cozinha' | 'jogos' | 'bingo' | 'banheiro' | 'vaga'
 /** cômodo que é de todo mundo do andar (sempre aberto) */
-export const COMUM = new Set<Kind>(['cozinha', 'jogos', 'banheiro'])
+export const COMUM = new Set<Kind>(['cozinha', 'jogos', 'bingo', 'banheiro'])
 
 /** lugar onde o boneco fica fazendo alguma coisa quando a pessoa está fora do app (tile da sala) */
 export interface Spot {
@@ -107,6 +107,27 @@ export const COMODOS: Record<Exclude<Kind, 'dept' | 'vaga'>, Comodo> = {
       S(19, 12, 'up', 'No blackjack', 40, 120), S(21, 12, 'up', 'No blackjack', 40, 120),
       S(12, 14, 'left', 'Pegando um café', 10, 30, false, { prop: 'caneca', icon: '☕' }), S(14, 14, 'up', 'Lanchando', 30, 90),
       S(26, 7, 'up', 'No crash', 20, 60), S(26, 10, 'up', 'Nas minas', 20, 60),
+    ],
+  },
+  bingo: {
+    nome: 'Salão de Bingo', cor: '#d6457f', top: false,
+    // palco com o globo no fundo, mesas dos dois lados; corredor do meio livre pra porta (7-8)
+    sala: () => monta('carpete', 16, 16, [
+      ['letreiro-bingo', 9, 0], ['painel-bingo', 13, 0],
+      ['tapete-bingo', 2, 4], ['palco-bingo', 5, 11],
+      ['mesa-bingo', 2, 5], ['cadeira-reuniao', 2, 6], ['cadeira-reuniao', 4, 6],
+      ['mesa-bingo', 11, 5], ['cadeira-reuniao', 11, 6], ['cadeira-reuniao', 13, 6],
+      ['mesa-bingo', 2, 8], ['cadeira-reuniao', 2, 9], ['cadeira-reuniao', 4, 9],
+      ['mesa-bingo', 11, 8], ['cadeira-reuniao', 11, 9], ['cadeira-reuniao', 13, 9],
+      ['globo-bingo', 7, 12], ['banca-cartelas', 1, 13], ['maquina-refri', 14, 13],
+      ['planta', 1, 2], ['planta', 14, 2], ['planta', 1, 11], ['planta', 14, 11], ['planta', 5, 15], ['planta', 10, 15],
+    ]),
+    spots: [
+      S(2, 6, 'up', 'Jogando bingo', 60, 200), S(4, 6, 'up', 'Jogando bingo', 60, 200),
+      S(11, 6, 'up', 'Jogando bingo', 60, 200), S(13, 6, 'up', 'Jogando bingo', 60, 200),
+      S(2, 9, 'up', 'Jogando bingo', 60, 200), S(4, 9, 'up', 'Jogando bingo', 60, 200),
+      S(11, 9, 'up', 'Jogando bingo', 60, 200), S(13, 9, 'up', 'Jogando bingo', 60, 200),
+      S(9, 12, 'left', 'Cantando as bolas', 40, 120), S(2, 14, 'up', 'Comprando cartela', 10, 30),
     ],
   },
   gerente: {

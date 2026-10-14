@@ -171,6 +171,9 @@ const BODY: Record<string, Fit> = {
     rows: ['......os', '...ooszz', '..osszzz', '.osSzzzw', '.osSzwww', '.osSzzzw', '.ossZzzz', '..ozzzzz', '...ozzzo', '...ossso', '..ohhhho', '..oooooo'],
     back: { w: 'z' },
   },
+  // ---- só no bingo ----
+  paete: { rows: ['......os', '...oolgl', '..olglgl', '.oLlglgl', '.oLglglg', '.oLlglgl', '.ossLglg', ...LEGS], back: { g: 'l' } },
+  smoking: { rows: ['......ow', '...ookwT', '..okkkwk', '.oKkkkwk', '.oKkkkwk', '.oKkkkkk', '.ossKkkk', ...LEGS], back: { w: 'k', T: 'k' } },
   chef: { rows: ['......ow', '...oowww', '..owwwww', '.oWwwkww', '.oWwwwww', '.oWwwkww', '.ossWwww', ...LEGS], back: { k: 'w' } },
 }
 
@@ -194,6 +197,7 @@ const HATS: Record<string, Art> = {
     yo: -3,
     rows: ['...zzzzoyyyy....', '.......oo.......', '....oooooooo....', '..ooAAAAAAAAoo..', '.oAAAAAAAAAAAAo.', 'oBBBBBBBBBBBBBBo', 'oooooooooooooooo'],
   },
+  cantor: { yo: -3, rows: ['...ooooo', '...olglg', '...oglgl', '...ollll', 'oLLLLLLL', 'oooooooo'] },
   coroa: { yo: -2, rows: ['..o....o', '..ogo.og', '..oggogg', '..oggzgg', '..oGGGGG', '..oooooo'] },
 }
 
@@ -209,6 +213,7 @@ const FACE: Record<string, Art> = {
   barba: { yo: 7, rows: ['or......', 'orr.....', 'orrRrr..', '.orrrrrr', '..orRrrr', '....oooo'] },
   pirata: { yo: 2, rows: ['.............kk.', '...........kk...', '.........kk.....', 'kkkkkkkkk.......', '....kKk.........', '....kkk.........', '.....k..........'] },
   sardas: { yo: 8, rows: ['..f.f...', '...f....'] },
+  'oculos-estrela': { yo: 4, rows: ['....l...', '...lll.l', '..lllll.', '...lll..', '...l.l..'] },
   mascara: { yo: 5, rows: ['.kkkkkkk', 'kkkkw.wk', 'kkkkw.wk', '.kkkkkk.'] },
 }
 
