@@ -1,16 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
-import { cancelarPedido, estudioReal, lerChat, lerPedidos, lerSinal, mandarChat, pedir, type ChatMsg, type Pedido, type Sinal } from '../data/estudio'
+import { cancelarPedido, encaixar, estudioReal, lerAgenda, lerCanais, lerChat, lerSinal, mandarChat, mudarPedido, planejar, salvarCanal, type Canal, type ChatMsg, type Pedido, type Sinal } from '../data/estudio'
 import { notify, setUi, useStore } from '../store'
 import { Bell } from './Avisos'
 import { Ph } from './Icon'
 import { rankOf } from '../game/ranks'
 import '../estudio.css'
 
-const PILARES = [['', 'Pilar: o Estúdio escolhe'], ['rh', 'RH: integração e treinamento'], ['estrutura', 'Estrutura e capacidade'], ['prova', 'Prova e confiança'], ['experiencia', 'Experiência completa'], ['logistica', 'Logística sem dor']] as const
-const ESTADO: Record<Pedido['estado'], string> = { fila: 'Na fila', gerando: 'Gerando', pronto: 'Pronto', erro: 'Deu erro' }
-/** moldes que o adm cria no Estúdio; a coordenação só escolhe entre os que a VPS anuncia no sinal */
+const ESTADO: Record<Pedido['estado'], string> = { fila: 'Na fila', gerando: 'Gerando', pronto: 'Pronto', erro: 'Deu erro', pulado: 'Pulado' }
+const SEMANA = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb']
+/** moldes que o adm cria no Estúdio (a VPS anuncia os prontos no sinal) */
 const MOLDE: Record<string, string> = { 'convention-linkedin': 'Convention · LinkedIn', 'meudestino-guia': 'MeuDestino · guia' }
 const nomeMolde = (m: string) => MOLDE[m] ?? m
+const dia = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' }).replace('.', '')
 const hora = (iso: string) => new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }).replace('.', '')
 
 /** liga a cada poucos segundos enquanto a tela está aberta e visível */
@@ -24,17 +25,20 @@ function usePuxar<T>(ler: () => Promise<T>, ms: number): [T | null, () => void, 
   return [v, puxar, erro]
 }
 
-/** Estúdio da VPS dentro do Turmeo. Adm: conversa (o Claude roda lá, cria moldes) + pedidos. Coordenação: só pede pelos moldes prontos e abre o que ficou pronto. */
+/** Estúdio da VPS dentro do Turmeo. Cada canal (rede/marca) segue seu calendário sozinho; a coordenação encaixa publicação no meio
+ *  e abre o que ficou pronto. Adm: conversa (o Claude roda lá, cria moldes) e ajusta os canais. */
 export default function Estudio() {
   const adm = useStore(s => !!(s.meId && s.profiles[s.meId]?.is_admin))
   const coord = useStore(s => !!s.meId && rankOf(s.profiles[s.meId]) >= 2)
   const [msgs, puxarChat, erroChat] = usePuxar(() => adm ? lerChat() : Promise.resolve([] as ChatMsg[]), 2500)
-  const [pedidos, puxarPedidos] = usePuxar(lerPedidos, 4000)
+  const [canais, puxarCanais] = usePuxar(lerCanais, 60000)
+  const [escolha, setEscolha] = useState('')
+  const canal = canais?.find(c => c.id === escolha) ?? canais?.[0] ?? null
   const [sinal] = usePuxar<Sinal | null>(lerSinal, 15000)
   const [agora, setAgora] = useState(() => Date.now())
   useEffect(() => { const i = setInterval(() => setAgora(Date.now()), 10000); return () => clearInterval(i) }, [])
   const online = !!sinal && agora - new Date(sinal.visto).getTime() < 90000
-  if (!adm && !coord) return <div className="quadro"><div className="qbar"><b className="grow">Estúdio</b><Bell /></div><p className="es-vazio">O Estúdio é da coordenação. Peça um carrossel pra sua coordenação.</p></div>
+  if (!adm && !coord) return <div className="quadro"><div className="qbar"><b className="grow">Estúdio</b><Bell /></div><p className="es-vazio">O Estúdio é da coordenação. Peça uma publicação pra sua coordenação.</p></div>
   return (
     <div className="quadro es">
       <div className="qbar">
@@ -44,9 +48,19 @@ export default function Estudio() {
         </span>
         <Bell />
       </div>
-      <div className={'es-grade' + (adm ? '' : ' so-pedidos')}>
+      <div className={'es-grade' + (adm ? '' : ' so-canal')}>
         {adm && <Conversa msgs={msgs ?? []} erro={erroChat} puxar={puxarChat} />}
-        <Pedidos lista={pedidos ?? []} puxar={puxarPedidos} moldes={sinal?.info.moldes?.length ? sinal.info.moldes : ['convention-linkedin']} adm={adm} />
+        <section className="es-canal tbox">
+          <nav className="es-canais">
+            {(canais ?? []).map(c => (
+              <button key={c.id} className={'es-aba' + (c.id === canal?.id ? ' on' : '')} onClick={() => setEscolha(c.id)}>
+                {c.nome}<small>{c.rede === 'linkedin' ? 'LinkedIn' : c.rede}{!c.ativo && ' · parado'}</small>
+              </button>
+            ))}
+          </nav>
+          {canal ? <CanalView key={canal.id} canal={canal} adm={adm} moldes={sinal?.info.moldes ?? []} recarregar={puxarCanais} />
+            : <p className="es-vazio">{canais ? 'Nenhum canal ainda.' : 'Carregando…'}</p>}
+        </section>
       </div>
     </div>
   )
@@ -88,48 +102,122 @@ function Conversa({ msgs, erro, puxar }: { msgs: ChatMsg[]; erro: string; puxar:
   )
 }
 
-function Pedidos({ lista, puxar, moldes, adm }: { lista: Pedido[]; puxar: () => void; moldes: string[]; adm: boolean }) {
-  const [escolha, setMolde] = useState('')
-  const molde = moldes.includes(escolha) ? escolha : moldes[0]
+/** um canal: ritmo, publicação no meio e o calendário (planejado + encaixado) */
+function CanalView({ canal, adm, moldes, recarregar }: { canal: Canal; adm: boolean; moldes: string[]; recarregar: () => void }) {
+  const [agenda, puxar] = usePuxar(() => lerAgenda(canal.id), 5000)
+  const meId = useStore(s => s.meId)
+  const nomes = useStore(s => s.profiles)
+  const [ajustar, setAjustar] = useState(false)
+  const pilarNome = (id: string | null) => canal.pilares.find(p => p.id === id)?.nome ?? id ?? ''
+  const ritmo = canal.dias.length ? `${canal.dias.map(d => SEMANA[d]).join(', ')} · ${canal.hora.slice(0, 5)} · gera ${canal.antecedencia} dia${canal.antecedencia === 1 ? '' : 's'} antes` : 'sem dias definidos'
+  const acao = (f: () => Promise<unknown>) => f().then(puxar, e => notify((e as Error).message))
+  return (
+    <>
+      <header>
+        <div className="grow">
+          <b>{canal.nome}</b>
+          <small className="muted es-ritmo">{canal.ativo ? ritmo : canal.molde ? 'Parado: o calendário não anda' : 'Sem molde ainda: o adm cria pela conversa'}{canal.molde && ' · ' + nomeMolde(canal.molde)}</small>
+        </div>
+        {adm && <button className="tlink" onClick={() => setAjustar(!ajustar)}>{ajustar ? 'Fechar' : 'Ajustar canal'}</button>}
+      </header>
+      {adm && ajustar && <Ajustes canal={canal} moldes={moldes} pronto={() => { setAjustar(false); recarregar(); puxar() }} />}
+      {canal.molde && <Encaixar canal={canal} puxar={puxar} />}
+      <ul className="es-lista">
+        {agenda && !agenda.length && <li className="es-vazio">{canal.ativo ? 'O calendário aparece aqui assim que o Estúdio planejar.' : 'Nada no calendário.'}</li>}
+        {(agenda ?? []).map(p => {
+          const agendado = p.estado === 'fila' && !!p.gerar_em && new Date(p.gerar_em).getTime() > Date.now()
+          const meu = p.criado_por === meId
+          return (
+            <li key={p.id} className={'es-ped ' + (agendado ? 'agendado' : p.estado)}>
+              <span className="es-dia">{p.quando ? dia(p.quando) : '—'}</span>
+              <div className="grow">
+                <Assunto p={p} editar={adm && p.estado === 'fila'} salvar={texto => acao(() => mudarPedido(p.id, { texto }))} />
+                <small>
+                  {p.origem === 'extra' ? 'No meio' + (nomes[p.criado_por]?.name ? ' · ' + nomes[p.criado_por].name : '') : 'Calendário'}
+                  {p.pilar && ' · ' + pilarNome(p.pilar)}
+                  {agendado && p.gerar_em && ' · gera ' + hora(p.gerar_em)}
+                  {p.estado === 'gerando' && p.passo && ' · ' + p.passo}
+                </small>
+                {p.estado === 'erro' && p.erro && <small className="li-erro">{p.erro}</small>}
+              </div>
+              <span className="es-est">{agendado ? 'Agendado' : ESTADO[p.estado]}</span>
+              {p.estado === 'pronto' && p.task_id && <button className="tlink" onClick={() => setUi({ task: p.task_id! })}>Abrir</button>}
+              {adm && agendado && <button className="tlink" onClick={() => acao(() => mudarPedido(p.id, { gerar_em: new Date().toISOString() }))} title="Gera já, sem esperar a antecedência">Gerar já</button>}
+              {adm && p.estado === 'erro' && <button className="tlink" onClick={() => acao(() => mudarPedido(p.id, { estado: 'fila', gerar_em: new Date().toISOString() }))}>Tentar de novo</button>}
+              {adm && p.origem === 'calendario' && p.estado === 'fila' && <button className="tlink" onClick={() => acao(() => mudarPedido(p.id, { estado: 'pulado' }))} title="Não publica nesse dia">Pular</button>}
+              {adm && p.estado === 'pulado' && <button className="tlink" onClick={() => acao(() => mudarPedido(p.id, { estado: 'fila' }))}>Voltar</button>}
+              {p.origem !== 'calendario' && (adm || meu) && (p.estado === 'fila' || p.estado === 'erro') && <button className="tlink" onClick={() => acao(() => cancelarPedido(p.id))} title="Tira do calendário">Tirar</button>}
+            </li>
+          )
+        })}
+      </ul>
+    </>
+  )
+}
+
+/** assunto do item; o adm troca o tema enquanto ainda não foi gerado */
+function Assunto({ p, editar, salvar }: { p: Pedido; editar: boolean; salvar: (t: string) => void }) {
+  const [txt, setTxt] = useState<string | null>(null)
+  if (txt === null) return <b className={editar ? 'es-editavel' : ''} title={editar ? 'Clique pra trocar o assunto' : undefined} onClick={() => editar && setTxt(p.texto)}>{p.texto}</b>
+  const ok = () => { const t = txt.trim(); if (t.length >= 3 && t !== p.texto) salvar(t); setTxt(null) }
+  return <input className="es-assunto" autoFocus value={txt} maxLength={2000} onChange={e => setTxt(e.target.value)} onBlur={ok}
+    onKeyDown={e => { if (e.key === 'Enter') ok(); if (e.key === 'Escape') setTxt(null) }} />
+}
+
+function Encaixar({ canal, puxar }: { canal: Canal; puxar: () => void }) {
   const [texto, setTexto] = useState('')
   const [pilar, setPilar] = useState('')
-  const [dia, setDia] = useState('')
+  const [quando, setQuando] = useState('')
   const [busy, setBusy] = useState(false)
+  const ok = texto.trim().length >= 3 && !!quando && !busy
   const mandar = async () => {
-    if (texto.trim().length < 3 || busy) return
+    if (!ok) return
     setBusy(true)
     try {
-      await pedir({ molde, texto: texto.trim(), pilar: molde === 'convention-linkedin' ? pilar || null : null, quando: dia ? new Date(dia + 'T10:00:00-03:00').toISOString() : null })
-      setTexto(''); setDia(''); puxar()
+      await encaixar({ canal: canal.id, texto: texto.trim(), pilar: pilar || null, quando: new Date(`${quando}T${canal.hora.slice(0, 5)}:00-03:00`).toISOString() })
+      setTexto(''); setQuando(''); puxar()
     } catch (e) { notify((e as Error).message) } finally { setBusy(false) }
   }
   return (
-    <section className="es-pedidos tbox">
-      <header><b className="grow">Pedir carrossel</b>{!adm && <small className="muted">Os moldes são criados pelo adm; escolha um e diga o assunto.</small>}</header>
-      <div className="es-form">
-        <textarea value={texto} onChange={e => setTexto(e.target.value)} maxLength={2000} rows={2} placeholder="Assunto (ex.: integração de novos funcionários sem sair da cidade)" />
-        <div className="es-linha">
-          <select value={molde} onChange={e => setMolde(e.target.value)} title="Molde">{moldes.map(m => <option key={m} value={m}>{nomeMolde(m)}</option>)}</select>
-          {molde === 'convention-linkedin' && <select value={pilar} onChange={e => setPilar(e.target.value)}>{PILARES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>}
-          <input type="date" value={dia} onChange={e => setDia(e.target.value)} title="Dia de publicar (opcional)" />
-          <button className="tbtn acc" disabled={texto.trim().length < 3 || busy} onClick={mandar}>Pedir</button>
-        </div>
+    <div className="es-form">
+      <textarea value={texto} onChange={e => setTexto(e.target.value)} maxLength={2000} rows={2} placeholder="Publicação no meio do calendário: diga o assunto (ex.: treinamento de brigada desta semana)" />
+      <div className="es-linha">
+        {canal.pilares.length > 0 && <select value={pilar} onChange={e => setPilar(e.target.value)}><option value="">Pilar: o Estúdio escolhe</option>{canal.pilares.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}</select>}
+        <input type="date" value={quando} min={new Date().toISOString().slice(0, 10)} onChange={e => setQuando(e.target.value)} title="Dia de publicar" />
+        <button className="tbtn acc" disabled={!ok} onClick={mandar}>Agendar</button>
       </div>
-      <ul className="es-lista">
-        {!lista.length && <li className="es-vazio">Nenhum pedido ainda. O que ficar pronto vira tarefa em aprovação no quadro.</li>}
-        {lista.map(p => (
-          <li key={p.id} className={'es-ped ' + p.estado}>
-            <span className="es-est">{ESTADO[p.estado]}</span>
-            <div className="grow">
-              <b>{p.texto}</b>
-              <small>{nomeMolde(p.molde)} · {p.pilar ? p.pilar + ' · ' : ''}{p.quando ? 'publicar ' + hora(p.quando) : 'sem data'}{p.estado === 'gerando' && p.passo ? ' · ' + p.passo : ''}</small>
-              {p.estado === 'erro' && p.erro && <small className="li-erro">{p.erro}</small>}
-            </div>
-            {p.estado === 'pronto' && p.task_id && <button className="tlink" onClick={() => setUi({ task: p.task_id! })}>Abrir</button>}
-            {(p.estado === 'fila' || p.estado === 'erro') && <button className="tlink" onClick={() => cancelarPedido(p.id).then(puxar, e => notify(e.message))} title="Tirar da fila">Tirar</button>}
-          </li>
-        ))}
-      </ul>
-    </section>
+      <small className="muted">O Estúdio gera {canal.antecedencia} dia{canal.antecedencia === 1 ? '' : 's'} antes do dia escolhido (ou na hora, se estiver perto) e manda pra aprovação.</small>
+    </div>
+  )
+}
+
+/** só adm: molde, dias, hora e antecedência; ao salvar o calendário é refeito */
+function Ajustes({ canal, moldes, pronto }: { canal: Canal; moldes: string[]; pronto: () => void }) {
+  const [f, setF] = useState({ ativo: canal.ativo, molde: canal.molde ?? '', dias: canal.dias, hora: canal.hora.slice(0, 5), antecedencia: canal.antecedencia })
+  const [busy, setBusy] = useState(false)
+  const lista = [...new Set([...moldes, ...(canal.molde ? [canal.molde] : [])])]
+  const salvar = async () => {
+    setBusy(true)
+    try {
+      await salvarCanal(canal.id, { ativo: f.ativo && !!f.molde, molde: f.molde || null, dias: [...f.dias].sort(), hora: f.hora, antecedencia: f.antecedencia })
+      const n = await planejar()
+      notify(n ? `Calendário atualizado: ${n} ${n === 1 ? 'publicação nova' : 'publicações novas'}.` : 'Canal salvo.')
+      pronto()
+    } catch (e) { notify((e as Error).message) } finally { setBusy(false) }
+  }
+  return (
+    <div className="es-ajustes">
+      <label className="es-check"><input type="checkbox" checked={f.ativo} onChange={e => setF({ ...f, ativo: e.target.checked })} /> Seguir o calendário</label>
+      <div className="es-linha">
+        <select value={f.molde} onChange={e => setF({ ...f, molde: e.target.value })} title="Molde"><option value="">Sem molde</option>{lista.map(m => <option key={m} value={m}>{nomeMolde(m)}</option>)}</select>
+        <input type="time" value={f.hora} onChange={e => setF({ ...f, hora: e.target.value })} title="Hora de publicar" />
+        <label className="es-num">gera <input type="number" min={0} max={30} value={f.antecedencia} onChange={e => setF({ ...f, antecedencia: Math.max(0, Math.min(30, +e.target.value || 0)) })} /> dias antes</label>
+      </div>
+      <div className="es-dias">
+        {SEMANA.map((s, i) => <button key={s} className={'es-d' + (f.dias.includes(i) ? ' on' : '')} onClick={() => setF({ ...f, dias: f.dias.includes(i) ? f.dias.filter(x => x !== i) : [...f.dias, i] })}>{s}</button>)}
+        <button className="tbtn acc" disabled={busy} onClick={salvar}>Salvar</button>
+      </div>
+      {!f.molde && <small className="muted">Sem molde o canal não gera. Crie o molde pela conversa e escolha aqui.</small>}
+    </div>
   )
 }

@@ -1,6 +1,6 @@
-/* Estúdio (VPS) dentro do Turmeo: conversa + pedidos. Prefixo es- */
+/* Estúdio (VPS) dentro do Turmeo: conversa + canais. Prefixo es- */
 .es-grade { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 16px; padding: 16px 32px 32px; flex: 1; min-height: 0; }
-.es-grade.so-pedidos { grid-template-columns: minmax(0, 760px); justify-content: center; }
+.es-grade.so-canal { grid-template-columns: minmax(0, 760px); justify-content: center; }
 .es .tbox header { display: flex; align-items: center; gap: 8px; }
 .es-sinal { display: inline-flex; align-items: center; gap: 7px; height: 30px; padding: 0 12px; border-radius: 99px; background: var(--areia-2); color: var(--muted); font-size: 13px; font-weight: 700; }
 .es-sinal i { width: 8px; height: 8px; border-radius: 50%; background: #B9B2A3; }
@@ -22,7 +22,29 @@
 .es-escrever textarea, .es-form textarea { flex: 1; resize: vertical; min-height: 44px; max-height: 200px; padding: 10px 14px; border: 1px solid var(--line); border-radius: 14px; font: inherit; font-size: 14px; background: #fff; }
 .es-escrever .tbtn { height: 44px; width: 44px; padding: 0; justify-content: center; }
 
-.es-pedidos { align-self: start; }
+.es-canal { align-self: start; }
+.es-canais { display: flex; gap: 6px; flex-wrap: wrap; }
+.es-aba { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; padding: 8px 14px; border: 1px solid var(--line); border-radius: 12px; background: #fff; font: inherit; font-size: 14px; font-weight: 700; color: var(--tinta); cursor: pointer; }
+.es-aba small { font-size: 11px; font-weight: 600; color: var(--muted); }
+.es-aba.on { background: var(--acc); border-color: var(--acc); color: var(--creme); }
+.es-aba.on small { color: inherit; opacity: .8; }
+.es-canal header .grow { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.es-ritmo { font-size: 12px; }
+.es-dia { flex: none; width: 74px; font-size: 12px; font-weight: 800; color: var(--tinta); padding-top: 4px; text-transform: capitalize; }
+.es-editavel { cursor: text; border-radius: 6px; }
+.es-editavel:hover { background: #fff; }
+.es-assunto { height: 32px; padding: 0 8px; border: 1px solid var(--line); border-radius: 8px; font: inherit; font-size: 14px; width: 100%; box-sizing: border-box; }
+.es-ped.agendado .es-est { background: #E8EEFB; color: var(--acc); }
+.es-ped.pulado { opacity: .55; }
+.es-ped.pulado b { text-decoration: line-through; }
+.es-ajustes { display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 12px; background: var(--areia-3); }
+.es-check { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 700; }
+.es-num { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
+.es-num input { width: 56px; }
+.es-dias { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.es-d { height: 34px; min-width: 44px; padding: 0 10px; border: 1px solid var(--line); border-radius: 99px; background: #fff; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+.es-d.on { background: var(--acc); border-color: var(--acc); color: var(--creme); }
+.es-dias .tbtn { margin-left: auto; }
 .es-form { display: flex; flex-direction: column; gap: 8px; }
 .es-form textarea { width: 100%; box-sizing: border-box; }
 .es-linha { display: flex; gap: 8px; flex-wrap: wrap; }
