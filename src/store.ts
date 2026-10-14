@@ -11,12 +11,13 @@ import type { Equipe, Snapshot, Group, RowTable, Rows, Stage, StageKind, Sticker
 import { ROW_TABLES } from './types'
 import type { Backend } from './types'
 import type { JogoCassino, Rodada } from './cassino/regras'
+import type { Bolao } from './cassino/bolao'
 
 export type Phase = 'loading' | 'auth' | 'creator' | 'office'
 export type Tab = 'mesa' | 'aprovar' | 'avisos' | 'equipe' | 'chat' | 'geral'
 /** quadro = trabalho do dia a dia (estilo Trello); escritório = visualização em pixel */
 export type View = 'quadro' | 'escritorio' | 'agenda' | 'metas' | 'fluxos' | 'inicio' | 'arquivos' | 'loja' | 'vendas' | 'placar' | 'kit' | 'plano' | 'redes'
-export interface Go { view?: View; tab?: Tab; viewing?: string; channel?: string; task?: string }
+export interface Go { view?: View; tab?: Tab; viewing?: string; channel?: string; task?: string; cassino?: 'bolao' }
 export type NoticeKind = 'data' | 'plano' | 'prazo' | 'lembrete' | 'pedido' | 'colab' | 'aprov' | 'msg' | 'adesivo' | 'loja' | 'time'
 export interface Notice { id: string; text: string; at: number; from?: string; go?: Go; kind?: NoticeKind }
 
@@ -62,7 +63,9 @@ export interface State {
   /** jogo aberto na sala de jogos */
   jogo: string | null
   /** cassino dos cafezinhos aberto */
-  cassino: boolean | JogoCassino
+  cassino: boolean | JogoCassino | 'bolao'
+  /** bolão da semana (pote, meus bilhetes, sorteios) */
+  bolao: Bolao | null
   /** sino de avisos aberto */
   bellOpen: boolean
   /** quadro filtrado só no que espera minha aprovação */
@@ -83,7 +86,7 @@ export interface State {
 const initial: State = {
   phase: 'loading', meId: null, accountName: '', error: '', profiles: {}, tasks: {}, messages: [], notes: [], projects: {}, rows: { events: {}, goals: {}, stickers: {}, flows: {}, stages: {}, groups: {}, rooms: {}, carpenters: {}, depts: {}, brand: {}, quartos: {}, vendas: {}, ajustes: {}, metas_venda: {}, vendas_cfg: {}, campanhas: {}, caderno: {}, jogos_pontos: {}, plano_meses: {}, plano_nucleos: {}, plano_acoes: {}, plano_resp: {}, equipes: {}, relatorios: {}, redes: {}, postagens: {} }, online: new Set(),
   tab: 'mesa', viewing: null, channel: 'geral', reads: {}, requestTo: null, task: null, editing: false, notices: [], pipOpen: false, view: 'quadro' as View, wallet: null, drawer: false,
-  project: '', projectEdit: null, aiOpen: false, chatOpen: false, lousa: false, jogo: null, cassino: false, bellOpen: false, qApprove: false, flow: null, sheet: false, stickTo: null, sala: DEPT0, here: DEPT0,
+  project: '', projectEdit: null, aiOpen: false, chatOpen: false, lousa: false, jogo: null, cassino: false, bolao: null, bellOpen: false, qApprove: false, flow: null, sheet: false, stickTo: null, sala: DEPT0, here: DEPT0,
 }
 
 let state = initial
@@ -415,7 +418,7 @@ export async function enter(uid: string) {
   set({ messages: snap.messages.filter(m => isMyChannel(m.channel, uid)) })
   clearInterval(remindTimer)
   clearInterval(coffeeTimer)
-  void claim()
+  void claim().then(() => checarBolao())
   coffeeTimer = window.setInterval(() => void claim(), 10 * 60000)
   checkReminders()
   remindTimer = window.setInterval(checkReminders, 20000)
@@ -1052,6 +1055,49 @@ async function claim() {
 export async function buyItem(id: string) {
   await backend.buyItem(id)
   await refreshWallet()
+}
+
+// ---------- bolão ----------
+let bolaoTimer = 0
+const VISTO = 'ev:bolao:visto'
+const lsGet = (k: string) => { try { return localStorage.getItem(k) ?? '' } catch { return '' } }
+const lsSet = (k: string, v: string) => { try { localStorage.setItem(k, v) } catch { /* sem storage */ } }
+export const primeiroNome = (id: string | null) => !id ? 'Ninguém' : id === state.meId ? 'Você' : state.profiles[id]?.name.split(' ')[0] ?? 'Alguém'
+
+function pegaBolao(b: Bolao) {
+  set({ bolao: b })
+  if (state.wallet) set({ wallet: { ...state.wallet, latinhas: b.latinhas } })
+}
+
+/** busca o bolão (o servidor sorteia se a sexta 17h passou) e anuncia o sorteio que a pessoa ainda não viu */
+export async function checarBolao() {
+  if (!state.meId) return
+  try {
+    const b = await backend.bolaoEstado()
+    pegaBolao(b)
+    const u = b.historico[0]
+    if (u && lsGet(VISTO) !== u.fim) {
+      lsSet(VISTO, u.fim)
+      notify(u.vencedor
+        ? `🍀 ${primeiroNome(u.vencedor)} ganhou o bolão: ${u.pote} cafezinhos + ${u.latinhas} latinhas ⚡`
+        : `🍀 Ninguém concorreu ao bolão; os ${u.pote} cafezinhos acumularam pra esta semana.`, { kind: 'loja', go: { cassino: 'bolao' } })
+      if (u.vencedor === state.meId) await refreshWallet()
+    }
+    clearTimeout(bolaoTimer)
+    const ms = Date.parse(b.fim) - Date.now() + 5000
+    if (ms < 2 ** 31 - 1) bolaoTimer = window.setTimeout(() => void checarBolao(), ms)
+  } catch { /* tenta de novo quando abrir o bolão */ }
+}
+
+export async function comprarBilhete() {
+  pegaBolao(await backend.bolaoComprar())
+  await refreshWallet()
+}
+
+export async function trocarLatinha() {
+  await backend.trocarLatinha()
+  await refreshWallet()
+  await checarBolao()
 }
 
 /** cassino: a jogada vai ao servidor e o saldo volta junto com o resultado */

@@ -3,7 +3,10 @@ import type { GearSlot } from '../types'
 /** Almoxarifado: tudo que se compra com cafezinhos. id = 'categoria:arte' (o servidor guarda o preço pelo id). */
 export type Slot = 'cabelo' | 'roupa' | GearSlot
 export type Tier = 1 | 2 | 3 | 4
-export interface Item { id: string; slot: Slot; art: string; name: string; tier: Tier; price: number; tint?: string }
+export interface Item { id: string; slot: Slot; art: string; name: string; tier: Tier; price: number; tint?: string; bolao?: boolean }
+
+/** móveis raros: não se compram, saem só para quem ganha o bolão (ordem = ordem do SQL) */
+export const RAROS_BOLAO = ['enfeite:trevo', 'chao:pote-ouro', 'cadeira:trono-sortudo']
 
 export const PRICE: Record<Tier, number> = { 1: 30, 2: 60, 3: 120, 4: 250 }
 export const TIER_NAME: Record<Tier, string> = { 1: 'Do estoque', 2: 'Caprichado', 3: 'Raro', 4: 'Lendário' }
@@ -59,7 +62,7 @@ const RAW: Record<Slot, Row[]> = {
     ['banquinho', 'Banquinho', 1], ['rosa', 'Cadeira rosa', 1], ['verde', 'Cadeira verde', 1], ['amarela', 'Cadeira amarela', 1],
     ['bola', 'Bola de pilates', 2], ['poltrona', 'Poltrona do vô', 2],
     ['gamer-vermelha', 'Gamer vermelha', 3], ['gamer-azul', 'Gamer azul', 3], ['executiva', 'Executiva de couro', 3],
-    ['trono', 'Trono', 4],
+    ['trono', 'Trono', 4], ['trono-sortudo', 'Trono do sortudo', 4],
   ],
   notebook: [
     ['preto', 'Preto', 1], ['rosa', 'Rosa', 1], ['azul', 'Azul', 1],
@@ -71,13 +74,13 @@ const RAW: Record<Slot, Row[]> = {
     ['cacto', 'Cacto', 1], ['suculenta', 'Suculenta', 1], ['caneca', 'Caneca Village', 1], ['retrato', 'Porta-retrato', 1], ['pato', 'Patinho de borracha', 1], ['abacaxi', 'Abacaxi', 1], ['livros', 'Pilha de livros', 1], ['cubo', 'Cubo mágico', 1], ['flores', 'Vaso de flores', 1],
     ['cafe', 'Xícara fumegando', 2], ['luminaria', 'Luminária', 2], ['globo', 'Globo', 2], ['coqueiro', 'Coqueirinho', 2], ['radio', 'Radinho', 2], ['ampulheta', 'Ampulheta', 2], ['dino', 'Dinossauro', 2], ['porquinho', 'Cofrinho', 2],
     ['trofeu', 'Troféu', 3], ['aquario', 'Aquário', 3], ['lava', 'Luminária de lava', 3], ['bonsai', 'Bonsai', 3],
-    ['gato', 'Gato dormindo', 4],
+    ['gato', 'Gato dormindo', 4], ['trevo', 'Trevo dourado', 4],
   ],
   chao: [
     ['planta', 'Planta grande', 1], ['galao', 'Galão de água', 1], ['skate', 'Skate', 1],
     ['ventilador', 'Ventilador', 2], ['basquete', 'Lixeira de basquete', 2], ['boia', 'Boia de piscina', 2],
     ['frigobar', 'Frigobar', 3], ['guardasol', 'Guarda-sol', 3], ['violao', 'Violão', 3],
-    ['cachorro', 'Cachorro do escritório', 4],
+    ['cachorro', 'Cachorro do escritório', 4], ['pote-ouro', 'Pote de ouro', 4],
   ],
   animacao: [
     ['folhas', 'Folhinhas', 1], ['bolhas', 'Bolhas de sabão', 1], ['vapor', 'Vapor de café', 1],
@@ -93,7 +96,7 @@ const RAW: Record<Slot, Row[]> = {
 }
 
 export const ITEMS: Item[] = (Object.keys(RAW) as Slot[]).flatMap(slot =>
-  RAW[slot].map(([art, name, tier, tint]) => ({ id: `${slot}:${art}`, slot, art, name, tier, price: PRICE[tier], tint })))
+  RAW[slot].map(([art, name, tier, tint]) => ({ id: `${slot}:${art}`, slot, art, name, tier, price: PRICE[tier], tint, bolao: RAROS_BOLAO.includes(`${slot}:${art}`) || undefined })))
 export const ITEM: Record<string, Item> = Object.fromEntries(ITEMS.map(i => [i.id, i]))
 
 /** arte base de variações de cor (bone-azul → bone) */

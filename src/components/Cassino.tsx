@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import Bolao from './Bolao'
 import { apostar, refreshWallet, useStore } from '../store'
 import type { Backend } from '../types'
 import { DOIS, FACE, MAX, MIN, NAIPE, RODA, SIMBOLOS, TRES, corDe, type JogoCassino, type Rodada, type TipoRoleta } from '../cassino/regras'
@@ -243,8 +244,8 @@ function Minas({ aposta, busy, jogada, fim, trava }: P) {
 
 const TELAS = { caca: Caca, roleta: Roleta, blackjack: Blackjack, crash: Crash, minas: Minas }
 
-export default function Cassino({ onClose, inicial }: { onClose: () => void; inicial?: JogoCassino }) {
-  const [jogo, setJogo] = useState<JogoCassino>(inicial ?? 'caca')
+export default function Cassino({ onClose, inicial }: { onClose: () => void; inicial?: JogoCassino | 'bolao' }) {
+  const [jogo, setJogo] = useState<JogoCassino | 'bolao'>(inicial ?? 'caca')
   const [aposta, setAposta] = useState(5)
   const [busy, setBusy] = useState(false)
   const [travado, setTravado] = useState(false)
@@ -253,8 +254,8 @@ export default function Cassino({ onClose, inicial }: { onClose: () => void; ini
   const [hist, setHist] = useState<Rodada[]>([])
   const wallet = useStore(s => s.wallet)
   const saldo = segura ?? wallet?.balance ?? 0
-  const info = JOGOS.find(j => j.id === jogo)!
-  const Tela = TELAS[jogo]
+  const info = JOGOS.find(j => j.id === jogo)
+  const Tela = jogo === 'bolao' ? null : TELAS[jogo]
 
   useEffect(() => { void refreshWallet() }, [])
   useEffect(() => {
@@ -274,7 +275,7 @@ export default function Cassino({ onClose, inicial }: { onClose: () => void; ini
     finally { setBusy(false) }
   }
   const fim = (r: Rodada) => { setSegura(null); setHist(h => [r, ...h.filter(x => x.id !== r.id)].slice(0, 8)) }
-  const troca = (j: JogoCassino) => { if (!travado) { setJogo(j); setErro(''); setSegura(null) } }
+  const troca = (j: JogoCassino | 'bolao') => { if (!travado) { setJogo(j); setErro(''); setSegura(null) } }
   const muda = (v: number) => setAposta(Math.max(MIN, Math.min(MAX, Math.round(v))))
 
   return (
@@ -283,12 +284,14 @@ export default function Cassino({ onClose, inicial }: { onClose: () => void; ini
         <div className="jg-bar">
           <div className="jg-tabs" role="tablist">
             {JOGOS.map(j => <button key={j.id} role="tab" aria-selected={j.id === jogo} className={j.id === jogo ? 'on' : ''} disabled={travado && j.id !== jogo} onClick={() => troca(j.id)}>{j.nome}</button>)}
+            <button role="tab" aria-selected={jogo === 'bolao'} className={'bl-tab' + (jogo === 'bolao' ? ' on' : '')} disabled={travado} onClick={() => troca('bolao')}>🍀 Bolão</button>
           </div>
           <span className="grow" />
           <span className="cs-saldo"><Ph n="coffee" size={16} fill /> <b>{wallet ? saldo : '…'}</b></span>
+          <span className="cs-saldo lata" title="Latinhas">⚡ <b>{wallet ? wallet.latinhas : '…'}</b></span>
           <button className="btn ghost sm" onClick={onClose} disabled={travado} aria-label="Fechar"><Ph n="x" size={18} /></button>
         </div>
-        <div className="jg-body cs-body">
+        {!Tela || !info ? <div className="jg-body bl-body"><Bolao /></div> : <div className="jg-body cs-body">
           <div className="cs-play">
             <Tela key={jogo} aposta={aposta} busy={busy} jogada={jogada} fim={fim} trava={setTravado} saldo={saldo} />
             {erro && <p className="cs-erro">{erro}</p>}
@@ -314,7 +317,7 @@ export default function Cassino({ onClose, inicial }: { onClose: () => void; ini
             </div>}
             <small className="jg-note">Só diversão: cafezinho não vale dinheiro. Aposta de {MIN} a {MAX}; a casa fica com cerca de 3%.</small>
           </aside>
-        </div>
+        </div>}
       </section>
     </Fundo>
   )

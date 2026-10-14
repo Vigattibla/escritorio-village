@@ -73,16 +73,17 @@ const when = (iso: string) => {
 }
 
 function why(l: CoffeeLine, goalTitle: (id: string) => string | undefined) {
-  if (l.reason === 'compra') return `Comprou ${itemName(l.ref)}`
+  if (l.reason === 'compra') return l.amount === 0 ? `Ganhou ${itemName(l.ref)} no bolão` : `Comprou ${itemName(l.ref)}`
   if (l.reason === 'dia') return 'Bateu o ponto'
   if (l.reason === 'boasvindas') return 'Boas-vindas ao escritório'
-  if (l.reason === 'aposta' || l.reason === 'premio') return REASON[l.reason]
+  if (l.reason === 'aposta' || l.reason === 'premio' || l.reason === 'bilhete' || l.reason === 'bolao' || l.reason === 'troca') return REASON[l.reason]
   const [, gid, i] = l.ref.split(':'), t = goalTitle(gid)
   return l.reason === 'meta' ? `Meta${t ? ` “${t}”` : ''} batida` : `${REASON.fase} ${i}${t ? ` de “${t}”` : ''}`
 }
 
 export default function Loja() {
   const wallet = useStore(s => s.wallet)
+  const bolao = useStore(s => s.bolao)
   const goals = useStore(s => s.rows.goals)
   const p = useStore(s => (s.meId ? s.profiles[s.meId] : undefined))
   const [slot, setSlot] = useState<Slot>('chapeu')
@@ -107,6 +108,7 @@ export default function Loja() {
     act(i.id, () => equip(i.slot, off ? null : i.art))
   }
   const buy = (i: Item) => {
+    if (i.bolao) { setUi({ cassino: 'bolao' }); return }
     if (coins < i.price) { setMsg({ text: `Faltam ${i.price - coins} cafezinhos para ${i.name}.`, err: true }); return }
     act(i.id, async () => { await buyItem(i.id); await equip(i.slot, i.art); setTrying(null) }, `Comprou ${i.name}! Já está usando.`)
   }
@@ -118,8 +120,11 @@ export default function Loja() {
 
       <div className="lj-shop panel">
         <aside className="lj-prev">
-          <div className="lj-coins"><Ph n="coffee" size={20} fill /> <b>{wallet ? coins : '…'}</b> cafezinhos</div>
-          <button className="btn soft sm lj-cass" onClick={() => setUi({ cassino: true })}><Ph n="sparkle" size={16} /> Apostar no cassino</button>
+          <div className="lj-coins"><Ph n="coffee" size={20} fill /> <b>{wallet ? coins : '…'}</b> cafezinhos <span className="lj-lata" title="Latinhas: moeda rara">⚡ <b>{wallet ? wallet.latinhas : '…'}</b></span></div>
+          <div className="lj-cass">
+            <button className="btn soft sm" onClick={() => setUi({ cassino: true })}><Ph n="sparkle" size={16} /> Cassino</button>
+            <button className="btn soft sm lj-bolao" onClick={() => setUi({ cassino: 'bolao' })}>🍀 Bolão{bolao ? ` · ☕ ${bolao.pote}` : ''}</button>
+          </div>
           <div className="lj-stage">
             <Px w={40} h={44} s={5} draw={(c, t) => { drawAvatar(c, prev, null, 12, 12, 'down', Math.floor(t / 400) % 3 === 1 ? 1 : 0); drawAnim(c, prev.gear?.animacao, 20, 15, t) }} />
             <Plate kind={prev.gear?.plaquinha} name={first} />
@@ -127,7 +132,7 @@ export default function Loja() {
           <Px w={90} h={60} s={3} className="lj-desk" draw={(c, t) => deskScene(c, prev, t, 6, 4)} />
           {trying && !owns(trying.id, wallet)
             ? <div className="lj-try">Provando <b>{trying.name}</b>
-              <div><button className="btn accent" disabled={!!busy} onClick={() => buy(trying)}>{busy === trying.id ? 'Comprando…' : `Comprar · ☕ ${trying.price}`}</button>
+              <div><button className="btn accent" disabled={!!busy} onClick={() => buy(trying)}>{trying.bolao ? '🍀 Só sai no bolão' : busy === trying.id ? 'Comprando…' : `Comprar · ☕ ${trying.price}`}</button>
                 <button className="btn" onClick={() => setTrying(null)}>Tirar</button></div></div>
             : <small className="muted lj-hint">Clique num item para provar. O que é seu, clique para usar ou tirar.</small>}
           {msg && <div className={'lj-msg' + (msg.err ? ' err' : '')}>{msg.text}</div>}
@@ -149,7 +154,7 @@ export default function Loja() {
                 <Thumb it={i} av={av} name={first} />
                 <b>{i.name}</b>
                 <span className="lj-tier">{TIER_NAME[i.tier]}</span>
-                <span className="lj-price">{busy === i.id ? '…' : on ? '✓ Usando' : have ? 'Seu' : `☕ ${i.price}`}</span>
+                <span className="lj-price">{busy === i.id ? '…' : on ? '✓ Usando' : have ? 'Seu' : i.bolao ? '🍀 Só no bolão' : `☕ ${i.price}`}</span>
               </button>
             })}
           </div>
@@ -169,6 +174,7 @@ export default function Loja() {
             <div><Ph n="gift" size={18} /> <span><b>+{WELCOME}</b> na primeira vez que entra, uma vez por pessoa</span></div>
             <div><Ph n="coffee" size={18} /> <span><b>+{DAY}</b> por dia que você abre o escritório</span></div>
             <div><Ph n="target" size={18} /> <span><b>+{PHASE}</b> a cada fase da meta (25%, 50%, 75%) e <b>+{FINAL}</b> quando bate. Até {MAX_GOALS} metas por mês.</span></div>
+            <div><Ph n="sparkle" size={18} /> <span><b>Bolão</b> toda sexta 17h: cada fase vale 1 bilhete grátis, meta batida vale 2. Quem ganha leva o pote, latinhas ⚡ e um móvel raro.</span></div>
           </div>
           <ul className="lj-rules">
             <li>Todo mundo da equipe ganha o mesmo, Chefe incluída.</li>

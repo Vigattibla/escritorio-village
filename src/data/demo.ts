@@ -6,6 +6,7 @@ import { ROW_TABLES } from '../types'
 import { counts, DAY, MAX_GOALS, payouts, WELCOME } from '../shop/economy'
 import { ITEM } from '../shop/catalog'
 import { Mesa, type Escolha, type JogoCassino } from '../cassino/regras'
+import { BolaoDemo, type Sorteio } from '../cassino/bolao'
 import { localDay } from '../components/v4'
 
 // Modo demonstração: tudo no localStorage deste navegador. Abas diferentes = pessoas diferentes
@@ -409,7 +410,8 @@ export class DemoBackend implements Backend {
 
   async wallet(): Promise<Wallet> {
     const log = this.coffee()
-    return { balance: log.reduce((n, l) => n + l.amount, 0), owned: log.filter(l => l.reason === 'compra').map(l => l.ref), log }
+    const lat = read<{ amount: number }[]>('ev:latinhas:' + sessionStorage.getItem(K.session), [])
+    return { balance: log.reduce((n, l) => n + l.amount, 0), owned: log.filter(l => l.reason === 'compra').map(l => l.ref), log, latinhas: lat.reduce((n, l) => n + l.amount, 0) }
   }
 
   async claimCoffee(): Promise<CoffeeLine[]> {
@@ -462,6 +464,27 @@ export class DemoBackend implements Backend {
   async cassinoAbrir(jogo: JogoCassino, aposta: number, e: Escolha) { return this.mesa().abrir(jogo, aposta, e) }
   async cassinoAcao(id: string, acao: string, casa?: number) { return this.mesa().acao(id, acao, casa) }
   async cassinoEstado(jogo: JogoCassino) { return this.mesa().estado(jogo) }
+
+  /** bolão da demo: o resto do time entra com bilhetes fixos por semana */
+  private bolao() {
+    const me = sessionStorage.getItem(K.session)
+    if (!me) throw new Error('Entre de novo.')
+    const ck = 'ev:coffee:' + me, lk = 'ev:latinhas:' + me
+    const lat = () => read<{ amount: number; ref: string }[]>(lk, [])
+    return new BolaoDemo({
+      me,
+      extrato: () => read<CoffeeLine[]>(ck, []),
+      lanca: (amount, reason, ref) => { const log = read<CoffeeLine[]>(ck, []); this.credit(log, amount, reason, ref, []); write(ck, log) },
+      latinhas: () => lat().reduce((n, l) => n + l.amount, 0),
+      lancaLatinha: (amount, ref) => { const l = lat(); if (!l.some(x => x.ref === ref)) write(lk, [{ amount, ref }, ...l]) },
+      sorteios: () => read<Sorteio[]>('ev:bolao', []),
+      salva: v => write('ev:bolao', v),
+      outros: () => Object.keys(read<Record<string, Profile>>(K.prof, {})).filter(id => id !== me).slice(0, 5).map((u, i) => ({ u, n: 1 + ((i * 3 + 2) % 5) })),
+    })
+  }
+  async bolaoEstado() { return this.bolao().estado() }
+  async bolaoComprar() { return this.bolao().comprar() }
+  async trocarLatinha() { return this.bolao().trocar() }
 
   async joinGroup(id: string, join: boolean) {
     const all = read<Record<string, Group>>(K.row + 'groups', {})

@@ -3,6 +3,7 @@ import { slugUser, toEmail } from './login'
 import type { CoffeeLine, Wallet, RowTable, Rows, AccountEdit, AiContext, AiProposal, AiStage, Backend, Handlers, Message, Pos, Profile, Project, Snapshot, Task, TaskNote } from '../types'
 import { ROW_TABLES } from '../types'
 import type { Escolha, JogoCassino, Rodada } from '../cassino/regras'
+import type { Bolao } from '../cassino/bolao'
 
 function pt(e: { message: string }): Error {
   const m = e.message
@@ -205,16 +206,17 @@ export class SupabaseBackend implements Backend {
 
   /** carteira: saldo (somado no banco), itens comprados e o extrato recente (o crédito é só do servidor) */
   async wallet(): Promise<Wallet> {
-    const [log, own, sal] = await Promise.all([
+    const [log, own, sal, lat] = await Promise.all([
       this.sb.from('coffee_log').select('amount,reason,ref,created_at').order('created_at', { ascending: false }).limit(200),
       this.sb.from('coffee_log').select('ref').eq('reason', 'compra'),
       this.sb.rpc('cafe_saldo'),
+      this.sb.rpc('latinha_saldo'),
     ])
-    if (log.error) { if (/does not exist|schema cache/i.test(log.error.message)) return { balance: 0, owned: [], log: [] }; throw pt(log.error) }
+    if (log.error) { if (/does not exist|schema cache/i.test(log.error.message)) return { balance: 0, owned: [], log: [], latinhas: 0 }; throw pt(log.error) }
     const lines = (log.data ?? []) as CoffeeLine[]
     // sem a função nova (antes da migration) soma o que veio
     const balance = sal.error ? lines.reduce((n, l) => n + l.amount, 0) : (sal.data as number)
-    return { balance, owned: (own.data ?? []).map(l => l.ref as string), log: lines }
+    return { balance, owned: (own.data ?? []).map(l => l.ref as string), log: lines, latinhas: lat.error ? 0 : (lat.data as number) }
   }
 
   async claimCoffee(): Promise<CoffeeLine[]> {
@@ -237,6 +239,15 @@ export class SupabaseBackend implements Backend {
   cassinoAbrir(jogo: JogoCassino, aposta: number, e: Escolha) { return this.cassino('cassino_abrir', { p_jogo: jogo, p_aposta: aposta, p_escolha: e }) }
   cassinoAcao(id: string, acao: string, casa?: number) { return this.cassino('cassino_acao', { p_rodada: id, p_acao: acao, p_casa: casa ?? null }) }
   async cassinoEstado(jogo: JogoCassino) { return (await this.cassino('cassino_estado', { p_jogo: jogo })) ?? null }
+
+  private async rpc<T>(fn: string) {
+    const { data, error } = await this.sb.rpc(fn)
+    if (error) throw pt(error)
+    return data as T
+  }
+  bolaoEstado() { return this.rpc<Bolao>('bolao_estado') }
+  bolaoComprar() { return this.rpc<Bolao>('bolao_comprar') }
+  trocarLatinha() { return this.rpc<number>('trocar_latinha') }
 
   async joinGroup(gid: string, join: boolean) {
     const { error } = await this.sb.rpc('group_join', { gid, p_join: join })

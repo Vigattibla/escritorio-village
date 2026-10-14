@@ -123,6 +123,7 @@ const DECOR: Record<string, string[]> = {
   aquario: ['oooooooo', 'oiiiiiio', 'oiiiiiio', 'oiiiiiio', 'oivivIio', 'oddddddo', 'oooooooo'],
   lava: ['..oo..', '.oqqo.', '.ozzo.', '.ozzo.', 'ozzzzo', 'ozzzzo', 'ozzzzo', '.oqqo.', 'oqqqqo', 'oooooo'],
   bonsai: ['.vvvv..', 'vvVvvv.', '.vv.vvv', '..nn.v.', '...n...', '..nn...', 'ozzzzzo', '.ooooo.'],
+  trevo: ['.oo.oo.', 'ovVovVo', 'ovvovvo', '.oogoo.', 'ovvovvo', 'oVvoVvo', '.oo.oo.', '...o...', '.ooooo.', '.ogggo.', '.oGGGo.', '..ooo..'],
   gato: ['.o.o....', 'oqoqooo.', 'oqqqqqqo', 'oQqQqqqo', 'oqqqqqQo', '.oooooo.'],
 }
 export function drawDecor(c: C2D, kind: string, x: number, yb: number, t: number) {
@@ -135,6 +136,7 @@ export function drawDecor(c: C2D, kind: string, x: number, yb: number, t: number
   if (kind === 'ampulheta') { const s = Math.floor(t / 600) % 3; rect(c, PAL.d, x + 2, top + 3 + (s % 2), 1, 1); rect(c, PAL.d, x + 1, top + 5, 3 - (s === 0 ? 1 : 0), 1) }
   if (kind === 'aquario') { const fx = Math.floor(t / 300) % 10; const px = fx < 5 ? fx : 9 - fx; rect(c, PAL.j, x + 1 + px, top + 2, 2, 1) }
   if (kind === 'lava') for (let k = 0; k < 2; k++) { const s = Math.floor(t / 500 + k * 2) % 5; rect(c, PAL.j, x + 2 + k, top + 6 - s, 1, 1) }
+  if (kind === 'trevo' && Math.floor(t / 300) % 6 === 0) rect(c, '#ffffff', x + 5, top + 1, 1, 1)
   if (kind === 'gato') { const s = Math.floor(t / 900) % 3; rect(c, 'rgba(255,255,255,.75)', x + 6 + (s % 2), top - 1 - s * 2, 1, 1) }
 }
 
@@ -148,6 +150,7 @@ const FLOOR: Record<string, string[]> = {
   frigobar: ['oooooooooo', 'oWwwwwwwqo', 'oWwwlwwwqo', 'oWwwwwwkqo', 'oooooooooo', 'oWwwwwwwqo', 'oWwwwwwkqo', 'oWwwwwwkqo', 'oWwwwwwwqo', 'oWwwwwwwqo', 'oooooooooo', '.o......o.'],
   guardasol: ['.....oooo.....', '...oozwzwoo...', '..ozwzwzwzwo..', '.ozwzwzwzwzwo.', 'ozwzwzwzwzwzwo', 'oooooooooooooo', '......on......', '......on......', '......on......', '......on......', '......on......', '......on......', '......on......', '......on......', '......on......', '......on......', '....oooooo....', '....oddddo....'],
   violao: ['..onno..', '...on...', '...on...', '...on...', '...on...', '..onno..', '.onnnno.', 'onnnnnno', 'onnkknno', 'onnkknno', '.onnnno.', 'onnnnnno', 'onnNNnno', 'onnnnnno', '.onnnno.', '..oooo..'],
+  'pote-ouro': ['..y..g..y...', '.oyyogyyyo..', 'oyYygyyYyyo.', 'oyyyyyyyyyo.', 'ooooooooooooo', '.okkkkkkkkko.', 'okkkkkkkkkkko', 'okKkkkkkkkkko', 'okkkkkkkkkkko', '.okkkkkkkkko.', '..ooooooooo..'],
   cachorro: ['..ooo.........', '.onnno........', 'onknnnooooooo.', 'onnnnnnnnnnnno', '.ooNnnnnnnnnno', '...onnnnnnnno.', '...ono.ono.o..', '...oo..oo.....'],
 }
 export function drawFloor(c: C2D, kind: string, x: number, yb: number, t: number) {
@@ -167,6 +170,7 @@ export function drawFloor(c: C2D, kind: string, x: number, yb: number, t: number
   const rows = FLOOR[kind]
   if (!rows) return
   art(c, rows, x, yb)
+  if (kind === 'pote-ouro') { const k = Math.floor(t / 250) % 8; if (k < 3) rect(c, '#ffffff', x + 2 + k * 3, yb - 11 - (k % 2), 1, 1) }
   if (kind === 'cachorro') {
     const top = yb - rows.length + 1, up = Math.floor(t / 250) % 2
     rect(c, OUT, x + 13, top + 1 + up, 1, 2); rect(c, PAL.n, x + 13, top + 2 + up, 1, 1)
@@ -214,6 +218,15 @@ export function drawChair(c: C2D, style: string | undefined, sx: number, sy: num
     rect(c, OUT, sx + 7, sy - 30, 3, 7); rect(c, col, sx + 8, sy - 29, 1, 5)
     rect(c, col, sx - 5, sy - 31, 2, 19); rect(c, col, sx + 3, sy - 31, 2, 19)
     rect(c, '#45454e', sx - 3, sy - 30, 6, 3)
+    return
+  }
+  if (style === 'trono-sortudo') {
+    seatBase(c, sx, sy, '#2a7349', '#3fa66b', 20, false)
+    rect(c, OUT, sx - 10, sy - 36, 20, 26); rect(c, '#f2c230', sx - 9, sy - 35, 18, 24)
+    rect(c, '#2a7349', sx - 6, sy - 31, 12, 19); rect(c, '#3fa66b', sx - 5, sy - 30, 10, 2)
+    for (const [a, b] of [[-2, -27], [1, -27], [-2, -24], [1, -24]]) rect(c, '#5cc487', sx + a, sy + b, 2, 2)
+    rect(c, '#b8901c', sx, sy - 22, 1, 4)
+    for (const k of [-9, -1, 7]) { rect(c, OUT, sx + k, sy - 39, 3, 3); rect(c, '#5cc487', sx + k + 1, sy - 38, 1, 2) }
     return
   }
   if (style === 'trono') {
