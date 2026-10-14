@@ -203,3 +203,14 @@ Pendente: push (precisa da migration 202610080900_v4_agenda_metas.sql e do secre
 
 ## Próximo (14/10)
 - Abas Conversa/Peças + Vídeo & Motion são do Estúdio CRNK (D:/Projetos/estudio), não do Turmeo; plano em `docs/plano-estudio-abas.md`. Chat do Estúdio no Turmeo só com modo desenvolvedor.
+
+## 14/10 — Conectar IA + barra do jogo
+- Conectar IA no ar (7a38b76): chaves pessoais, função `tarefas` (MCP /, webhook /nova, e-mail /email?t=). Falta teste ponta a ponta com chave real e escolher serviço de e-mail de entrada.
+- c410a4b: barra de cima do jogo removida (zoom = roda do mouse; porta/cortina/sala do gerente no popup da porta); bolão/bingo viraram lembrete rápido no canto.
+- Próximo sugerido: link de tarefa pré-preenchida (`?nova=...&para=...&prazo=...`) pra qualquer IA, mesmo fraca, gerar; o humano clica e confirma logado.
+
+## 14/10 — Pedidos ao gerente + menus enxutos
+- Pedidos (Mais → Pedidos): material / folga / outro; material pode ser lista coletiva do setor (cada um põe seus itens, data de fechamento opcional); +1 "Eu também". Gerente da sala (rank 3), Chefe e admin aprovam, recusam (com motivo), marcam entregue e reabrem; quem pediu cancela. Histórico só o servidor escreve, sem delete. Folga só autor + gerente veem.
+- Tabela `requisicoes` + RPC `requisicao_mudar` (migration 202610211000). Criar = insert direto; o resto só via RPC. Avisos no store (`avisoReq`).
+- Menus: o perfil fica só com o essencial. Metas, Fluxos, Cassino e Bingo foram para "Mais" (recolhido). No celular, a aba Metas virou Quadro.
+- Pendente: testar aprovação com um gerente de verdade depois que o migrate rodar.

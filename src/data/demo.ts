@@ -1,7 +1,7 @@
 import { toEmail, validUser } from './login'
 import { dayKey } from '../game/xp'
 import { deptOf, outranks, rankOf } from '../game/ranks'
-import type { CoffeeLine, Dept, JogoRes, Goal, Wallet, Group, RowTable, Rows, AccountEdit, AiContext, AiProposal, AiStage, Avatar, Backend, Handlers, Message, Pos, Profile, Project, Snapshot, Task, TaskNote } from '../types'
+import type { CoffeeLine, Dept, JogoRes, Goal, Wallet, Group, RowTable, Rows, AccountEdit, AiContext, AiProposal, AiStage, Avatar, Backend, Handlers, Message, Pos, Profile, Project, Requisicao, Snapshot, Task, TaskNote } from '../types'
 import { ROW_TABLES } from '../types'
 import { counts, DAY, MAX_GOALS, payouts, WELCOME } from '../shop/economy'
 import { ITEM } from '../shop/catalog'
@@ -178,6 +178,28 @@ export class DemoBackend implements Backend {
     if (!me || rankOf(me) < 3 || (target && (!t || t.is_admin || t.id === me.id || !outranks(me, t)))) throw new Error('Você não pode mexer nessa conta.')
     if (rank !== undefined && rank >= rankOf(me)) throw new Error('Você só dá cargos abaixo do seu.')
     return me
+  }
+
+  /** demo: mesma regra do requisicao_mudar, sem checar cargo */
+  async requisicaoMudar(id: string, acao: string, p: Record<string, unknown>) {
+    const r = read<Record<string, Requisicao>>(K.row + 'requisicoes', {})[id]
+    const u = await this.currentUserId()
+    if (!r || !u) throw new Error('Esse pedido não existe mais.')
+    let n: Requisicao = { ...r, em: new Date().toISOString() }
+    if (acao === 'editar') n = { ...n, ...(p as Partial<Requisicao>) }
+    else if (acao === 'itens') {
+      const meus = ((p.itens ?? []) as Requisicao['itens']).map(i => ({ ...i, por: u }))
+      n.itens = p.todos ? (p.itens as Requisicao['itens']) : [...r.itens.filter(i => i.por !== u), ...meus]
+    } else if (acao === 'apoio') n.apoios = r.apoios.includes(u) ? r.apoios.filter(x => x !== u) : [...r.apoios, u]
+    else if (acao === 'status') {
+      const st = p.status as Requisicao['status'], motivo = String(p.motivo ?? '').trim()
+      if (st === 'recusado' && !motivo) throw new Error('Diga o motivo da recusa.')
+      const txt = { aberto: 'Reaberto', aprovado: 'Aprovado', recusado: 'Recusado: ' + motivo, entregue: r.tipo === 'folga' ? 'Concluído' : 'Entregue', cancelado: 'Cancelado' }[st]
+      n = { ...n, status: st, motivo: st === 'aberto' ? '' : motivo, decidido_por: st === 'aberto' ? null : st === 'cancelado' ? r.decidido_por : u,
+        historico: [...r.historico, { em: n.em, por: u, txt: motivo && st !== 'recusado' ? `${txt} — ${motivo}` : txt }] }
+    }
+    await this.upsertRow('requisicoes', n)
+    return n
   }
 
   async planoAgendar(id: string, data: string | null, dono: string | null) {

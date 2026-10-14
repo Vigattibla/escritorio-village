@@ -190,6 +190,11 @@ export interface PlanoAcao { id: string; ciclo: string; nucleo: string; pos: num
 /** sigla de responsável (MKT, PERF…) → sala e pessoas */
 export interface PlanoResp { id: string; nome: string; dept: string | null; pessoas: string[]; equipes?: string[]; created_at: string }
 /** equipe (Design, Edição de vídeo…): o gestor marca quem faz parte */
+/** pedido ao gerente (aba Pedidos); histórico escrito só pelo servidor */
+export type ReqTipo = 'material' | 'folga' | 'livre'
+export type ReqStatus = 'aberto' | 'aprovado' | 'recusado' | 'entregue' | 'cancelado'
+export interface ReqItem { id: string; nome: string; qtd: number; por?: string }
+export interface Requisicao { id: string; dept: string; tipo: ReqTipo; titulo: string; detalhe: string; coletivo: boolean; itens: ReqItem[]; apoios: string[]; fecha: string | null; de: string | null; ate: string | null; status: ReqStatus; motivo: string; por: string; decidido_por: string | null; historico: { em: string; por: string; txt: string }[]; created_at: string; em: string }
 export interface Equipe { id: string; nome: string; cor: string | null; icone: string | null; dept: string | null; pessoas: string[]; created_at: string }
 /** último relatório da IA de cada pessoa (id = pessoa; ate exclusivo) */
 export interface Relatorio { id: string; de: string; ate: string; semana: string; texto: string; resumo: string; em: string; feito_por?: string | null }
@@ -199,9 +204,9 @@ export interface Rede { id: 'linkedin'; nome: string; autor: string; modo: 'pess
 export interface Postagem { id: string; rede: string; quando: string; estado: 'agendado' | 'publicando' | 'publicado' | 'erro'; urn: string | null; link: string | null; erro: string | null; tentativas: number; aprovado_por: string | null; em: string }
 /** resposta das RPCs da sala de jogos; local = demo (a pontuação é gravada pelo app) */
 export interface JogoRes { id?: string; pontos?: number; recorde?: boolean; valeu?: boolean; pos?: number; f?: number; outra?: number; par?: boolean; erros?: number; fim?: boolean; seg?: number; local?: boolean }
-export interface Rows { events: CalEvent; goals: Goal; stickers: Sticker; flows: Flow; stages: Stage; groups: Group; rooms: Room; carpenters: Carpenter; depts: Dept; brand: Brand; quartos: Quarto; vendas: Venda; ajustes: Ajuste; metas_venda: MetaVenda; vendas_cfg: VendasCfg; campanhas: Campanha; caderno: Nota; jogos_pontos: JogoPonto; plano_meses: PlanoMes; plano_nucleos: PlanoNucleo; plano_acoes: PlanoAcao; plano_resp: PlanoResp; equipes: Equipe; relatorios: Relatorio; redes: Rede; postagens: Postagem }
+export interface Rows { events: CalEvent; goals: Goal; stickers: Sticker; flows: Flow; stages: Stage; groups: Group; rooms: Room; carpenters: Carpenter; depts: Dept; brand: Brand; quartos: Quarto; vendas: Venda; ajustes: Ajuste; metas_venda: MetaVenda; vendas_cfg: VendasCfg; campanhas: Campanha; caderno: Nota; jogos_pontos: JogoPonto; plano_meses: PlanoMes; plano_nucleos: PlanoNucleo; plano_acoes: PlanoAcao; plano_resp: PlanoResp; equipes: Equipe; relatorios: Relatorio; redes: Rede; postagens: Postagem; requisicoes: Requisicao }
 export type RowTable = keyof Rows
-export const ROW_TABLES: RowTable[] = ['events', 'goals', 'stickers', 'flows', 'stages', 'groups', 'rooms', 'carpenters', 'depts', 'brand', 'quartos', 'vendas', 'ajustes', 'metas_venda', 'vendas_cfg', 'campanhas', 'caderno', 'jogos_pontos', 'plano_meses', 'plano_nucleos', 'plano_acoes', 'plano_resp', 'equipes', 'relatorios', 'redes', 'postagens']
+export const ROW_TABLES: RowTable[] = ['events', 'goals', 'stickers', 'flows', 'stages', 'groups', 'rooms', 'carpenters', 'depts', 'brand', 'quartos', 'vendas', 'ajustes', 'metas_venda', 'vendas_cfg', 'campanhas', 'caderno', 'jogos_pontos', 'plano_meses', 'plano_nucleos', 'plano_acoes', 'plano_resp', 'equipes', 'relatorios', 'redes', 'postagens', 'requisicoes']
 
 export type Priority = 'alta' | 'media' | 'baixa'
 export interface CheckItem {
@@ -325,6 +330,8 @@ export interface Backend {
   setDeptLook(dept: string, flag: string | null, canais: boolean, vendas?: boolean): Promise<void>
   /** agenda do plano: dia/dono ajustados por quem é da equipe da ação */
   planoAgendar(id: string, data: string | null, dono: string | null): Promise<void>
+  /** pedido ao gerente: editar | itens | apoio | status (regras no servidor) */
+  requisicaoMudar(id: string, acao: 'editar' | 'itens' | 'apoio' | 'status', p: Record<string, unknown>): Promise<Requisicao | null>
   /** reserva o vínculo da tarefa (false = alguém já começou) */
   planoReservar(id: string, tarefa: string): Promise<boolean>
   planoSoltar(id: string, tarefa: string): Promise<void>

@@ -1,0 +1,53 @@
+/* Pedidos ao gerente (pd-) */
+.pd { max-width: 820px; width: 100%; margin: 0 auto; padding: 4px 16px 40px; display: grid; gap: 14px; align-content: start; box-sizing: border-box; }
+.pd-lista, .pd-c { align-self: start; }
+.pd-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.pd-seg { display: inline-flex; background: var(--creme, #FFF8EC); border: 1px solid var(--line); border-radius: 999px; padding: 3px; }
+.pd-seg button { all: unset; cursor: pointer; padding: 6px 14px; border-radius: 999px; font-size: 13px; font-weight: 700; color: var(--muted); }
+.pd-seg button.on { background: #fff; color: var(--tinta); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+.pd-vazio { color: var(--muted); text-align: center; padding: 40px 12px; }
+.pd-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.pd-c { background: #fff; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.pd-c.decidir { border-left: 3px solid var(--acc2, #FFC600); }
+.pd-head { all: unset; box-sizing: border-box; width: 100%; cursor: pointer; display: flex; align-items: center; gap: 12px; padding: 12px 14px; }
+.pd-head:hover { background: #FAFAF7; }
+.pd-head:focus-visible { outline: 2px solid var(--cobalto); outline-offset: -2px; }
+.pd-ic { flex: none; width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: var(--creme, #FFF8EC); color: var(--cobalto); }
+.pd-tt { flex: 1; min-width: 0; display: grid; gap: 3px; }
+.pd-tt b { font-size: 14.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pd-tt small { color: var(--muted); font-size: 12px; display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+.pd-tag { display: inline-flex; align-items: center; gap: 3px; background: #EEF1FB; color: var(--cobalto); border-radius: 999px; padding: 1px 7px; font-weight: 700; }
+.pd-n { flex: none; font-size: 12px; font-weight: 800; color: var(--cobalto); }
+.pd-st { flex: none; font-size: 11.5px; font-weight: 800; padding: 3px 9px; border-radius: 999px; background: #F1F1EE; color: var(--muted); }
+.st-aberto .pd-st { background: #FFF4CC; color: #7A5B00; }
+.st-aprovado .pd-st { background: #E3F4E8; color: #1E6B37; }
+.st-entregue .pd-st { background: #E6ECFA; color: var(--cobalto); }
+.st-recusado .pd-st { background: #FBE6E4; color: #9B2C20; }
+.pd-body { padding: 4px 14px 14px 60px; display: grid; gap: 10px; font-size: 13.5px; }
+.pd-det { margin: 0; white-space: pre-wrap; }
+.pd-mot { margin: 0; background: #FBE6E4; border-radius: 8px; padding: 8px 10px; }
+.pd-itens { display: grid; gap: 8px; justify-items: start; }
+.pd-itens table { border-collapse: collapse; width: 100%; }
+.pd-itens td { padding: 5px 8px 5px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+.pd-itens td.q { width: 48px; font-weight: 800; color: var(--cobalto); }
+.pd-meus { display: grid; gap: 8px; width: 100%; }
+.pd-meus footer { display: flex; gap: 8px; }
+.pd-ed { display: grid; gap: 6px; }
+.pd-ln { display: grid; grid-template-columns: 70px 1fr auto; gap: 6px; align-items: center; }
+.pd-add { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; font-size: 12.5px; font-weight: 700; color: var(--cobalto); justify-self: start; padding: 2px 0; }
+.pd-hist { list-style: none; margin: 0; padding: 0 0 0 12px; border-left: 2px solid var(--line); display: grid; gap: 4px; font-size: 12.5px; color: var(--muted); }
+.pd-hist b { color: var(--tinta); }
+.pd-hist time { font-variant-numeric: tabular-nums; }
+.pd-err { margin: 0; color: #9B2C20; font-size: 13px; }
+.pd-acts { display: flex; gap: 8px; flex-wrap: wrap; }
+.pd-acts .btn.apoiei { color: var(--cobalto); }
+.pd-tipos { display: flex; gap: 8px; }
+.pd-tipos button { all: unset; cursor: pointer; flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px; border: 1px solid var(--line); border-radius: 10px; font-weight: 700; font-size: 13.5px; }
+.pd-tipos button.on { border-color: var(--cobalto); background: #EEF1FB; color: var(--cobalto); }
+.pd-datas { display: grid !important; grid-template-columns: 1fr 1fr; gap: 10px !important; }
+.pd-chk { display: flex !important; align-items: center; gap: 8px !important; font-size: 13px; }
+@media (max-width: 600px) {
+  .pd { padding: 0 12px 32px; }
+  .pd-body { padding-left: 14px; }
+  .pd-head { gap: 10px; padding: 11px 12px; }
+}

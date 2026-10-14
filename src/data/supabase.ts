@@ -1,6 +1,6 @@
 import { createClient, type RealtimeChannel, type SupabaseClient } from '@supabase/supabase-js'
 import { slugUser, toEmail } from './login'
-import type { CoffeeLine, JogoRes, Wallet, RowTable, Rows, AccountEdit, AiContext, AiProposal, AiStage, Backend, Handlers, Message, Pos, Profile, Project, Snapshot, Task, TaskNote } from '../types'
+import type { CoffeeLine, JogoRes, Wallet, RowTable, Rows, AccountEdit, AiContext, AiProposal, AiStage, Backend, Handlers, Message, Pos, Profile, Project, Requisicao, Snapshot, Task, TaskNote } from '../types'
 import { ROW_TABLES } from '../types'
 import type { Escolha, JogoCassino, Rodada } from '../cassino/regras'
 import type { Bolao } from '../cassino/bolao'
@@ -145,6 +145,12 @@ export class SupabaseBackend implements Backend {
   async setDeptLook(dept: string, flag: string | null, canais: boolean, vendas?: boolean) {
     const { error } = await this.sb.rpc('set_dept_look', { p_dept: dept, p_flag: flag, p_canais: canais, p_vendas: vendas ?? null })
     if (error) throw pt(error)
+  }
+
+  async requisicaoMudar(id: string, acao: string, p: Record<string, unknown>) {
+    const { data, error } = await this.sb.rpc('requisicao_mudar', { p_id: id, p_acao: acao, p })
+    if (error) throw pt(error)
+    return data as Requisicao | null
   }
 
   async planoAgendar(id: string, data: string | null, dono: string | null) {

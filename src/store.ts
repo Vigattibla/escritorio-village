@@ -7,7 +7,7 @@ import { MAX_DESKS } from './office/base'
 import { parseSala } from './office/sala'
 import { ITEM, type Slot } from './shop/catalog'
 import { REASON } from './shop/economy'
-import type { Equipe, Snapshot, Group, RowTable, Rows, Stage, StageKind, Sticker, AccountEdit, AiContext, AiItem, AiProposal, AiStage, Attachment, Avatar, CoffeeLine, Gear, Message, Pos, Profile, Project, Review, Task, TaskNote, TaskStatus, Wallet } from './types'
+import type { Equipe, Requisicao, Snapshot, Group, RowTable, Rows, Stage, StageKind, Sticker, AccountEdit, AiContext, AiItem, AiProposal, AiStage, Attachment, Avatar, CoffeeLine, Gear, Message, Pos, Profile, Project, Review, Task, TaskNote, TaskStatus, Wallet } from './types'
 import { ROW_TABLES } from './types'
 import type { Backend } from './types'
 import type { JogoCassino, Rodada } from './cassino/regras'
@@ -17,7 +17,7 @@ import type { Bingo } from './cassino/bingo'
 export type Phase = 'loading' | 'auth' | 'creator' | 'office'
 export type Tab = 'mesa' | 'aprovar' | 'avisos' | 'equipe' | 'chat' | 'geral'
 /** quadro = trabalho do dia a dia (estilo Trello); escritório = visualização em pixel */
-export type View = 'quadro' | 'escritorio' | 'agenda' | 'metas' | 'fluxos' | 'inicio' | 'arquivos' | 'loja' | 'vendas' | 'placar' | 'kit' | 'plano' | 'redes' | 'estudio'
+export type View = 'quadro' | 'escritorio' | 'agenda' | 'metas' | 'fluxos' | 'inicio' | 'arquivos' | 'loja' | 'vendas' | 'placar' | 'kit' | 'plano' | 'redes' | 'estudio' | 'pedidos'
 export interface Go { view?: View; tab?: Tab; viewing?: string; channel?: string; task?: string; cassino?: 'bolao'; bingo?: boolean }
 export type NoticeKind = 'data' | 'plano' | 'prazo' | 'lembrete' | 'pedido' | 'colab' | 'aprov' | 'msg' | 'adesivo' | 'loja' | 'time'
 export interface Notice { id: string; text: string; at: number; from?: string; go?: Go; kind?: NoticeKind }
@@ -92,7 +92,7 @@ export interface State {
 
 
 const initial: State = {
-  phase: 'loading', meId: null, accountName: '', error: '', profiles: {}, tasks: {}, messages: [], notes: [], projects: {}, rows: { events: {}, goals: {}, stickers: {}, flows: {}, stages: {}, groups: {}, rooms: {}, carpenters: {}, depts: {}, brand: {}, quartos: {}, vendas: {}, ajustes: {}, metas_venda: {}, vendas_cfg: {}, campanhas: {}, caderno: {}, jogos_pontos: {}, plano_meses: {}, plano_nucleos: {}, plano_acoes: {}, plano_resp: {}, equipes: {}, relatorios: {}, redes: {}, postagens: {} }, online: new Set(),
+  phase: 'loading', meId: null, accountName: '', error: '', profiles: {}, tasks: {}, messages: [], notes: [], projects: {}, rows: { events: {}, goals: {}, stickers: {}, flows: {}, stages: {}, groups: {}, rooms: {}, carpenters: {}, depts: {}, brand: {}, quartos: {}, vendas: {}, ajustes: {}, metas_venda: {}, vendas_cfg: {}, campanhas: {}, caderno: {}, jogos_pontos: {}, plano_meses: {}, plano_nucleos: {}, plano_acoes: {}, plano_resp: {}, equipes: {}, relatorios: {}, redes: {}, postagens: {}, requisicoes: {} }, online: new Set(),
   tab: 'mesa', viewing: null, channel: 'geral', reads: {}, requestTo: null, task: null, editing: false, notices: [], pipOpen: false, view: 'quadro' as View, wallet: null, drawer: false,
   project: '', projectEdit: null, aiOpen: false, chatOpen: false, lousa: false, jogo: null, cassino: false, bolao: null, bingo: false, conectar: false, armario: false, bingoDados: null, bellOpen: false, qApprove: false, flow: null, sheet: false, stickTo: null, sala: DEPT0, here: DEPT0,
 }
@@ -290,10 +290,39 @@ function onRow<K extends RowTable>(k: K, r: Rows[K]) {
   const prev = state.rows[k][r.id]
   if (!keepRow(k, r)) { if (prev) onRowDeleted(k, r.id); return }
   set({ rows: { ...state.rows, [k]: { ...state.rows[k], [r.id]: r } } })
+  if (k === 'requisicoes') avisoReq(r as Requisicao, prev as Requisicao | undefined)
   if (k === 'stickers' && !prev) {
     const st = r as Sticker
     if (st.to_id === state.meId && st.by_id !== state.meId) notify(`${nameOf(st.by_id)} colou um adesivo na sua tela: “${st.text}”`, { kind: 'adesivo', from: st.by_id })
   }
+}
+
+/** pedidos ao gerente: gerente vê o novo, o setor vê a lista coletiva, quem pediu vê a decisão */
+function avisoReq(r: Requisicao, prev: Requisicao | undefined) {
+  const my = state.meId
+  if (!my || state.phase !== 'office') return
+  const go: Go = { view: 'pedidos' }
+  const eu = state.profiles[my]
+  const gere = !!eu && (!!eu.is_admin || rankOf(eu) === 4 || (rankOf(eu) >= 3 && deptOf(eu) === r.dept))
+  if (!prev) {
+    if (r.por === my) return
+    if (gere) notify(`${nameOf(r.por)} fez um pedido: “${r.titulo}”`, { kind: 'pedido', from: r.por, go })
+    else if (r.coletivo && deptOf(eu) === r.dept) notify(`Lista aberta: “${r.titulo}” — ponha o que você precisa`, { kind: 'pedido', from: r.por, go })
+    return
+  }
+  if (prev.status === r.status) return
+  const quem = r.historico.at(-1)?.por
+  if (quem === my) return
+  const txt = { aberto: 'foi reaberto', aprovado: 'foi aprovado', recusado: 'foi recusado', entregue: r.tipo === 'folga' ? 'foi concluído' : 'foi entregue', cancelado: 'foi cancelado' }[r.status]
+  if (r.por === my) notify(`Seu pedido “${r.titulo}” ${txt}${r.motivo ? ` — ${r.motivo.slice(0, 90)}` : ''}`, { kind: 'pedido', from: quem, go })
+  else if (r.coletivo && r.itens.some(i => i.por === my)) notify(`A lista “${r.titulo}” ${txt}`, { kind: 'pedido', from: quem, go })
+  else if (gere && r.status === 'cancelado') notify(`${nameOf(r.por)} cancelou o pedido “${r.titulo}”`, { kind: 'pedido', from: r.por, go })
+}
+
+export async function novaReq(r: Requisicao) { await putRow('requisicoes', r) }
+export async function mudarReq(id: string, acao: 'editar' | 'itens' | 'apoio' | 'status', p: Record<string, unknown> = {}) {
+  const r = await backend.requisicaoMudar(id, acao, p)
+  if (r) onRow('requisicoes', r)
 }
 
 function onRowDeleted(k: RowTable, id: string) {

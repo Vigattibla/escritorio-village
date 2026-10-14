@@ -22,6 +22,8 @@ export default function MoreMenu() {
     ['confetti', 'Bingo', () => setUi({ bingo: true })],
   ] : [
     ['kanban', 'Quadro', () => setUi({ view: 'quadro', drawer: false }), pend],
+    ['hand-heart', 'Pedidos', () => setUi({ view: 'pedidos', drawer: false })],
+    ['target', 'Metas', () => setUi({ view: 'metas', drawer: false })],
     ['flow-arrow', 'Fluxos', () => setUi({ view: 'fluxos', drawer: false })],
     ['folder-simple', 'Arquivos', () => setUi({ view: 'arquivos', drawer: false })],
     ['coffee', 'Almoxarifado', () => setUi({ view: 'loja', drawer: false })],

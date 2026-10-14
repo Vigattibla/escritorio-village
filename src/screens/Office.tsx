@@ -21,6 +21,7 @@ import Metas, { CeleWatch } from '../components/Metas'
 import Loja from '../components/Loja'
 import SalaEditor, { canEditOffice } from '../components/SalaEditor'
 import Fluxos from '../components/Fluxos'
+import Pedidos, { reqParaDecidir } from '../components/Pedidos'
 import Plano from '../components/Plano'
 import Redes from '../components/Redes'
 import Arquivos from '../components/Arquivos'
@@ -69,13 +70,14 @@ export default function Office() {
   useAutoPlano()
   const [arrumando, setArrumando] = useState(false)
   const [meOpen, setMeOpen] = useState(false)
-  // Metas, Fluxos e Geral ficam guardados: só aparecem quando a pessoa abre o "Mais"
+  // Pedidos, Equipe e Geral ficam guardados: só aparecem quando a pessoa abre o "Mais"
   const [mais, setMais] = useState(() => { try { return localStorage.getItem('ev:nav:mais') === '1' } catch { return false } })
   const toggleMais = () => { setMais(!mais); try { localStorage.setItem('ev:nav:mais', mais ? '0' : '1') } catch { /* sem storage */ } }
   const isNarrow = useNarrow()
   const me = s.profiles[s.meId!]
   const tasks = Object.values(s.tasks)
   const pend = tasks.filter(t => t.owner_id === me?.id && t.status === 'inbox').length
+  const reqPend = useStore(st => reqParaDecidir(st))
   const chans = new Set(s.messages.map(m => m.channel))
   const msgs = [...chans].reduce((n, ch) => n + unread(s, ch), 0)
   useEffect(() => {
@@ -107,7 +109,7 @@ export default function Office() {
   const office = s.view === 'escritorio'
   const page: Page = s.view !== 'quadro' ? s.view : s.drawer ? s.tab : 'quadro'
   // minha mesa = filtro "Só minhas"; aprovação = coluna do quadro; avisos = sino; chat = abre a janela flutuante
-  const items: { id: Page | 'chatwin'; label: string; ic: TName; n?: number; tip?: string; more?: boolean }[] = sv ? [
+  const items: { id: Page | 'chatwin'; label: string; ic: TName; n?: number; tip?: string; more?: boolean; ph?: PhName; act?: () => void }[] = sv ? [
     { id: 'vendas', label: 'Quartos', ic: 'vendas' },
     { id: 'placar', label: 'Placar', ic: 'placar' },
     { id: 'kit', label: 'Kit de vendas', ic: 'kit' },
@@ -126,9 +128,11 @@ export default function Office() {
     // Vendas fora do setor de vendas: só o admin, no modo desenvolvedor
     ...(depts.some(d => d.vendas) && me.is_admin && dev ? ([['vendas', 'Quartos'], ['placar', 'Placar'], ['kit', 'Kit de vendas']] as const).map(([id, label]) => ({ id: id as Page, label, ic: (id === 'vendas' ? 'vendas' : id) as TName, more: true })) : []),
     ...(me.is_admin || rankOf(me) >= 2 ? [{ id: 'estudio' as Page, label: 'Estúdio', ic: 'kudos' as TName, tip: me.is_admin ? 'Converse com o Estúdio da VPS e peça carrosséis' : 'Peça carrosséis pelos moldes do Estúdio' }] : []),
-    { id: 'metas', label: 'Metas', ic: 'metas', more: true },
-    { id: 'fluxos', label: 'Fluxos', ic: 'fluxos', more: true },
+    // menu do perfil é só pro essencial (14/10): Metas, Fluxos, Cassino e Bingo ficam recolhidos em "Mais"
+    { id: 'pedidos', label: 'Pedidos', ic: 'pedir', more: true, n: reqPend, tip: reqPend ? `${reqPend} pedido(s) esperando sua decisão` : 'Pedidos ao gerente: material, folga e listas do setor' },
   ]
+  if (!sv) items.push({ id: 'metas', label: 'Metas', ic: 'metas', more: true }, { id: 'fluxos', label: 'Fluxos', ic: 'fluxos', more: true })
+  items.push({ id: 'cassino' as Page, label: 'Cassino', ic: 'cafe', ph: 'sparkle', more: true, act: () => setUi({ cassino: true }) }, { id: 'bingo' as Page, label: 'Bingo', ic: 'cafe', ph: 'confetti', more: true, act: () => setUi({ bingo: true }) })
   // Equipe e Geral só no modo desenvolvedor (liga no menu do perfil)
   if (dev && !sv) items.push({ id: 'equipe', label: 'Equipe', ic: 'equipe', more: true })
   if (dev && chief && !sv) items.push({ id: 'geral', label: 'Geral', ic: 'mural', more: true, n: tasks.filter(t => t.status === 'inbox').length })
@@ -146,15 +150,15 @@ export default function Office() {
     // a janela do chat flutua por cima: aberta ganha só um fundo leve, o destaque fica na página
     const on = it.id !== 'chatwin' && page === it.id
     return (
-      <button className={'nav-item' + (on ? ' on' : '') + (it.id === 'chatwin' && s.chatOpen ? ' aberto' : '')} onClick={() => it.id === 'chatwin' ? setUi({ chatOpen: !s.chatOpen }) : goTo(it.id)} title={it.tip ?? it.label} aria-current={on && it.id !== 'chatwin' ? 'page' : undefined}>
-        <TIcon n={it.ic} size={22} /><span className="nav-l">{it.label}</span>{!!it.n && <i className="nav-n">{it.n > 9 ? '9+' : it.n}</i>}
+      <button className={'nav-item' + (on ? ' on' : '') + (it.id === 'chatwin' && s.chatOpen ? ' aberto' : '')} onClick={() => it.act ? it.act() : it.id === 'chatwin' ? setUi({ chatOpen: !s.chatOpen }) : goTo(it.id)} title={it.tip ?? it.label} aria-current={on && it.id !== 'chatwin' ? 'page' : undefined}>
+        {it.ph ? <Ph n={it.ph} size={22} /> : <TIcon n={it.ic} size={22} />}<span className="nav-l">{it.label}</span>{!!it.n && <i className="nav-n">{it.n > 9 ? '9+' : it.n}</i>}
       </button>
     )
   }
 
   const tabs: { id: Page; label: string; ic: PhName }[] = [
     { id: 'inicio', label: 'Início', ic: 'house' }, { id: 'agenda', label: 'Agenda', ic: 'calendar-dots' },
-    { id: 'metas', label: 'Metas', ic: 'target' }, { id: 'escritorio', label: 'Escritório', ic: 'desk' },
+    { id: 'quadro', label: 'Quadro', ic: 'kanban' }, { id: 'escritorio', label: 'Escritório', ic: 'desk' },
   ]
   const Tab = ({ it }: { it: (typeof tabs)[number] }) => (
     <button className={page === it.id ? 'on' : ''} onClick={() => goTo(it.id)} aria-current={page === it.id ? 'page' : undefined}>
@@ -189,8 +193,6 @@ export default function Office() {
               <button onClick={() => { setMeOpen(false); setUi({ editing: true }) }}><Ph n="smiley" size={20} /><b className="grow">Meu personagem</b></button>
               <button onClick={() => { setMeOpen(false); setUi({ armario: true }) }}><Ph n="smiley" size={20} /><b className="grow">Meu armário</b></button>
               <button onClick={() => { setMeOpen(false); goTo('loja') }}><Ph n="coffee" size={20} /><b className="grow">Almoxarifado</b>{s.wallet && <small className="me-pop-cf">☕ {s.wallet.balance}</small>}</button>
-              <button onClick={() => { setMeOpen(false); setUi({ cassino: true }) }}><Ph n="sparkle" size={20} /><b className="grow">Cassino</b></button>
-              <button onClick={() => { setMeOpen(false); setUi({ bingo: true }) }}><Ph n="confetti" size={20} /><b className="grow">Bingo</b></button>
               <button onClick={() => { setMeOpen(false); setUi({ conectar: true }) }}><Ph n="link" size={20} /><b className="grow">Conectar IA</b></button>
               {(me.is_admin || rankOf(me) >= 3) && <button onClick={() => { setMeOpen(false); setContas(true) }}><Ph n="users-three" size={20} /><b className="grow">Contas da equipe</b></button>}
               <button onClick={() => setPref('dev', !dev)} aria-pressed={dev}><Ph n="gear-six" size={20} /><b className="grow">Modo desenvolvedor</b><i className={'tswitch' + (dev ? ' on' : '')} /></button>
@@ -228,6 +230,7 @@ export default function Office() {
           {page === 'metas' && <Metas />}
           {page === 'fluxos' && <Fluxos />}
           {page === 'plano' && <Plano />}
+          {page === 'pedidos' && <Pedidos />}
           {page === 'redes' && <Redes />}
           {page === 'estudio' && <Estudio />}
           {page === 'arquivos' && <Arquivos />}
