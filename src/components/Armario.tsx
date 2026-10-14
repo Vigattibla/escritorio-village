@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { drawAvatar } from '../chibi/sprite'
 import { drawAnim } from '../office/anim'
+import { drawBoneco } from '../office/bichos'
 import { ITEMS, SLOTS, TIER_NAME, type Item } from '../shop/catalog'
 import { equip, owns, run, setUi, useStore } from '../store'
 import type { Gear } from '../types'
@@ -25,8 +25,9 @@ export default function Armario({ onClose }: { onClose: () => void }) {
   const av = p.avatar, gear = av.gear ?? {}, first = p.name.split(' ')[0]
   const meus = ITEMS.filter(i => owns(i.id, wallet))
   const prev = hover ? wear(av, hover.slot, hover.art) : av
-  const using = (i: Item) => i.slot === 'cabelo' ? av.hair === i.art : i.slot === 'roupa' ? av.outfit === i.art : gear[i.slot as keyof Gear] === i.art
+  const using = (i: Item) => i.slot === 'acao' || (i.slot === 'cabelo' ? av.hair === i.art : i.slot === 'roupa' ? av.outfit === i.art : gear[i.slot as keyof Gear] === i.art)
   const toggle = (i: Item) => {
+    if (i.slot === 'acao') { setErro(''); return }
     const off = using(i) && i.slot !== 'cabelo' && i.slot !== 'roupa'
     setBusy(i.id); setErro('')
     run(equip(i.slot, off ? null : i.art).catch(e => setErro((e as Error).message)).finally(() => { setBusy(''); setHover(null) }))
@@ -45,11 +46,11 @@ export default function Armario({ onClose }: { onClose: () => void }) {
         <div className="ar-corpo">
           <aside className="ar-espelho">
             <div className="lj-stage">
-              <Px w={40} h={44} s={5} draw={(c, t) => { drawAvatar(c, prev, null, 12, 12, 'down', Math.floor(t / 400) % 3 === 1 ? 1 : 0); drawAnim(c, prev.gear?.animacao, 20, 15, t) }} />
+              <Px w={40} h={44} s={5} draw={(c, t) => { const a = drawBoneco(c, prev, null, 20, 38, 'down', Math.floor(t / 400) % 3 === 1 ? 1 : 0, t, false); drawAnim(c, prev.gear?.animacao, 20, 15 - a, t) }} />
               <Plate kind={prev.gear?.plaquinha} name={first} />
             </div>
             <Px w={90} h={60} s={3} className="lj-desk" draw={(c, t) => deskScene(c, prev, t, 6, 4)} />
-            <small className="muted">{hover ? <>Passe o mouse pra ver; clique pra {using(hover) ? 'tirar' : 'vestir'}.</> : 'Clique numa peça pra vestir ou tirar.'}</small>
+            <small className="muted">{hover?.slot === 'acao' ? 'Ação a dois: clique numa pessoa no escritório pra usar.' : hover ? <>Passe o mouse pra ver; clique pra {using(hover) ? 'tirar' : 'vestir'}.</> : 'Clique numa peça pra vestir ou tirar.'}</small>
             {erro && <div className="lj-msg err">{erro}</div>}
             <button className="btn soft sm" onClick={() => { onClose(); setUi({ view: 'loja', drawer: false }) }}><Ph n="coffee" size={16} /> Ir ao Almoxarifado</button>
           </aside>
@@ -68,7 +69,7 @@ export default function Armario({ onClose }: { onClose: () => void }) {
                     <Thumb it={i} av={av} name={first} />
                     <b>{i.name}</b>
                     <span className="lj-tier">{i.bingo ? '🎱 Do bingo' : i.bolao ? '🍀 Do bolão' : TIER_NAME[i.tier]}</span>
-                    <span className="lj-price">{busy === i.id ? '…' : on ? '✓ Usando' : 'Vestir'}</span>
+                    <span className="lj-price">{busy === i.id ? '…' : i.slot === 'acao' ? 'Pronto pra usar' : on ? '✓ Usando' : 'Vestir'}</span>
                   </button>
                 })}
               </div>

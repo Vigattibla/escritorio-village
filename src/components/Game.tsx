@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { gravar } from '../office/trilha'
-import { drawAvatar, onPhotoLoad, SPRITE_H } from '../chibi/sprite'
+import { onPhotoLoad, SPRITE_H } from '../chibi/sprite'
 import { backend } from '../data'
 import { deptOf, isChief, managerOf } from '../game/ranks'
 import { COMODOS, comodoOf, DESENTUPIDOR, type Kind, type Spot } from '../office/comodos'
@@ -9,10 +9,11 @@ import { drawCurtain, drawDoor, drawExit, drawMat, HALL, inkOn } from '../office
 import { Emblema, FlagPicker } from './Bandeira'
 import { addMark, boardMarks, takeErrands, type Errand } from '../office/errands'
 import { drawAnim, plateFill, PLATE_CV } from '../office/anim'
+import { ACOES, altDe, drawBoneco, drawEfeitoAcao, lugarNaAcao, montariaDe, type Acao } from '../office/bichos'
 import { drawChair } from '../office/props'
 import { drawFurniture, kd, parseSala, type Obj } from '../office/sala'
 import { blocked, boardSpot, BOSS_DESK, deskAtTile, deskIds, deskOf, deskSidesOf, doorAtTile, doorSpot, drawBoardMarks, drawCarry, drawDesk, emptySala, FH, findPath, floorVersion, furniture, FW, getRooms, hallDecor, hasDesk, jogoAt, bingoAt, roomOfKind, HY0, MAX_DESKS, painelAt, paineisOf, pathToSeat, regionOfPx, renderFloor, roomOfId, setFloor, setPassable, shelfSpot, T, wallObjs, type Room } from '../office/world'
-import { bubbles, canDoor, canEnter, curtainsOpen, deptName, doorOpen, getState, goTo, knock, myDept, positions, roomOf, run, setCurtains, setDoor, setSalaGerente, setUi, useStore, type State } from '../store'
+import { bubbles, owns, canDoor, canEnter, curtainsOpen, deptName, doorOpen, getState, goTo, knock, myDept, positions, roomOf, run, setCurtains, setDoor, setSalaGerente, setUi, useStore, type State } from '../store'
 import type { Dir, Pos, Profile, Task } from '../types'
 import Icon from './Icon'
 import { addDia, CFG0, hoje, livres, mesDe, placar, ve } from '../game/vendas'
@@ -107,6 +108,8 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
   const [hover, setHover] = useState<Hover | null>(null)
   const [doorUi, setDoorUi] = useState<{ slot: number; x: number; y: number; up: boolean } | null>(null)
   const [comodo, setComodo] = useState<{ nome: string; cor: string } | null>(null)
+  const [pessoaUi, setPessoaUi] = useState<{ id: string; x: number; y: number } | null>(null)
+  const fazAcao = useRef<(k: string, id: string) => void>(() => {})
   const goSeat = useRef<() => void>(() => {})
   const here = useStore(s => s.here)
   useStore(s => s.rows.depts)
@@ -121,6 +124,10 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
     const meId = getState().meId!
     const keys = new Set<string>()
     const shown = new Map<string, Shown>()
+    // ações a dois: a minha (eu faço), a pendente (andando até a pessoa) e a última de que escapei
+    let minha: Acao | null = null, pend: { k: string; com: string; rota: number } | null = null, livre = 0
+    const vistas = new Set<string>()
+    fazAcao.current = (k, com) => { pend = { k, com, rota: 0 }; path = []; jobs.delete(meId) }
     const jobs = new Map<string, Job>()
     const waiting = new Map<string, Errand[]>()
     const wander = new Map<string, Wander>()
@@ -204,7 +211,7 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
       const k = e.key.toLowerCase()
       if (!['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(k)) return
       e.preventDefault()
-      if (e.type === 'keydown') { keys.add(k); path = []; jobs.delete(meId); setDoorUi(null) } else keys.delete(k)
+      if (e.type === 'keydown') { keys.add(k); path = []; jobs.delete(meId); setDoorUi(null); setPessoaUi(null); pend = null } else keys.delete(k)
     }
     const onBlur = () => keys.clear()
     const onClick = (e: MouseEvent) => {
@@ -212,6 +219,11 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
       setDoorUi(null)
       const w = toWorld(e.clientX, e.clientY)
       const id = avatarAt(w.x, w.y)
+      setPessoaUi(null)
+      if (id && id !== meId && Object.keys(ACOES).some(k => owns('acao:' + k))) {
+        const o = shown.get(id)!
+        return setPessoaUi({ id, x: (o.x - cam.x) * zoomRef.current, y: (o.y - SPRITE_H - cam.y) * zoomRef.current - 26 })
+      }
       if (id) return setUi({ tab: 'mesa', viewing: id })
       const tx = Math.floor(w.x / T), ty = Math.floor(w.y / T)
       const desk = hiddenAt(w.x, w.y) ? null : deskAtTile(tx, ty)
@@ -334,6 +346,32 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
           path = []; jobs.delete(meId); at = s.here; setDoorUi(null)
         }
       }
+      // ação a dois: chega perto e começa; quem é carregado acompanha quem carrega
+      const agoraW = Date.now()
+      if (minha && minha.ate < agoraW) minha = null
+      if (pend) {
+        const o = shown.get(pend.com)
+        if (!o) pend = null
+        else if (Math.hypot(o.x - meS.x, o.y - meS.y) < 20) {
+          minha = { k: pend.k, com: pend.com, ate: agoraW + ACOES[pend.k].ms }; pend = null; path = []
+          meS.dir = o.x < meS.x ? 'left' : 'right'
+        } else if (tnow > pend.rota) {
+          const p = findPath(meS.x, meS.y, Math.floor(o.x / T), Math.floor(o.y / T))
+          if (p) path = p
+          pend.rota = tnow + 900
+        }
+      }
+      let carregado: { by: string; a: Acao } | null = null
+      for (const [id, q] of positions) {
+        if (id === meId || !q.acao || q.acao.com !== meId || q.acao.ate < agoraW || q.acao.ate === livre || !shown.has(id)) continue
+        carregado = { by: id, a: q.acao }
+      }
+      const leva = carregado && (carregado.a.k === 'colo' || carregado.a.k === 'cavalinho')
+      if (leva && keys.size > 0) { livre = carregado!.a.ate; carregado = null }
+      else if (leva) {
+        const o = shown.get(carregado!.by)!
+        meS.x = o.x; meS.y = o.y + 0.5; path = []; pend = null
+      }
       // movimento local
       let vx = 0, vy = 0
       if (keys.has('a') || keys.has('arrowleft')) vx--
@@ -376,8 +414,8 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
       }
 
       const now = performance.now(), here = getState().here
-      const mine: Pos = { x: Math.round(meS.x * 10) / 10, y: Math.round(meS.y * 10) / 10, dir: meS.dir, moving, room: here, a: getState().sala, f: 1 }
-      const key = `${mine.x},${mine.y},${mine.dir},${moving},${here}`
+      const mine: Pos = { x: Math.round(meS.x * 10) / 10, y: Math.round(meS.y * 10) / 10, dir: meS.dir, moving, room: here, a: getState().sala, f: 1, ...(minha ? { acao: minha } : {}), ...(livre ? { livre } : {}) }
+      const key = `${mine.x},${mine.y},${mine.dir},${moving},${here},${minha?.ate ?? 0},${livre}`
       positions.set(meId, mine)
       if (!cine) gravar(meId, mine.x, mine.y)
       if ((key !== sentKey && now - lastSent > 100) || now - lastSent > 2500) {
@@ -551,9 +589,26 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
       }
       for (const o of hallDecor()) items.push({ key: (o.y + kd(o).h) * T - 1, draw: () => drawFurniture(ctx, o, t) })
       const seen = new Set<string>()
+      // quem está numa ação a dois: some do lugar dele e aparece junto de quem fez
+      const par = new Map<string, { com: string; a: Acao }>(), levado = new Set<string>()
+      for (const [id, q] of positions) {
+        const a = id === meId ? minha : q.acao
+        if (!a || a.ate < Date.now() || !shown.has(id) || !shown.has(a.com) || a.com === id) continue
+        const solto = a.com === meId ? livre : positions.get(a.com)?.livre
+        if (solto === a.ate || levado.has(id)) continue
+        par.set(id, { com: a.com, a }); levado.add(a.com)
+        const vk = id + ':' + a.ate
+        if (!vistas.has(vk)) {
+          vistas.add(vk)
+          const nome = s.profiles[id]?.name.split(' ')[0] ?? 'Alguém', sai = a.k === 'colo' || a.k === 'cavalinho'
+          bubbles.set(a.com, { text: a.com === meId ? `${nome} ${ACOES[a.k].fala}${sai ? ' (ande pra descer)' : ''}` : `${ACOES[a.k].icone} ${ACOES[a.k].nome}!`, until: Date.now() + Math.min(ACOES[a.k].ms, 5000) })
+        }
+      }
+      const ergue = new Map<string, { x: number; y: number }>()
       for (const [id, o] of shown) {
         const p = s.profiles[id]
         if (!p?.avatar || (id !== meId && hiddenAt(o.x, o.y))) continue
+        if (levado.has(id)) { seen.add(id); continue }
         // na cabine do banheiro: some de vista
         const w = wander.get(id)
         if (w?.phase === 'stay' && w.cur?.some) continue
@@ -569,11 +624,23 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
             if (away) ctx.filter = 'saturate(.3) brightness(.9)'
             const wv = away ? wander.get(id) : undefined, jump = wv ? pulo(Date.now(), wv.suste) : 0
             if (wv && t < wv.papelAte) drawPapel(ctx, o.x, o.y, o.dir, t)
-            drawAvatar(ctx, p.avatar!, p.photo, Math.round(o.x - 8), Math.round(o.y - SPRITE_H + 1 - jump), o.dir, frameOf(o))
+            const pr = par.get(id), l = pr && lugarNaAcao(pr.a.k, o.dir, t), alt0 = altDe(montariaDe(p.avatar!.gear?.montaria), t)
+            const outro = pr && s.profiles[pr.com]
+            const desenhaOutro = () => {
+              if (!l || !outro?.avatar) return
+              const ox = o.x + l.dx, oy = o.y + l.dy - alt0
+              drawBoneco(ctx, { ...outro.avatar, gear: { ...outro.avatar.gear, pet: undefined, montaria: undefined } }, outro.photo, ox, oy, l.dir, l.frame, t, false)
+              ergue.set(pr!.com, { x: ox, y: oy })
+            }
+            if (l && !l.frente) desenhaOutro()
+            const alt = drawBoneco(ctx, p.avatar!, p.photo, o.x, o.y, o.dir, frameOf(o), t, o.moving, jump)
+            if (l?.frente) desenhaOutro()
+            if (pr && l) drawEfeitoAcao(ctx, pr.a.k, o.x + l.dx / 2, o.y - SPRITE_H - alt - 4, t, pr.a.ate - ACOES[pr.a.k].ms)
+            if (alt) ergue.set(id, { x: o.x, y: o.y - alt })
             if (wv?.prop) drawProp(ctx, wv.prop, o.x, o.y - jump, o.dir, t)
             if (away) ctx.filter = 'none'
             if (job?.carry && o.dir !== 'up') drawCarry(ctx, Math.round(o.x + (o.dir === 'left' ? -9 : 2)), Math.round(o.y - 11))
-            if (!away) drawAnim(ctx, p.avatar!.gear?.animacao, Math.round(o.x), Math.round(o.y - SPRITE_H + 1), t)
+            if (!away) drawAnim(ctx, p.avatar!.gear?.animacao, Math.round(o.x), Math.round(o.y - SPRITE_H + 1 - alt), t)
           },
         })
       }
@@ -667,7 +734,7 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
       for (const [id, o] of shown) {
         const p = s.profiles[id]
         if (!p?.avatar || !seen.has(id)) continue
-        const sx = (o.x - cam.x) * z, sy = (o.y - SPRITE_H - cam.y) * z
+        const eg = ergue.get(id) ?? o, sx = (eg.x - cam.x) * z, sy = (eg.y - SPRITE_H - cam.y) * z
         if (sx < -100 || sx > W + 100 || sy < -60 || sy > H + 60) continue
         const away = id !== meId && !s.online.has(id) && !jobs.has(id)
         const passeando = away && (wander.get(id)?.phase ?? 'idle') !== 'idle'
@@ -779,6 +846,17 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
               <div><b>Espaço livre</b><span className="gd-st">Ainda vazio — em breve vira um cômodo novo do andar</span></div>
             </div>
           </>}
+        </div>
+      )}
+      {pessoaUi && s.profiles[pessoaUi.id] && (
+        <div className="game-door up gp" style={{ left: pessoaUi.x, top: pessoaUi.y }}>
+          <button className="x" onClick={() => setPessoaUi(null)} aria-label="Fechar"><Icon n="x" size={13} /></button>
+          <div className="gd-head"><div><b>{s.profiles[pessoaUi.id].name}</b><span className="gd-st">O que você quer fazer?</span></div></div>
+          <div className="gp-acoes">
+            {Object.entries(ACOES).filter(([k]) => owns('acao:' + k)).map(([k, a]) =>
+              <button key={k} onClick={() => { fazAcao.current(k, pessoaUi.id); setPessoaUi(null) }}><span>{a.icone}</span>{a.nome}</button>)}
+          </div>
+          <button onClick={() => { setUi({ tab: 'mesa', viewing: pessoaUi.id }); setPessoaUi(null) }}>Ver a mesa</button>
         </div>
       )}
       <div className="game-ctrl">

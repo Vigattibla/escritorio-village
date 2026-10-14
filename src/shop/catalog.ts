@@ -21,6 +21,9 @@ export const SLOTS: { id: Slot; label: string; who: 'eu' | 'mesa' }[] = [
   { id: 'rosto', label: 'Rosto', who: 'eu' },
   { id: 'animacao', label: 'Animação', who: 'eu' },
   { id: 'plaquinha', label: 'Plaquinha', who: 'eu' },
+  { id: 'pet', label: 'Bichinho', who: 'eu' },
+  { id: 'montaria', label: 'Montaria', who: 'eu' },
+  { id: 'acao', label: 'Ações a dois', who: 'eu' },
   { id: 'mesa', label: 'Mesa', who: 'mesa' },
   { id: 'cadeira', label: 'Cadeira', who: 'mesa' },
   { id: 'notebook', label: 'Notebook', who: 'mesa' },
@@ -96,6 +99,20 @@ const RAW: Record<Slot, Row[]> = {
     ['amarela', 'Amarela', 1], ['verde', 'Verde', 1], ['rosa', 'Rosa', 1], ['roxa', 'Roxa', 1], ['laranja', 'Laranja', 1],
     ['dourada', 'Dourada brilhante', 3], ['neon', 'Neon', 3],
     ['arco', 'Arco-íris', 4],
+  ],
+  pet: [
+    ['gato', 'Gato cinza', 2], ['gato-laranja', 'Gato laranja', 2], ['caramelo', 'Vira-lata caramelo', 2], ['coelho', 'Coelho', 2],
+    ['hamster', 'Hamster', 2], ['peixe', 'Peixinho no aquário', 2], ['pato', 'Patinho', 2], ['galinha', 'Galinha', 2], ['tartaruga', 'Tartaruga', 2],
+    ['porquinho', 'Porquinho', 3], ['pinguim', 'Pinguim', 3], ['capivara', 'Capivara zen', 3], ['raposa', 'Raposa', 3], ['papagaio', 'Papagaio no ombro', 3], ['fantasma', 'Fantasminha', 3],
+    ['dragao', 'Dragãozinho', 4],
+  ],
+  montaria: [
+    ['cavalinho-pau', 'Cavalinho de pau', 1], ['skate', 'Skate', 1], ['patinete', 'Patinete', 2], ['cadeira', 'Cadeira de rodinha', 2],
+    ['cavalo', 'Cavalo', 3], ['ponei', 'Pônei', 3], ['boia-flamingo', 'Boia de flamingo', 3],
+    ['unicornio', 'Unicórnio', 4], ['capivara-gigante', 'Capivara gigante', 4], ['tapete', 'Tapete voador', 4], ['nuvem', 'Nuvem voadora', 4],
+  ],
+  acao: [
+    ['abraco', 'Dar um abraço', 1], ['toca', 'Toca aqui', 1], ['colo', 'Pegar no colo', 2], ['danca', 'Dancinha a dois', 2], ['cavalinho', 'Levar de cavalinho', 3],
   ],
 }
 

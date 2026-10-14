@@ -7,7 +7,7 @@ export type Outfit = string
 /** básicos: curto, longo, coque, cacheado, raspado; o resto vem do Almoxarifado */
 export type HairStyle = string
 /** o que vai além da roupa: cabeça, rosto, mesa e companhia (valor = arte do item) */
-export type GearSlot = 'chapeu' | 'rosto' | 'mesa' | 'cadeira' | 'notebook' | 'enfeite' | 'chao' | 'animacao' | 'plaquinha'
+export type GearSlot = 'chapeu' | 'rosto' | 'mesa' | 'cadeira' | 'notebook' | 'enfeite' | 'chao' | 'animacao' | 'plaquinha' | 'pet' | 'montaria' | 'acao'
 export type Gear = Partial<Record<GearSlot, string>>
 
 export interface Avatar {
@@ -247,6 +247,10 @@ export interface Pos {
   a?: string
   /** 1 = x/y no mapa do andar inteiro (versão nova); sem isso, era coordenada da sala */
   f?: 1
+  /** ação a dois em andamento (colo, cavalinho...) com outra pessoa */
+  acao?: { k: string; com: string; ate: number }
+  /** quem foi carregado e desceu: ate da ação de que escapou */
+  livre?: number
 }
 
 /** Proposta da IA do Gerente: ele revisa e só então distribui */

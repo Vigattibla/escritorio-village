@@ -120,3 +120,9 @@
 .ar-gaveta h4 small { color: #6b6478; font-weight: 600; }
 .ar-vazio { display: flex; flex-direction: column; gap: 6px; padding: 30px; text-align: center; color: #6b6478; border: 2px dashed #e4dccd; border-radius: 16px; }
 .ar-vazio b { color: inherit; font-size: 16px; }
+.lj-acao { display: grid; place-items: center; font-size: 34px; }
+.gp-acoes { display: grid; gap: 4px; }
+.gp-acoes button { display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 10px; border: 1px solid var(--line); border-radius: 7px; background: #fff; font-weight: 600; font-size: 12.5px; color: var(--text); cursor: pointer; text-align: left; }
+.gp-acoes button:hover, .game-door.gp > button:not(.x):hover { background: var(--hover); }
+.gp-acoes span { font-size: 16px; }
+.game-door.gp > button:not(.x) { height: 30px; border: 1px solid var(--line); border-radius: 7px; background: #fff; font-weight: 600; font-size: 12.5px; cursor: pointer; }

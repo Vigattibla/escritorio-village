@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { drawAvatar } from '../chibi/sprite'
 import { drawAnim } from '../office/anim'
+import { ACOES, drawBoneco, drawPet } from '../office/bichos'
 import { drawChair, drawDecor, drawFloor, drawNotebook, MESA, mesaExtra } from '../office/props'
 import { ITEMS, SLOTS, TIER_NAME, type Item, type Slot } from '../shop/catalog'
 import { DAY, FINAL, MAX_GOALS, PHASE, REASON, WELCOME } from '../shop/economy'
@@ -50,6 +51,7 @@ export function deskScene(c: C2D, av: Avatar, t: number, ox: number, oy: number)
 export function Thumb({ it, av, name }: { it: Item; av: Avatar; name: string }) {
   if (it.slot === 'plaquinha') return <div className="lj-thumb"><Plate kind={it.art} name={name} /></div>
   if (it.slot === 'cadeira') return <div className="lj-thumb"><Px w={24} h={42} s={1.6} draw={c => drawChair(c, it.art, 12, 40, false)} /></div>
+  if (it.slot === 'acao') return <div className="lj-thumb lj-acao">{ACOES[it.art]?.icone}</div>
   const full = wear({ ...av, gear: {} }, it.slot, it.art)
   const draw = (c: C2D, t: number) => {
     if (it.slot === 'cabelo' || it.slot === 'chapeu' || it.slot === 'rosto') { c.translate(4, 6); drawAvatar(c, full, null, 0, 0, 'down', 0) }
@@ -59,6 +61,8 @@ export function Thumb({ it, av, name }: { it: Item; av: Avatar; name: string }) 
     else if (it.slot === 'notebook') drawNotebook(c, it.art, 12, 12, '#FBC222', t)
     else if (it.slot === 'enfeite') drawDecor(c, it.art, 8, 18, t)
     else if (it.slot === 'chao') drawFloor(c, it.art, 5, 22, t)
+    else if (it.slot === 'pet') drawPet(c, it.art, 0, 22, 'left', t, false)
+    else if (it.slot === 'montaria') { c.translate(12, 24); c.scale(0.75, 0.75); drawBoneco(c, full, null, 0, 0, 'right', 0, t, false) }
   }
   return <div className="lj-thumb"><Px w={24} h={24} s={3} draw={draw} /></div>
 }
@@ -96,7 +100,7 @@ export default function Loja() {
   const coins = wallet?.balance ?? 0
   const prev = trying ? wear(av, trying.slot, trying.art) : av
 
-  const using = (i: Item) => i.slot === 'cabelo' ? av.hair === i.art : i.slot === 'roupa' ? av.outfit === i.art : gear[i.slot as keyof Gear] === i.art
+  const using = (i: Item) => i.slot === 'acao' ? owns(i.id, wallet) : i.slot === 'cabelo' ? av.hair === i.art : i.slot === 'roupa' ? av.outfit === i.art : gear[i.slot as keyof Gear] === i.art
   const list = ITEMS.filter(i => i.slot === slot && (!mine || owns(i.id, wallet)))
   const act = (id: string, f: () => Promise<unknown>, ok?: string) => {
     setBusy(id); setMsg(null)
@@ -104,6 +108,7 @@ export default function Loja() {
   }
   const toggle = (i: Item) => {
     setTrying(null)
+    if (i.slot === 'acao') { setMsg({ text: `Clique em alguém no escritório pra usar "${i.name}".` }); return }
     const off = using(i) && i.slot !== 'cabelo' && i.slot !== 'roupa'
     act(i.id, () => equip(i.slot, off ? null : i.art))
   }
@@ -111,6 +116,7 @@ export default function Loja() {
     if (i.bolao) { setUi({ cassino: 'bolao' }); return }
     if (i.bingo) { setUi({ bingo: true }); return }
     if (coins < i.price) { setMsg({ text: `Faltam ${i.price - coins} cafezinhos para ${i.name}.`, err: true }); return }
+    if (i.slot === 'acao') { act(i.id, async () => { await buyItem(i.id); setTrying(null) }, `Comprou ${i.name}! Clique em alguém no escritório pra usar.`); return }
     act(i.id, async () => { await buyItem(i.id); await equip(i.slot, i.art); setTrying(null) }, `Comprou ${i.name}! Já está usando.`)
   }
 
@@ -128,7 +134,7 @@ export default function Loja() {
             <button className="btn soft sm lj-bolao" onClick={() => setUi({ cassino: 'bolao' })}>🍀 Bolão{bolao ? ` · ☕ ${bolao.pote}` : ''}</button>
           </div>
           <div className="lj-stage">
-            <Px w={40} h={44} s={5} draw={(c, t) => { drawAvatar(c, prev, null, 12, 12, 'down', Math.floor(t / 400) % 3 === 1 ? 1 : 0); drawAnim(c, prev.gear?.animacao, 20, 15, t) }} />
+            <Px w={40} h={44} s={5} draw={(c, t) => { const a = drawBoneco(c, prev, null, 20, 38, 'down', Math.floor(t / 400) % 3 === 1 ? 1 : 0, t, false); drawAnim(c, prev.gear?.animacao, 20, 15 - a, t) }} />
             <Plate kind={prev.gear?.plaquinha} name={first} />
           </div>
           <Px w={90} h={60} s={3} className="lj-desk" draw={(c, t) => deskScene(c, prev, t, 6, 4)} />
