@@ -216,3 +216,8 @@ Pendente: push (precisa da migration 202610080900_v4_agenda_metas.sql e do secre
 - Pendente: testar aprovação com um gerente de verdade depois que o migrate rodar.
 - 817ac40: o Chat virou bolinha no canto (o gato saiu). Metas, Fluxos, Cassino e Bingo saíram do Mais (Cassino segue no Almoxarifado e no jogo).
 - 14/10 5d87261: Pedidos pessoais só autor+gerente; coletivo para a sala; +1 só coletivo (migration 202610221000).
+
+### 14/10 — Estúdio vira painel dentro de Publicações (7f188a4 + 8f5cbc5)
+- Aba Estúdio saiu do menu; Publicações ganhou botão "Pedir arte" (badge amarelo = peças pra aprovar) que abre painel lateral (abas Aprovar / Pedir arte / Conversa se dev). Coluna "Em aprovação" avisa peças do Estúdio esperando. Página 'estudio' antiga abre Publicações com o painel.
+- Permissão igual: painel só adm ou rank ≥2. Abaixo de 900px vira folha de baixo com fundo escuro (toque fora fecha). Estado aberto/aba em localStorage `rd-estudio`.
+- Pendente: no menu do celular não há item Publicações (só pela barra lateral do desktop) — decidir com o usuário.
