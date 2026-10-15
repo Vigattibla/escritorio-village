@@ -69,7 +69,7 @@ export default function Legendas() {
   const pronto = arquivos.length > 0 || contexto.trim().length >= 10
 
   return (
-    <div className="lg">
+    <div className="lg-pg">
       <section className="lg-form">
         <div className="lg-linha">
           <label className="lg-campo">
