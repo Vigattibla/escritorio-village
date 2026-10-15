@@ -840,3 +840,15 @@ button.tlogo.img:hover { box-shadow: inset 0 0 0 2px var(--acc2); }
 @keyframes dlg-fade { from { opacity: 0 } }
 @keyframes dlg-in { from { opacity: 0; transform: translateY(8px) scale(.96) } }
 @media (max-width: 480px) { .dlg-bg { align-items: flex-end; } .dlg { border-radius: 20px 20px 14px 14px; } .dlg-ft .btn { flex: 1; justify-content: center; } }
+
+/* 14/10: o gato saiu; o chat virou uma bolinha redonda no canto (continua arrastável) */
+.gato { width: 52px; height: 52px; }
+.gato-wrap { height: 52px; }
+.gato-wrap.right .gato { right: 16px; }
+.gato-wrap.left .gato { left: 16px; }
+.gato-corpo.bolinha, .gato-wrap.right .gato-corpo.bolinha, .gato-wrap.left .gato-corpo.bolinha { transform: none; place-items: center; border-radius: 50%; background: var(--cobalto); color: #fff; filter: none; box-shadow: 0 8px 20px rgba(16, 16, 20, .22); }
+.gato:hover .gato-corpo.bolinha, .gato.on .gato-corpo.bolinha { transform: scale(1.06); }
+.gato-wrap.right .gato-n { right: 10px; top: -6px; }
+.gato-wrap.left .gato-n { left: 10px; top: -6px; }
+.gato-wrap.right .gato-balao { right: 76px; }
+.gato-wrap.left .gato-balao { left: 76px; }

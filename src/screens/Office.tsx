@@ -113,7 +113,6 @@ export default function Office() {
     { id: 'vendas', label: 'Quartos', ic: 'vendas' },
     { id: 'placar', label: 'Placar', ic: 'placar' },
     { id: 'kit', label: 'Kit de vendas', ic: 'kit' },
-    { id: 'chatwin', label: 'Chat', ic: 'chat', n: msgs },
     { id: 'arquivos', label: 'Arquivos', ic: 'arquivos' },
     { id: 'escritorio', label: 'Escritório', ic: 'escritorio' },
   ] : [
@@ -122,17 +121,14 @@ export default function Office() {
     { id: 'agenda', label: 'Agenda', ic: 'agenda' },
     { id: 'plano', label: 'Plano', ic: 'plano' },
     { id: 'redes', label: 'Publicações', ic: 'redes', tip: 'Posts de todas as redes: criar, aprovar e publicar' },
-    { id: 'chatwin', label: 'Chat', ic: 'chat', n: msgs },
     { id: 'escritorio', label: 'Escritório', ic: 'escritorio' },
     { id: 'arquivos', label: 'Arquivos', ic: 'arquivos' },
     // Vendas fora do setor de vendas: só o admin, no modo desenvolvedor
     ...(depts.some(d => d.vendas) && me.is_admin && dev ? ([['vendas', 'Quartos'], ['placar', 'Placar'], ['kit', 'Kit de vendas']] as const).map(([id, label]) => ({ id: id as Page, label, ic: (id === 'vendas' ? 'vendas' : id) as TName, more: true })) : []),
     ...(me.is_admin || rankOf(me) >= 2 ? [{ id: 'estudio' as Page, label: 'Estúdio', ic: 'kudos' as TName, tip: me.is_admin ? 'Converse com o Estúdio da VPS e peça carrosséis' : 'Peça carrosséis pelos moldes do Estúdio' }] : []),
-    // menu do perfil é só pro essencial (14/10): Metas, Fluxos, Cassino e Bingo ficam recolhidos em "Mais"
+    // 14/10: Metas e Fluxos fora do menu (ninguém usava); Cassino e Bingo só pelo escritório (jogo)
     { id: 'pedidos', label: 'Pedidos', ic: 'pedir', more: true, n: reqPend, tip: reqPend ? `${reqPend} pedido(s) esperando sua decisão` : 'Pedidos ao gerente: material, folga e listas do setor' },
   ]
-  if (!sv) items.push({ id: 'metas', label: 'Metas', ic: 'metas', more: true }, { id: 'fluxos', label: 'Fluxos', ic: 'fluxos', more: true })
-  items.push({ id: 'cassino' as Page, label: 'Cassino', ic: 'cafe', ph: 'sparkle', more: true, act: () => setUi({ cassino: true }) }, { id: 'bingo' as Page, label: 'Bingo', ic: 'cafe', ph: 'confetti', more: true, act: () => setUi({ bingo: true }) })
   // Equipe e Geral só no modo desenvolvedor (liga no menu do perfil)
   if (dev && !sv) items.push({ id: 'equipe', label: 'Equipe', ic: 'equipe', more: true })
   if (dev && chief && !sv) items.push({ id: 'geral', label: 'Geral', ic: 'mural', more: true, n: tasks.filter(t => t.status === 'inbox').length })

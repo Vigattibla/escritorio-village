@@ -2,8 +2,6 @@ import { useEffect, useRef, useState } from 'react'
 import { dmChannel, dmPeer, floatChans, groupOf, setUi, useStore, type State } from '../store'
 import Chat from './Chat'
 import Icon, { Ph } from './Icon'
-import { MeoEncostado } from './Meo'
-import { TENANT } from '../tenant'
 import MiniAvatar from './MiniAvatar'
 import type { PhName } from './ph'
 
@@ -147,7 +145,7 @@ export default function FloatChat({ unread }: { unread: number }) {
   const tap = () => {
     if (open) return setUi({ chatOpen: false })
     if (peek) { setPeek(null); return setUi({ chatOpen: true, channel: last!.channel }) }
-    setMiau(!miau)
+    setUi({ chatOpen: true })
   }
   const falar = (channel?: string) => { setMiau(false); setUi(channel ? { chatOpen: true, channel } : { chatOpen: true }) }
   const gente = Object.values(s.profiles).filter(p => p.id !== s.meId && p.avatar)
@@ -177,7 +175,7 @@ export default function FloatChat({ unread }: { unread: number }) {
           aria-label={`Chat${unread ? ` (${unread} novas)` : ''}`}
           aria-expanded={open || miau}
         >
-          <span className="gato-corpo"><MeoEncostado cabeca size={48} color={TENANT.acc} mood={open || miau ? 'feliz' : unread ? 'chamando' : 'idle'} /></span>
+          <span className="gato-corpo bolinha"><Ph n="chat-circle-dots" size={26} fill={open} /></span>
           {!open && unread > 0 && <i className="gato-n">{unread > 9 ? '9+' : unread}</i>}
         </button>
         {peek && !open && !miau && (
