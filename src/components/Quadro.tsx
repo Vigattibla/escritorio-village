@@ -406,7 +406,10 @@ export default function Quadro() {
             {cols.map(s => (
               <div key={s.id} className={'qlane-st st-' + s.kind}>
                 <span><i className="qdot" />{s.label}</span>
-                <span className="qcount">{lanes.reduce((n, l) => n + l.cells.find(c => c.key === `${l.p.id}:${s.id}`)!.cards.length, 0)}</span>
+                <span className="qlane-st-r">
+                  <span className="qcount">{lanes.reduce((n, l) => n + l.cells.find(c => c.key === `${l.p.id}:${s.id}`)!.cards.length, 0)}</span>
+                  {s.stage && canEditStages() && <StageMenu s={s.stage} list={stages} count={lanes.reduce((n, l) => n + l.cells.find(c => c.key === `${l.p.id}:${s.id}`)!.cards.length, 0)} />}
+                </span>
               </div>
             ))}
           </div>
@@ -422,12 +425,15 @@ export default function Quadro() {
             </div>
           ))}
           {!lanes.length && <p className="qempty pad">Ninguém com tarefas aqui.</p>}
+          <div className="qlane-acoes">
+          {canEditStages() && <NewStage list={stages} chip />}
           {outside.length > 0 && (
             <select className="qchip qlane-add" value="" onChange={e => e.target.value && setExtra(x => [...x, e.target.value])} aria-label="Colocar alguém no projeto">
               <option value="">＋ Colocar alguém no projeto…</option>
               {outside.map(p => <option key={p.id} value={p.id}>{p.name} · {p.role || rankName(p)}</option>)}
             </select>
           )}
+          </div>
         </div>
       ) : (
         <div className="qlists">
@@ -806,7 +812,7 @@ function StageMenu({ s, list, count }: { s: Stage; list: Stage[]; count: number 
 }
 
 /** Coluna fantasma no fim do quadro: cria uma etapa nova. */
-function NewStage({ list }: { list: Stage[] }) {
+function NewStage({ list, chip = false }: { list: Stage[]; chip?: boolean }) {
   const [open, setOpen] = useState(false)
   const [name, setName] = useState('')
   const [kind, setKind] = useState<StageKind>('doing')
@@ -819,9 +825,10 @@ function NewStage({ list }: { list: Stage[] }) {
     const n = list.slice(); n.splice(at < 0 ? n.length : at + 1, 0, s)
     run(saveStages(n)); setName(''); setOpen(false)
   }
+  if (!open && chip) return <button className="qchip qlane-add" onClick={() => setOpen(true)}><Ph n="plus" size={14} />Nova etapa</button>
   if (!open) return <button className="qlist qnew" onClick={() => setOpen(true)}><Ph n="plus" size={18} />Nova etapa</button>
   return (
-    <form className="qlist qnew-form" onSubmit={e => { e.preventDefault(); create() }}>
+    <form className={chip ? 'qnew-form qlane-nova' : 'qlist qnew-form'} onSubmit={e => { e.preventDefault(); create() }}>
       <b>Nova etapa</b>
       <input autoFocus value={name} maxLength={40} placeholder="Ex.: Revisão interna" onChange={e => setName(e.target.value)} onKeyDown={e => e.key === 'Escape' && setOpen(false)} aria-label="Nome da etapa" />
       <small className="muted">Funciona como</small>

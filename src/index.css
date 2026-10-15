@@ -595,6 +595,11 @@ h3.mt { margin-top: 14px; }
   .rvbanner, .rvpanel { margin: 0 14px; }
 }
 .qlane-add { align-self: flex-start; margin-left: 8px; }
+.qlane-acoes { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px; }
+.qlane-acoes .qlane-add { margin-left: 0; display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
+.qlane-nova { border-radius: 12px; }
+.qlane-st-r { display: inline-flex; align-items: center; gap: 2px; margin-left: auto; }
+.qlane-st .icon-btn.sm { width: 24px; height: 24px; }
 
 /* ---------- visual clean (estilo Notion) ---------- */
 h1 { font-size: 28px; font-weight: 700; color: var(--text); letter-spacing: -.01em; }
