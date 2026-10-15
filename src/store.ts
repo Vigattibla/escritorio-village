@@ -19,7 +19,7 @@ import { lerBloqueio, type Bloqueio } from './game/vigia'
 export type Phase = 'loading' | 'auth' | 'creator' | 'office'
 export type Tab = 'mesa' | 'aprovar' | 'avisos' | 'equipe' | 'chat' | 'geral'
 /** quadro = trabalho do dia a dia (estilo Trello); escritório = visualização em pixel */
-export type View = 'quadro' | 'escritorio' | 'agenda' | 'metas' | 'fluxos' | 'inicio' | 'arquivos' | 'loja' | 'vendas' | 'placar' | 'kit' | 'plano' | 'redes' | 'estudio' | 'pedidos'
+export type View = 'quadro' | 'escritorio' | 'agenda' | 'metas' | 'fluxos' | 'inicio' | 'arquivos' | 'loja' | 'vendas' | 'placar' | 'kit' | 'plano' | 'redes' | 'estudio' | 'pedidos' | 'legendas'
 export interface Go { view?: View; tab?: Tab; viewing?: string; channel?: string; task?: string; cassino?: 'bolao'; bingo?: boolean }
 export type NoticeKind = 'data' | 'plano' | 'prazo' | 'lembrete' | 'pedido' | 'colab' | 'aprov' | 'msg' | 'adesivo' | 'loja' | 'time'
 export interface Notice { id: string; text: string; at: number; from?: string; go?: Go; kind?: NoticeKind }
@@ -96,7 +96,7 @@ export interface State {
 
 
 /** link direto: …/#estudio (ou #pedidos, #agenda…) abre já na página; o app do celular usa #estudio no modo sem o PC */
-const VIEWS: View[] = ['quadro', 'escritorio', 'agenda', 'metas', 'fluxos', 'inicio', 'arquivos', 'loja', 'vendas', 'placar', 'kit', 'plano', 'redes', 'estudio', 'pedidos']
+const VIEWS: View[] = ['quadro', 'escritorio', 'agenda', 'metas', 'fluxos', 'inicio', 'arquivos', 'loja', 'vendas', 'placar', 'kit', 'plano', 'redes', 'estudio', 'pedidos', 'legendas']
 function viewDaUrl(): View {
   const h = typeof location === 'undefined' ? '' : location.hash.slice(1)
   return (VIEWS as string[]).includes(h) ? h as View : 'quadro'

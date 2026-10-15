@@ -26,6 +26,7 @@ jobs:
           ref=${URL#https://}; ref=${ref%%.*}
           supabase functions deploy drive --project-ref "$ref" --no-verify-jwt --use-api
           supabase functions deploy relatorio-ia --project-ref "$ref" --no-verify-jwt --use-api
+          supabase functions deploy legenda --project-ref "$ref" --no-verify-jwt --use-api
           supabase functions deploy linkedin --project-ref "$ref" --no-verify-jwt --use-api
           supabase functions deploy tarefas --project-ref "$ref" --no-verify-jwt --use-api
         env:

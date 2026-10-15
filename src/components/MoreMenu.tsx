@@ -23,6 +23,7 @@ export default function MoreMenu() {
   ] : [
     ['kanban', 'Quadro', () => setUi({ view: 'quadro', drawer: false }), pend],
     ['hand-heart', 'Pedidos', () => setUi({ view: 'pedidos', drawer: false })],
+    ['sparkle', 'Legendas', () => setUi({ view: 'legendas', drawer: false })],
     ['folder-simple', 'Arquivos', () => setUi({ view: 'arquivos', drawer: false })],
     ['coffee', 'Almoxarifado', () => setUi({ view: 'loja', drawer: false })],
     ['sparkle', 'Cassino', () => setUi({ cassino: true })],

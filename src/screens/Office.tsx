@@ -22,6 +22,7 @@ import Loja from '../components/Loja'
 import SalaEditor, { canEditOffice } from '../components/SalaEditor'
 import Fluxos from '../components/Fluxos'
 import Pedidos, { reqParaDecidir } from '../components/Pedidos'
+import Legendas from '../components/Legendas'
 import Plano from '../components/Plano'
 import Redes from '../components/Redes'
 import Arquivos from '../components/Arquivos'
@@ -127,6 +128,7 @@ export default function Office() {
     ...(depts.some(d => d.vendas) && me.is_admin && dev ? ([['vendas', 'Quartos'], ['placar', 'Placar'], ['kit', 'Kit de vendas']] as const).map(([id, label]) => ({ id: id as Page, label, ic: (id === 'vendas' ? 'vendas' : id) as TName, more: true })) : []),
     // 14/10: Metas e Fluxos fora do menu (ninguém usava); Cassino e Bingo só pelo escritório (jogo)
     { id: 'pedidos', label: 'Pedidos', ic: 'pedir', more: true, n: reqPend, tip: reqPend ? `${reqPend} pedido(s) esperando sua decisão` : 'Pedidos ao gerente: material, folga e listas do setor' },
+    { id: 'legendas', label: 'Legendas', ic: 'comentario', more: true, tip: 'Legendas de redes sociais com IA, na voz da marca' },
   ]
   // Equipe e Geral só no modo desenvolvedor (liga no menu do perfil)
   if (dev && !sv) items.push({ id: 'equipe', label: 'Equipe', ic: 'equipe', more: true })
@@ -226,6 +228,7 @@ export default function Office() {
           {page === 'fluxos' && <Fluxos />}
           {page === 'plano' && <Plano />}
           {page === 'pedidos' && <Pedidos />}
+          {page === 'legendas' && <Legendas />}
           {/* 14/10: Estúdio virou painel dentro de Publicações; 'estudio' abre já com ele */}
           {(page === 'redes' || page === 'estudio') && <Redes estudio={page === 'estudio'} />}
           {page === 'arquivos' && <Arquivos />}
