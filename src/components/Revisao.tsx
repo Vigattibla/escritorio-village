@@ -38,7 +38,7 @@ export function ReviewBox({ t, compact = false }: { t: Task; compact?: boolean }
         {!no && <button className="btn ok sm" disabled={failed.length > 0} onClick={() => run(review(t.id, true))}>✓ Aprovar</button>}
         {no
           ? <>
-              <button className="btn danger sm" disabled={!ok} onClick={() => run(review(t.id, false, reason, failed))}>✕ Reprovar e devolver</button>
+              <button className="btn danger-ghost sm" disabled={!ok} onClick={() => run(review(t.id, false, reason, failed))}>✕ Reprovar e devolver</button>
               <button className="btn ghost sm" onClick={() => { setNo(false); setFailed([]); setReason('') }}>Cancelar</button>
             </>
           : <button className="btn ghost sm" onClick={() => setNo(true)}>✕ Reprovar…</button>}
