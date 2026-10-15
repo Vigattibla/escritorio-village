@@ -2,7 +2,7 @@ import { pref } from './prefs'
 import { useSyncExternalStore } from 'react'
 import { backend } from './data'
 import { canAssign, DEPT0, deptOf, isChief, managerOf, outranks, rankName, rankOf } from './game/ranks'
-import { HALL, SLOTS } from './office/andar'
+import { chegada, HALL, SLOTS } from './office/andar'
 import { dayKey, taskXp } from './game/xp'
 import { MAX_DESKS } from './office/base'
 import { parseSala } from './office/sala'
@@ -496,11 +496,13 @@ function ingest(snap: Snapshot) {
   })
 }
 
-/** a Chefe entra em outra sala (as outras pessoas só na delas) */
-export async function openSala(id: string) {
-  if (id === state.sala || (!isChief(me()) && id !== myDept())) return
+/** abre o andar de outro setor: a Chefe entra em qualquer um (leva o quadro junto); os outros visitam se a porta estiver aberta.
+ *  Pelo elevador chega no corredor, na frente dele. */
+export async function openSala(id: string, elevador = false) {
+  if (id === state.sala || (id !== myDept() && !canEnter(id))) return
   const snap = await backend.loadAll()
-  set({ sala: id, here: id, project: '', task: null, flow: null, viewing: state.meId })
+  if (elevador) chegada.elevador = true
+  set({ sala: id, here: elevador ? HALL : id, project: '', task: null, flow: null, viewing: state.meId })
   ingest(snap)
 }
 

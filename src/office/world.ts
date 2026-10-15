@@ -15,7 +15,7 @@ export const HY0 = MH, HY1 = MH + 4
 export const FH = HY1 + 1 + MH
 /** coisas do corredor (tiles globais): sofá e bancos encostados no vidro de cima, plantas e canteiros embaixo */
 function hallObjs(): [string, number, number][] {
-  const o: [string, number, number][] = [['planta', 1, HY0], ['planta', FW - 2, HY0], ['planta', 1, HY1], ['planta', FW - 2, HY1]]
+  const o: [string, number, number][] = [['elevador', 1, HY0], ['planta', FW - 2, HY0], ['planta', 1, HY1], ['planta', FW - 2, HY1]]
   for (const r of rooms) {
     // na emenda entre duas salas: sofá entre plantas (em cima), bebedouro (embaixo)
     if (r.ox > 0) o.push(...(r.top ? [['planta', r.ox - 3, HY0], ['sofa', r.ox - 2, HY0], ['planta', r.ox + 2, HY0]] : [['bebedouro', r.ox - 1, HY1], ['planta', r.ox, HY1]]) as [string, number, number][])
@@ -250,6 +250,14 @@ const MAQUINAS: Record<string, Maq> = {
   'totem-crash': { cassino: 'crash', act: 'No crash' }, 'totem-minas': { cassino: 'minas', act: 'Nas minas' }, 'caixa-fichas': { cassino: 'caca', act: 'No caça-níquel' },
 }
 /** clique num móvel de jogo (tile do mundo): qual jogo e o lugar livre mais perto pra jogar */
+/** elevador no fim do corredor (clique): onde ele está e onde o boneco espera na frente */
+export function elevadorAt(gx: number, gy: number) {
+  const o = hall.find(h => h.k === 'elevador')
+  if (!o || gx < o.x || gx >= o.x + 2 || gy < o.y - 2 || gy > o.y) return null
+  return elevadorSpot()
+}
+export const elevadorSpot = () => ({ x: 2 * T, y: (HY0 + 1) * T, tx: 1, ty: HY0 + 1 })
+
 export function jogoAt(gx: number, gy: number) {
   for (const r of rooms) {
     if (r.kind !== 'jogos') continue

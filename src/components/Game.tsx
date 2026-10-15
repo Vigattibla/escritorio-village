@@ -5,15 +5,15 @@ import { backend } from '../data'
 import { deptOf, isChief, managerOf } from '../game/ranks'
 import { COMODOS, comodoOf, DESENTUPIDOR, type Kind, type Spot } from '../office/comodos'
 import { drawPapel, drawProp, pulo, type Prop } from '../office/vida'
-import { drawCurtain, drawDoor, drawExit, drawMat, HALL, inkOn } from '../office/andar'
-import { Emblema, FlagPicker } from './Bandeira'
+import { chegada, drawCurtain, drawDoor, drawExit, drawMat, HALL, inkOn } from '../office/andar'
+import { Emblema } from './Bandeira'
 import { addMark, boardMarks, takeErrands, type Errand } from '../office/errands'
 import { ACIMA, drawAnim, plateFill, PLATE_CV } from '../office/anim'
 import { ACOES, altDe, drawBoneco, drawEfeitoAcao, lugarNaAcao, montariaDe, type Acao } from '../office/bichos'
 import { drawChair } from '../office/props'
 import { drawFurniture, kd, parseSala, type Obj } from '../office/sala'
-import { blocked, boardSpot, BOSS_DESK, deskAtTile, deskIds, deskOf, deskSidesOf, doorAtTile, doorSpot, drawBoardMarks, drawCarry, drawDesk, emptySala, FH, findPath, floorVersion, furniture, FW, getRooms, hallDecor, hasDesk, jogoAt, bingoAt, roomOfKind, HY0, MAX_DESKS, painelAt, paineisOf, pathToSeat, regionOfPx, renderFloor, roomOfId, setFloor, setPassable, shelfSpot, T, wallObjs, type Room } from '../office/world'
-import { bubbles, owns, canDoor, canEnter, curtainsOpen, doorOpen, getState, goTo, knock, positions, roomOf, run, setCurtains, setDoor, setSalaGerente, setUi, useStore, type State } from '../store'
+import { blocked, boardSpot, BOSS_DESK, deskAtTile, deskIds, deskOf, deskSidesOf, doorAtTile, doorSpot, drawBoardMarks, drawCarry, drawDesk, emptySala, FH, findPath, floorVersion, furniture, FW, getRooms, hallDecor, hasDesk, elevadorAt, elevadorSpot, jogoAt, bingoAt, roomOfKind, HY0, MAX_DESKS, painelAt, paineisOf, pathToSeat, regionOfPx, renderFloor, roomOfId, setFloor, setPassable, shelfSpot, T, wallObjs, type Room } from '../office/world'
+import { bubbles, owns, canDoor, canEnter, curtainsOpen, deptList, doorOpen, getState, goTo, knock, myDept, openSala, team, positions, roomOf, run, setCurtains, setDoor, setSalaGerente, setUi, useStore, type State } from '../store'
 import type { Dir, Pos, Profile, Task } from '../types'
 import Icon from './Icon'
 import { addDia, CFG0, hoje, livres, mesDe, placar, ve } from '../game/vendas'
@@ -107,6 +107,7 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
   const zoomRef = useRef(zoom)
   const [hover, setHover] = useState<Hover | null>(null)
   const [doorUi, setDoorUi] = useState<{ slot: number; x: number; y: number; up: boolean } | null>(null)
+  const [elevUi, setElevUi] = useState<{ x: number; y: number } | null>(null)
   const [pessoaUi, setPessoaUi] = useState<{ id: string; x: number; y: number } | null>(null)
   const fazAcao = useRef<(k: string, id: string) => void>(() => {})
   const goSeat = useRef<() => void>(() => {})
@@ -208,12 +209,12 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
       const k = e.key.toLowerCase()
       if (!['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(k)) return
       e.preventDefault()
-      if (e.type === 'keydown') { keys.add(k); path = []; jobs.delete(meId); setDoorUi(null); setPessoaUi(null); pend = null } else keys.delete(k)
+      if (e.type === 'keydown') { keys.add(k); path = []; jobs.delete(meId); setDoorUi(null); setElevUi(null); setPessoaUi(null); pend = null } else keys.delete(k)
     }
     const onBlur = () => keys.clear()
     const onClick = (e: MouseEvent) => {
       if (cine) return setUi({ view: 'escritorio', drawer: false, viewing: focusRef.current })
-      setDoorUi(null)
+      setDoorUi(null); setElevUi(null)
       const w = toWorld(e.clientX, e.clientY)
       const id = avatarAt(w.x, w.y)
       setPessoaUi(null)
@@ -229,6 +230,13 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
         if (owner) setUi({ viewing: owner.id })
         if (owner?.id === meId) goSeat.current()
         return
+      }
+      // elevador: vai até a frente dele e abre a lista dos andares
+      const el = elevadorAt(tx, ty)
+      if (el) {
+        const p = findPath(meS.x, meS.y, el.tx, el.ty), z = zoomRef.current
+        if (p) { path = p; jobs.delete(meId) }
+        return setElevUi({ x: (el.x + T - cam.x) * z, y: (el.y - 2 * T - cam.y) * z })
       }
       // máquina da sala de jogos: vai até ela e abre o jogo
       const jg = hiddenAt(w.x, w.y) ? null : jogoAt(tx, ty)
@@ -266,7 +274,7 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
       const id = avatarAt(w.x, w.y)
       const r = canvas.getBoundingClientRect()
       const tx = Math.floor(w.x / T), ty = Math.floor(w.y / T)
-      canvas.style.cursor = id || doorAtTile(tx, ty) >= 0 || (!hiddenAt(w.x, w.y) && (painelAt(tx, ty) || jogoAt(tx, ty) || bingoAt(tx, ty))) || (!hiddenAt(w.x, w.y) && deskAtTile(tx, ty)) ? 'pointer' : 'default'
+      canvas.style.cursor = id || doorAtTile(tx, ty) >= 0 || elevadorAt(tx, ty) || (!hiddenAt(w.x, w.y) && (painelAt(tx, ty) || jogoAt(tx, ty) || bingoAt(tx, ty))) || (!hiddenAt(w.x, w.y) && deskAtTile(tx, ty)) ? 'pointer' : 'default'
       setHover(h => (id ? { id, sx: e.clientX - r.left, sy: e.clientY - r.top } : h ? null : h))
     }
     const onLeave = () => setHover(null)
@@ -341,6 +349,11 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
           const p = r ? inside(r) : hallMid()
           meS.x = p.x; meS.y = p.y; meS.dir = r?.top === false ? 'down' : 'up'
           path = []; jobs.delete(meId); at = s.here; setDoorUi(null)
+        }
+        if (chegada.elevador) {
+          chegada.elevador = false
+          const e = elevadorSpot()
+          meS.x = e.x; meS.y = e.y + 8; meS.dir = 'down'; path = []; jobs.delete(meId); setElevUi(null)
         }
       }
       // ação a dois: chega perto e começa; quem é carregado acompanha quem carrega
@@ -716,15 +729,10 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
       }
       const NAVY = 'rgba(20,26,51,.95)'
       for (const r of rooms) {
-        const d = r.dept ? s.rows.depts[r.dept] : undefined, c = comodoOf(r.kind)
+        const d = r.dept ? s.rows.depts[r.dept] : undefined
         // placa do Gerente, na mesa dele
         if (d && !hid[r.slot] && hasDesk(r, BOSS_DESK)) { const b = deskOf(r, BOSS_DESK); plate(b.seat.x, (b.ty + 1) * T + 2, 'GERENTE', { bg: NAVY, fg: '#FBC222' }) }
         if (d && hid[r.slot]) plate((r.ox + r.w / 2) * T, (r.oy + r.h / 2) * T, 'CORTINA FECHADA', { bg: NAVY, fg: '#fff', dot: d.color, ay: 0.5 })
-        // placa da porta, na parede ao lado dela (a bandeira fica do outro lado): nome + bolinha da cor; cadeado = fechada
-        const px = (r.ox + r.door) * T - 3, py = r.top ? (r.oy + r.h - 1) * T + 7 : r.oy * T + 17
-        if (d) plate(px, py, r.kind === 'gerente' ? 'SALA DO GERENTE' : d.name.toUpperCase(), { bg: NAVY, fg: '#fff', dot: d.color, lock: !doorOpen(d.id, s), ax: 1, ay: 0.5 })
-        else if (c) plate(px, py, c.nome.toUpperCase(), { bg: NAVY, fg: '#fff', dot: c.cor, ax: 1, ay: 0.5 })
-        else plate(px, py, 'DISPONÍVEL', { bg: 'rgba(96,101,116,.92)', fg: '#eef0f4', ax: 1, ay: 0.5 })
       }
       for (const [id, o] of shown) {
         const p = s.profiles[id]
@@ -834,13 +842,28 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
               <button onClick={() => run(setCurtains(dd.id, !curtainsOpen(dd.id, s)))}>{curtainsOpen(dd.id, s) ? 'Fechar a cortina' : 'Abrir a cortina'}</button>
             </div>}
             {podeGerente && dd.id === s.sala && <div className="gd-row"><button onClick={() => run(setSalaGerente(s.sala, !dSala!.sala_gerente))} title="Sala só do gerente, do outro lado do corredor">{dSala!.sala_gerente ? 'Tirar sala do gerente' : 'Criar sala do gerente'}</button></div>}
-            {canDoor(dd.id, s) && <div className="gd-sec"><span>Bandeira da porta</span><FlagPicker d={dd} /></div>}
           </> : <>
             <div className="gd-head">
               <span className="gd-flag" />
               <div><b>Espaço livre</b><span className="gd-st">Ainda vazio — em breve vira um cômodo novo do andar</span></div>
             </div>
           </>}
+        </div>
+      )}
+      {elevUi && (
+        <div className="game-door elev" style={{ left: elevUi.x, top: elevUi.y }}>
+          <button className="x" onClick={() => setElevUi(null)} aria-label="Fechar"><Icon n="x" size={13} /></button>
+          <div className="gd-head"><span className="gd-flag" /><div><b>Elevador</b><span className="gd-st">Escolha o andar do setor</span></div></div>
+          <div className="elev-lista">
+            {deptList(s).map(d => {
+              const aqui = d.id === s.sala, pode = d.id === myDept(s) || canEnter(d.id, s)
+              return <button key={d.id} className={aqui ? 'on' : ''} disabled={aqui} style={{ ['--c' as string]: d.color }}
+                title={aqui ? 'Você está neste andar' : pode ? `Ir para o andar de ${d.name}` : 'Porta fechada: clique para bater'}
+                onClick={() => { setElevUi(null); run(pode ? openSala(d.id, true) : knock(d.id).then(() => { bubbles.set(s.meId!, { text: 'Toc, toc! Avisei quem cuida da sala.', until: Date.now() + 3500 }) })) }}>
+                <i />{d.name}{d.id === myDept(s) && <small>seu</small>}<em>{aqui ? 'aqui' : team(s.profiles, { sala: d.id }).length}</em>
+              </button>
+            })}
+          </div>
         </div>
       )}
       {pessoaUi && s.profiles[pessoaUi.id] && (

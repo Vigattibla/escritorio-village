@@ -1,10 +1,11 @@
 /** O andar: 2 salas em cima, corredor, 2 salas embaixo, frente a frente; paredes de vidro pro corredor, com cortina. */
 import { OUT, rect as r, T, type C2D } from './base'
-import { drawBanner } from './bandeira'
 import { dimOf, kd, PISOS, solidGrid, type Sala } from './sala'
 
 export const HALL = 'andar'
 export const SLOTS = 4
+/** chegou de elevador num andar: o jogo põe o boneco na frente dele */
+export const chegada = { elevador: false }
 export type DoorState = 'vazia' | 'aberta' | 'fechada'
 
 /** porta de saída da sala: meio da parede de baixo; se tiver móvel na frente, a porta anda pro lado */
@@ -41,8 +42,8 @@ export const inkOn = (hex: string) => {
   return (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) > 150 ? '#1b2240' : '#ffffff'
 }
 
-/** porta na parede de cima do corredor (tile tx, 2 de largura); bandeira com a cor da sala do lado */
-export function drawDoor(c: C2D, tx: number, st: DoorState, color: string, flag?: string | null) {
+/** porta na parede de cima do corredor (tile tx, 2 de largura); faixa com a cor da sala */
+export function drawDoor(c: C2D, tx: number, st: DoorState, color: string, _flag?: string | null) {
   const x = tx * T, y = 5, w = 2 * T, h = 2 * T - y
   const empty = st === 'vazia'
   r(c, OUT, x + 1, y, w - 2, h)
@@ -63,8 +64,6 @@ export function drawDoor(c: C2D, tx: number, st: DoorState, color: string, flag?
     if (!empty) r(c, color, ix, iy + ih / 2 - 1, iw, 2)
     if (empty) { r(c, '#8a8f98', ix + 3, iy + 3, iw - 6, 1); r(c, '#8a8f98', ix + 3, iy + ih - 4, iw - 6, 1) }
   }
-  if (empty) return
-  drawBanner(c, x + w + 4, 7, color, flag)
 }
 
 /** capacho do corredor na frente da porta, na cor da sala; (x, y) = canto de cima */
@@ -75,7 +74,7 @@ export function drawMat(c: C2D, x: number, y: number, color: string) {
 }
 
 /** porta de saída na parede de baixo da sala (tile tx, 2 de largura; sala com h tiles de altura) */
-export function drawExit(c: C2D, tx: number, h: number, st: DoorState, color = '#a3a8b3', flag?: string | null) {
+export function drawExit(c: C2D, tx: number, h: number, st: DoorState, _color = '#a3a8b3', _flag?: string | null) {
   const x = tx * T, y = (h - 1) * T, open = st === 'aberta'
   r(c, OUT, x, y, 2 * T, T)
   r(c, st === 'vazia' ? '#a3a8b3' : '#6b4a33', x + 1, y + 1, 2 * T - 2, T - 1)
@@ -84,7 +83,6 @@ export function drawExit(c: C2D, tx: number, h: number, st: DoorState, color = '
   else { r(c, '#b07a4f', x + 3, y + 3, 2 * T - 6, T - 3); r(c, '#c99566', x + 3, y + 3, 2 * T - 6, 1); r(c, '#FBC222', x + 2 * T - 9, y + 8, 2, 2) }
   // capacho
   r(c, OUT, x + 4, y - 6, 2 * T - 8, 5); r(c, '#8a6a4a', x + 5, y - 5, 2 * T - 10, 3); r(c, '#a8835c', x + 7, y - 4, 2 * T - 14, 1)
-  drawBanner(c, x + 2 * T + 4, y + 2, color, flag)
 }
 
 // ---------- vidro e cortina ----------

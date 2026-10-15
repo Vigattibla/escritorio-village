@@ -18,7 +18,7 @@ export const PISOS: Record<Piso, { nome: string; draw: (c: C2D, x: number, y: nu
 }
 
 // ---------------- móveis ----------------
-export type Tema = 'Escritório' | 'Resort' | 'Casa de Campo' | 'Natal' | 'Gamer' | 'Café' | 'Jardim' | 'Cozinha' | 'Banheiro' | 'Cassino' | 'Bingo'
+export type Tema = 'Escritório' | 'Resort' | 'Casa de Campo' | 'Natal' | 'Gamer' | 'Café' | 'Jardim' | 'Cozinha' | 'Banheiro' | 'Cassino' | 'Bingo' | 'Andar'
 export const TEMAS: Tema[] = ['Escritório', 'Resort', 'Casa de Campo', 'Natal', 'Gamer', 'Café', 'Jardim', 'Cozinha', 'Banheiro', 'Cassino', 'Bingo']
 export type Kind = {
   nome: string; tema: Tema; w: number; h: number
@@ -109,6 +109,17 @@ export const KINDS: Record<string, Kind> = {
     },
   },
   'bebedouro': { nome: 'Bebedouro', tema: 'Escritório', w: 1, h: 1, up: 1, draw: (c, x, y) => { box(c, '#e6e8ee', x + 4, y - 4, 8, 19); r(c, '#c8ccd3', x + 4, y + 8, 8, 1); r(c, '#3a6fd8', x + 6, y + 1, 2, 2); r(c, '#e05a47', x + 9, y + 1, 1, 2); box(c, '#8ecbf5', x + 5, y - 13, 6, 8); r(c, '#bfe3f2', x + 6, y - 12, 2, 5) } },
+  // só no corredor (tema fora de TEMAS: não aparece no editor da sala)
+  'elevador': {
+    nome: 'Elevador', tema: 'Andar', w: 2, h: 1, up: 2, draw: (c, x, y) => {
+      box(c, '#8b929e', x + 1, y - 30, 30, 45); r(c, '#a3a9b4', x + 1, y - 30, 30, 2)
+      box(c, '#2d2d33', x + 10, y - 27, 12, 5); r(c, '#FFC600', x + 15, y - 26, 2, 1); r(c, '#FFC600', x + 14, y - 25, 4, 1); r(c, '#FFC600', x + 13, y - 24, 6, 1)
+      r(c, OUT, x + 4, y - 20, 24, 34)
+      r(c, '#c8ccd3', x + 5, y - 19, 10, 33); r(c, '#c8ccd3', x + 17, y - 19, 10, 33)
+      r(c, '#e6e8ee', x + 6, y - 18, 2, 31); r(c, '#e6e8ee', x + 18, y - 18, 2, 31)
+      r(c, '#9aa1ad', x + 15, y - 19, 2, 33)
+    },
+  },
   'arquivo': { nome: 'Arquivo', tema: 'Escritório', w: 1, h: 1, up: 1, draw: (c, x, y) => { box(c, '#9aa1ad', x + 2, y - 6, 12, 21); for (let k = 0; k < 3; k++) { r(c, '#7d8490', x + 2, y - 6 + k * 7 + 6, 12, 1); r(c, OUT, x + 6, y - 3 + k * 7, 4, 1) } } },
   'impressora': { nome: 'Impressora', tema: 'Escritório', w: 1, h: 1, up: 1, draw: (c, x, y) => { box(c, '#8a5a36', x + 1, y + 3, 14, 12); box(c, '#e6e8ee', x + 2, y - 5, 12, 8); r(c, '#2d2d33', x + 4, y - 1, 8, 1); r(c, '#fbfbf8', x + 5, y - 8, 6, 3); r(c, '#3fa66b', x + 12, y - 4, 1, 1) } },
   'tapete-reuniao': { nome: 'Tapete grande', tema: 'Escritório', w: 8, h: 7, camada: 'chao', draw: (c, x, y) => { rug(c, x + 10, y - 2, 8 * T - 4, 7 * T - 8, '#7f8655', '#9aa06a', '#c9b98a') } },
