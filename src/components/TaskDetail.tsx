@@ -5,6 +5,7 @@ import {
   setAvisar, setCriteria, setProject, setStatus, setUi, stageList, stageOf, updateTask, useStore,
 } from '../store'
 import { hasCanais } from '../store'
+import { podeEntrar } from './entrada'
 import type { Attachment, Channel, CheckItem, Priority, Task } from '../types'
 import { CHANNEL_KEYS, CHANNELS } from './v4'
 import { FolderBox } from './DriveFolder'
@@ -91,7 +92,7 @@ function Etapas({ t, can }: { t: Task; can: boolean }) {
         {list.map((s, i) => (
           <button key={s.id} className={'etapa k-' + s.kind + (s.id === cur ? ' on' : i < at ? ' past' : '')} disabled={!can || s.id === cur}
             title={can ? (s.id === cur ? 'Etapa atual' : 'Mover para ' + s.label) : 'Só quem é responsável (ou um cargo acima) muda a etapa'}
-            onClick={() => run(setStatus(t.id, s.kind, Date.now(), s.id))}>
+            onClick={() => run((async () => { if (await podeEntrar(s.id)) await setStatus(t.id, s.kind, Date.now(), s.id) })())}>
             <i>{i < at ? '✓' : i + 1}</i>{s.label}
           </button>
         ))}

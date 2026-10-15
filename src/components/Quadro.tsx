@@ -15,6 +15,7 @@ import { setPref, usePref } from '../prefs'
 import { Live } from './Side'
 import { CHANNELS, currentGoal, goalProgress } from './v4'
 import { confirmar } from './Dialogo'
+import { podeEntrar } from './entrada'
 import { EqTag, EquipesModal } from './Equipes'
 import { gereEquipe, norm, respsDe } from '../plano/core'
 
@@ -256,7 +257,7 @@ export default function Quadro() {
     const pos = l.status ? posAt(l.cards, index) : Date.now()
     run((async () => {
       if (l.owner && !comigo(t, l.owner)) await reassign(t.id, l.owner, pos)
-      if (l.status && (t.status !== l.status || (l.stage && stageOf(t, stages) !== l.stage))) await setStatus(t.id, l.status, pos, l.stage ?? null)
+      if (l.status && (t.status !== l.status || (l.stage && stageOf(t, stages) !== l.stage))) { if (await podeEntrar(l.stage)) await setStatus(t.id, l.status, pos, l.stage ?? null) }
       else if (l.status && (!l.owner || comigo(t, l.owner))) await placeTask(t.id, pos)
     })())
   }
@@ -400,18 +401,19 @@ export default function Quadro() {
       <Funil tasks={Object.values(tasksMap).filter(t => !!t.equipe && t.status !== 'declined' && !(t.status === 'done' && (!t.done_at || dayKey(t.done_at) < since)) && (eq ? t.equipe === eq : true))} profiles={profiles} meId={meId} fixo={!!eq} />
 
       {group === 'raias' ? (
-        <div className="qlanes" style={{ '--ncol': cols.length } as React.CSSProperties}>
+        <div className={'qlanes' + (canEditStages() ? ' com-add' : '')} style={{ '--ncol': cols.length } as React.CSSProperties}>
           <div className="qlane qlane-top">
             <div className="qlane-who" />
             {cols.map(s => (
               <div key={s.id} className={'qlane-st st-' + s.kind}>
-                <span><i className="qdot" />{s.label}</span>
+                <span title={s.label}><i className="qdot" /><span className="qlane-st-t">{s.label}</span></span>
                 <span className="qlane-st-r">
                   <span className="qcount">{lanes.reduce((n, l) => n + l.cells.find(c => c.key === `${l.p.id}:${s.id}`)!.cards.length, 0)}</span>
                   {s.stage && canEditStages() && <StageMenu s={s.stage} list={stages} count={lanes.reduce((n, l) => n + l.cells.find(c => c.key === `${l.p.id}:${s.id}`)!.cards.length, 0)} />}
                 </span>
               </div>
             ))}
+            {canEditStages() && <NewStage list={stages} head />}
           </div>
           {lanes.map(({ p, cells }) => (
             <div key={p.id} className={'qlane' + (p.id === meId ? ' me' : '')}>
@@ -426,7 +428,6 @@ export default function Quadro() {
           ))}
           {!lanes.length && <p className="qempty pad">Ninguém com tarefas aqui.</p>}
           <div className="qlane-acoes">
-          {canEditStages() && <NewStage list={stages} chip />}
           {outside.length > 0 && (
             <select className="qchip qlane-add" value="" onChange={e => e.target.value && setExtra(x => [...x, e.target.value])} aria-label="Colocar alguém no projeto">
               <option value="">＋ Colocar alguém no projeto…</option>
@@ -779,13 +780,18 @@ function Composer({ list, meId, profiles, people, project, onClose }: {
 function StageMenu({ s, list, count }: { s: Stage; list: Stage[]; count: number }) {
   const [open, setOpen] = useState(false)
   const [name, setName] = useState<string | null>(null)
+  const [crit, setCrit] = useState('')
   const i = list.findIndex(x => x.id === s.id)
+  const unica = !list.some(x => x.kind === s.kind && x.id !== s.id)
+  const save = (patch: Partial<Stage>) => run(saveStages(list.map(x => (x.id === s.id ? { ...x, ...patch } : x))))
   const move = (d: number) => { const n = list.slice(); n.splice(i, 1); n.splice(i + d, 0, s); run(saveStages(n)); setOpen(false) }
   const rename = () => {
     const label = (name ?? '').trim().slice(0, 40)
-    setName(null); setOpen(false)
-    if (label && label !== s.label) run(saveStages(list.map(x => (x.id === s.id ? { ...x, label } : x))))
+    setName(null)
+    if (label && label !== s.label) save({ label })
   }
+  const criteria = s.criteria ?? []
+  const addCrit = () => { const c = crit.trim().slice(0, 120); if (c) save({ criteria: [...criteria, c] }); setCrit('') }
   const del = async () => {
     setOpen(false)
     const to = list.find(x => x.id === s.kind && x.id !== s.id) ?? list.find(x => x.kind === s.kind && x.id !== s.id)
@@ -797,14 +803,30 @@ function StageMenu({ s, list, count }: { s: Stage; list: Stage[]; count: number 
       <button className="icon-btn sm" onClick={() => setOpen(v => !v)} aria-label={`Opções da etapa ${s.label}`} title="Editar etapa"><Icon n="dots" size={18} /></button>
       {open && (
         <div className="menu-pop stage-pop" onKeyDown={e => e.key === 'Escape' && setOpen(false)}>
+          <small className="muted">Nome</small>
           <form className="stage-name" onSubmit={e => { e.preventDefault(); rename() }}>
             <input autoFocus value={name ?? s.label} maxLength={40} onChange={e => setName(e.target.value)} aria-label="Nome da etapa" />
             <button className="btn primary sm" disabled={name === null || !name.trim() || name.trim() === s.label}>Salvar</button>
           </form>
-          <small className="muted stage-kind">Funciona como <b>{KIND_LABEL[s.kind]}</b></small>
+          <small className="muted">Funciona como</small>
+          <div className="qnew-kinds stage-kinds">
+            {STAGE_KINDS.map(k => (
+              <button type="button" key={k.kind} className={'qchip st-' + k.kind + (s.kind === k.kind ? ' on' : '')} disabled={s.kind !== k.kind && unica}
+                title={s.kind !== k.kind && unica ? 'É a única etapa desse tipo; crie outra antes de trocar' : k.hint} onClick={() => s.kind !== k.kind && save({ kind: k.kind })}><i className="qdot" />{k.label}</button>
+            ))}
+          </div>
+          <small className="muted">Critérios para entrar <span>(opcional)</span></small>
+          {criteria.length > 0 && <ul className="stage-crit">{criteria.map((c, j) => (
+            <li key={j}><Ph n="check" size={13} /><span>{c}</span><button type="button" className="icon-btn sm" aria-label={`Tirar critério ${c}`} onClick={() => save({ criteria: criteria.filter((_, k) => k !== j) })}><Icon n="x" size={14} /></button></li>
+          ))}</ul>}
+          <form className="stage-name" onSubmit={e => { e.preventDefault(); addCrit() }}>
+            <input value={crit} maxLength={120} placeholder="Ex.: Briefing anexado" onChange={e => setCrit(e.target.value)} aria-label="Novo critério" />
+            <button className="btn ghost sm" disabled={!crit.trim()}>Adicionar</button>
+          </form>
+          <hr />
           <button disabled={i === 0} onClick={() => move(-1)}><Ph n="caret-left" size={16} /><div><b>Mover para a esquerda</b></div></button>
           <button disabled={i === list.length - 1} onClick={() => move(1)}><Ph n="caret-right" size={16} /><div><b>Mover para a direita</b></div></button>
-          <button className="danger" onClick={del}><Icon n="trash" size={16} /><div><b>Excluir etapa</b><small>{count ? `${count} tarefa${count > 1 ? 's' : ''} muda${count > 1 ? 'm' : ''} de coluna` : 'Está vazia'}</small></div></button>
+          <button className="danger" disabled={unica} onClick={del}><Icon n="trash" size={16} /><div><b>Excluir etapa</b><small>{unica ? 'Única desse tipo: troque o tipo de outra ou renomeie' : count ? `${count} tarefa${count > 1 ? 's' : ''} muda${count > 1 ? 'm' : ''} de coluna` : 'Está vazia'}</small></div></button>
         </div>
       )}
     </div>
@@ -812,7 +834,7 @@ function StageMenu({ s, list, count }: { s: Stage; list: Stage[]; count: number 
 }
 
 /** Coluna fantasma no fim do quadro: cria uma etapa nova. */
-function NewStage({ list, chip = false }: { list: Stage[]; chip?: boolean }) {
+function NewStage({ list, head = false }: { list: Stage[]; head?: boolean }) {
   const [open, setOpen] = useState(false)
   const [name, setName] = useState('')
   const [kind, setKind] = useState<StageKind>('doing')
@@ -820,15 +842,12 @@ function NewStage({ list, chip = false }: { list: Stage[]; chip?: boolean }) {
     const label = name.trim().slice(0, 40)
     if (!label) return
     const s: Stage = { id: crypto.randomUUID(), label, kind, pos: 0, created_by: '', created_at: '' }
-    // entra logo depois da última etapa do mesmo tipo
-    const at = list.map(x => x.kind).lastIndexOf(kind)
-    const n = list.slice(); n.splice(at < 0 ? n.length : at + 1, 0, s)
-    run(saveStages(n)); setName(''); setOpen(false)
+    // etapa nova entra na ponta direita do quadro
+    run(saveStages([...list, s])); setName(''); setOpen(false)
   }
-  if (!open && chip) return <button className="qchip qlane-add" onClick={() => setOpen(true)}><Ph n="plus" size={14} />Nova etapa</button>
-  if (!open) return <button className="qlist qnew" onClick={() => setOpen(true)}><Ph n="plus" size={18} />Nova etapa</button>
-  return (
-    <form className={chip ? 'qnew-form qlane-nova' : 'qlist qnew-form'} onSubmit={e => { e.preventDefault(); create() }}>
+  if (!open && !head) return <button className="qlist qnew" onClick={() => setOpen(true)}><Ph n="plus" size={18} />Nova etapa</button>
+  const form = (
+    <form className={head ? 'qnew-form' : 'qlist qnew-form'} onSubmit={e => { e.preventDefault(); create() }}>
       <b>Nova etapa</b>
       <input autoFocus value={name} maxLength={40} placeholder="Ex.: Revisão interna" onChange={e => setName(e.target.value)} onKeyDown={e => e.key === 'Escape' && setOpen(false)} aria-label="Nome da etapa" />
       <small className="muted">Funciona como</small>
@@ -838,5 +857,12 @@ function NewStage({ list, chip = false }: { list: Stage[]; chip?: boolean }) {
       <small className="muted">{STAGE_KINDS.find(k => k.kind === kind)!.hint}</small>
       <div className="row gap"><button className="btn primary sm" disabled={!name.trim()}>Criar etapa</button><button type="button" className="btn ghost sm" onClick={() => setOpen(false)}>Cancelar</button></div>
     </form>
+  )
+  if (!head) return form
+  return (
+    <div className="pop-wrap qlane-nova">
+      <button className="qlane-plus" onClick={() => setOpen(v => !v)} aria-label="Nova etapa" title="Nova etapa"><Ph n="plus" size={16} />Nova etapa</button>
+      {open && <div className="menu-pop stage-pop qlane-nova-pop">{form}</div>}
+    </div>
   )
 }

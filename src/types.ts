@@ -151,7 +151,7 @@ export interface Flow { id: string; name: string; objective: string; nodes: Flow
 
 /** etapa do quadro (coluna). kind = como o sistema entende a etapa: aprovação, feito… */
 export type StageKind = 'todo' | 'doing' | 'review' | 'done'
-export interface Stage { id: string; label: string; kind: StageKind; pos: number; created_by: string; created_at: string; dept?: string }
+export interface Stage { id: string; label: string; kind: StageKind; pos: number; created_by: string; created_at: string; dept?: string; criteria?: string[] }
 
 /** grupo do chat: canal 'g:<id>'; aberto = qualquer um entra, fechado = só quem foi convidado */
 export interface Group { id: string; name: string; icon: string; open: boolean; members: string[]; created_by: string; created_at: string }

@@ -779,7 +779,7 @@ export async function saveStages(next: Stage[]) {
   for (const [i, s] of next.entries()) {
     const r: Stage = { ...s, pos: i + 1, created_by: s.created_by || state.meId!, created_at: s.created_at || now }
     const old = had[r.id]
-    if (!old || old.label !== r.label || old.kind !== r.kind || old.pos !== r.pos) await putRow('stages', r)
+    if (!old || old.label !== r.label || old.kind !== r.kind || old.pos !== r.pos || JSON.stringify(old.criteria ?? []) !== JSON.stringify(r.criteria ?? [])) await putRow('stages', r)
   }
 }
 export async function removeStage(id: string) {

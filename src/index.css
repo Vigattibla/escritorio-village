@@ -1400,3 +1400,44 @@ input:focus, textarea:focus { border-color: var(--yellow); box-shadow: 0 0 0 3px
 /* anti-robô do login (Turnstile): some quando não precisa de clique */
 .auth .captcha { display: flex; justify-content: center; }
 .auth .captcha:empty { display: none; }
+/* Raias: coluna "＋ Nova etapa" na ponta direita do cabeçalho */
+.qlanes.com-add .qlane { grid-template-columns: 130px repeat(var(--ncol, 5), minmax(118px, 1fr)) 124px; min-width: calc(254px + var(--ncol, 5) * 124px); }
+.qlane-st { min-width: 0; }
+.qlane-st > span:first-child { min-width: 0; overflow: hidden; }
+.qlane-st-t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.qlane-st-r { flex: none; }
+.qlane-plus { width: 100%; height: 100%; min-height: 34px; display: inline-flex; align-items: center; justify-content: center; gap: 4px; border: 1.5px dashed var(--line, #d9d4c7); border-radius: 8px; background: none; font: 600 13px Poppins, Inter, sans-serif; color: var(--muted); cursor: pointer; }
+.qlane-plus:hover { border-color: currentColor; color: var(--ink, #111); }
+.qlane-nova { display: flex; }
+.qlane-nova-pop { width: 300px; }
+.qlane-nova-pop .qnew-form { display: grid; gap: 8px; }
+.qlane-nova-pop .qnew-kinds { display: flex; flex-wrap: wrap; gap: 6px; }
+.qlane-nova-pop .qnew-kinds button { padding: 4px 10px; align-items: center; }
+@media (max-width: 900px) {
+  .qlanes.com-add .qlane { grid-template-columns: 120px repeat(var(--ncol, 5), 200px) 124px; min-width: 0; }
+}
+.stage-pop { max-height: min(560px, 70vh); overflow: auto; }
+.stage-pop > small.muted { font-size: 11.5px; font-weight: 600; margin: 6px 4px 0; }
+.stage-pop > small.muted span { font-weight: 400; }
+.stage-pop .stage-kinds { display: flex; flex-wrap: wrap; gap: 6px; padding: 2px 4px; }
+.stage-pop .stage-kinds button { padding: 4px 10px; align-items: center; gap: 6px; font-size: 12.5px; }
+.stage-pop .stage-kinds button:disabled { opacity: .4; cursor: not-allowed; }
+.stage-crit { list-style: none; margin: 0; padding: 0 4px; display: grid; gap: 2px; }
+.stage-crit li { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+.stage-crit li span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.stage-crit li button { padding: 0; justify-content: center; align-items: center; }
+.stage-pop hr { border: 0; border-top: 1px solid var(--line, #eee); margin: 6px 0 2px; width: 100%; }
+.stage-pop button.danger:disabled { opacity: .5; cursor: not-allowed; }
+.dlg-itens { display: grid; gap: 8px; margin-top: 10px; text-align: left; }
+.dlg-itens label { display: flex; align-items: flex-start; gap: 8px; font-size: 14px; cursor: pointer; }
+.dlg-itens input { width: 18px !important; height: 18px; flex: none; margin: 1px 0 0; padding: 0; accent-color: var(--accent, #2b4bd6); }
+.dlg-itens label { justify-content: flex-start; text-align: left; }
+/* ⋯ da etapa aparece por cima do contador ao passar o mouse (coluna estreita não corta o nome) */
+.qlane-st { position: relative; }
+.qlane-st-r .pop-wrap { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); opacity: 0; transition: opacity .12s; }
+.qlane-st-r .pop-wrap > .icon-btn { background: var(--sb, #fff); }
+.qlane-st:hover .qlane-st-r .pop-wrap, .qlane-st:focus-within .qlane-st-r .pop-wrap, .qlane-st-r .pop-wrap:has(.menu-pop) { opacity: 1; }
+.qlane-st-r .menu-pop { transform: none; }
+@media (hover: none) { .qlane-st-r .pop-wrap { position: static; transform: none; opacity: 1; } }
+.qlane-top { position: relative; z-index: 6; }
+.qlane-nova-pop { overflow-x: hidden; } .qlane-nova-pop .qnew-form { width: auto; min-width: 0; max-width: 100%; padding: 4px; margin: 0; border: 0; box-shadow: none; background: none; } .qlane-nova-pop .qnew-form input { width: 100%; box-sizing: border-box; }
