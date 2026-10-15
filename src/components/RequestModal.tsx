@@ -1,5 +1,4 @@
 import { useRef, useState } from 'react'
-import { canAssign } from '../game/ranks'
 import { addTask, attachFiles, gestorDe, run, setUi, useStore } from '../store'
 import { Ph } from './Icon'
 import type { PhName } from './ph'
@@ -27,14 +26,14 @@ export default function RequestModal() {
   if (!p) return null
   const minhas = Object.values(equipes).filter(e => meId && e.pessoas.includes(meId) && e.id !== eqAlvo?.id)
   const avisa = avisar ?? minhas.map(e => e.id)
-  const direct = !eqAlvo && canAssign(meId ? profiles[meId] : undefined, p)
+
   const close = () => { setUi({ requestTo: null }); setTitle(''); setDue(''); setHora(''); setNotes(''); setFiles([]); setAvisar(null) }
   const add = (f: File[]) => f.length && setFiles(xs => [...xs, ...f.filter(n => !xs.some(x => x.name === n.name && x.size === n.size))].slice(0, 10))
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     setBusy(true)
-    run(addTask(p.id, title, due || null, notes.trim(), eqAlvo ? 'inbox' : 'todo', null, { due_time: hora || null, ...(eqAlvo ? { equipe: eqAlvo.id, avisar: avisa } : {}) }).then(t => files.length ? attachFiles(t.id, files) : undefined).then(close).finally(() => setBusy(false)))
+    run(addTask(p.id, title, due || null, notes.trim(), 'inbox', null, { due_time: hora || null, ...(eqAlvo ? { equipe: eqAlvo.id, avisar: avisa } : {}) }).then(t => files.length ? attachFiles(t.id, files) : undefined).then(close).finally(() => setBusy(false)))
   }
 
   return (
@@ -46,7 +45,7 @@ export default function RequestModal() {
             : <MiniAvatar avatar={p.avatar} photo={p.photo} name={p.name} size={44} />}
           {eqAlvo
             ? <div><h2>Pedir para o setor {eqAlvo.nome}</h2><div className="muted small">Cai no funil do setor; {p.name} passa para quem vai fazer.</div></div>
-            : <div><h2>{direct ? 'Passar tarefa para' : 'Pedir algo para'} {p.name}</h2><div className="muted small">{direct ? 'Vai direto para a pasta da pessoa.' : 'Chega no computador da pessoa para aceitar ou recusar.'} Concluir rende +5 XP extra.</div></div>}
+            : <div><h2>Pedir algo para {p.name}</h2><div className="muted small">Chega nos Pedidos da pessoa para aceitar ou recusar. Concluir rende +5 XP extra.</div></div>}
         </header>
         <label>O que você precisa?<input autoFocus required value={title} onChange={e => setTitle(e.target.value)} maxLength={140} placeholder="Ex.: Revisar a proposta de sábado" /></label>
         <div className="row gap">
@@ -82,7 +81,7 @@ export default function RequestModal() {
         )}
         <footer className="row gap end">
           <button type="button" className="btn ghost" onClick={close}>Cancelar</button>
-          <button className="btn primary" disabled={!title.trim() || busy}>{busy ? (files.length ? 'Enviando anexos…' : 'Enviando…') : direct ? 'Colocar na pasta' : 'Enviar pedido'}</button>
+          <button className="btn primary" disabled={!title.trim() || busy}>{busy ? (files.length ? 'Enviando anexos…' : 'Enviando…') : 'Enviar pedido'}</button>
         </footer>
       </form>
     </Fundo>
