@@ -130,7 +130,7 @@ function Item({ t, proj, de }: { t: Task; proj?: string; de?: string }) {
       </header>
       {(proj || de) && <small className="rel-t-meta">{[proj, de && `ajudou ${de}`].filter(Boolean).join(' · ')}</small>}
       {t.notes.trim() ? <p className="rel-t-desc">{t.notes.trim()}</p>
-        : pode ? <textarea className="rel-t-esc no-print" rows={2} maxLength={4000} placeholder="Conte o que foi feito nessa tarefa (vai para a descrição dela)" aria-label={`Descrição de ${t.title}`}
+        : pode ? <textarea className="rel-t-esc no-print" rows={2} placeholder="Conte o que foi feito nessa tarefa (vai para a descrição dela)" aria-label={`Descrição de ${t.title}`}
             onBlur={e => e.target.value.trim() && run(updateTask(t.id, { notes: e.target.value.trim() }))} />
         : <p className="rel-t-desc vazio">Sem descrição.</p>}
       {feitos.length > 0 && <ul className="rel-t-ck">{feitos.map(c => <li key={c.id}><Ph n="check" size={13} />{c.text}</li>)}</ul>}

@@ -230,7 +230,6 @@ export default function TaskDetail() {
               defaultValue={t.notes}
               readOnly={!edit}
               rows={3}
-              maxLength={4000}
               aria-label="Descrição / legenda"
               placeholder={edit ? 'Descrição, legenda, links, detalhes…' : 'Sem descrição.'}
               onBlur={e => run(updateTask(t.id, { notes: e.target.value }))}

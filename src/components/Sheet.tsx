@@ -84,7 +84,7 @@ export default function Sheet() {
         <i className="handle" />
         <div className="sh-h"><h2>Nova tarefa</h2><button type="button" className="icon-btn" onClick={close} aria-label="Fechar"><Icon n="x" size={18} /></button></div>
         <input className="sh-field" autoFocus required maxLength={120} value={title} onChange={e => setTitle(e.target.value)} placeholder="O que precisa ser feito?" />
-        {notes && <textarea className="sh-field" rows={3} maxLength={4000} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Detalhes" />}
+        {notes && <textarea className="sh-field" rows={3} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Detalhes" />}
         <div className="lbl">Quem faz</div>
         <div className="pick">
           {people.map(p => {

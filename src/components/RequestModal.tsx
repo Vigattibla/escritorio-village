@@ -53,7 +53,7 @@ export default function RequestModal() {
           <label className="grow">Entrega (opcional)<input type="date" value={due} onChange={e => { setDue(e.target.value); if (!e.target.value) setHora('') }} /></label>
           <label>Horário<input type="time" value={hora} disabled={!due} onChange={e => setHora(e.target.value)} /></label>
         </div>
-        <label>Detalhes (opcional)<textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3} maxLength={600} /></label>
+        <label>Detalhes (opcional)<textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3} /></label>
         <div
           className={'rq-anexos' + (over ? ' over' : '')}
           onDragOver={e => { if (e.dataTransfer.types.includes('Files')) { e.preventDefault(); setOver(true) } }}
