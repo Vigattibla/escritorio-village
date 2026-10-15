@@ -215,3 +215,4 @@ Pendente: push (precisa da migration 202610080900_v4_agenda_metas.sql e do secre
 - Menus: o perfil fica só com o essencial. Metas, Fluxos, Cassino e Bingo foram para "Mais" (recolhido). No celular, a aba Metas virou Quadro.
 - Pendente: testar aprovação com um gerente de verdade depois que o migrate rodar.
 - 817ac40: o Chat virou bolinha no canto (o gato saiu). Metas, Fluxos, Cassino e Bingo saíram do Mais (Cassino segue no Almoxarifado e no jogo).
+- 14/10 5d87261: Pedidos pessoais só autor+gerente; coletivo para a sala; +1 só coletivo (migration 202610221000).
