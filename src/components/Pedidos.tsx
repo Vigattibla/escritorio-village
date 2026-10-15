@@ -44,7 +44,7 @@ export default function Pedidos() {
   const gere = gereEquipe(eu, sala)
 
   const lista = useMemo(() => Object.values(reqs)
-    .filter(r => r.dept === sala || r.por === meId)
+    .filter(r => r.por === meId || (r.dept === sala && (r.coletivo || gere)))
     .filter(r => hist ? r.status !== 'aberto' && r.status !== 'aprovado' : r.status === 'aberto' || r.status === 'aprovado')
     .sort((a, b) => {
       const pa = gere && a.status === 'aberto' && a.por !== meId ? 0 : 1, pb = gere && b.status === 'aberto' && b.por !== meId ? 0 : 1
@@ -115,7 +115,7 @@ function Cartao({ r, aberto, onToggle, profiles, meId }: { r: Requisicao; aberto
           </ol>
           {err && <p className="pd-err" role="alert">{err}</p>}
           <div className="pd-acts">
-            {r.status === 'aberto' && !autor && <button className={'btn soft sm' + (apoiei ? ' apoiei' : '')} disabled={busy} onClick={() => run(() => mudarReq(r.id, 'apoio'))}><Ph n="hand-heart" size={15} fill={apoiei} /> {apoiei ? 'Apoiado' : 'Eu também'}</button>}
+            {r.status === 'aberto' && r.coletivo && !autor && <button className={'btn soft sm' + (apoiei ? ' apoiei' : '')} disabled={busy} onClick={() => run(() => mudarReq(r.id, 'apoio'))}><Ph n="hand-heart" size={15} fill={apoiei} /> {apoiei ? 'Apoiado' : 'Eu também'}</button>}
             {decidir && <>
               <button className="btn accent sm" disabled={busy} onClick={() => status('aprovado')}><Ph n="check" size={15} /> Aprovar</button>
               <button className="btn ghost danger sm" disabled={busy} onClick={recusar}><Ph n="x" size={15} /> Recusar</button>

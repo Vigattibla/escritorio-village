@@ -190,8 +190,10 @@ export class DemoBackend implements Backend {
     else if (acao === 'itens') {
       const meus = ((p.itens ?? []) as Requisicao['itens']).map(i => ({ ...i, por: u }))
       n.itens = p.todos ? (p.itens as Requisicao['itens']) : [...r.itens.filter(i => i.por !== u), ...meus]
-    } else if (acao === 'apoio') n.apoios = r.apoios.includes(u) ? r.apoios.filter(x => x !== u) : [...r.apoios, u]
-    else if (acao === 'status') {
+    } else if (acao === 'apoio') {
+      if (!r.coletivo) throw new Error('Apoio só em lista coletiva.')
+      n.apoios = r.apoios.includes(u) ? r.apoios.filter(x => x !== u) : [...r.apoios, u]
+    } else if (acao === 'status') {
       const st = p.status as Requisicao['status'], motivo = String(p.motivo ?? '').trim()
       if (st === 'recusado' && !motivo) throw new Error('Diga o motivo da recusa.')
       const txt = { aberto: 'Reaberto', aprovado: 'Aprovado', recusado: 'Recusado: ' + motivo, entregue: r.tipo === 'folga' ? 'Concluído' : 'Entregue', cancelado: 'Cancelado' }[st]
