@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import Negrito from './Negrito'
 import { isChief, rankName } from '../game/ranks'
 import {
   acceptRequest, addNote, approverOf, attachFiles, canApprove, canAskReview, canFinish, CHEFIA, canEditTask, canMove, canReassign, declineRequest, reassign, fileUrl, removeAttachment, removeNote, removeTask, run,
@@ -104,6 +105,7 @@ function Etapas({ t, can }: { t: Task; can: boolean }) {
 
 export default function TaskDetail() {
   const id = useStore(s => s.task)!
+  const [descEd, setDescEd] = useState(false)
   const t = useStore(s => s.tasks[id])
   const profiles = useStore(s => s.profiles)
   const equipes = useStore(s => s.rows.equipes)
@@ -224,16 +226,24 @@ export default function TaskDetail() {
               onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }}
             />
 
-            <textarea
-              key={'n' + t.notes}
-              className="td2-desc"
-              defaultValue={t.notes}
-              readOnly={!edit}
-              rows={3}
-              aria-label="Descrição / legenda"
-              placeholder={edit ? 'Descrição, legenda, links, detalhes…' : 'Sem descrição.'}
-              onBlur={e => run(updateTask(t.id, { notes: e.target.value }))}
-            />
+            {!descEd && t.notes.includes('**') ? (
+              <div className="td2-desc td2-desc-ver" role={edit ? 'button' : undefined} tabIndex={edit ? 0 : undefined} title={edit ? 'Clique para editar' : undefined}
+                onClick={() => edit && setDescEd(true)} onKeyDown={e => edit && e.key === 'Enter' && setDescEd(true)}>
+                <Negrito text={t.notes} />
+              </div>
+            ) : (
+              <textarea
+                key={'n' + t.notes}
+                className="td2-desc"
+                defaultValue={t.notes}
+                readOnly={!edit}
+                autoFocus={descEd}
+                rows={descEd ? Math.min(12, t.notes.split('\n').length + 1) : 3}
+                aria-label="Descrição / legenda"
+                placeholder={edit ? 'Descrição, legenda, links, detalhes… (Ctrl+B deixa em negrito)' : 'Sem descrição.'}
+                onBlur={e => { setDescEd(false); run(updateTask(t.id, { notes: e.target.value })) }}
+              />
+            )}
 
             <div className="field">
               <h3>Checklist{t.checklist.length > 0 && <span className="muted small"> · {t.checklist.filter(c => c.done).length}/{t.checklist.length}</span>}</h3>

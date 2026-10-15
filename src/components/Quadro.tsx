@@ -18,6 +18,7 @@ import { confirmar } from './Dialogo'
 import { podeEntrar } from './entrada'
 import { EqTag, EquipesModal } from './Equipes'
 import { gereEquipe, norm, respsDe } from '../plano/core'
+import Negrito from './Negrito'
 
 type Group = 'etapa' | 'raias' | 'pessoa'
 type Due = '' | 'late' | 'today' | 'week' | 'none'
@@ -541,7 +542,7 @@ function Card({ t, mode, lane, meId, profiles, projects, showProj, notes, draggi
           </div>
         )}
         <div className="tc-title">{t.title}</div>
-        {note && <div className="tc-note">{note}</div>}
+        {note && <div className="tc-note"><Negrito text={note} /></div>}
         {t.status === 'review' && appr && !dark && <div className="tc-wait"><Icon n="clock" size={13} />aguardando {appr === CHEFIA ? 'chefia' : first(profiles[appr])}</div>}
         {t.checklist.length > 0 && (
           <div className="tc-prog">

@@ -5,6 +5,7 @@ import { addTask, approverOf, dmChannel, removeTask, run, setStatus, setUi, useS
 import type { Task, TaskStatus } from '../types'
 import Icon from './Icon'
 import MiniAvatar from './MiniAvatar'
+import Negrito from './Negrito'
 
 const SECTIONS: { id: TaskStatus; label: string }[] = [
   { id: 'doing', label: 'Fazendo agora' },
@@ -112,7 +113,7 @@ function Card({ t, meId, boardOwner, onDrag }: { t: Task; meId: string; boardOwn
       >{done ? <Icon n="tick" size={13} /> : t.status === 'review' ? <Icon n="clock" size={13} /> : null}</button>
       <div className="grow open" onClick={open} title="Abrir detalhes">
         <div className="title">{t.title}</div>
-        {t.notes && <div className="desc">{t.notes}</div>}
+        {t.notes && <div className="desc"><Negrito text={t.notes} /></div>}
         <div className="meta">
           {helping && <span className="chip help"><Icon n="users" size={12} />com {profiles[t.owner_id]?.name ?? 'alguém'}</span>}
           {req && !helping && <span className="chip req"><Icon n={boss ? 'folder' : 'send'} size={12} />{t.created_by === meId ? (boss ? 'você passou' : 'seu pedido') : `${boss ? 'passada' : 'pedido'} por ${profiles[t.created_by]?.name ?? 'alguém'}`}</span>}

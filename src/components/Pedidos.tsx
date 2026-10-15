@@ -1,5 +1,6 @@
 // Pedidos ao gerente: uma lista só (abertos / histórico). Material, folga ou outro; material pode
 // virar lista coletiva do setor. Tudo fica registrado: o histórico é escrito pelo servidor.
+import Negrito from './Negrito'
 import { useMemo, useState } from 'react'
 import { deptOf } from '../game/ranks'
 import { gereEquipe } from '../plano/core'
@@ -112,7 +113,7 @@ function Cartao({ r, aberto, onToggle, profiles, meId }: { r: Requisicao; aberto
       </button>
       {aberto && (
         <div className="pd-body">
-          {r.detalhe && <p className="pd-det">{r.detalhe}</p>}
+          {r.detalhe && <p className="pd-det"><Negrito text={r.detalhe} /></p>}
           {r.motivo && <p className="pd-mot"><b>Motivo:</b> {r.motivo}</p>}
           {r.tipo === 'material' && <Itens r={r} meId={meId} pode={listaAberta || (r.status === 'aberto' && autor)} run={run} />}
           {r.coletivo && r.fecha && <small className="muted">Lista fecha em {data(r.fecha)}</small>}

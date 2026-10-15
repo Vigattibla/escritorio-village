@@ -9,6 +9,7 @@ import { Live } from './Side'
 import MoreMenu from './MoreMenu'
 import { StickerLayer } from './Stickers'
 import { CHANNELS, first } from './v4'
+import Negrito from './Negrito'
 
 const hello = () => { const h = new Date().getHours(); return h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite' }
 const ORDER = { doing: 0, review: 1, inbox: 2, todo: 3, done: 4, declined: 5 }
@@ -63,7 +64,7 @@ export default function Inicio() {
                 <StatusTag t={t} />
               </div>
               <b>{t.title}</b>
-              {note && <p className="mc-note">{note}</p>}
+              {note && <p className="mc-note"><Negrito text={note} /></p>}
               {t.checklist.length > 0 && <div className="tc-prog"><div className="row">Checklist {ck}/{t.checklist.length}<b>{pct}%</b></div><div className="bar"><i style={{ width: `${pct}%` }} /></div></div>}
               <div className="row gap mc-ft">
                 {t.due && <span className={late ? 'late' : ''}><Ph n="calendar-dots" size={14} />{late ? 'Atrasada' : t.due === today ? 'Hoje' : new Date(t.due + 'T12:00').toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' })}{hm(t) && ' · ' + hm(t)}</span>}

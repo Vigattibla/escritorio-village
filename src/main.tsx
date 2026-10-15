@@ -6,6 +6,7 @@ import './v4.css'
 import './office/errands'
 import App from './App.tsx'
 import Dialogos from './components/Dialogo'
+import './components/Negrito'
 import './turmeo.css'
 
 createRoot(document.getElementById('root')!).render(

@@ -901,6 +901,8 @@ button.panel { width: 100%; border: 0; text-align: left; font: inherit; color: i
 .td2-side { overflow-y: auto; background: #fafbfd; border-left: 1px solid var(--line); padding: 14px 16px; display: flex; flex-direction: column; gap: 16px; min-height: 0; }
 .td2-desc { min-height: 72px; }
 .td2-desc:not([readonly]):not(:focus) { border-color: transparent; background: var(--bg); }
+.td2-desc-ver { padding: 9px 11px; border: 1px solid transparent; border-radius: 10px; background: var(--bg); white-space: pre-wrap; overflow-wrap: anywhere; cursor: text; }
+.td2-desc-ver b { font-weight: 700; }
 .td2-bar { display: block; height: 4px; border-radius: 4px; background: var(--line); overflow: hidden; }
 .td2-bar > i { display: block; height: 100%; background: var(--green); transition: width .2s var(--ease); }
 .td2-props { display: grid; gap: 2px; }

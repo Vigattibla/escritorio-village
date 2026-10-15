@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import Negrito from './Negrito'
 import { linkedin } from '../data/linkedin'
 import { addTask, fileUrl, run, setUi, updateTask, useStore } from '../store'
 import { CALENDARIOS, type Calendario } from '../data/calendarios'
@@ -208,7 +209,7 @@ function Card({ t, p }: { t: Task; p?: Postagem }) {
       <div className="rd-card-in">
         {ch && <span className={'tag ' + ch.tag}><Ph n={ch.ic} size={12} />{ch.label}{imgs.length > 1 && <em>· {imgs.length} imagens</em>}</span>}
         <b>{t.title}</b>
-        {t.notes.trim() ? <p>{t.notes.trim()}</p> : <p className="rd-falta">Sem legenda ainda</p>}
+        {t.notes.trim() ? <p><Negrito text={t.notes.trim()} /></p> : <p className="rd-falta">Sem legenda ainda</p>}
         <footer>
           {dono && <span className="rd-quem" title={dono.name}><MiniAvatar avatar={dono.avatar} photo={dono.photo} name={dono.name} size={20} />{dono.name.split(' ')[0]}</span>}
           <span className="grow" />
