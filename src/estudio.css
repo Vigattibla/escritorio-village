@@ -28,7 +28,7 @@
 .es-grade.so-canal.aprovando { grid-template-columns: minmax(0, 1180px); }
 .es-abas { display: flex; gap: 4px; padding: 4px; border-radius: 12px; background: var(--areia-3); align-self: flex-start; }
 .es-abas button { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 16px; border: 0; border-radius: 9px; background: none; font: inherit; font-size: 14px; font-weight: 700; color: var(--muted); cursor: pointer; }
-.es-abas button.on { background: #fff; color: var(--tinta); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+.es-abas button.ativo { background: #fff; color: var(--tinta); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
 .es-abas i { font-style: normal; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 99px; background: var(--acc); color: var(--creme); font-size: 12px; display: inline-grid; place-items: center; box-sizing: border-box; }
 .es-aprovar { display: flex; flex-direction: column; gap: 14px; }
 .es-peca { display: flex; flex-direction: column; gap: 12px; padding: 16px; border: 1px solid var(--line); border-radius: 14px; background: #fff; }
@@ -98,3 +98,26 @@
   .es-msg { max-width: 94%; }
 }
 .es-tit { display: inline-flex; align-items: center; gap: 8px; }
+
+/* painel dentro de Publicações (14/10) */
+.rd-corpo { display: flex; gap: 16px; align-items: flex-start; min-width: 0; }
+.rd-main { flex: 1; min-width: 0; }
+.es-painel { flex: none; width: 440px; position: sticky; top: 12px; max-height: calc(100vh - 24px); overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding: 14px; border: 1px solid var(--line); border-radius: 18px; background: var(--areia-2, #f6f3ec); box-sizing: border-box; }
+.es-painel.es-p-aprovar { width: min(620px, 48%); }
+.es-p-top { display: flex; align-items: center; gap: 8px; }
+.es-fechar { width: 34px; height: 34px; border: 0; border-radius: 10px; background: #fff; color: var(--tinta); display: grid; place-items: center; cursor: pointer; }
+.es-painel .tbox { padding: 14px 16px; }
+.es-painel .es-chat { min-height: 420px; max-height: calc(100vh - 170px); }
+.es-painel .es-slide { width: min(260px, 70vw); }
+.es-painel .es-abas { align-self: stretch; }
+.es-painel .es-abas button { flex: 1; justify-content: center; padding: 0 10px; }
+.rd-es-btn { position: relative; }
+.rd-es-btn.ativo { background: var(--rd-ink); color: #fff; }
+.rd-es-btn i { font-style: normal; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 99px; background: #FFC600; color: #101014; font-size: 11px; font-weight: 800; display: inline-grid; place-items: center; box-sizing: border-box; margin-left: 4px; }
+.rd-es-aviso { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border: 1.5px dashed #e3b341; border-radius: 12px; background: #FFF8E1; color: #8a6200; font: 600 12.5px Inter; cursor: pointer; text-align: left; }
+.rd-es-fundo { display: none; }
+@media (max-width: 900px) {
+  .es-painel, .es-painel.es-p-aprovar { position: fixed; left: 0; right: 0; bottom: 0; top: auto; width: auto; max-height: 88vh; z-index: 80; border-radius: 20px 20px 0 0; padding: 14px 16px calc(16px + env(safe-area-inset-bottom)); box-shadow: 0 -10px 30px rgba(10,14,30,.18); }
+  .rd-es-fundo { display: block; position: fixed; inset: 0; z-index: 79; background: rgba(10,14,30,.35); }
+  .es-painel .es-chat { min-height: 55vh; max-height: none; }
+}

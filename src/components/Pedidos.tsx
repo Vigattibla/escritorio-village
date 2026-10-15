@@ -3,9 +3,10 @@
 import { useMemo, useState } from 'react'
 import { deptOf } from '../game/ranks'
 import { gereEquipe } from '../plano/core'
+import { pref, usePref } from '../prefs'
 import { Modal } from '../plano/ui'
 import { me, mudarReq, nameOf, novaReq, useStore, type State } from '../store'
-import type { ReqItem, ReqStatus, ReqTipo, Requisicao } from '../types'
+import type { Profile, ReqItem, ReqStatus, ReqTipo, Requisicao } from '../types'
 import { confirmar, pedirTexto } from './Dialogo'
 import { Ph } from './Icon'
 import type { PhName } from './ph'
@@ -27,8 +28,12 @@ const hoje = () => new Date().toISOString().slice(0, 10)
 export function reqParaDecidir(st: State) {
   const eu = st.meId ? st.profiles[st.meId] : undefined
   if (!eu) return 0
-  return Object.values(st.rows.requisicoes).filter(r => r.status === 'aberto' && r.por !== eu.id && r.dept === st.sala && gereEquipe(eu, r.dept)).length
+  return Object.values(st.rows.requisicoes).filter(r => r.status === 'aberto' && r.por !== eu.id && r.dept === st.sala && gereReq(eu, r.dept)).length
 }
+
+/** quem decide pedido da sala: gerente da sala, Chefe; o adm só com o Modo desenvolvedor ligado */
+export const gereReq = (eu: Profile | undefined, dept: string | null, dev = pref('dev')) =>
+  !!eu && (gereEquipe({ ...eu, is_admin: false }, dept) || (!!eu.is_admin && dev))
 
 const errMsg = (e: unknown) => (e as { message?: string })?.message ?? 'Não deu certo.'
 
@@ -41,7 +46,8 @@ export default function Pedidos() {
   const [novo, setNovo] = useState(false)
   const [open, setOpen] = useState<string | null>(null)
   const eu = me()
-  const gere = gereEquipe(eu, sala)
+  const dev = usePref('dev')
+  const gere = gereReq(eu, sala, dev)
 
   const lista = useMemo(() => Object.values(reqs)
     .filter(r => r.por === meId || (r.dept === sala && (r.coletivo || gere)))
@@ -73,7 +79,7 @@ function Cartao({ r, aberto, onToggle, profiles, meId }: { r: Requisicao; aberto
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
   const eu = meId ? profiles[meId] : undefined
-  const gere = gereEquipe(eu, r.dept)
+  const gere = gereReq(eu, r.dept, usePref('dev'))
   const autor = r.por === meId
   const apoiei = !!meId && r.apoios.includes(meId)
   const pessoas = new Set(r.itens.map(i => i.por).filter(Boolean)).size

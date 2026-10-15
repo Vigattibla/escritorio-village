@@ -1,3 +1,4 @@
+import { pref } from './prefs'
 import { useSyncExternalStore } from 'react'
 import { backend } from './data'
 import { canAssign, DEPT0, deptOf, isChief, managerOf, outranks, rankName, rankOf } from './game/ranks'
@@ -303,7 +304,7 @@ function avisoReq(r: Requisicao, prev: Requisicao | undefined) {
   if (!my || state.phase !== 'office') return
   const go: Go = { view: 'pedidos' }
   const eu = state.profiles[my]
-  const gere = !!eu && (!!eu.is_admin || rankOf(eu) === 4 || (rankOf(eu) >= 3 && deptOf(eu) === r.dept))
+  const gere = !!eu && ((!!eu.is_admin && pref('dev')) || rankOf(eu) === 4 || (rankOf(eu) >= 3 && deptOf(eu) === r.dept))
   if (!prev) {
     if (r.por === my) return
     if (gere) notify(`${nameOf(r.por)} fez um pedido: “${r.titulo}”`, { kind: 'pedido', from: r.por, go })

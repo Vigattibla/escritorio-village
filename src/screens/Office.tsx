@@ -46,7 +46,6 @@ import MoreMenu from '../components/MoreMenu'
 import Sheet from '../components/Sheet'
 import { StickerLayer, StickerPicker } from '../components/Stickers'
 import Creator from './Creator'
-import Estudio from '../components/Estudio'
 import { backend } from '../data'
 import { isChief, rankName, rankOf } from '../game/ranks'
 import { deptList, deptName, myDept, openSala, run, setUi, signOut, team, unread, useStore, type Tab, type View } from '../store'
@@ -120,12 +119,11 @@ export default function Office() {
     { id: 'quadro', label: 'Quadro', ic: 'quadro', n: pend, tip: pend ? `${pend} pedido(s) esperando você aceitar` : undefined },
     { id: 'agenda', label: 'Agenda', ic: 'agenda' },
     { id: 'plano', label: 'Plano', ic: 'plano' },
-    { id: 'redes', label: 'Publicações', ic: 'redes', tip: 'Posts de todas as redes: criar, aprovar e publicar' },
+    { id: 'redes', label: 'Publicações', ic: 'redes', tip: me.is_admin || rankOf(me) >= 2 ? 'Posts de todas as redes e o Estúdio: pedir arte, aprovar e publicar' : 'Posts de todas as redes: criar, aprovar e publicar' },
     { id: 'escritorio', label: 'Escritório', ic: 'escritorio' },
     { id: 'arquivos', label: 'Arquivos', ic: 'arquivos' },
     // Vendas fora do setor de vendas: só o admin, no modo desenvolvedor
     ...(depts.some(d => d.vendas) && me.is_admin && dev ? ([['vendas', 'Quartos'], ['placar', 'Placar'], ['kit', 'Kit de vendas']] as const).map(([id, label]) => ({ id: id as Page, label, ic: (id === 'vendas' ? 'vendas' : id) as TName, more: true })) : []),
-    ...(me.is_admin || rankOf(me) >= 2 ? [{ id: 'estudio' as Page, label: 'Estúdio', ic: 'kudos' as TName, tip: me.is_admin ? 'Converse com o Estúdio da VPS e peça carrosséis' : 'Peça carrosséis pelos moldes do Estúdio' }] : []),
     // 14/10: Metas e Fluxos fora do menu (ninguém usava); Cassino e Bingo só pelo escritório (jogo)
     { id: 'pedidos', label: 'Pedidos', ic: 'pedir', more: true, n: reqPend, tip: reqPend ? `${reqPend} pedido(s) esperando sua decisão` : 'Pedidos ao gerente: material, folga e listas do setor' },
   ]
@@ -227,8 +225,8 @@ export default function Office() {
           {page === 'fluxos' && <Fluxos />}
           {page === 'plano' && <Plano />}
           {page === 'pedidos' && <Pedidos />}
-          {page === 'redes' && <Redes />}
-          {page === 'estudio' && <Estudio />}
+          {/* 14/10: Estúdio virou painel dentro de Publicações; 'estudio' abre já com ele */}
+          {(page === 'redes' || page === 'estudio') && <Redes estudio={page === 'estudio'} />}
           {page === 'arquivos' && <Arquivos />}
           {page === 'vendas' && <Vendas aba="quartos" />}
           {page === 'placar' && <Vendas aba="placar" />}

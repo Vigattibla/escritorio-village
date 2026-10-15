@@ -15,3 +15,4 @@ export function setPref<K extends keyof Prefs>(k: K, v: Prefs[K]) {
 export function usePref<K extends keyof Prefs>(k: K): Prefs[K] {
   return useSyncExternalStore(f => { subs.add(f); return () => subs.delete(f) }, () => cur[k])
 }
+export const pref = <K extends keyof Prefs>(k: K): Prefs[K] => cur[k]

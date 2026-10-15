@@ -17,7 +17,7 @@ const dia = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { weekday
 const hora = (iso: string) => new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }).replace('.', '')
 
 /** liga a cada poucos segundos enquanto a tela está aberta e visível */
-function usePuxar<T>(ler: () => Promise<T>, ms: number): [T | null, () => void, string] {
+export function usePuxar<T>(ler: () => Promise<T>, ms: number): [T | null, () => void, string] {
   const [v, setV] = useState<T | null>(null)
   const [erro, setErro] = useState('')
   const ref = useRef(ler)
@@ -29,7 +29,17 @@ function usePuxar<T>(ler: () => Promise<T>, ms: number): [T | null, () => void, 
 
 /** Estúdio da VPS dentro do Turmeo. Cada canal (rede/marca) segue seu calendário sozinho; a coordenação encaixa publicação no meio
  *  e abre o que ficou pronto. Adm: conversa (o Claude roda lá, cria moldes) e ajusta os canais. */
-export default function Estudio() {
+/** quem vê a fila de aprovação do Estúdio (dono ou marcado como aprovador) */
+export function useAprovaEstudio() {
+  const adm = useStore(s => !!(s.meId && s.profiles[s.meId]?.is_admin))
+  const dono = useStore(s => !!s.meId && (!!s.profiles[s.meId]?.estudio_dono || (adm && !Object.values(s.profiles).some(p => p.estudio_dono))))
+  return useStore(s => dono || !!(s.meId && s.profiles[s.meId]?.aprova_estudio))
+}
+
+export type AbaEstudio = 'aprovar' | 'canais' | 'conversa'
+
+/** painel: o Estúdio mora dentro de Publicações, numa coluna à direita (folha de baixo no celular) */
+export default function Estudio({ fechar, inicio }: { fechar?: () => void; inicio?: AbaEstudio }) {
   const adm = useStore(s => !!(s.meId && s.profiles[s.meId]?.is_admin))
   const coord = useStore(s => !!s.meId && rankOf(s.profiles[s.meId]) >= 2)
   // a conversa é só do dono do Estúdio (sem dono marcado ainda, vale o adm)
@@ -40,8 +50,8 @@ export default function Estudio() {
   const aprova = useStore(s => dono || !!(s.meId && s.profiles[s.meId]?.aprova_estudio))
   const [msgs, puxarChat, erroChat] = usePuxar(() => chat ? lerChat() : Promise.resolve([] as ChatMsg[]), 2500)
   const [fila, puxarFila] = usePuxar(() => aprova ? lerAprovar() : Promise.resolve([] as ParaAprovar[]), 15000)
-  const [aba, setAba] = useState<'canais' | 'aprovar' | null>(null)
-  const vendo = aba ?? (aprova && (!(adm || coord) || (fila?.length ?? 0) > 0) ? 'aprovar' : 'canais')
+  const [aba, setAba] = useState<AbaEstudio | null>(inicio ?? null)
+  const vendo: AbaEstudio = (aba === 'conversa' && !chat) ? 'canais' : aba ?? (aprova && (!(adm || coord) || (fila?.length ?? 0) > 0) ? 'aprovar' : 'canais')
   const [canais, puxarCanais] = usePuxar(lerCanais, 60000)
   const [escolha, setEscolha] = useState('')
   const canal = canais?.find(c => c.id === escolha) ?? canais?.[0] ?? null
@@ -49,34 +59,53 @@ export default function Estudio() {
   const [agora, setAgora] = useState(() => Date.now())
   useEffect(() => { const i = setInterval(() => setAgora(Date.now()), 10000); return () => clearInterval(i) }, [])
   const online = !!sinal && agora - new Date(sinal.visto).getTime() < 90000
+  const sinalEl = <span className={'es-sinal' + (online ? ' on' : '')} title={sinal ? 'Visto ' + hora(sinal.visto) : 'Nunca ligou'}>
+    <i />{!estudioReal() ? 'Demo' : online ? (sinal?.info.ocupado ? 'Ligado · trabalhando' : 'Ligado') : 'Desligado'}
+  </span>
+  const canalEl = <section className="es-canal tbox">
+    <nav className="es-canais">
+      {(canais ?? []).map(c => (
+        <button key={c.id} className={'es-aba' + (c.id === canal?.id ? ' on' : '')} onClick={() => setEscolha(c.id)}>
+          {c.nome}<small>{c.rede === 'linkedin' ? 'LinkedIn' : c.rede}{!c.ativo && ' · parado'}</small>
+        </button>
+      ))}
+    </nav>
+    {canal ? <CanalView key={canal.id} canal={canal} adm={adm} moldes={sinal?.info.moldes ?? []} recarregar={puxarCanais} />
+      : <p className="es-vazio">{canais ? 'Nenhum canal ainda.' : 'Carregando…'}</p>}
+  </section>
+  if (fechar) {
+    const abas: [AbaEstudio, string][] = [...(aprova ? [['aprovar', 'Aprovar'] as [AbaEstudio, string]] : []), ['canais', 'Pedir arte'], ...(chat ? [['conversa', 'Conversa'] as [AbaEstudio, string]] : [])]
+    return (
+      <aside className={'es es-painel es-p-' + vendo} aria-label="Estúdio">
+        <header className="es-p-top">
+          <b className="grow es-tit"><Ph n="sparkle" size={18} /> Estúdio</b>
+          {sinalEl}
+          <button className="es-fechar" onClick={fechar} aria-label="Fechar o Estúdio" title="Fechar"><Ph n="x" size={18} /></button>
+        </header>
+        {abas.length > 1 && <nav className="es-abas">
+          {abas.map(([id, label]) => <button key={id} className={vendo === id ? 'ativo' : ''} onClick={() => setAba(id)}>{label}{id === 'aprovar' && !!fila?.length && <i>{fila.length}</i>}</button>)}
+        </nav>}
+        {vendo === 'conversa' ? <Conversa msgs={msgs ?? []} erro={erroChat} puxar={puxarChat} />
+          : vendo === 'aprovar' ? <Aprovar fila={fila} puxar={puxarFila} dono={dono} /> : canalEl}
+      </aside>
+    )
+  }
   if (!adm && !coord && !aprova) return <div className="quadro"><div className="qbar"><b className="grow">Estúdio</b><Bell /></div><p className="es-vazio">O Estúdio é da coordenação. Peça uma publicação pra sua coordenação.</p></div>
   return (
     <div className="quadro es">
       <div className="qbar">
         <b className="grow es-tit"><Ph n="sparkle" size={18} /> Estúdio</b>
-        <span className={'es-sinal' + (online ? ' on' : '')} title={sinal ? 'Visto ' + hora(sinal.visto) : 'Nunca ligou'}>
-          <i />{!estudioReal() ? 'Demo' : online ? (sinal?.info.ocupado ? 'Ligado · trabalhando' : 'Ligado') : 'Desligado'}
-        </span>
+        {sinalEl}
         <Bell />
       </div>
       <div className={'es-grade' + (chat ? '' : ' so-canal') + (vendo === 'aprovar' ? ' aprovando' : '')}>
         {chat && <Conversa msgs={msgs ?? []} erro={erroChat} puxar={puxarChat} />}
         <div className="es-lado">
         {aprova && (adm || coord) && <nav className="es-abas">
-          <button className={vendo === 'aprovar' ? 'on' : ''} onClick={() => setAba('aprovar')}>Aprovar{!!fila?.length && <i>{fila.length}</i>}</button>
-          <button className={vendo === 'canais' ? 'on' : ''} onClick={() => setAba('canais')}>Canais</button>
+          <button className={vendo === 'aprovar' ? 'ativo' : ''} onClick={() => setAba('aprovar')}>Aprovar{!!fila?.length && <i>{fila.length}</i>}</button>
+          <button className={vendo === 'canais' ? 'ativo' : ''} onClick={() => setAba('canais')}>Canais</button>
         </nav>}
-        {vendo === 'aprovar' ? <Aprovar fila={fila} puxar={puxarFila} dono={dono} /> : <section className="es-canal tbox">
-          <nav className="es-canais">
-            {(canais ?? []).map(c => (
-              <button key={c.id} className={'es-aba' + (c.id === canal?.id ? ' on' : '')} onClick={() => setEscolha(c.id)}>
-                {c.nome}<small>{c.rede === 'linkedin' ? 'LinkedIn' : c.rede}{!c.ativo && ' · parado'}</small>
-              </button>
-            ))}
-          </nav>
-          {canal ? <CanalView key={canal.id} canal={canal} adm={adm} moldes={sinal?.info.moldes ?? []} recarregar={puxarCanais} />
-            : <p className="es-vazio">{canais ? 'Nenhum canal ainda.' : 'Carregando…'}</p>}
-        </section>}
+        {vendo === 'aprovar' ? <Aprovar fila={fila} puxar={puxarFila} dono={dono} /> : canalEl}
         </div>
       </div>
     </div>

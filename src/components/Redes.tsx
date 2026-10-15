@@ -7,6 +7,13 @@ import { Ph } from './Icon'
 import MiniAvatar from './MiniAvatar'
 import type { PhName } from './ph'
 import { CHANNEL_KEYS, CHANNELS } from './v4'
+import Estudio, { type AbaEstudio, useAprovaEstudio, usePuxar } from './Estudio'
+import { lerAprovar, type ParaAprovar } from '../data/estudio'
+import { rankOf } from '../game/ranks'
+
+const ES_KEY = 'rd-estudio'
+const lerAberto = () => { try { return localStorage.getItem(ES_KEY) === '1' } catch { return false } }
+const gravarAberto = (v: boolean) => { try { localStorage.setItem(ES_KEY, v ? '1' : '0') } catch { /* sem storage */ } }
 
 const quando = (iso: string | null) => iso ? new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }).replace('.', '') : ''
 
@@ -38,8 +45,8 @@ const colDe = (t: Task, p: Postagem | undefined, agora: number) => {
   return 'producao'
 }
 
-/** aba Publicações: posts de todas as redes, do rascunho ao ar */
-export default function Redes() {
+/** aba Publicações: posts de todas as redes, do rascunho ao ar; o Estúdio (rank ≥2 ou adm) abre num painel ao lado */
+export default function Redes({ estudio }: { estudio?: boolean }) {
   const tasks = useStore(s => s.tasks)
   const posts = useStore(s => s.rows.postagens)
   const [filtro, setFiltro] = useState('todas')
@@ -51,6 +58,13 @@ export default function Redes() {
   const conta = (id: string) => todas.filter(t => redeDe(t.channel)?.id === id).length
   const cols = COLS.filter(c => c.id !== 'erro' || lista.some(t => colDe(t, posts[t.id], agora) === 'erro'))
   const padrao = REDES.find(r => r.id === filtro)?.canais[0] ?? 'feed'
+  const podeEs = useStore(s => !!s.meId && (!!s.profiles[s.meId]?.is_admin || rankOf(s.profiles[s.meId]) >= 2))
+  const aprova = useAprovaEstudio()
+  const [fila] = usePuxar(() => podeEs && aprova ? lerAprovar() : Promise.resolve([] as ParaAprovar[]), 30000)
+  const [es, setEs] = useState<{ aba?: AbaEstudio; n: number } | null>(() => podeEs && (estudio || lerAberto()) ? { n: 0 } : null)
+  const abrirEs = (aba?: AbaEstudio) => { setEs(e => ({ aba, n: (e?.n ?? 0) + 1 })); gravarAberto(true) }
+  const fecharEs = () => { setEs(null); gravarAberto(false) }
+  const nFila = fila?.length ?? 0
   return (
     <div className="quadro redes">
       <div className="qbar"><b className="grow"><Ph n="megaphone" size={18} /> Publicações</b><Bell /></div>
@@ -64,7 +78,12 @@ export default function Redes() {
           ))}
         </div>
         <button className="btn primary sm" onClick={() => setNovo(true)}><Ph n="plus" size={14} />Novo post</button>
+        {podeEs && <button className={'btn sm rd-es-btn' + (es ? ' ativo' : '')} aria-pressed={!!es} onClick={() => es ? fecharEs() : abrirEs()} title="Peça carrosséis pelos moldes do Estúdio e aprove o que ficou pronto">
+          <Ph n="sparkle" size={14} />Pedir arte{nFila > 0 && <i>{nFila}</i>}
+        </button>}
       </div>
+      <div className="rd-corpo">
+      <div className="rd-main">
       <Contas filtro={filtro} />
       <div className="rd-cols" style={{ '--n': cols.length } as React.CSSProperties}>
         {cols.map(c => {
@@ -76,10 +95,14 @@ export default function Redes() {
                 ? <Novo canal={padrao} fechar={() => setNovo(false)} />
                 : <button className="rd-add" onClick={() => setNovo(true)}><Ph n="plus" size={14} />Novo post</button>)}
               {ts.map(t => <Card key={t.id} t={t} p={posts[t.id]} />)}
-              {!ts.length && c.id !== 'producao' && <p className="rd-vazio">{c.dica}</p>}
+              {c.id === 'aprovacao' && nFila > 0 && <button className="rd-es-aviso" onClick={() => abrirEs('aprovar')}><Ph n="sparkle" size={15} />{nFila === 1 ? '1 peça do Estúdio' : `${nFila} peças do Estúdio`} esperando você</button>}
+              {!ts.length && c.id !== 'producao' && !(c.id === 'aprovacao' && nFila > 0) && <p className="rd-vazio">{c.dica}</p>}
             </section>
           )
         })}
+      </div>
+      </div>
+      {es && <><div className="rd-es-fundo" onClick={fecharEs} /><Estudio key={es.n} inicio={es.aba} fechar={fecharEs} /></>}
       </div>
     </div>
   )
