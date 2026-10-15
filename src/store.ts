@@ -95,9 +95,16 @@ export interface State {
 }
 
 
+/** link direto: …/#estudio (ou #pedidos, #agenda…) abre já na página; o app do celular usa #estudio no modo sem o PC */
+const VIEWS: View[] = ['quadro', 'escritorio', 'agenda', 'metas', 'fluxos', 'inicio', 'arquivos', 'loja', 'vendas', 'placar', 'kit', 'plano', 'redes', 'estudio', 'pedidos']
+function viewDaUrl(): View {
+  const h = typeof location === 'undefined' ? '' : location.hash.slice(1)
+  return (VIEWS as string[]).includes(h) ? h as View : 'quadro'
+}
+
 const initial: State = {
   phase: 'loading', meId: null, accountName: '', error: '', profiles: {}, tasks: {}, messages: [], notes: [], projects: {}, rows: { events: {}, goals: {}, stickers: {}, flows: {}, stages: {}, groups: {}, rooms: {}, carpenters: {}, depts: {}, brand: {}, quartos: {}, vendas: {}, ajustes: {}, metas_venda: {}, vendas_cfg: {}, campanhas: {}, caderno: {}, jogos_pontos: {}, plano_meses: {}, plano_nucleos: {}, plano_acoes: {}, plano_resp: {}, equipes: {}, relatorios: {}, redes: {}, postagens: {}, requisicoes: {} }, online: new Set(),
-  tab: 'mesa', viewing: null, channel: 'geral', reads: {}, requestTo: null, task: null, editing: false, notices: [], pipOpen: false, view: 'quadro' as View, wallet: null, drawer: false,
+  tab: 'mesa', viewing: null, channel: 'geral', reads: {}, requestTo: null, task: null, editing: false, notices: [], pipOpen: false, view: viewDaUrl(), wallet: null, drawer: false,
   project: '', projectEdit: null, aiOpen: false, chatOpen: false, lousa: false, jogo: null, cassino: false, bolao: null, bingo: false, conectar: false, armario: false, bingoDados: null, bloqueio: null, bellOpen: false, qApprove: false, flow: null, sheet: false, stickTo: null, sala: DEPT0, here: DEPT0,
 }
 
