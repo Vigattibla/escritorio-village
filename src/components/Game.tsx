@@ -8,7 +8,7 @@ import { drawPapel, drawProp, pulo, type Prop } from '../office/vida'
 import { drawCurtain, drawDoor, drawExit, drawMat, HALL, inkOn } from '../office/andar'
 import { Emblema, FlagPicker } from './Bandeira'
 import { addMark, boardMarks, takeErrands, type Errand } from '../office/errands'
-import { drawAnim, plateFill, PLATE_CV } from '../office/anim'
+import { ACIMA, drawAnim, plateFill, PLATE_CV } from '../office/anim'
 import { ACOES, altDe, drawBoneco, drawEfeitoAcao, lugarNaAcao, montariaDe, type Acao } from '../office/bichos'
 import { drawChair } from '../office/props'
 import { drawFurniture, kd, parseSala, type Obj } from '../office/sala'
@@ -737,7 +737,7 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
         ctx.font = '600 12px "Pixelify Sans", Inter, sans-serif'
         const lw = ctx.measureText(label).width
         const pad = 6, total = lw + pad * 2 + 10
-        const lx = Math.round(sx - total / 2), ly = Math.round(sy - 18)
+        const lx = Math.round(sx - total / 2), ly = Math.round(sy - 18 - (ACIMA[p.avatar.gear?.animacao ?? ''] ?? 0) * z)
         const pk = p.avatar.gear?.plaquinha, pl = pk ? PLATE_CV[pk] : undefined
         ctx.fillStyle = plateFill(ctx, pk, lx, total, t) ?? (id === meId ? 'rgba(11,35,93,.92)' : 'rgba(20,24,40,.78)')
         if (pl?.glow) { ctx.shadowColor = pl.glow; ctx.shadowBlur = 6 }
