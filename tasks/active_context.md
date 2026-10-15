@@ -230,3 +230,4 @@ Pendente: push (precisa da migration 202610080900_v4_agenda_metas.sql e do secre
 - Migration 202610231000_jogos_vigia.sql: trigger before insert em jogos_partidas, cassino_rodadas, bingo_cartelas → tabela jogos_vigia.
 - Regras: 25 partidas/60s → 1h; partida em 100 dos últimos 120 min → 3h; 240 min no dia → até 06h. Bloqueio derivado do log (raise desfaz a transação, então nada é gravado no erro).
 - Erro `BLOQUEIO_JOGOS|ate|motivo` → store.vigiado → BloqueioJogos.tsx (alertdialog com aviso explícito pra IA, PT+EN). RPC jogos_bloqueio() checada ao abrir jogo/cassino/bingo. Espelho demo: src/game/vigia.ts (ev:vigia:<id>).
+- 15/10: Raias também editam etapas (a752cc9): ⋯ no cabeçalho da coluna (renomear/mover/excluir vazia) e chip ＋ Nova etapa ao lado de 'Colocar alguém'; só canEditStages (rank≥2 ou adm). Testado no demo.
