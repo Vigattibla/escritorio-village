@@ -25,6 +25,7 @@ export default function Legendas() {
   const [arquivos, setArquivos] = useState<File[]>([])
   const [prep, setPrep] = useState<Preparado | null>(null)
   const [contexto, setContexto] = useState('')
+  const [base, setBase] = useState<'midia' | 'copy'>('midia')
   const [espera, setEspera] = useState<{ t0: number; msg: string } | null>(null)
   const [agora, setAgora] = useState(Date.now())
   const [erro, setErro] = useState('')
@@ -49,10 +50,10 @@ export default function Legendas() {
   async function rodar(extra?: { ajuste?: string; anterior?: string }) {
     setErro(''); const t0 = Date.now(); setAgora(t0)
     try {
-      let p = prep
-      if (!p && arquivos.length) { p = await preparar(arquivos, msg => setEspera({ t0, msg })); setPrep(p) }
+      let p = base === 'copy' ? null : prep
+      if (!p && arquivos.length && base === 'midia') { p = await preparar(arquivos, msg => setEspera({ t0, msg })); setPrep(p) }
       setEspera({ t0, msg: p?.video ? 'A IA está assistindo e escrevendo' : 'A IA está escrevendo' })
-      const r = await gerar({ marca, formato, contexto, prep: p ?? undefined, ...extra })
+      const r = await gerar({ marca, formato, contexto, copy: base === 'copy', prep: p ?? undefined, ...extra })
       if (!r.opcoes?.length) throw new Error('A IA não devolveu opções. Tente de novo.')
       setRes(r); setAjuste({})
     } catch (e) { setErro(e instanceof Error ? e.message : String(e)) }
@@ -66,7 +67,7 @@ export default function Legendas() {
 
   const m = lista.find(x => x.id === marca)
   const seg = espera ? Math.floor((agora - espera.t0) / 1000) : 0
-  const pronto = arquivos.length > 0 || contexto.trim().length >= 10
+  const pronto = base === 'copy' ? contexto.trim().length >= 10 : arquivos.length > 0 || contexto.trim().length >= 10
 
   return (
     <div className="lg-pg">
@@ -85,7 +86,12 @@ export default function Legendas() {
           {FORMATOS.map(f => <button key={f.id} className={formato === f.id ? 'on' : ''} onClick={() => setFormato(f.id)} disabled={!!espera}><Ph n={f.ic} size={15} /> {f.nome}</button>)}
         </div>
 
-        <div className={'lg-drop' + (arquivos.length ? ' cheio' : '')}
+        <div className="pd-seg lg-seg">
+          <button className={base === 'midia' ? 'on' : ''} onClick={() => setBase('midia')} disabled={!!espera}><Ph n="upload-simple" size={15} /> Vídeo ou imagens</button>
+          <button className={base === 'copy' ? 'on' : ''} onClick={() => setBase('copy')} disabled={!!espera}><Ph n="file-text" size={15} /> Só a copy</button>
+        </div>
+
+        {base === 'midia' && <div className={'lg-drop' + (arquivos.length ? ' cheio' : '')}
           onClick={() => !espera && inp.current?.click()}
           onDragOver={e => e.preventDefault()}
           onDrop={e => { e.preventDefault(); if (!espera) escolher(e.dataTransfer.files) }}>
@@ -94,12 +100,12 @@ export default function Legendas() {
             : arquivos.length ? <p><Ph n={arquivos[0].type.startsWith('video/') ? 'film-strip' : 'images'} size={22} /> <b>{arquivos.length === 1 ? arquivos[0].name : `${arquivos.length} imagens`}</b></p>
             : <p><Ph n="upload-simple" size={24} /> <b>Solte o vídeo ou as imagens aqui</b><small>ou toque para escolher · vídeo até ~2 min (o áudio entra na análise)</small></p>}
           {arquivos.length > 0 && !espera && <button className="lg-tira" title="Tirar" onClick={e => { e.stopPropagation(); setArquivos([]); setPrep(null) }}><Ph n="x" size={14} /></button>}
-        </div>
+        </div>}
 
         <label className="lg-campo">
-          <span>Contexto (opcional, mas ajuda muito)</span>
-          <textarea rows={3} value={contexto} onChange={e => setContexto(e.target.value)} maxLength={2000} disabled={!!espera}
-            placeholder="Ex.: Reels do resort de Pirenópolis, foco em famílias com criança, divulgar o plano de 7 diárias. Data de postagem: feriado." />
+          <span>{base === 'copy' ? 'Cole a copy (texto da peça, roteiro ou briefing)' : 'Contexto (opcional, mas ajuda muito)'}</span>
+          <textarea rows={base === 'copy' ? 8 : 3} value={contexto} onChange={e => setContexto(e.target.value)} maxLength={4000} disabled={!!espera}
+            placeholder={base === 'copy' ? 'Ex.: Férias de julho no Village Pirenópolis. 7 diárias por ano, data garantida, valor travado. Criança até 12 anos não paga. Link na bio.' : 'Ex.: Reels do resort de Pirenópolis, foco em famílias com criança, divulgar o plano de 7 diárias. Data de postagem: feriado.'} />
         </label>
 
         {espera ? (

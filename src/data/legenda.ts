@@ -34,7 +34,7 @@ export async function salvarGuia(marca: string, guia: string) {
   await chama('/guia', { marca, guia })
 }
 
-export async function gerar(b: { marca: string; formato: Formato; contexto?: string; ajuste?: string; anterior?: string; prep?: Preparado }) {
+export async function gerar(b: { marca: string; formato: Formato; contexto?: string; copy?: boolean; ajuste?: string; anterior?: string; prep?: Preparado }) {
   const { prep, ...resto } = b
   if (demo()) {
     await new Promise(r => setTimeout(r, 2500))

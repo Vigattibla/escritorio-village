@@ -28,11 +28,12 @@ const FORMATO: Record<Formato, string> = {
 }
 
 interface Midia { mime: string; data: string }
-interface Pedido { marca?: string; formato?: Formato; contexto?: string; ajuste?: string; anterior?: string; midia?: Midia[]; video?: boolean; duracao?: number }
+interface Pedido { marca?: string; formato?: Formato; contexto?: string; copy?: boolean; ajuste?: string; anterior?: string; midia?: Midia[]; video?: boolean; duracao?: number }
 
 function prompt(guia: string, nome: string, b: Pedido) {
   const f = FORMATO[b.formato ?? 'reel'] ?? FORMATO.reel
-  const midia = !b.midia?.length ? 'Não há mídia: escreva só a partir do contexto.'
+  const midia = b.copy ? 'Não há mídia: a base é a COPY abaixo. Reescreva-a como legenda deste formato, na voz da marca, mantendo todos os fatos, números e condições dela; não acrescente fatos novos.'
+    : !b.midia?.length ? 'Não há mídia: escreva só a partir do contexto.'
     : b.video ? `Em anexo estão quadros em ordem de um vídeo de ${Math.round(b.duracao ?? 0)} s${b.midia.some(m => m.mime.startsWith('audio/')) ? ' e o áudio dele (preste atenção no que é falado e na música)' : ''}.`
     : `Em anexo estão as imagens da peça, em ordem.`
   return `Você é social media da marca ${nome} e escreve em português do Brasil.
@@ -42,7 +43,7 @@ ${guia}
 
 TAREFA: ${f}
 ${midia} Descreva o que realmente aparece ou é dito; não invente lugar, preço, número de diárias nem condição que não esteja na mídia ou no contexto.
-${b.contexto ? `\nContexto de quem pediu (fonte de verdade para fatos): ${corta(b.contexto, 2000)}\n` : ''}${b.anterior ? `\nVersão anterior, que a pessoa quer mudar:\n${corta(b.anterior, 3000)}\nPedido de ajuste: ${corta(b.ajuste, 500) || 'outra abordagem'}\n` : b.ajuste ? `\nPedido extra: ${corta(b.ajuste, 500)}\n` : ''}
+${b.contexto ? `\n${b.copy ? 'COPY' : 'Contexto de quem pediu (fonte de verdade para fatos)'}: ${corta(b.contexto, 4000)}\n` : ''}${b.anterior ? `\nVersão anterior, que a pessoa quer mudar:\n${corta(b.anterior, 3000)}\nPedido de ajuste: ${corta(b.ajuste, 500) || 'outra abordagem'}\n` : b.ajuste ? `\nPedido extra: ${corta(b.ajuste, 500)}\n` : ''}
 Entregue 3 opções com abordagens diferentes entre si (por exemplo: emoção da cena, benefício concreto, curiosidade). "titulo" = 2 a 4 palavras dizendo a abordagem. "legenda" = o texto pronto para colar, com quebras de linha, sem as hashtags. "hashtags" = lista sem repetir, cada uma começando com #.`
 }
 
@@ -101,7 +102,7 @@ Deno.serve(async req => {
     }
     const m = (await marcas(sb)).find(x => x.id === b.marca)
     if (!m) throw new Http(400, 'Marca não encontrada.')
-    const midia: Midia[] = (Array.isArray(b.midia) ? b.midia : []).slice(0, 24)
+    const midia: Midia[] = (Array.isArray(b.midia) && !b.copy ? b.midia : []).slice(0, 24)
       .filter((x: Midia) => /^(image|audio)\/[\w.+-]+$/.test(x?.mime ?? '') && typeof x.data === 'string')
     if (midia.reduce((a, x) => a + x.data.length, 0) > 18_000_000) throw new Http(413, 'Mídia grande demais. Use um vídeo mais curto ou menos imagens.')
     if (!midia.length && !corta(b.contexto, 10)) throw new Http(400, 'Mande um vídeo, imagens ou escreva o contexto.')
