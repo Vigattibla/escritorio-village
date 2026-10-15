@@ -52,7 +52,7 @@ export default function Estudio({ fechar, inicio }: { fechar?: () => void; inici
   const [fila, puxarFila] = usePuxar(() => aprova ? lerAprovar() : Promise.resolve([] as ParaAprovar[]), 15000)
   const [aba, setAba] = useState<AbaEstudio | null>(inicio ?? null)
   const vendo: AbaEstudio = (aba === 'conversa' && !chat) ? 'canais' : aba ?? (aprova && (!(adm || coord) || (fila?.length ?? 0) > 0) ? 'aprovar' : 'canais')
-  const [canais, puxarCanais] = usePuxar(lerCanais, 60000)
+  const [canais, puxarCanais, erroCanais] = usePuxar(lerCanais, 60000)
   const [escolha, setEscolha] = useState('')
   const canal = canais?.find(c => c.id === escolha) ?? canais?.[0] ?? null
   const [sinal] = usePuxar<Sinal | null>(lerSinal, 15000)
@@ -71,7 +71,7 @@ export default function Estudio({ fechar, inicio }: { fechar?: () => void; inici
       ))}
     </nav>
     {canal ? <CanalView key={canal.id} canal={canal} adm={adm} moldes={sinal?.info.moldes ?? []} recarregar={puxarCanais} />
-      : <p className="es-vazio">{canais ? 'Nenhum canal ainda.' : 'Carregando…'}</p>}
+      : <p className="es-vazio">{canais ? 'Nenhum canal ainda.' : erroCanais || 'Carregando…'}</p>}
   </section>
   if (fechar) {
     const abas: [AbaEstudio, string][] = [...(aprova ? [['aprovar', 'Aprovar'] as [AbaEstudio, string]] : []), ['canais', 'Pedir arte'], ...(chat ? [['conversa', 'Conversa'] as [AbaEstudio, string]] : [])]

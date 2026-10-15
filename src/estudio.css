@@ -116,6 +116,7 @@
 .rd-es-btn i { font-style: normal; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 99px; background: #FFC600; color: #101014; font-size: 11px; font-weight: 800; display: inline-grid; place-items: center; box-sizing: border-box; margin-left: 4px; }
 .rd-es-aviso { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border: 1.5px dashed #e3b341; border-radius: 12px; background: #FFF8E1; color: #8a6200; font: 600 12.5px Inter; cursor: pointer; text-align: left; }
 .rd-es-fundo { display: none; }
+@media (max-width: 1280px) { .es-painel { width: 360px; } .es-painel.es-p-aprovar { width: min(520px, 50%); } }
 @media (max-width: 900px) {
   .es-painel, .es-painel.es-p-aprovar { position: fixed; left: 0; right: 0; bottom: 0; top: auto; width: auto; max-height: 88vh; z-index: 80; border-radius: 20px 20px 0 0; padding: 14px 16px calc(16px + env(safe-area-inset-bottom)); box-shadow: 0 -10px 30px rgba(10,14,30,.18); }
   .rd-es-fundo { display: block; position: fixed; inset: 0; z-index: 79; background: rgba(10,14,30,.35); }
