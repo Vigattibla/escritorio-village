@@ -1,6 +1,7 @@
 import { createClient, type RealtimeChannel, type SupabaseClient } from '@supabase/supabase-js'
 import { slugUser, toEmail } from './login'
 import type { CoffeeLine, JogoRes, Wallet, RowTable, Rows, AccountEdit, AiContext, AiProposal, AiStage, Backend, Handlers, Message, Pos, Profile, Project, Requisicao, Snapshot, Task, TaskNote } from '../types'
+import type { Bloqueio } from '../game/vigia'
 import { ROW_TABLES } from '../types'
 import type { Escolha, JogoCassino, Rodada } from '../cassino/regras'
 import type { Bolao } from '../cassino/bolao'
@@ -285,6 +286,7 @@ export class SupabaseBackend implements Backend {
     return data as Bingo
   }
   trocarLatinha() { return this.rpc<number>('trocar_latinha') }
+  async jogosBloqueio() { return (await this.rpc<Bloqueio | null>('jogos_bloqueio')) ?? null }
 
   async joinGroup(gid: string, join: boolean) {
     const { error } = await this.sb.rpc('group_join', { gid, p_join: join })

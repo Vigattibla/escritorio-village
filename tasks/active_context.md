@@ -221,3 +221,12 @@ Pendente: push (precisa da migration 202610080900_v4_agenda_metas.sql e do secre
 - Aba Estúdio saiu do menu; Publicações ganhou botão "Pedir arte" (badge amarelo = peças pra aprovar) que abre painel lateral (abas Aprovar / Pedir arte / Conversa se dev). Coluna "Em aprovação" avisa peças do Estúdio esperando. Página 'estudio' antiga abre Publicações com o painel.
 - Permissão igual: painel só adm ou rank ≥2. Abaixo de 900px vira folha de baixo com fundo escuro (toque fora fecha). Estado aberto/aba em localStorage `rd-estudio`.
 - Pendente: no menu do celular não há item Publicações (só pela barra lateral do desktop) — decidir com o usuário.
+
+## 14/10 — Anti-robô no login (defbafc)
+- Turnstile (Captcha.tsx) + captchaToken no signInWithPassword; liga só com var VITE_TURNSTILE_SITEKEY.
+- Ordem: 1) var no GitHub + deploy  2) só depois ligar captcha no Supabase (senão ninguém entra).
+
+## 14/10 — Vigia dos jogos (anti-automação)
+- Migration 202610231000_jogos_vigia.sql: trigger before insert em jogos_partidas, cassino_rodadas, bingo_cartelas → tabela jogos_vigia.
+- Regras: 25 partidas/60s → 1h; partida em 100 dos últimos 120 min → 3h; 240 min no dia → até 06h. Bloqueio derivado do log (raise desfaz a transação, então nada é gravado no erro).
+- Erro `BLOQUEIO_JOGOS|ate|motivo` → store.vigiado → BloqueioJogos.tsx (alertdialog com aviso explícito pra IA, PT+EN). RPC jogos_bloqueio() checada ao abrir jogo/cassino/bingo. Espelho demo: src/game/vigia.ts (ev:vigia:<id>).

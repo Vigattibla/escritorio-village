@@ -9,6 +9,7 @@ import { Mesa, type Escolha, type JogoCassino } from '../cassino/regras'
 import { BolaoDemo, type Sorteio } from '../cassino/bolao'
 import { BingoDemo, SLOT } from '../cassino/bingo'
 import { localDay } from '../components/v4'
+import { erroBloqueio, vigiar } from '../game/vigia'
 
 // Modo demonstração: tudo no localStorage deste navegador. Abas diferentes = pessoas diferentes
 // (a sessão fica no sessionStorage), sincronizadas por BroadcastChannel.
@@ -485,8 +486,16 @@ export class DemoBackend implements Backend {
       lanca: (amount, reason, ref) => { const log = read<CoffeeLine[]>(ck, []); this.credit(log, amount, reason, ref, []); write(ck, log) },
     }, read(rk, []), r => write(rk, r))
   }
-  async cassinoJogar(jogo: JogoCassino, aposta: number, e: Escolha) { return this.mesa().jogar(jogo, aposta, e) }
-  async cassinoAbrir(jogo: JogoCassino, aposta: number, e: Escolha) { return this.mesa().abrir(jogo, aposta, e) }
+  /** vigia dos jogos (mesmas regras do SQL): bloqueado → erro marcado; senão conta a partida */
+  private vigia() {
+    const k = 'ev:vigia:' + sessionStorage.getItem(K.session), ts = read<number[]>(k, [])
+    const b = vigiar(ts)
+    if (b) throw erroBloqueio(b)
+    write(k, [...ts.filter(t => t > Date.now() - 2 * 86400_000), Date.now()])
+  }
+  async jogosBloqueio() { return vigiar(read<number[]>('ev:vigia:' + sessionStorage.getItem(K.session), [])) }
+  async cassinoJogar(jogo: JogoCassino, aposta: number, e: Escolha) { this.vigia(); return this.mesa().jogar(jogo, aposta, e) }
+  async cassinoAbrir(jogo: JogoCassino, aposta: number, e: Escolha) { if (!(await this.mesa().estado(jogo))) this.vigia(); return this.mesa().abrir(jogo, aposta, e) }
   async cassinoAcao(id: string, acao: string, casa?: number) { return this.mesa().acao(id, acao, casa) }
   async cassinoEstado(jogo: JogoCassino) { return this.mesa().estado(jogo) }
 
@@ -494,6 +503,7 @@ export class DemoBackend implements Backend {
   private partidas = new Map<string, { cartas: number[]; t0: number; pend: number | null; achadas: number[]; erros: number }>()
   async jogos(fn: 'iniciar' | 'fim' | 'virar', a: Record<string, unknown>): Promise<JogoRes> {
     if (fn === 'iniciar') {
+      this.vigia()
       const id = crypto.randomUUID()
       this.partidas.set(id, { cartas: Array.from({ length: 16 }, (_, i) => i % 8).map(f => ({ f, k: Math.random() })).sort((x, y) => x.k - y.k).map(x => x.f), t0: 0, pend: null, achadas: [], erros: 0 })
       return { id }
@@ -552,7 +562,7 @@ export class DemoBackend implements Backend {
     })
   }
   async bingoEstado() { return this.bingo().estado() }
-  async bingoComprar(gratis: boolean) { return this.bingo().comprar(gratis) }
+  async bingoComprar(gratis: boolean) { this.vigia(); return this.bingo().comprar(gratis) }
 
   async joinGroup(id: string, join: boolean) {
     const all = read<Record<string, Group>>(K.row + 'groups', {})

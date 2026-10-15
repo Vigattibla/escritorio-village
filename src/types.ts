@@ -1,6 +1,7 @@
 import type { Escolha, JogoCassino, Rodada } from './cassino/regras'
 import type { Bolao } from './cassino/bolao'
 import type { Bingo } from './cassino/bingo'
+import type { Bloqueio } from './game/vigia'
 export type Dir = 'down' | 'up' | 'left' | 'right'
 /** básicos: camiseta, moletom, social, vestido, terno; o resto vem do Almoxarifado */
 export type Outfit = string
@@ -382,6 +383,8 @@ export interface Backend {
   /** bingo: rodada atual e próxima (o servidor confere e paga), compra de cartela pra próxima */
   bingoEstado(): Promise<Bingo>
   bingoComprar(gratis: boolean): Promise<Bingo>
+  /** vigia dos jogos: null = liberado */
+  jogosBloqueio(): Promise<Bloqueio | null>
   /** IA do Gerente: manda o pedido e espera a proposta (servidor: a ponte no PC roda o Claude) */
   askAI(prompt: string, ctx: AiContext, onStage: (s: AiStage) => void, signal: AbortSignal): Promise<AiProposal>
   /** a ponte do PC deu sinal de vida há pouco? */

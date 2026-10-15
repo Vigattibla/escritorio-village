@@ -46,6 +46,7 @@ import MoreMenu from '../components/MoreMenu'
 import Sheet from '../components/Sheet'
 import { StickerLayer, StickerPicker } from '../components/Stickers'
 import Creator from './Creator'
+import BloqueioJogos from '../components/BloqueioJogos'
 import { backend } from '../data'
 import { isChief, rankName, rankOf } from '../game/ranks'
 import { deptList, deptName, myDept, openSala, run, setUi, signOut, team, unread, useStore, type Tab, type View } from '../store'
@@ -284,6 +285,7 @@ export default function Office() {
       {s.armario && <Armario onClose={() => setUi({ armario: false })} />}
       {s.conectar && <Conectar onClose={() => setUi({ conectar: false })} />}
       {s.cassino && <Cassino inicial={typeof s.cassino === 'string' ? s.cassino : undefined} onClose={() => setUi({ cassino: false })} />}
+      <BloqueioJogos />
     </div>
   )
 }

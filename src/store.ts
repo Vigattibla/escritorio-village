@@ -14,6 +14,7 @@ import type { Backend } from './types'
 import type { JogoCassino, Rodada } from './cassino/regras'
 import type { Bolao } from './cassino/bolao'
 import type { Bingo } from './cassino/bingo'
+import { lerBloqueio, type Bloqueio } from './game/vigia'
 
 export type Phase = 'loading' | 'auth' | 'creator' | 'office'
 export type Tab = 'mesa' | 'aprovar' | 'avisos' | 'equipe' | 'chat' | 'geral'
@@ -75,6 +76,8 @@ export interface State {
   armario: boolean
   /** rodada atual/próxima do bingo */
   bingoDados: Bingo | null
+  /** vigia dos jogos: jogos, cassino e bingo travados até `ate` */
+  bloqueio: Bloqueio | null
   /** sino de avisos aberto */
   bellOpen: boolean
   /** quadro filtrado só no que espera minha aprovação */
@@ -95,7 +98,7 @@ export interface State {
 const initial: State = {
   phase: 'loading', meId: null, accountName: '', error: '', profiles: {}, tasks: {}, messages: [], notes: [], projects: {}, rows: { events: {}, goals: {}, stickers: {}, flows: {}, stages: {}, groups: {}, rooms: {}, carpenters: {}, depts: {}, brand: {}, quartos: {}, vendas: {}, ajustes: {}, metas_venda: {}, vendas_cfg: {}, campanhas: {}, caderno: {}, jogos_pontos: {}, plano_meses: {}, plano_nucleos: {}, plano_acoes: {}, plano_resp: {}, equipes: {}, relatorios: {}, redes: {}, postagens: {}, requisicoes: {} }, online: new Set(),
   tab: 'mesa', viewing: null, channel: 'geral', reads: {}, requestTo: null, task: null, editing: false, notices: [], pipOpen: false, view: 'quadro' as View, wallet: null, drawer: false,
-  project: '', projectEdit: null, aiOpen: false, chatOpen: false, lousa: false, jogo: null, cassino: false, bolao: null, bingo: false, conectar: false, armario: false, bingoDados: null, bellOpen: false, qApprove: false, flow: null, sheet: false, stickTo: null, sala: DEPT0, here: DEPT0,
+  project: '', projectEdit: null, aiOpen: false, chatOpen: false, lousa: false, jogo: null, cassino: false, bolao: null, bingo: false, conectar: false, armario: false, bingoDados: null, bloqueio: null, bellOpen: false, qApprove: false, flow: null, sheet: false, stickTo: null, sala: DEPT0, here: DEPT0,
 }
 
 let state = initial
@@ -1151,7 +1154,7 @@ export async function checarBingo() {
   try { pegaBingo(await backend.bingoEstado()) } catch { /* tenta no próximo giro */ }
 }
 export async function comprarCartela(gratis: boolean) {
-  pegaBingo(await backend.bingoComprar(gratis))
+  pegaBingo(await vigiado(backend.bingoComprar(gratis)))
   await refreshWallet()
 }
 
@@ -1168,13 +1171,29 @@ export async function trocarLatinha() {
 
 /** cassino: a jogada vai ao servidor e o saldo volta junto com o resultado */
 export async function apostar(fn: (b: Backend) => Promise<Rodada | null>) {
-  const r = await fn(backend)
+  const r = await vigiado(fn(backend))
   if (r && state.wallet) set({ wallet: { ...state.wallet, balance: r.saldo } })
   return r
 }
 
 /** sala de jogos: partida e pontuação passam pelo servidor */
-export const jogos = (fn: 'iniciar' | 'fim' | 'virar', args: Record<string, unknown> = {}) => backend.jogos(fn, args)
+export const jogos = (fn: 'iniciar' | 'fim' | 'virar', args: Record<string, unknown> = {}) => vigiado(backend.jogos(fn, args))
+
+/** vigia dos jogos: erro marcado pelo servidor vira o aviso de bloqueio (e fecha as mesas) */
+async function vigiado<T>(p: Promise<T>): Promise<T> {
+  try { return await p } catch (e) {
+    const b = lerBloqueio(e)
+    if (b) { set({ bloqueio: b, jogo: null, cassino: false, bingo: false }); throw new Error('Jogos bloqueados pela vigia.') }
+    throw e
+  }
+}
+export async function checarBloqueio() {
+  try {
+    const b = await backend.jogosBloqueio()
+    set(b ? { bloqueio: b, jogo: null, cassino: false, bingo: false } : { bloqueio: null })
+  } catch { /* sem resposta: o servidor recusa a partida de qualquer jeito */ }
+}
+export const fecharBloqueio = () => set({ bloqueio: null })
 
 /** o que a pessoa já tem: comprado ou dado de graça no criador */
 export const owns = (id: string, w = state.wallet) => !!w?.owned.includes(id)

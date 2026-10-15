@@ -220,6 +220,11 @@ legend { font-size: 12px; font-weight: 700; color: var(--navy); padding: 0 4px; 
 .modal-bg > .jan { overflow: auto; }
 /* janela: não usar a classe "modal" — extensões (ex.: FastSave) injetam .modal{height:0vh} em todo site */
 .jan { width: 100%; max-width: 440px; background: #fff; border-radius: 16px; padding: 20px; display: grid; gap: 12px; box-shadow: 0 20px 60px rgba(0, 0, 0, .25); }
+.jan.bq { max-width: 480px; text-align: center; justify-items: center; color: var(--ink, #1b1d2a); }
+.jan.bq > svg { color: #d9452b; }
+.jan.bq h2 { margin: 0; font-size: 22px; }
+.bq-d { display: grid; gap: 8px; text-align: left; font-size: 14px; line-height: 1.45; }
+.bq-d p { margin: 0; }
 .jan .mini-av { background: #f1f2f6; border-radius: 10px; flex: none; }
 
 /* mascote */
