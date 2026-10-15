@@ -313,9 +313,9 @@ export interface Backend {
   /** sistema vazio: ninguém tem conta ainda, a primeira vira adm */
   needsSetup(): Promise<boolean>
   /** demo: cadastro livre. Servidor: só no primeiro acesso (cria o adm). null = precisa confirmar o e-mail */
-  signUp(login: string, password: string, name: string): Promise<string | null>
-  /** login = usuário ou e-mail */
-  signIn(login: string, password: string): Promise<string>
+  signUp(login: string, password: string, name: string, captcha?: string): Promise<string | null>
+  /** login = usuário ou e-mail; captcha = prova do Turnstile (servidor com anti-robô ligado) */
+  signIn(login: string, password: string, captcha?: string): Promise<string>
   signOut(): Promise<void>
   accountName(): Promise<string>
   loadAll(): Promise<Snapshot>

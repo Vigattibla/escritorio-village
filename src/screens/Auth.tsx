@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import Meo, { Wordmark } from '../components/Meo'
 import { TENANT } from '../tenant'
 import { LogoImg } from '../components/Marca'
+import Captcha, { CAPTCHA_KEY } from '../components/Captcha'
 import { backend } from '../data'
 import { enter, useStore } from '../store'
 
@@ -15,18 +16,24 @@ export default function Auth() {
   const [err, setErr] = useState(startErr)
   const [info, setInfo] = useState('')
   const [setup, setSetup] = useState(false)
+  // anti-robô: só no servidor (demo não tem) e só se a chave do Turnstile estiver configurada
+  const comCaptcha = backend.mode === 'supabase' && !!CAPTCHA_KEY
+  const [prova, setProva] = useState<string | null>(null)
+  const [novaProva, setNovaProva] = useState(0)
   useEffect(() => { backend.needsSetup().then(v => { setSetup(v); if (v) setMode('up') }) }, [])
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (comCaptcha && !prova) { setErr('Espere a verificação anti-robô terminar (ou marque a caixinha) e tente de novo.'); return }
     setBusy(true); setErr(''); setInfo('')
     try {
-      const uid = mode === 'up' ? await backend.signUp(user, pass, name) : await backend.signIn(user, pass)
+      const uid = mode === 'up' ? await backend.signUp(user, pass, name, prova ?? undefined) : await backend.signIn(user, pass, prova ?? undefined)
       if (!uid) { setInfo('Conta criada! Confirme pelo link que chegou no seu e-mail e depois entre.'); setMode('in'); return }
       await enter(uid)
     } catch (e) {
       setErr((e as Error).message)
     } finally {
+      if (comCaptcha) setNovaProva(n => n + 1) // a prova vale uma tentativa só
       setBusy(false)
     }
   }
@@ -52,6 +59,7 @@ export default function Auth() {
           {mode === 'up' && <label>Seu nome<input required value={name} onChange={e => setName(e.target.value)} autoComplete="name" maxLength={40} /></label>}
           <label>Usuário<input required value={user} onChange={e => setUser(e.target.value)} autoComplete="username" autoCapitalize="none" spellCheck={false} placeholder="ex.: maria" /></label>
           <label>Senha<input required type="password" minLength={6} value={pass} onChange={e => setPass(e.target.value)} autoComplete={mode === 'up' ? 'new-password' : 'current-password'} /></label>
+          {comCaptcha && <Captcha onToken={setProva} resetKey={novaProva} />}
           {err && <p className="err">{err}</p>}
           {info && <p className="ok">{info}</p>}
           <button className="btn primary big" disabled={busy}>{busy ? (mode === 'up' ? 'Criando sua conta…' : 'Entrando…') : mode === 'up' ? 'Criar conta e montar meu personagem' : 'Entrar no escritório'}</button>

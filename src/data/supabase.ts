@@ -13,6 +13,8 @@ function pt(e: { message: string }): Error {
   if (/password/i.test(m) && /6/.test(m)) return new Error('A senha precisa de pelo menos 6 caracteres.')
   if (/row-level security/i.test(m)) return new Error('Sem permissão para isso.')
   if (/exceeded the maximum allowed size|payload too large/i.test(m)) return new Error('Arquivo grande demais (máx. 20 MB).')
+  if (/captcha/i.test(m)) return new Error('Confirme que não é robô (a caixinha acima do botão) e tente de novo.')
+  if (/rate limit|too many/i.test(m)) return new Error('Muitas tentativas. Espere alguns minutos e tente de novo.')
   if (/email not confirmed/i.test(m)) return new Error('Confirme seu e-mail antes de entrar (veja sua caixa de entrada).')
   return new Error(m)
 }
@@ -58,15 +60,15 @@ export class SupabaseBackend implements Backend {
     return !error && data === true
   }
 
-  async signUp(login: string, password: string, name: string) {
+  async signUp(login: string, password: string, name: string, captcha?: string) {
     const user = slugUser(login)
     const { error } = await this.sb.rpc('setup_admin', { p_user: user, p_pass: password, p_name: name })
     if (error) throw pt(error)
-    return this.signIn(user, password)
+    return this.signIn(user, password, captcha)
   }
 
-  async signIn(login: string, password: string) {
-    const { data, error } = await this.sb.auth.signInWithPassword({ email: toEmail(login), password })
+  async signIn(login: string, password: string, captcha?: string) {
+    const { data, error } = await this.sb.auth.signInWithPassword({ email: toEmail(login), password, options: captcha ? { captchaToken: captcha } : undefined })
     if (error) throw pt(error)
     return data.user.id
   }
