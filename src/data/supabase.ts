@@ -209,9 +209,8 @@ export class SupabaseBackend implements Backend {
   }
 
   async upsertTask(t: Task) {
-    // antes do SQL v7 essas colunas não existem: só manda quando têm algo
-    const { project_id, criteria, reviews, ...base } = t
-    const row = project_id || criteria.length || reviews.length ? t : base
+    // manda sempre a linha inteira: project_id null é como a tarefa volta para "Sem projeto"
+    const row = t
     // upsert num card criado por outra pessoa cai na regra de insert (autor = eu) e o banco barra: atualiza primeiro
     const up = await this.sb.from('tasks').update(row).eq('id', t.id).select('id')
     if (up.error) throw pt(up.error)

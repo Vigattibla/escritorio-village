@@ -784,7 +784,7 @@ function StageMenu({ s, list, count }: { s: Stage; list: Stage[]; count: number 
   const i = list.findIndex(x => x.id === s.id)
   const unica = !list.some(x => x.kind === s.kind && x.id !== s.id)
   const save = (patch: Partial<Stage>) => run(saveStages(list.map(x => (x.id === s.id ? { ...x, ...patch } : x))))
-  const move = (d: number) => { const n = list.slice(); n.splice(i, 1); n.splice(i + d, 0, s); run(saveStages(n)); setOpen(false) }
+  const move = (d: number) => { const n = list.slice(); n.splice(i, 1); n.splice(i + d, 0, s); run(saveStages(n)) }
   const rename = () => {
     const label = (name ?? '').trim().slice(0, 40)
     setName(null)
