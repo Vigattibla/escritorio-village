@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { dayKey } from '../game/xp'
 import { addTask, hasCanais, run, setUi, team, useStore } from '../store'
 import type { Channel } from '../types'
@@ -8,6 +8,24 @@ import { CHANNEL_KEYS, CHANNELS, first } from './v4'
 
 const plus = (n: number) => { const d = new Date(); d.setDate(d.getDate() + n); return dayKey(d) }
 const friday = () => { const d = new Date(); d.setDate(d.getDate() + ((5 - d.getDay() + 7) % 7 || 7)); return dayKey(d) }
+
+const sem = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()
+
+/** link pronto de IA: #nova?titulo=…&para=Ana&prazo=2026-10-20|hoje|amanha&hora=14:00&canal=feed&detalhe=…
+ *  só preenche a folha; quem cria é a pessoa logada, apertando o botão (prévia de link não cria nada) */
+function lerLink() {
+  const m = location.hash.match(/^#nova\??(.*)$/)
+  if (!m) return null
+  history.replaceState(null, '', location.pathname + location.search)
+  const q = new URLSearchParams(m[1])
+  const prazo = sem(q.get('prazo') ?? '')
+  return {
+    titulo: (q.get('titulo') ?? '').slice(0, 120), para: sem(q.get('para') ?? ''), detalhe: (q.get('detalhe') ?? '').slice(0, 4000),
+    prazo: prazo === 'hoje' ? plus(0) : prazo === 'amanha' ? plus(1) : /^\d{4}-\d{2}-\d{2}$/.test(prazo) ? prazo : '',
+    hora: /^\d{2}:\d{2}$/.test(q.get('hora') ?? '') ? q.get('hora')! : '',
+    canal: (CHANNEL_KEYS as string[]).includes(q.get('canal') ?? '') ? q.get('canal') as Channel : null,
+  }
+}
 
 /** Celular: “Nova tarefa” em folha que sobe de baixo. */
 export default function Sheet() {
@@ -26,6 +44,22 @@ export default function Sheet() {
   const [channel, setChannel] = useState<Channel | null>(null)
   const canais = useStore(s => hasCanais(s.sala, s))
   const [mine, setMine] = useState(true)
+  const [notes, setNotes] = useState('')
+  // abriu (ou logou) com link #nova: preenche e abre a folha
+  useEffect(() => {
+    const ir = () => {
+      if (!Object.keys(profiles).length) return
+      const l = lerLink()
+      if (!l) return
+      const p = l.para && team(profiles).find(x => sem(x.name) === l.para || sem(first(x)) === l.para)
+      setTitle(l.titulo); setWho(p ? p.id : ''); setNotes(l.detalhe); setChannel(l.canal); setHora(l.hora)
+      if (l.prazo) { setDue(l.prazo); setPick(![plus(0), plus(1), friday()].includes(l.prazo)) }
+      setUi({ sheet: true })
+    }
+    ir()
+    addEventListener('hashchange', ir)
+    return () => removeEventListener('hashchange', ir)
+  }, [!Object.keys(profiles).length]) // eslint-disable-line react-hooks/exhaustive-deps
   if (!open) return null
   const owner = who || meId
   const people = team(profiles).filter(p => p.avatar).sort((a, b) => Number(b.id === meId) - Number(a.id === meId) || a.name.localeCompare(b.name))
@@ -33,13 +67,13 @@ export default function Sheet() {
   // aprovação vem do mestre do projeto: uso o projeto aberto (se for meu) ou o primeiro que eu mestro
   const myProj = (projects[cur]?.master_id === meId ? projects[cur] : Object.values(projects).find(p => p.master_id === meId && !p.archived)) ?? null
   const canMine = !!myProj && owner !== meId
-  const close = () => { setUi({ sheet: false }); setTitle(''); setWho(''); setChannel(null); setPick(false); setDue(plus(1)); setHora('') }
+  const close = () => { setUi({ sheet: false }); setTitle(''); setWho(''); setChannel(null); setPick(false); setDue(plus(1)); setHora(''); setNotes('') }
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!title.trim()) return
     const project = canMine && mine ? myProj!.id : (cur && cur !== '-' && projects[cur] ? cur : null)
     const publish_at = channel && due ? new Date(`${due}T10:00`).toISOString() : null
-    run(addTask(owner, channel ? `${CHANNELS[channel].label} · ${title.trim()}` : title.trim(), due, '', 'todo', project, { channel, publish_at, due_time: hora || null }))
+    run(addTask(owner, channel ? `${CHANNELS[channel].label} · ${title.trim()}` : title.trim(), due, notes.trim(), 'todo', project, { channel, publish_at, due_time: hora || null }))
     close()
   }
   const chips: [string, string | null][] = [['Hoje', plus(0)], ['Amanhã', plus(1)], ['Sexta', friday()]]
@@ -50,6 +84,7 @@ export default function Sheet() {
         <i className="handle" />
         <div className="sh-h"><h2>Nova tarefa</h2><button type="button" className="icon-btn" onClick={close} aria-label="Fechar"><Icon n="x" size={18} /></button></div>
         <input className="sh-field" autoFocus required maxLength={120} value={title} onChange={e => setTitle(e.target.value)} placeholder="O que precisa ser feito?" />
+        {notes && <textarea className="sh-field" rows={3} maxLength={4000} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Detalhes" />}
         <div className="lbl">Quem faz</div>
         <div className="pick">
           {people.map(p => {
