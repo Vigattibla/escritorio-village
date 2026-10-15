@@ -277,7 +277,7 @@ export default function Office() {
         <button className="tfab" onClick={() => setUi({ sheet: true })} aria-label="Nova tarefa"><Ph n="plus" size={26} fill /></button>
         <Tab it={tabs[2]} /><Tab it={tabs[3]} />
       </nav>}
-      <FloatChat unread={msgs} />
+      <FloatChat />
       <Toast />
       {s.editing && <div className="overlay"><Creator /></div>}
       {s.bingo && <Bingo onClose={() => setUi({ bingo: false })} />}

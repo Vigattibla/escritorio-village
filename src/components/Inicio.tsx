@@ -1,9 +1,9 @@
 import { atrasada, hm } from '../game/prazo'
 import { dayKey } from '../game/xp'
-import { comigo, hasCanais, setUi, toApprove, unread, useStore } from '../store'
+import { comigo, hasCanais, setUi, toApprove, useStore } from '../store'
 import { Bell } from './Avisos'
 import { StatusTag } from './Agenda'
-import Icon, { Ph } from './Icon'
+import { Ph } from './Icon'
 import MiniAvatar from './MiniAvatar'
 import { Live } from './Side'
 import MoreMenu from './MoreMenu'
@@ -25,7 +25,6 @@ export default function Inicio() {
   const approve = toApprove(s).length
   const canais = hasCanais(s.sala, s)
   const posts = canais ? open.filter(t => t.publish_at && dayKey(t.publish_at) >= today).length : Object.values(s.rows.events).filter(e => e.day >= today).length
-  const msgs = [...new Set(s.messages.map(m => m.channel))].reduce((n, ch) => n + unread(s, ch), 0)
   const mine = open.filter(t => comigo(t, me.id)).sort((a, b) => ORDER[a.status] - ORDER[b.status] || (a.due ?? '9').localeCompare(b.due ?? '9')).slice(0, 6)
   const date = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })
   return (
@@ -33,7 +32,6 @@ export default function Inicio() {
       <div className="mtop">
         <button className="mav" onClick={() => setUi({ editing: true })} aria-label="Editar personagem"><MiniAvatar avatar={me.avatar} photo={me.photo} name={me.name} size={44} /></button>
         <div className="grow"><small>{date[0].toUpperCase() + date.slice(1)}</small><h2>{hello()}, {first(me)}</h2></div>
-        <button className="iconbtn" onClick={() => setUi({ chatOpen: true })} aria-label="Chat"><Icon n="chat" size={20} />{msgs > 0 && <i>{msgs > 9 ? '9+' : msgs}</i>}</button>
         <Bell />
         <MoreMenu />
       </div>

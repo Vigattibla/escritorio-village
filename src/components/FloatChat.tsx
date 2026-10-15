@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { dmChannel, dmPeer, floatChans, groupOf, setUi, useStore, type State } from '../store'
+import { dmPeer, floatChans, groupOf, setUi, useStore, type State } from '../store'
 import Chat from './Chat'
 import Icon, { Ph } from './Icon'
 import MiniAvatar from './MiniAvatar'
@@ -8,7 +8,6 @@ import type { PhName } from './ph'
 type XY = { x: number; y: number }
 type Float = XY & { ch: string }
 
-const B = 58 // tamanho da bolinha
 const M = 16 // margem da borda
 const narrow = () => window.matchMedia('(max-width: 900px)').matches
 const load = <T,>(k: string, d: T): T => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) as T : d } catch { return d } }
@@ -81,19 +80,12 @@ function Win({ id, at, onAt, title, onClose, children, solo, above }: {
   )
 }
 
-/** Chat como bolinha solta na tela: arrasta pra qualquer canto, encosta na borda, avisa quando chega mensagem. */
-export default function FloatChat({ unread }: { unread: number }) {
+/** Janelas do chat (abre pelo botão ao lado do sino, na barra de cima) + conversas soltas. */
+export default function FloatChat() {
   const s = useStore(x => x)
   const open = s.chatOpen
-  const [bp, setBp] = useState<XY>(() => clamp(load('ev:bubble', { x: innerWidth - B - 20, y: innerHeight - B - (narrow() ? 150 : 20) }), B, B))
-  const [dragging, setDragging] = useState(false)
   const [wp, setWp] = useState<XY | null>(() => load<XY | null>('ev:cwin', null))
   const [floats, setFloats] = useState<Float[]>(() => load<Float[]>('ev:floats', []))
-  const [peek, setPeek] = useState<{ id: string; from: string; body: string } | null>(null)
-  const [ping, setPing] = useState(0)
-  /** o balãozinho do gato: "Miau! Falar com quem?" */
-  const [miau, setMiau] = useState(false)
-  const seen = useRef(s.messages.at(-1)?.id ?? '')
 
   // conversas soltas contam como "vistas" pro aviso
   useEffect(() => {
@@ -101,57 +93,15 @@ export default function FloatChat({ unread }: { unread: number }) {
     save('ev:floats', floats)
   }, [floats])
 
-  // mensagem nova de outra pessoa: a bolinha pula e mostra uma espiadinha
-  const last = s.messages.at(-1)
-  useEffect(() => {
-    if (!last) return
-    if (seen.current === last.id) return
-    seen.current = last.id
-    if (Date.now() - Date.parse(last.created_at) > 60_000) return // histórico chegando, não é novidade
-    const viewing = (open && s.channel === last.channel) || floatChans.has(last.channel)
-    if (last.sender_id === s.meId || viewing || (last.channel.startsWith('g:') && !groupOf(last.channel, s)?.members.includes(s.meId!))) return
-    setPeek({ id: last.id, from: last.sender_id, body: last.body })
-    setPing(n => n + 1)
-    const t = setTimeout(() => setPeek(null), 5000)
-    return () => clearTimeout(t)
-  }, [last?.id]) // eslint-disable-line react-hooks/exhaustive-deps
-
   // a janela cabe na tela se ela mudar de tamanho
   useEffect(() => {
-    const on = () => { setBp(p => clamp(p, B, B)); setWp(p => (p ? clamp(p, 300, 48) : p)); setFloats(fs => fs.map(f => ({ ...f, ...clamp(f, 300, 48) }))) }
+    const on = () => { setWp(p => (p ? clamp(p, 300, 48) : p)); setFloats(fs => fs.map(f => ({ ...f, ...clamp(f, 300, 48) }))) }
     addEventListener('resize', on)
     return () => removeEventListener('resize', on)
   }, [])
 
-  const right = bp.x + B / 2 > innerWidth / 2
-  // janela mudou de tamanho (ou abriu escondida): o gato continua encostado no mesmo lado
-  const lado = useRef(right); lado.current = right
-  useEffect(() => {
-    const fit = () => setBp(p => clamp({ x: lado.current ? innerWidth - B - M : M, y: load<XY | null>('ev:bubble', null) ? p.y : innerHeight - B - (narrow() ? 150 : 20) }, B, B))
-    addEventListener('resize', fit)
-    return () => removeEventListener('resize', fit)
-  }, [])
-  const down = (e: React.PointerEvent) => {
-    e.preventDefault()
-    drag(e, bp, q => { setDragging(true); setBp(clamp(q, B, B)) }, (q, moved) => {
-      setDragging(false)
-      if (!moved) return tap()
-      // encosta na borda mais perto
-      const c = clamp(q, B, B)
-      const snap = { x: c.x + B / 2 > innerWidth / 2 ? innerWidth - B - M : M, y: c.y }
-      setBp(snap); save('ev:bubble', snap)
-    })
-  }
-  const tap = () => {
-    if (open) return setUi({ chatOpen: false })
-    if (peek) { setPeek(null); return setUi({ chatOpen: true, channel: last!.channel }) }
-    setUi({ chatOpen: true })
-  }
-  const falar = (channel?: string) => { setMiau(false); setUi(channel ? { chatOpen: true, channel } : { chatOpen: true }) }
-  const gente = Object.values(s.profiles).filter(p => p.id !== s.meId && p.avatar)
-    .sort((a, b) => Number(s.online.has(b.id)) - Number(s.online.has(a.id)) || a.name.localeCompare(b.name)).slice(0, 8)
-  // primeira vez: a janela abre do lado da bolinha
-  const winAt = wp ?? clamp({ x: right ? bp.x - 700 + B : bp.x, y: bp.y - 640 }, 700, 620)
+  // primeira vez: a janela abre embaixo do botão, no canto de cima à direita
+  const winAt = wp ?? clamp({ x: innerWidth - 700 - M, y: 84 }, 700, 620)
   const pop = (ch: string) => {
     if (floats.some(f => f.ch === ch)) return
     const n = floats.length
@@ -165,47 +115,9 @@ export default function FloatChat({ unread }: { unread: number }) {
 
   return (
     <>
-      <div className={'gato-wrap' + (right ? ' right' : ' left') + (bp.y < innerHeight / 2 ? ' cima' : ' baixo')} style={{ top: bp.y }}>
-        <button
-          className={'gato' + (open ? ' on' : '') + (dragging ? ' dragging' : '') + (unread ? ' has' : '') + (miau ? ' miau' : '')}
-          key={ping} /* reinicia o pulinho */
-          onPointerDown={down}
-          onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && tap()}
-          title="Chat da equipe (arraste pra cima ou pra baixo, ou pro outro lado)"
-          aria-label={`Chat${unread ? ` (${unread} novas)` : ''}`}
-          aria-expanded={open || miau}
-        >
-          <span className="gato-corpo bolinha"><Ph n="chat-circle-dots" size={26} fill={open} /></span>
-          {!open && unread > 0 && <i className="gato-n">{unread > 9 ? '9+' : unread}</i>}
-        </button>
-        {peek && !open && !miau && (
-          <button className="gato-balao gato-peek" onClick={() => { setPeek(null); setUi({ chatOpen: true, channel: last!.channel }) }}>
-            <MiniAvatar avatar={s.profiles[peek.from]?.avatar ?? null} photo={s.profiles[peek.from]?.photo ?? null} name={s.profiles[peek.from]?.name} size={28} />
-            <span><b>{s.profiles[peek.from]?.name ?? 'Alguém'}</b>{peek.body.slice(0, 80)}</span>
-          </button>
-        )}
-        {miau && !open && <>
-          <div className="more-veil" onClick={() => setMiau(false)} />
-          <div className="gato-balao gato-pop" role="dialog" aria-label="Falar com quem?">
-            <b className="gato-t">Miau! Falar com quem?</b>
-            <div className="gato-gente">
-              {gente.map(p => (
-                <button key={p.id} onClick={() => falar(dmChannel(s.meId!, p.id))} title={p.name}>
-                  <span className={'gato-av' + (s.online.has(p.id) ? ' on' : '')}><MiniAvatar avatar={p.avatar} photo={p.photo} name={p.name} size={40} /></span>
-                  <small>{p.name.split(' ')[0]}</small>
-                </button>
-              ))}
-            </div>
-            <div className="gato-acts">
-              <button onClick={() => falar('geral')}><Ph n="chat-circle-dots" size={18} />Geral da equipe</button>
-              <button onClick={() => falar()}><Ph n="users-three" size={18} />Todas as conversas</button>
-            </div>
-          </div>
-        </>}
-      </div>
 
       {open && (
-        <Win id="main" at={winAt} above={bp.y} onAt={p => { setWp(p); save('ev:cwin', p) }} onClose={() => setUi({ chatOpen: false })}
+        <Win id="main" at={winAt} above={innerHeight - 80} onAt={p => { setWp(p); save('ev:cwin', p) }} onClose={() => setUi({ chatOpen: false })}
           title={<span className="cwin-t"><Icon n="chat" /><b>Chat</b><small className="muted">arraste pra mover</small></span>}>
           <Chat onPop={narrow() ? undefined : pop} />
         </Win>

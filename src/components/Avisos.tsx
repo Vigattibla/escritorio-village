@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { clearNotices, setUi, useStore, type Notice, type NoticeKind } from '../store'
+import { clearNotices, setUi, unread, useStore, type Notice, type NoticeKind } from '../store'
 import Icon, { Ph } from './Icon'
 import MiniAvatar from './MiniAvatar'
 import type { PhName } from './ph'
@@ -72,6 +72,19 @@ export function Toast() {
 }
 
 /** Sino com contador; abre a lista de avisos num balão. */
+/** chat da equipe: abre a janela do chat; fica ao lado do sino em toda barra de cima */
+function ChatBtn() {
+  const open = useStore(s => s.chatOpen)
+  const n = useStore(s => [...new Set(s.messages.map(m => m.channel))].reduce((k, ch) => k + unread(s, ch), 0))
+  return (
+    <div className="bell">
+      <button className={'icon-btn' + (open ? ' on' : '')} onClick={() => setUi({ chatOpen: !open, bellOpen: false })} title="Chat da equipe" aria-label={`Chat${n ? ` (${n} novas)` : ''}`} aria-expanded={open}>
+        <Ph n="chat-circle-dots" size={20} />{n > 0 && <i className="dot-n">{n > 9 ? '9+' : n}</i>}
+      </button>
+    </div>
+  )
+}
+
 export function Bell() {
   const open = useStore(s => s.bellOpen)
   const notices = useStore(s => s.notices)
@@ -83,14 +96,15 @@ export function Bell() {
     setSeen(t)
     try { localStorage.setItem(SEEN, String(t)) } catch { /* sem storage */ }
   }, [open, notices.length])
-  return (
+  return (<>
+    <ChatBtn />
     <div className="bell">
       <button className={'icon-btn' + (open ? ' on' : '')} onClick={() => setUi({ bellOpen: !open })} title="Avisos" aria-label={`Avisos${n ? ` (${n} novos)` : ''}`}>
         <Icon n="bell" size={18} />{n > 0 && <i className="dot-n">{n > 9 ? '9+' : n}</i>}
       </button>
       {open && <><div className="pop-bg" onClick={() => setUi({ bellOpen: false })} /><div className="pop"><Avisos /></div></>}
     </div>
-  )
+  </>)
 }
 
 export default function Avisos() {
