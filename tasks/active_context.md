@@ -214,3 +214,4 @@ Pendente: push (precisa da migration 202610080900_v4_agenda_metas.sql e do secre
 - Tabela `requisicoes` + RPC `requisicao_mudar` (migration 202610211000). Criar = insert direto; o resto só via RPC. Avisos no store (`avisoReq`).
 - Menus: o perfil fica só com o essencial. Metas, Fluxos, Cassino e Bingo foram para "Mais" (recolhido). No celular, a aba Metas virou Quadro.
 - Pendente: testar aprovação com um gerente de verdade depois que o migrate rodar.
+- 817ac40: o Chat virou bolinha no canto (o gato saiu). Metas, Fluxos, Cassino e Bingo saíram do Mais (Cassino segue no Almoxarifado e no jogo).
