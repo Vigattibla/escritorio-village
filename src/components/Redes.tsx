@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { linkedin } from '../data/linkedin'
-import { addTask, fileUrl, run, setUi, useStore } from '../store'
+import { addTask, fileUrl, run, setUi, updateTask, useStore } from '../store'
+import { CALENDARIOS, type Calendario } from '../data/calendarios'
 import type { Attachment, Channel, Postagem, Task } from '../types'
 import { Bell } from './Avisos'
 import { Ph } from './Icon'
@@ -85,6 +86,7 @@ export default function Redes({ estudio }: { estudio?: boolean }) {
       <div className="rd-corpo">
       <div className="rd-main">
       <Contas filtro={filtro} />
+      {CALENDARIOS.filter(c => c.rede === filtro).map(c => <Cal key={c.id} c={c} pode={podeEs} />)}
       <div className="rd-cols" style={{ '--n': cols.length } as React.CSSProperties}>
         {cols.map(c => {
           const ts = lista.filter(t => colDe(t, posts[t.id], agora) === c.id)
@@ -105,6 +107,52 @@ export default function Redes({ estudio }: { estudio?: boolean }) {
       {es && <><div className="rd-es-fundo" onClick={fecharEs} /><Estudio key={es.n} inicio={es.aba} fechar={fecharEs} /></>}
       </div>
     </div>
+  )
+}
+
+/** calendário editorial da rede: mostra os temas e põe os que faltam no quadro (briefing no checklist, legenda vazia) */
+function Cal({ c, pode }: { c: Calendario; pode: boolean }) {
+  const meId = useStore(s => s.meId)!
+  const tasks = useStore(s => s.tasks)
+  const [aberto, setAberto] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const tem = (tema: string) => Object.values(tasks).some(t => t.channel === c.canal && t.title === tema && t.status !== 'declined')
+  const faltam = c.posts.filter(p => !tem(p.tema))
+  const dia = (d: string) => new Date(d + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' }).replace('.', '')
+  const colocar = async () => {
+    setBusy(true)
+    try {
+      for (const p of faltam) {
+        const t = await addTask(meId, p.tema, p.dia, '', 'todo', null, { channel: c.canal, publish_at: new Date(`${p.dia}T${c.hora}:00-03:00`).toISOString() })
+        const itens = [`Gancho: ${p.gancho}`, `O que traz: ${p.traz}`, `Formato: ${p.formato}`, `CTA: ${p.cta}`, ...(p.falta ? [`Falta: ${p.falta}`] : []), `${c.revisao[p.pilar] ?? 'Revisão'} (pilar ${p.pilar})`]
+        await updateTask(t.id, { checklist: itens.map(text => ({ id: crypto.randomUUID(), text, done: false })) })
+      }
+    } finally { setBusy(false) }
+  }
+  return (
+    <section className="rd-cal">
+      <header>
+        <Ph n="calendar-dots" size={18} />
+        <div className="grow"><b>{c.titulo}</b><small>{c.periodo} · {c.posts.length - faltam.length} de {c.posts.length} no quadro</small></div>
+        <button className="btn ghost sm" onClick={() => setAberto(a => !a)} aria-expanded={aberto}>{aberto ? 'Fechar' : 'Ver temas'}</button>
+        {pode && faltam.length > 0 && <button className="btn primary sm" disabled={busy} onClick={() => run(colocar())}>{busy ? 'Criando…' : `Colocar ${faltam.length === c.posts.length ? 'os ' : ''}${faltam.length} no quadro`}</button>}
+      </header>
+      {aberto && <>
+        <ol className="rd-cal-lista">
+          {c.posts.map(p => (
+            <li key={p.tema} className={tem(p.tema) ? 'ok' : ''}>
+              <span className="rd-cal-dia">{dia(p.dia)}</span>
+              <span className={'rd-cal-pilar ' + (p.pilar === 'RH' ? 'rh' : 'cv')}>{p.pilar}</span>
+              <span className="grow" title={p.gancho}>{p.tema}</span>
+              {p.falta && <small className="rd-cal-falta" title={p.falta}>falta info</small>}
+              {tem(p.tema) && <Ph n="check-circle" size={15} />}
+            </li>
+          ))}
+        </ol>
+        <ul className="rd-cal-regras">{c.regras.map(r => <li key={r}>{r}</li>)}</ul>
+      </>}
+      {pode && faltam.length > 0 && <small className="muted">Os posts entram em Em produção com a data e o briefing no checklist. A legenda fica vazia: escreva antes de mandar para aprovação.</small>}
+    </section>
   )
 }
 
