@@ -236,13 +236,20 @@ export function drawEfeitoAcao(c: C2D, k: string, cx: number, top: number, t: nu
   }
 }
 
+const SENTA = 4
 /** boneco completo com montaria e bichinho; fx, fy = pés. Devolve quanto subiu (pra nome e balão). */
 export function drawBoneco(c: C2D, av: Avatar, photo: string | null | undefined, fx: number, fy: number, dir: Dir, frame: 0 | 1 | 2, t: number, mov: boolean, pulo = 0) {
   const m = montariaDe(av.gear?.montaria), alt = altDe(m, t)
   if (dir === 'up') drawPet(c, av.gear?.pet, fx, fy, dir, t, mov)
   drawMontaria(c, m, 'atras', fx, fy, dir, t, mov)
-  drawAvatar(c, av, photo ?? null, Math.round(fx - 8), Math.round(fy - SPRITE_H + 1 - alt - pulo), dir, m && m.alt ? 0 : frame)
+  const ax = Math.round(fx - 8), ay = Math.round(fy - SPRITE_H + 1 - alt - pulo)
+  if (m?.sentado) {
+    // sentado: some a perna (5 linhas de baixo) e o tronco desce até a sela
+    c.save(); c.beginPath(); c.rect(ax - 4, ay - 40 + SENTA, 24, 40 + SPRITE_H - 5); c.clip()
+    drawAvatar(c, av, photo ?? null, ax, ay + SENTA, dir, 0)
+    c.restore()
+  } else drawAvatar(c, av, photo ?? null, ax, ay, dir, m ? 0 : frame)
   drawMontaria(c, m, 'frente', fx, fy, dir, t, mov)
   if (dir !== 'up') drawPet(c, av.gear?.pet, fx, fy, dir, t, mov)
-  return alt
+  return m?.sentado ? alt - SENTA : alt
 }
