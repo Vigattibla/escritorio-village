@@ -233,3 +233,4 @@ Pendente: push (precisa da migration 202610080900_v4_agenda_metas.sql e do secre
 - 15/10: Raias também editam etapas (a752cc9): ⋯ no cabeçalho da coluna (renomear/mover/excluir vazia) e chip ＋ Nova etapa ao lado de 'Colocar alguém'; só canEditStages (rank≥2 ou adm). Testado no demo.
 
 - 15/10 (1b1a3a9): etapas do Quadro editáveis por rank>=2 — ⋯ nome/tipo/critérios/mover/excluir, ＋ Nova etapa no fim (direita); critérios = checklist ao entrar (entrada.ts + conferir no Dialogo); coluna stages.criteria.
+- 15/10 (af4afa4): Publicações → LinkedIn mostra calendário editorial (src/data/calendarios.ts, 15 posts 19/10–19/11); botão rank>=2 cria posts em Em produção com publish_at 9h e briefing no checklist (legenda vazia, porque LinkedIn publica sozinho após aprovação). Outras redes: novo item em CALENDARIOS.
