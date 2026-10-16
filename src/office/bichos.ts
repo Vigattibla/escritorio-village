@@ -1,4 +1,4 @@
-import { drawAvatar, SPRITE_H } from '../chibi/sprite'
+import { drawAvatar, shade, SPRITE_H } from '../chibi/sprite'
 import type { Avatar, Dir } from '../types'
 import { OUT, rect as r, type C2D } from './base'
 
@@ -237,6 +237,23 @@ export function drawEfeitoAcao(c: C2D, k: string, cx: number, top: number, t: nu
 }
 
 const SENTA = 4
+/** pernas de quem está montado (o sprite sentado perde as pernas): de lado uma perna dobrada pra frente, de frente/costas as duas abertas */
+function pernas(c: C2D, av: Avatar, fx: number, hy: number, dir: Dir) {
+  const p = av.bottom, P = shade(av.bottom), h = av.shoes
+  if (dir === 'down' || dir === 'up') {
+    c.save(); c.translate(Math.round(fx), Math.round(hy))
+    r(c, OUT, -5, 0, 10, 3); r(c, OUT, -6, 0, 5, 6); r(c, OUT, 1, 0, 5, 6); r(c, OUT, -7, 4, 6, 4); r(c, OUT, 1, 4, 6, 4)
+    r(c, p, -4, 0, 8, 2); r(c, p, -5, 0, 3, 5); r(c, p, 2, 0, 3, 5); r(c, P, -5, 3, 3, 1); r(c, P, 2, 3, 3, 1)
+    r(c, h, -6, 5, 4, 2); r(c, h, 2, 5, 4, 2)
+    c.restore()
+    return
+  }
+  virado(c, fx, hy, dir === 'left', () => {
+    r(c, OUT, -2, 0, 7, 4); r(c, OUT, 1, 0, 5, 7); r(c, OUT, 1, 5, 7, 4)
+    r(c, p, -1, 0, 5, 3); r(c, p, 2, 0, 3, 6); r(c, P, 2, 4, 3, 1)
+    r(c, h, 2, 6, 5, 2)
+  })
+}
 /** boneco completo com montaria e bichinho; fx, fy = pés. Devolve quanto subiu (pra nome e balão). */
 export function drawBoneco(c: C2D, av: Avatar, photo: string | null | undefined, fx: number, fy: number, dir: Dir, frame: 0 | 1 | 2, t: number, mov: boolean, pulo = 0) {
   const m = montariaDe(av.gear?.montaria), alt = altDe(m, t)
@@ -248,6 +265,7 @@ export function drawBoneco(c: C2D, av: Avatar, photo: string | null | undefined,
     c.save(); c.beginPath(); c.rect(ax - 4, ay - 40 + SENTA, 24, 40 + SPRITE_H - 5); c.clip()
     drawAvatar(c, av, photo ?? null, ax, ay + SENTA, dir, 0)
     c.restore()
+    pernas(c, av, fx, fy - alt - pulo, dir)
   } else drawAvatar(c, av, photo ?? null, ax, ay, dir, m ? 0 : frame)
   drawMontaria(c, m, 'frente', fx, fy, dir, t, mov)
   if (dir !== 'up') drawPet(c, av.gear?.pet, fx, fy, dir, t, mov)

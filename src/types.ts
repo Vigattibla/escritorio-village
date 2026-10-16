@@ -8,7 +8,7 @@ export type Outfit = string
 /** básicos: curto, longo, coque, cacheado, raspado; o resto vem do Almoxarifado */
 export type HairStyle = string
 /** o que vai além da roupa: cabeça, rosto, mesa e companhia (valor = arte do item) */
-export type GearSlot = 'chapeu' | 'rosto' | 'mesa' | 'cadeira' | 'notebook' | 'enfeite' | 'chao' | 'animacao' | 'plaquinha' | 'pet' | 'montaria' | 'acao'
+export type GearSlot = 'chapeu' | 'rosto' | 'mesa' | 'cadeira' | 'notebook' | 'enfeite' | 'chao' | 'arquivo' | 'animacao' | 'plaquinha' | 'pet' | 'montaria' | 'acao'
 export type Gear = Partial<Record<GearSlot, string>>
 
 export interface Avatar {

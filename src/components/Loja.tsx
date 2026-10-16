@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { drawAvatar } from '../chibi/sprite'
 import { drawAnim } from '../office/anim'
 import { ACOES, drawBoneco, drawPet } from '../office/bichos'
-import { drawChair, drawDecor, drawFloor, drawNotebook, MESA, mesaExtra } from '../office/props'
+import { drawArquivo, drawChair, drawDecor, drawFloor, drawNotebook, MESA, mesaExtra } from '../office/props'
 import { ITEMS, SLOTS, TIER_NAME, type Item, type Slot } from '../shop/catalog'
 import { DAY, FINAL, MAX_GOALS, PHASE, REASON, WELCOME } from '../shop/economy'
 import { buyItem, equip, itemName, owns, run, setUi, useStore } from '../store'
@@ -46,6 +46,7 @@ export function deskScene(c: C2D, av: Avatar, t: number, ox: number, oy: number)
   drawNotebook(c, g.notebook, m, y - 1, '#FBC222', t)
   if (g.enfeite) drawDecor(c, g.enfeite, x + 1, y + 6, t)
   if (g.chao) drawFloor(c, g.chao, x + w + 3, y + 16, t)
+  if (g.arquivo) drawArquivo(c, g.arquivo, x - 15, y + 16, 3, t)
 }
 
 export function Thumb({ it, av, name }: { it: Item; av: Avatar; name: string }) {
@@ -61,6 +62,7 @@ export function Thumb({ it, av, name }: { it: Item; av: Avatar; name: string }) 
     else if (it.slot === 'notebook') drawNotebook(c, it.art, 12, 12, '#FBC222', t)
     else if (it.slot === 'enfeite') drawDecor(c, it.art, 8, 18, t)
     else if (it.slot === 'chao') drawFloor(c, it.art, 5, 22, t)
+    else if (it.slot === 'arquivo') drawArquivo(c, it.art, 6, 22, 3, t)
     else if (it.slot === 'pet') drawPet(c, it.art, 0, 22, 'left', t, false)
     else if (it.slot === 'montaria') { c.translate(12, 24); c.scale(0.75, 0.75); drawBoneco(c, full, null, 0, 0, 'right', 0, t, false) }
   }

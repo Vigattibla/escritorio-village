@@ -257,4 +257,25 @@ export function drawChair(c: C2D, style: string | undefined, sx: number, sy: num
   rect(c, hi, sx - 5, sy - 21, 10, 2)
 }
 
-export type DeskLook = Pick<Gear, 'mesa' | 'notebook' | 'enfeite' | 'chao' | 'cadeira'>
+export type DeskLook = Pick<Gear, 'mesa' | 'notebook' | 'enfeite' | 'chao' | 'cadeira' | 'arquivo'>
+
+/** Armário de pastas (slot arquivo): as folhas que iriam pro chão vão pra dentro; n = folhas guardadas. (x, yb) = canto esquerdo da base */
+export function drawArquivo(c: C2D, kind: string, x: number, yb: number, n: number, t: number) {
+  const madeira = kind === 'madeira'
+  const cor = madeira ? '#a8784a' : '#8e98ab', hi = madeira ? '#c4925a' : '#b6bfcf', lo = madeira ? '#7a5434' : '#6b7486'
+  const w = 12, h = 22, y = yb - h + 1
+  rect(c, 'rgba(0,0,0,.18)', x + 1, yb, w, 2)
+  rect(c, OUT, x - 1, y - 1, w + 2, h + 1); rect(c, cor, x, y, w, h - 1); rect(c, hi, x, y, w, 1); rect(c, hi, x, y, 1, h - 1)
+  for (let k = 0; k < 3; k++) {
+    const gy = y + 2 + k * 6
+    rect(c, lo, x + 1, gy + 5, w - 2, 1)
+    rect(c, OUT, x + 4, gy + 2, 4, 1)
+    rect(c, '#fbfbf8', x + 3, gy, 6, 1)
+  }
+  // gaveta de cima entreaberta com folhas aparecendo quando tem coisa guardada
+  if (n > 0) {
+    rect(c, OUT, x - 1, y + 1, w + 2, 2); rect(c, '#fbfbf8', x + 1, y, w - 2, 1)
+    for (let k = 0; k < Math.min(n, 4); k++) rect(c, k % 2 ? '#e9ebf0' : '#fbfbf8', x + 2 + k * 2, y - 2 - (k % 2), 2, 2)
+    if (Math.floor(t / 900) % 6 === 0) rect(c, '#FBC222', x + w - 3, y - 2, 2, 1)
+  }
+}

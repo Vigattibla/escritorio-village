@@ -1,6 +1,6 @@
 import { MH, MW, OUT, rect, SHADOW, T, WALL, WALL_HI, type C2D } from './base'
 import { exitX, glassDoorX, glassStrip, glassWall } from './andar'
-import { drawDecor, drawFloor, drawNotebook, MESA, mesaExtra, type DeskLook } from './props'
+import { drawArquivo, drawDecor, drawFloor, drawNotebook, MESA, mesaExtra, type DeskLook } from './props'
 import { defaultDesk, deskFrom, deskSides, dimOf, isDesk, kd, renderRoom, solidGrid, type Desk, type Obj, type Sala } from './sala'
 import { comodoOf, type Kind } from './comodos'
 import type { JogoCassino } from '../cassino/regras'
@@ -461,6 +461,8 @@ export function drawDesk(c: C2D, d: Desk, boss: boolean, info: { pile: number; i
   else if (n > PILE) pile(c, x + 1 + off, y + 7, Math.min(n - PILE, PILE), false)
   else { rect(c, '#ffffff', x + 3 + off, y + 4, 3, 4); rect(c, '#ffffff', x + 6 + off, y + 5, 1, 2) }
   pile(c, x + w - 9 - (boss ? 4 : 0), y + 7, Math.min(n, PILE), info.inbox)
+  // com armário de pastas, o que iria pro chão fica guardado nele (do lado esquerdo da mesa)
+  if (g.arquivo) { drawArquivo(c, g.arquivo, x - 15, y + 16, Math.max(0, n - 2 * PILE), info.t); return }
   for (let k = 0; k < Math.min(n - 2 * PILE, 6); k++) {
     const fx = x + 1 + ((k * 11) % (w - 8)), fy = y + 17 + (k % 2) * 3
     rect(c, OUT, fx, fy, 7, 3)

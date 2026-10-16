@@ -1,4 +1,4 @@
-import { drawParapeito, drawSky } from './clima'
+import { drawParapeito, drawSky, horaSP } from './clima'
 import { BASE, BOOKS, BOSS_DESK, box, disc, frame, MAX_DESKS, MH, MW, OUT, PAPER, plant, SHADOW, T, tiles, upperWall, WAIN, WAIN_D, WAIN_HI, WALL, WALL_HI, wallFace, wood, type C2D } from './base'
 
 /** A sala vira dados: piso por tile, divisórias e móveis. Salva em rooms/escritorio. */
@@ -153,7 +153,7 @@ export const KINDS: Record<string, Kind> = {
   'quadro-paisagem': { nome: 'Quadro paisagem', tema: 'Escritório', w: 2, h: 1, camada: 'parede', draw: (c, x) => { frame(c, x + 5, 9, 22, 13); r(c, '#f3c98b', x + 6, 10, 20, 6); disc(c, x + 20, 13, 2, '#fbe3a0'); r(c, '#8a9a5b', x + 6, 16, 20, 5); r(c, '#7a8b3a', x + 6, 18, 9, 3) } },
   'cartaz': { nome: 'Cartaz amarelo', tema: 'Escritório', w: 1, h: 1, camada: 'parede', draw: (c, x) => { frame(c, x + 3, 8, 11, 15); r(c, '#FBC222', x + 4, 9, 9, 13); disc(c, x + 8, 14, 2, '#fbfbf8'); r(c, '#3b302c', x + 5, 19, 7, 1) } },
   'foto-piscina': { nome: 'Foto da piscina', tema: 'Escritório', w: 2, h: 1, camada: 'parede', draw: (c, x) => { frame(c, x + 6, 10, 19, 12); r(c, '#7cc4d8', x + 7, 15, 17, 6); r(c, '#e3f4fb', x + 9, 17, 4, 1); r(c, '#8a9a5b', x + 7, 11, 17, 4) } },
-  'relogio': { nome: 'Relógio', tema: 'Escritório', w: 1, h: 1, camada: 'parede', draw: (c, x, _y, t) => { const cx = x + 8; disc(c, cx, 13, 6, OUT); disc(c, cx, 13, 5, '#fbfbf8'); r(c, OUT, cx, 9, 1, 5); r(c, OUT, cx, 13, 3, 1); r(c, '#e05a47', cx + Math.round(Math.cos(t / 1000) * 3), 13 + Math.round(Math.sin(t / 1000) * 3), 1, 1) } },
+  'relogio': { nome: 'Relógio', tema: 'Escritório', w: 1, h: 1, camada: 'parede', draw: (c, x) => relogio(c, x + 8, 13) },
   'calendario': { nome: 'Calendário', tema: 'Escritório', w: 1, h: 1, camada: 'parede', draw: (c, x) => { box(c, '#fbfbf8', x + 4, 10, 8, 10); r(c, '#d9694a', x + 4, 10, 8, 3); for (let k = 0; k < 6; k++) r(c, '#c9b98a', x + 5 + (k % 3) * 2, 14 + Math.floor(k / 3) * 3, 1, 1) } },
   'tv': { nome: 'TV de reunião', tema: 'Escritório', w: 2, h: 1, camada: 'parede', draw: (c, x) => { box(c, '#2b2a33', x + 1, 7, 30, 17); r(c, '#3a3944', x + 2, 8, 28, 15); for (const [k, h, col] of [[0, 5, '#7a8b3a'], [1, 9, '#e0b04a'], [2, 7, '#7a8b3a'], [3, 11, '#FBC222']] as const) r(c, col, x + 7 + k * 5, 21 - h, 3, h); r(c, OUT, x + 14, 25, 4, 2) } },
   'arte': { nome: 'Quadro colorido', tema: 'Escritório', w: 2, h: 1, camada: 'parede', draw: (c, x) => { frame(c, x + 5, 8, 18, 15); disc(c, x + 11, 14, 4, '#d9694a'); r(c, '#f4a259', x + 14, 15, 7, 6); r(c, '#5b6e8f', x + 7, 19, 6, 2) } },
@@ -748,4 +748,18 @@ export function hitTest(s: Sala, mx: number, my: number): Obj | null {
   // pé do móvel tem prioridade sobre a arte que sobe
   const foot = rest.find(o => { const k = kd(o); return mx >= o.x * T && mx < (o.x + k.w) * T && my >= o.y * T && my < (o.y + k.h) * T })
   return foot ?? rest.find(inside) ?? s.objs.find(o => kd(o).camada === 'parede' && inside(o)) ?? s.objs.find(o => kd(o).camada === 'chao' && inside(o)) ?? null
+}
+
+/** Relógio de parede com a hora de Brasília: ponteiro de hora, de minuto e o dos segundos (vermelho) */
+function relogio(c: C2D, cx: number, cy: number) {
+  disc(c, cx, cy, 6, OUT); disc(c, cx, cy, 5, '#fbfbf8')
+  for (const [dx, dy] of [[0, -4], [4, 0], [0, 4], [-4, 0]]) r(c, '#b8bccb', cx + dx, cy + dy, 1, 1)
+  const h = horaSP().h, seg = new Date().getSeconds()
+  const mao = (ang: number, len: number, cor: string) => {
+    for (let k = 1; k <= len; k++) r(c, cor, cx + Math.round(Math.sin(ang) * k), cy - Math.round(Math.cos(ang) * k), 1, 1)
+  }
+  mao(((h % 12) / 12) * Math.PI * 2, 2, OUT)
+  mao(((h % 1)) * Math.PI * 2, 4, OUT)
+  mao((seg / 60) * Math.PI * 2, 4, '#e05a47')
+  r(c, OUT, cx, cy, 1, 1)
 }

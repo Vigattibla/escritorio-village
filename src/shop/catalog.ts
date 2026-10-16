@@ -29,10 +29,11 @@ export const SLOTS: { id: Slot; label: string; who: 'eu' | 'mesa' }[] = [
   { id: 'notebook', label: 'Notebook', who: 'mesa' },
   { id: 'enfeite', label: 'Enfeite de mesa', who: 'mesa' },
   { id: 'chao', label: 'Do lado da mesa', who: 'mesa' },
+  { id: 'arquivo', label: 'Armário de pastas', who: 'mesa' },
 ]
 
 // [arte, nome, nível, cor?]
-type Row = [string, string, Tier, string?]
+type Row = [string, string, Tier, string?, number?]
 const RAW: Record<Slot, Row[]> = {
   cabelo: [
     ['franja', 'Franjinha', 1], ['rabo', 'Rabo de cavalo', 1], ['chanel', 'Chanel', 1], ['topete', 'Topete', 1], ['ondulado', 'Ondulado', 1], ['careca', 'Careca lustrosa', 1],
@@ -89,6 +90,8 @@ const RAW: Record<Slot, Row[]> = {
     ['frigobar', 'Frigobar', 3], ['guardasol', 'Guarda-sol', 3], ['violao', 'Violão', 3],
     ['cachorro', 'Cachorro do escritório', 4], ['pote-ouro', 'Pote de ouro', 4],
   ],
+  // guarda as folhas que iriam pro chão; caro de propósito (preço próprio, fora da tabela de nível)
+  arquivo: [['aco', 'Armário de aço', 4, undefined, 400], ['madeira', 'Armário de madeira', 4, undefined, 450]],
   animacao: [
     ['folhas', 'Folhinhas', 1], ['bolhas', 'Bolhas de sabão', 1], ['vapor', 'Vapor de café', 1],
     ['coracoes', 'Corações', 2], ['estrelas', 'Estrelinhas', 2], ['notas', 'Notas musicais', 2],
@@ -117,7 +120,7 @@ const RAW: Record<Slot, Row[]> = {
 }
 
 export const ITEMS: Item[] = (Object.keys(RAW) as Slot[]).flatMap(slot =>
-  RAW[slot].map(([art, name, tier, tint]) => ({ id: `${slot}:${art}`, slot, art, name, tier, price: PRICE[tier], tint, bolao: RAROS_BOLAO.includes(`${slot}:${art}`) || undefined, bingo: RAROS_BINGO.includes(`${slot}:${art}`) || undefined })))
+  RAW[slot].map(([art, name, tier, tint, preco]) => ({ id: `${slot}:${art}`, slot, art, name, tier, price: preco ?? PRICE[tier], tint, bolao: RAROS_BOLAO.includes(`${slot}:${art}`) || undefined, bingo: RAROS_BINGO.includes(`${slot}:${art}`) || undefined })))
 export const ITEM: Record<string, Item> = Object.fromEntries(ITEMS.map(i => [i.id, i]))
 
 /** arte base de variações de cor (bone-azul → bone) */

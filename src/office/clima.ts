@@ -1,6 +1,6 @@
 import { OUT, rect as r, type C2D } from './base'
 
-/** Céu das janelas pela hora real de São Paulo: gradiente do dia, estrelas, chuva e visitas (gato, passarinho, pombo, folhas). Sem timers: tudo sai do relógio. */
+/** Céu das janelas pela hora real de Brasília e o tempo real de Jaboticatubas-MG: gradiente do dia, estrelas, chuva e visitas (gato, passarinho, pombo, folhas). Sem timers: tudo sai do relógio. */
 export const reduzMovimento = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
 
 const fmt = new Intl.DateTimeFormat('en-GB', { timeZone: 'America/Sao_Paulo', hour: 'numeric', minute: 'numeric', day: 'numeric', hour12: false })
@@ -31,8 +31,31 @@ function ceuEm(h: number) {
 /** escuridão: 1 = noite fechada, 0 = dia */
 const noite = (h: number) => (h < 5 ? 1 : h < 6.5 ? 1 - (h - 5) / 1.5 : h < 18.5 ? 0 : h < 20.5 ? (h - 18.5) / 2 : 1)
 
-/** chove em ~14% das horas, igual pra todo mundo (sorteio fixo por dia+hora) */
+/** Tempo de verdade em Jaboticatubas-MG (Open-Meteo, sem chave). Busca a cada 15 min; sem rede, cai no sorteio. */
+export interface TempoReal { at: number; chuva: boolean; nublado: boolean; temp: number }
+let tempo: TempoReal | null = null, buscando = 0
+const URL_TEMPO = 'https://api.open-meteo.com/v1/forecast?latitude=-19.5136&longitude=-43.7453&current=temperature_2m,weather_code,cloud_cover,precipitation&timezone=America%2FSao_Paulo'
+export function tempoReal(now = Date.now()): TempoReal | null {
+  if (typeof fetch === 'function' && now - buscando > 15 * 60e3) {
+    buscando = now
+    fetch(URL_TEMPO).then(r => r.ok ? r.json() : null).then(j => {
+      const cur = j?.current
+      if (!cur) return
+      const w = Number(cur.weather_code)
+      tempo = {
+        at: Date.now(), temp: Math.round(Number(cur.temperature_2m)),
+        chuva: (w >= 51 && w <= 67) || (w >= 80 && w <= 82) || w >= 95 || Number(cur.precipitation) > 0.1,
+        nublado: w === 3 || w === 45 || w === 48 || Number(cur.cloud_cover) >= 75,
+      }
+    }).catch(() => { buscando = now - 13 * 60e3 })
+  }
+  return tempo && now - tempo.at < 3 * 3600e3 ? tempo : null
+}
+
+/** chuva de verdade de Jaboticatubas; sem dado, ~14% das horas (sorteio fixo por dia+hora, igual pra todo mundo) */
 export function chovendo(now = Date.now()) {
+  const real = tempoReal(now)
+  if (real) return real.chuva
   const { h, dia } = horaSP(now)
   let x = Math.imul(dia * 24 + Math.floor(h), 2654435761) >>> 0
   x ^= x >>> 15; x = Math.imul(x, 2246822519) >>> 0; x ^= x >>> 13
@@ -54,13 +77,15 @@ export function drawSky(c: C2D, gx: number, gy: number, gw: number, gh: number, 
   const h = horaSP().h, { top, base } = ceuEm(h), chuva = chovendo(), n = noite(h), s = Math.floor(seed / 16)
   // 4 faixas pra manter o jeito pixel
   for (let b = 0; b < 4; b++) r(c, rgb(mixV(top, base, b / 3)), gx, gy + Math.floor((gh * b) / 4), gw, Math.ceil(gh / 4))
-  if (chuva) { c.globalAlpha = 0.45; r(c, '#5c6575', gx, gy, gw, gh); c.globalAlpha = 1 }
-  if (n > 0.4 && !chuva) for (let k = 0; k < 5; k++) r(c, '#fff6cf', gx + 2 + ((s * 3 + k * 11) % (gw - 4)), gy + 1 + ((k * 5 + s) % (gh - 5)), 1, 1)
-  if (n > 0.5 && !chuva) { r(c, '#f4f1dc', gx + gw - 8, gy + 2, 4, 4); r(c, rgb(top), gx + gw - 7, gy + 2, 2, 2) }
-  else if (n < 0.3 && !chuva) { const sy = gy + 8 - Math.round(Math.sin(Math.min(1, Math.max(0, (h - 6) / 12)) * Math.PI) * 6); r(c, '#ffe27a', gx + gw - 9, sy - 3, 5, 5); r(c, '#fff3b0', gx + gw - 8, sy - 2, 3, 3) }
+  const nublado = !chuva && !!tempoReal()?.nublado
+  if (chuva || nublado) { c.globalAlpha = chuva ? 0.45 : 0.3; r(c, '#5c6575', gx, gy, gw, gh); c.globalAlpha = 1 }
+  if (n > 0.4 && !chuva && !nublado) for (let k = 0; k < 5; k++) r(c, '#fff6cf', gx + 2 + ((s * 3 + k * 11) % (gw - 4)), gy + 1 + ((k * 5 + s) % (gh - 5)), 1, 1)
+  if (n > 0.5 && !chuva && !nublado) { r(c, '#f4f1dc', gx + gw - 8, gy + 2, 4, 4); r(c, rgb(top), gx + gw - 7, gy + 2, 2, 2) }
+  else if (n < 0.3 && !chuva && !nublado) { const sy = gy + 8 - Math.round(Math.sin(Math.min(1, Math.max(0, (h - 6) / 12)) * Math.PI) * 6); r(c, '#ffe27a', gx + gw - 9, sy - 3, 5, 5); r(c, '#fff3b0', gx + gw - 8, sy - 2, 3, 3) }
   // nuvem devagar
   const cx = reduzMovimento ? 4 : ((t / 900 + s * 5) % (gw + 12)) - 8, nuvem = chuva ? '#7b8393' : n > 0.5 ? '#2b3466' : '#fff'
   r(c, nuvem, gx + cx, gy + 3, 7, 2); r(c, nuvem, gx + cx + 2, gy + 2, 4, 1)
+  if (nublado) { const c2 = (cx + gw / 2) % (gw + 12) - 8; r(c, n > 0.5 ? '#2b3466' : '#dfe3ea', gx + c2, gy + 7, 9, 2); r(c, n > 0.5 ? '#2b3466' : '#dfe3ea', gx + c2 + 2, gy + 6, 5, 1) }
   if (chuva) for (let k = 0; k < 7; k++) {
     const q = reduzMovimento ? (k * 0.37) % 1 : (t / 420 + k * 0.31 + s * 0.1) % 1
     r(c, '#bfd7ee', gx + 1 + ((k * 4 + s) % (gw - 2)), gy + Math.floor(q * (gh - 2)), 1, 2)
