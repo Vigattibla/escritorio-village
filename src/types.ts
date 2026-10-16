@@ -158,7 +158,7 @@ export interface Group { id: string; name: string; icon: string; open: boolean; 
 /** sala do andar: id = rooms.id do layout dela; floor/slot = posição no andar */
 /** flag: ícone da bandeira na porta · canais: a sala publica (posts, canais, agenda de publicação)
  *  door_open: porta aberta (qualquer um entra pelo corredor); fechada só quem é da sala e a Chefe · curtains_open: cortina do vidro aberta (quem passa vê dentro) */
-export interface Dept { id: string; name: string; color: string; floor: number; slot: number; door_open?: boolean; curtains_open?: boolean; flag?: string | null; canais?: boolean; vendas?: boolean; sala_gerente?: boolean; created_at: string }
+export interface Dept { id: string; name: string; color: string; floor: number; slot: number; door_open?: boolean; curtains_open?: boolean; flag?: string | null; canais?: boolean; vendas?: boolean; sala_gerente?: boolean; abas?: string[] | null; created_at: string }
 /** layout de cada sala (id = id da sala; 'escritorio' = layout antigo do Marketing); data = Sala do editor */
 export interface Room { id: string; data: unknown; created_by: string; created_at: string }
 /** carpinteiro: pode editar o escritório até `until` */
@@ -205,9 +205,12 @@ export interface Rede { id: 'linkedin'; nome: string; autor: string; modo: 'pess
 export interface Postagem { id: string; rede: string; quando: string; estado: 'agendado' | 'publicando' | 'publicado' | 'erro'; urn: string | null; link: string | null; erro: string | null; tentativas: number; aprovado_por: string | null; em: string }
 /** resposta das RPCs da sala de jogos; local = demo (a pontuação é gravada pelo app) */
 export interface JogoRes { id?: string; pontos?: number; recorde?: boolean; valeu?: boolean; pos?: number; f?: number; outra?: number; par?: boolean; erros?: number; fim?: boolean; seg?: number; local?: boolean }
-export interface Rows { events: CalEvent; goals: Goal; stickers: Sticker; flows: Flow; stages: Stage; groups: Group; rooms: Room; carpenters: Carpenter; depts: Dept; brand: Brand; quartos: Quarto; vendas: Venda; ajustes: Ajuste; metas_venda: MetaVenda; vendas_cfg: VendasCfg; campanhas: Campanha; caderno: Nota; jogos_pontos: JogoPonto; plano_meses: PlanoMes; plano_nucleos: PlanoNucleo; plano_acoes: PlanoAcao; plano_resp: PlanoResp; equipes: Equipe; relatorios: Relatorio; redes: Rede; postagens: Postagem; requisicoes: Requisicao }
+/** um setor acompanha a Agenda/Plano/Publicações de outro (de = quem pediu, para = dono) */
+export type ParModulo = 'agenda' | 'plano' | 'redes'
+export interface Parceria { id: string; de: string; para: string; modulo: ParModulo; status: 'pendente' | 'aceito' | 'recusado'; por: string | null; decidido_por: string | null; created_at: string }
+export interface Rows { events: CalEvent; goals: Goal; stickers: Sticker; flows: Flow; stages: Stage; groups: Group; rooms: Room; carpenters: Carpenter; depts: Dept; brand: Brand; quartos: Quarto; vendas: Venda; ajustes: Ajuste; metas_venda: MetaVenda; vendas_cfg: VendasCfg; campanhas: Campanha; caderno: Nota; jogos_pontos: JogoPonto; plano_meses: PlanoMes; plano_nucleos: PlanoNucleo; plano_acoes: PlanoAcao; plano_resp: PlanoResp; equipes: Equipe; relatorios: Relatorio; redes: Rede; postagens: Postagem; requisicoes: Requisicao; parcerias: Parceria }
 export type RowTable = keyof Rows
-export const ROW_TABLES: RowTable[] = ['events', 'goals', 'stickers', 'flows', 'stages', 'groups', 'rooms', 'carpenters', 'depts', 'brand', 'quartos', 'vendas', 'ajustes', 'metas_venda', 'vendas_cfg', 'campanhas', 'caderno', 'jogos_pontos', 'plano_meses', 'plano_nucleos', 'plano_acoes', 'plano_resp', 'equipes', 'relatorios', 'redes', 'postagens', 'requisicoes']
+export const ROW_TABLES: RowTable[] = ['events', 'goals', 'stickers', 'flows', 'stages', 'groups', 'rooms', 'carpenters', 'depts', 'brand', 'quartos', 'vendas', 'ajustes', 'metas_venda', 'vendas_cfg', 'campanhas', 'caderno', 'jogos_pontos', 'plano_meses', 'plano_nucleos', 'plano_acoes', 'plano_resp', 'equipes', 'relatorios', 'redes', 'postagens', 'requisicoes', 'parcerias']
 
 export type Priority = 'alta' | 'media' | 'baixa'
 export interface CheckItem {
@@ -329,6 +332,8 @@ export interface Backend {
   setCurtains(dept: string, open: boolean): Promise<void>
   setSalaGerente(dept: string, on: boolean): Promise<void>
   setDeptLook(dept: string, flag: string | null, canais: boolean, vendas?: boolean): Promise<void>
+  setDeptAbas(dept: string, abas: string[] | null): Promise<void>
+  parceria(de: string, para: string, modulo: string, acao: 'pedir' | 'aceitar' | 'recusar' | 'sair'): Promise<Parceria | null>
   /** agenda do plano: dia/dono ajustados por quem é da equipe da ação */
   planoAgendar(id: string, data: string | null, dono: string | null): Promise<void>
   /** pedido ao gerente: editar | itens | apoio | status (regras no servidor) */

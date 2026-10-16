@@ -50,7 +50,8 @@ import Creator from './Creator'
 import BloqueioJogos from '../components/BloqueioJogos'
 import { backend } from '../data'
 import { isChief, rankName, rankOf } from '../game/ranks'
-import { deptList, deptName, myDept, openSala, run, setUi, signOut, team, unread, useStore, type Tab, type View } from '../store'
+import { ABAS, abasDe, canDoor, deptList, deptName, myDept, openSala, run, setUi, signOut, team, unread, useStore, type Tab, type View } from '../store'
+import AbasSetor from '../components/AbasSetor'
 import { Fundo } from '../components/Fundo'
 
 type Page = View | Tab
@@ -79,6 +80,7 @@ export default function Office() {
   const tasks = Object.values(s.tasks)
   const pend = tasks.filter(t => t.owner_id === me?.id && t.status === 'inbox').length
   const reqPend = useStore(st => reqParaDecidir(st))
+  const parcPend = useStore(st => Object.values(st.rows.parcerias).filter(p => p.para === st.sala && p.status === 'pendente').length)
   const chans = new Set(s.messages.map(m => m.channel))
   const msgs = [...chans].reduce((n, ch) => n + unread(s, ch), 0)
   useEffect(() => {
@@ -130,6 +132,11 @@ export default function Office() {
     { id: 'pedidos', label: 'Pedidos', ic: 'pedir', more: true, n: reqPend, tip: reqPend ? `${reqPend} pedido(s) esperando sua decisão` : 'Pedidos ao gerente: material, folga e listas do setor' },
     { id: 'legendas', label: 'Legendas', ic: 'comentario', more: true, tip: 'Legendas de redes sociais com IA, na voz da marca' },
   ]
+  // cada sala escolhe as abas que usa (Abas do setor); as fixas não estão em ABAS
+  if (!sv) {
+    const on = abasDe(s.sala, s)
+    for (let i = items.length - 1; i >= 0; i--) if (ABAS.some(a => a[0] === items[i].id) && !on.has(items[i].id)) items.splice(i, 1)
+  }
   // Equipe e Geral só no modo desenvolvedor (liga no menu do perfil)
   if (dev && !sv) items.push({ id: 'equipe', label: 'Equipe', ic: 'equipe', more: true })
   if (dev && chief && !sv) items.push({ id: 'geral', label: 'Geral', ic: 'mural', more: true, n: tasks.filter(t => t.status === 'inbox').length })
@@ -153,10 +160,10 @@ export default function Office() {
     )
   }
 
-  const tabs: { id: Page; label: string; ic: PhName }[] = [
+  const tabs = [
     { id: 'inicio', label: 'Início', ic: 'house' }, { id: 'agenda', label: 'Agenda', ic: 'calendar-dots' },
     { id: 'quadro', label: 'Quadro', ic: 'kanban' }, { id: 'escritorio', label: 'Escritório', ic: 'desk' },
-  ]
+  ].filter(t => t.id !== 'agenda' || abasDe(s.sala, s).has('agenda')) as { id: Page; label: string; ic: PhName }[]
   const Tab = ({ it }: { it: (typeof tabs)[number] }) => (
     <button className={page === it.id ? 'on' : ''} onClick={() => goTo(it.id)} aria-current={page === it.id ? 'page' : undefined}>
       <Ph n={it.ic} size={24} fill={page === it.id} />{it.label}
@@ -192,6 +199,7 @@ export default function Office() {
               <button onClick={() => { setMeOpen(false); goTo('loja') }}><Ph n="coffee" size={20} /><b className="grow">Almoxarifado</b>{s.wallet && <small className="me-pop-cf">☕ {s.wallet.balance}</small>}</button>
               <button onClick={() => { setMeOpen(false); setUi({ conectar: true }) }}><Ph n="link" size={20} /><b className="grow">Conectar IA</b></button>
               {(me.is_admin || rankOf(me) >= 3) && <button onClick={() => { setMeOpen(false); setContas(true) }}><Ph n="users-three" size={20} /><b className="grow">Contas da equipe</b></button>}
+              {canDoor(s.sala, s) && <button onClick={() => { setMeOpen(false); setUi({ abasOpen: true }) }}><Ph n="squares-four" size={20} /><b className="grow">Abas do setor</b>{!!parcPend && <small className="me-pop-cf">{parcPend}</small>}</button>}
               <button onClick={() => setPref('dev', !dev)} aria-pressed={dev}><Ph n="gear-six" size={20} /><b className="grow">Modo desenvolvedor</b><i className={'tswitch' + (dev ? ' on' : '')} /></button>
               {dev && chief && depts.length > 1 && <div className="me-pop-salas">
                 <small>Salas do andar</small>
@@ -285,6 +293,7 @@ export default function Office() {
       <Toast />
       {s.editing && <div className="overlay"><Creator /></div>}
       {s.bingo && <Bingo onClose={() => setUi({ bingo: false })} />}
+      {s.abasOpen && <AbasSetor />}
       {s.armario && <Armario onClose={() => setUi({ armario: false })} />}
       {s.conectar && <Conectar onClose={() => setUi({ conectar: false })} />}
       {s.cassino && <Cassino inicial={typeof s.cassino === 'string' ? s.cassino : undefined} onClose={() => setUi({ cassino: false })} />}

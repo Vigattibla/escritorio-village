@@ -1,7 +1,7 @@
 import { toEmail, validUser } from './login'
 import { dayKey } from '../game/xp'
 import { deptOf, outranks, rankOf } from '../game/ranks'
-import type { CoffeeLine, Dept, JogoRes, Goal, Wallet, Group, RowTable, Rows, AccountEdit, AiContext, AiProposal, AiStage, Avatar, Backend, Handlers, Message, Pos, Profile, Project, Requisicao, Snapshot, Task, TaskNote } from '../types'
+import type { CoffeeLine, Dept, JogoRes, Goal, Wallet, Group, RowTable, Rows, AccountEdit, AiContext, AiProposal, AiStage, Avatar, Backend, Handlers, Message, Pos, Profile, Project, Parceria, Requisicao, Snapshot, Task, TaskNote } from '../types'
 import { ROW_TABLES } from '../types'
 import { counts, DAY, MAX_GOALS, payouts, WELCOME } from '../shop/economy'
 import { ITEM } from '../shop/catalog'
@@ -149,6 +149,38 @@ export class DemoBackend implements Backend {
     if (!d) throw new Error('Essa sala não existe.')
     if (!(me?.is_admin || me?.rank === 4 || ((me?.rank ?? 1) >= 3 && (me?.dept || 'marketing') === dept))) throw new Error('Só o gerente da sala, a Chefe ou o adm mudam a sala.')
     await this.upsertRow('depts', { ...d, flag, canais, vendas: vendas ?? d.vendas })
+  }
+
+  async setDeptAbas(dept: string, abas: string[] | null) {
+    const me = read<Record<string, Profile>>(K.prof, {})[sessionStorage.getItem(K.session) ?? '']
+    const d = read<Record<string, Dept>>(K.row + 'depts', {})[dept]
+    if (!d) throw new Error('Essa sala não existe.')
+    if (!(me?.is_admin || me?.rank === 4 || ((me?.rank ?? 1) >= 3 && (me?.dept || 'marketing') === dept))) throw new Error('Só o gerente da sala, a Chefe ou o adm escolhem as abas.')
+    await this.upsertRow('depts', { ...d, abas })
+  }
+
+  async parceria(de: string, para: string, modulo: string, acao: 'pedir' | 'aceitar' | 'recusar' | 'sair') {
+    const me = read<Record<string, Profile>>(K.prof, {})[sessionStorage.getItem(K.session) ?? '']
+    const gere = (d: string) => !!(me?.is_admin || me?.rank === 4 || ((me?.rank ?? 1) >= 3 && (me?.dept || 'marketing') === d))
+    const all = read<Record<string, Parceria>>(K.row + 'parcerias', {})
+    const p = Object.values(all).find(x => x.de === de && x.para === para && x.modulo === modulo)
+    if (acao === 'pedir') {
+      if (!gere(de)) throw new Error('Só o gerente da sala, a Chefe ou o adm pedem parceria.')
+      if (p && p.status !== 'recusado') return p
+      const n: Parceria = { id: p?.id ?? crypto.randomUUID(), de, para, modulo: modulo as Parceria['modulo'], status: 'pendente', por: me?.id ?? null, decidido_por: null, created_at: new Date().toISOString() }
+      await this.upsertRow('parcerias', n)
+      return n
+    } else if (acao === 'sair') {
+      if (!gere(de) && !gere(para)) throw new Error('Só o gerente de um dos lados, a Chefe ou o adm encerram.')
+      if (p) await this.deleteRow('parcerias', p.id)
+      return null
+    } else {
+      if (!gere(para)) throw new Error('Quem aceita é o gerente da sala dona, a Chefe ou o adm.')
+      if (!p) throw new Error('Esse pedido não existe mais.')
+      const n: Parceria = { ...p, status: acao === 'aceitar' ? 'aceito' : 'recusado', decidido_por: me?.id ?? null }
+      await this.upsertRow('parcerias', n)
+      return n
+    }
   }
 
   async setDept(target: string, dept: string, desk: number) {

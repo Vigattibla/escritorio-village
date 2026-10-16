@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { dayKey } from '../game/xp'
-import { addTask, approverOf, canApprove, CHEFIA, getState, hasCanais, putRow, review, run, setUi, team as salaTeam, updateTask, useStore } from '../store'
+import { addTask, approverOf, canApprove, CHEFIA, deptName, getState, hasCanais, parceiroDe, putRow, review, run, setUi, team as salaTeam, updateTask, useStore } from '../store'
+import { deptOf, managerOf } from '../game/ranks'
 import type { CalEvent, Channel, Task } from '../types'
 import { Bell } from './Avisos'
 import Icon, { Ph } from './Icon'
@@ -13,7 +14,8 @@ import { Fundo } from './Fundo'
 
 type Mode = 'mes' | 'semana' | 'lista' | 'equipe' | 'estrategia'
 const MODOS: [Mode, string][] = [['mes', 'Mês'], ['semana', 'Semana'], ['lista', 'Lista'], ['equipe', 'Equipe'], ['estrategia', 'Estratégia']]
-type Item = { kind: 'post' | 'prazo'; t: Task; day: string } | { kind: 'evento'; e: CalEvent; day: string }
+// de = setor dono quando vem de uma parceria (só leitura)
+type Item = { kind: 'post' | 'prazo'; t: Task; day: string; de?: string } | { kind: 'evento'; e: CalEvent; day: string; de?: string }
 
 const STATUS: Record<string, { label: string; tag: string; ic: 'eye' | 'check' | 'circle-dashed' | 'pencil-simple-line' | 'paper-plane-tilt' }> = {
   inbox: { label: 'Pedido', tag: 'gray', ic: 'paper-plane-tilt' },
@@ -40,6 +42,8 @@ export default function Agenda() {
   const meId = useStore(s => s.meId)!
   const tasks = useStore(s => s.tasks)
   const events = useStore(s => s.rows.events)
+  const parc = useStore(s => s.parc)
+  const depts = useStore(s => s.rows.depts)
   const profiles = useStore(s => s.profiles)
   const canais = useStore(s => hasCanais(s.sala, s))
   const [cur, setCur] = useState(() => new Date())
@@ -72,8 +76,16 @@ export default function Agenda() {
       else if (t.due && t.status !== 'done') out.push({ kind: 'prazo', t, day: t.due })
     }
     for (const e of Object.values(events)) out.push({ kind: 'evento', e, day: e.day })
+    // setores que a sala acompanha (parceria de agenda)
+    for (const t of Object.values(parc.tasks)) {
+      const de = deptOf(t)
+      if (t.status === 'declined' || !parceiroDe(de, 'agenda')) continue
+      if (t.publish_at) out.push({ kind: 'post', t, day: localDay(t.publish_at), de })
+      else if (t.due && t.status !== 'done') out.push({ kind: 'prazo', t, day: t.due, de })
+    }
+    for (const e of Object.values(parc.events)) out.push({ kind: 'evento', e, day: e.day, de: deptOf(e) })
     return out.sort((a, b) => a.day.localeCompare(b.day) || itemTime(a).localeCompare(itemTime(b)))
-  }, [tasks, events])
+  }, [tasks, events, parc, depts])
   const vis = items.filter(i => show[i.kind] && (i.kind !== 'post' || !i.t.channel || !off.includes(i.t.channel)) && (!q || itemTitle(i).toLowerCase().includes(q.toLowerCase())))
   const byDay = (k: string) => vis.filter(i => i.day === k)
   const postN = items.filter(i => i.kind === 'post' && i.day.startsWith(key(cur).slice(0, 7))).length
@@ -85,7 +97,7 @@ export default function Agenda() {
   const label = mode === 'semana'
     ? (() => { const m = sunday(new Date(day + 'T12:00')); const e = addD(m, 6); return `${m.getDate()}–${e.getDate()} ${e.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '')}` })()
     : cur.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }).replace(' de ', ' ')
-  const pick = (i: Item) => { if (narrow() && i.kind !== 'evento') { setUi({ task: i.t.id }); return } setSel(itemId(i)); setSelP(null); setDay(i.day) }
+  const pick = (i: Item) => { if (narrow() && i.kind !== 'evento' && !i.de) { setUi({ task: i.t.id }); return } setSel(itemId(i)); setSelP(null); setDay(i.day) }
   // sem escolha, o painel já abre no primeiro post do dia (ou no primeiro item)
   const dayList = byDay(day)
   const selItem = (sel ? vis.find(i => itemId(i) === sel) ?? items.find(i => itemId(i) === sel) : undefined) ?? dayList.find(i => i.kind === 'post') ?? dayList[0]
@@ -95,7 +107,7 @@ export default function Agenda() {
   const chip = (i: Item) => {
     const cls = i.kind === 'evento' ? 'ev evt' : i.kind === 'prazo' ? 'ev due' : 'ev tag ' + (i.t.channel ? CHANNELS[i.t.channel].tag : 'gray')
     return (
-      <button key={itemId(i)} className={cls + (selId === itemId(i) ? ' on' : '')} onClick={e => { e.stopPropagation(); pick(i) }} title={itemTitle(i)}>
+      <button key={itemId(i)} className={cls + (selId === itemId(i) ? ' on' : '') + (i.de ? ' parc' : '')} style={i.de ? { boxShadow: `inset 3px 0 0 ${depts[i.de]?.color ?? '#999'}` } : undefined} onClick={e => { e.stopPropagation(); pick(i) }} title={(i.de ? `${deptName(i.de)} · ` : '') + itemTitle(i)}>
         <Ph n={i.kind === 'post' && i.t.channel ? CHANNELS[i.t.channel].ic : i.kind === 'evento' ? 'star' : 'flag-banner'} size={13} fill />
         {itemTime(i) && <time>{hh(itemTime(i))}</time>}<span className="tx">{shortTitle(i)}</span>
       </button>
@@ -243,7 +255,7 @@ export default function Agenda() {
       </div>
 
       <aside className="qside">
-        {pSel ? <PlanoPainel i={pSel} ctx={ctx} /> : selItem && selItem.kind !== 'evento' ? <PostCard t={selItem.t} meId={meId} /> : selItem && selItem.kind === 'evento' ? (
+        {pSel ? <PlanoPainel i={pSel} ctx={ctx} /> : selItem?.de ? <ParcCard i={selItem} /> : selItem && selItem.kind !== 'evento' ? <PostCard t={selItem.t} meId={meId} /> : selItem && selItem.kind === 'evento' ? (
           <div className="panel">
             <div className="eyebrow">{longDay(selItem.e.day)}{selItem.e.time ? ` · ${hh(selItem.e.time)}` : ''}</div>
             <h3 className="ev-title"><Ph n="star" size={18} fill />{selItem.e.title}</h3>
@@ -274,6 +286,31 @@ export default function Agenda() {
       {pMod && <PlanoModal i={pMod} ctx={ctx} onClose={() => setPModal(null)} />}
       {form === 'post' && <PostForm day={day} onClose={() => setForm(null)} onDone={id => { setSel(id) }} />}
       {form === 'evento' && <EventForm day={day} onClose={() => setForm(null)} />}
+    </div>
+  )
+}
+
+/** item de um setor parceiro: só olha; pedido vai pro gerente de lá */
+function ParcCard({ i }: { i: Item }) {
+  const profiles = useStore(s => s.profiles)
+  const depts = useStore(s => s.rows.depts)
+  const de = i.de!
+  const d = depts[de]
+  const g = managerOf(profiles, de)
+  const who = i.kind === 'evento' ? profiles[i.e.created_by] : profiles[i.t.owner_id]
+  const ch = i.kind === 'post' && i.t.channel ? CHANNELS[i.t.channel] : null
+  return (
+    <div className="panel post-card">
+      <div className="eyebrow">{longDay(i.day)}{itemTime(i) ? ` · ${hh(itemTime(i))}` : ''}</div>
+      <span className="tag gray parc-tag"><i className="sala-dot" style={{ background: d?.color }} />{deptName(de)}</span>
+      <h3 className="ev-title">{i.kind === 'evento' ? <Ph n="star" size={18} fill /> : ch ? <Ph n={ch.ic} size={18} /> : <Ph n="flag-banner" size={18} />}{itemTitle(i)}</h3>
+      <div className="kv">
+        <span>Tipo</span><div>{i.kind === 'evento' ? 'Evento' : ch ? ch.label : 'Prazo'}</div>
+        {i.kind !== 'evento' && <><span>Status</span><div><StatusTag t={i.t} /></div></>}
+        <span>{i.kind === 'evento' ? 'Criado por' : 'Quem faz'}</span><div className="person"><MiniAvatar avatar={who?.avatar ?? null} photo={who?.photo ?? null} name={who?.name} size={22} />{who?.name ?? '—'}</div>
+      </div>
+      <small className="muted">É da agenda de {deptName(de)}: vocês acompanham, quem edita é o setor.</small>
+      {g && <button className="btn soft sm" onClick={() => setUi({ requestTo: g.id })}><Ph n="paper-plane-tilt" size={14} />Mandar pedido para {first(g)}</button>}
     </div>
   )
 }

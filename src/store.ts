@@ -8,7 +8,7 @@ import { MAX_DESKS } from './office/base'
 import { parseSala } from './office/sala'
 import { ITEM, type Slot } from './shop/catalog'
 import { REASON } from './shop/economy'
-import type { Equipe, Requisicao, Snapshot, Group, RowTable, Rows, Stage, StageKind, Sticker, AccountEdit, AiContext, AiItem, AiProposal, AiStage, Attachment, Avatar, CoffeeLine, Gear, Message, Pos, Profile, Project, Review, Task, TaskNote, TaskStatus, Wallet } from './types'
+import type { CalEvent, Equipe, ParModulo, Parceria, Requisicao, Snapshot, Group, RowTable, Rows, Stage, StageKind, Sticker, AccountEdit, AiContext, AiItem, AiProposal, AiStage, Attachment, Avatar, CoffeeLine, Gear, Message, Pos, Profile, Project, Review, Task, TaskNote, TaskStatus, Wallet } from './types'
 import { ROW_TABLES } from './types'
 import type { Backend } from './types'
 import type { JogoCassino, Rodada } from './cassino/regras'
@@ -20,7 +20,7 @@ export type Phase = 'loading' | 'auth' | 'creator' | 'office'
 export type Tab = 'mesa' | 'aprovar' | 'avisos' | 'equipe' | 'chat' | 'geral'
 /** quadro = trabalho do dia a dia (estilo Trello); escritório = visualização em pixel */
 export type View = 'quadro' | 'escritorio' | 'agenda' | 'metas' | 'fluxos' | 'inicio' | 'arquivos' | 'loja' | 'vendas' | 'placar' | 'kit' | 'plano' | 'redes' | 'estudio' | 'pedidos' | 'legendas'
-export interface Go { view?: View; tab?: Tab; viewing?: string; channel?: string; task?: string; cassino?: 'bolao'; bingo?: boolean }
+export interface Go { view?: View; tab?: Tab; viewing?: string; channel?: string; task?: string; cassino?: 'bolao'; bingo?: boolean; abasOpen?: boolean }
 export type NoticeKind = 'data' | 'plano' | 'prazo' | 'lembrete' | 'pedido' | 'colab' | 'aprov' | 'msg' | 'adesivo' | 'loja' | 'time'
 export interface Notice { id: string; text: string; at: number; from?: string; go?: Go; kind?: NoticeKind }
 
@@ -37,6 +37,8 @@ export interface State {
   projects: Record<string, Project>
   /** agenda, metas, adesivos, fluxos */
   rows: { [K in RowTable]: Record<string, Rows[K]> }
+  /** de outros setores que esta sala acompanha (parceria aceita): só leitura, fora do quadro */
+  parc: { tasks: Record<string, Task>; events: Record<string, CalEvent> }
   online: Set<string>
   tab: Tab
   viewing: string | null
@@ -71,6 +73,8 @@ export interface State {
   bolao: Bolao | null
   /** salão de bingo aberto */
   bingo: boolean
+  /** janela “Abas do setor” */
+  abasOpen: boolean
   /** Conectar IA (chaves da ponte de tarefas) */
   conectar: boolean
   armario: boolean
@@ -103,9 +107,9 @@ function viewDaUrl(): View {
 }
 
 const initial: State = {
-  phase: 'loading', meId: null, accountName: '', error: '', profiles: {}, tasks: {}, messages: [], notes: [], projects: {}, rows: { events: {}, goals: {}, stickers: {}, flows: {}, stages: {}, groups: {}, rooms: {}, carpenters: {}, depts: {}, brand: {}, quartos: {}, vendas: {}, ajustes: {}, metas_venda: {}, vendas_cfg: {}, campanhas: {}, caderno: {}, jogos_pontos: {}, plano_meses: {}, plano_nucleos: {}, plano_acoes: {}, plano_resp: {}, equipes: {}, relatorios: {}, redes: {}, postagens: {}, requisicoes: {} }, online: new Set(),
+  phase: 'loading', meId: null, accountName: '', error: '', profiles: {}, tasks: {}, messages: [], notes: [], projects: {}, rows: { events: {}, goals: {}, stickers: {}, flows: {}, stages: {}, groups: {}, rooms: {}, carpenters: {}, depts: {}, brand: {}, quartos: {}, vendas: {}, ajustes: {}, metas_venda: {}, vendas_cfg: {}, campanhas: {}, caderno: {}, jogos_pontos: {}, plano_meses: {}, plano_nucleos: {}, plano_acoes: {}, plano_resp: {}, equipes: {}, relatorios: {}, redes: {}, postagens: {}, requisicoes: {}, parcerias: {} }, parc: { tasks: {}, events: {} }, online: new Set(),
   tab: 'mesa', viewing: null, channel: 'geral', reads: {}, requestTo: null, task: null, editing: false, notices: [], pipOpen: false, view: viewDaUrl(), wallet: null, drawer: false,
-  project: '', projectEdit: null, aiOpen: false, chatOpen: false, lousa: false, jogo: null, cassino: false, bolao: null, bingo: false, conectar: false, armario: false, bingoDados: null, bloqueio: null, bellOpen: false, qApprove: false, flow: null, sheet: false, stickTo: null, sala: DEPT0, here: DEPT0,
+  project: '', projectEdit: null, aiOpen: false, chatOpen: false, lousa: false, jogo: null, cassino: false, bolao: null, bingo: false, abasOpen: false, conectar: false, armario: false, bingoDados: null, bloqueio: null, bellOpen: false, qApprove: false, flow: null, sheet: false, stickTo: null, sala: DEPT0, here: DEPT0,
 }
 
 let state = initial
@@ -152,6 +156,11 @@ const DEPT_ROWS = new Set<RowTable>(['events', 'goals', 'stages', 'flows'])
 const keepTask = (t: Task) => deptOf(t) === state.sala || (!!state.meId && state.sala === myDept() && involved(t, state.meId))
 const keepProject = (p: Project) => deptOf(p) === state.sala || (state.sala === myDept() && (p.master_id === state.meId || p.created_by === state.meId))
 const keepRow = (k: RowTable, r: unknown) => !DEPT_ROWS.has(k) || deptOf(r as { dept?: string }) === state.sala
+/** a sala aberta (a minha) acompanha o módulo `mod` do setor `dono`? */
+export const parceiroDe = (dono: string | undefined, mod: ParModulo, s: State = state) =>
+  !!dono && dono !== s.sala && s.sala === myDept(s) && Object.values(s.rows.parcerias).some(p => p.de === s.sala && p.para === dono && p.modulo === mod && p.status === 'aceito')
+const keepParcTask = (t: Task) => (!!(t.publish_at || t.due) && parceiroDe(deptOf(t), 'agenda')) || (!!t.channel && parceiroDe(deptOf(t), 'redes'))
+const keepParcEvent = (e: CalEvent) => parceiroDe(deptOf(e), 'agenda')
 export const nameOf = (id: string) => id === CHEFIA ? 'chefia' : state.profiles[id]?.name ?? 'Alguém'
 
 /** linhas antigas (antes do SQL v3) não têm os campos novos */
@@ -265,7 +274,7 @@ function onProfileDeleted(id: string) {
 function onTask(raw: Task) {
   const t = norm(raw)
   const prev = state.tasks[t.id]
-  if (!keepTask(t)) return onTaskDeleted(t.id)
+  if (!keepTask(t)) { onTaskDeleted(t.id); return parcTask(t) }
   set({ tasks: { ...state.tasks, [t.id]: t } })
   const my = state.meId
   if (!my) return
@@ -299,8 +308,10 @@ function onTask(raw: Task) {
 
 function onRow<K extends RowTable>(k: K, r: Rows[K]) {
   const prev = state.rows[k][r.id]
+  if (k === 'events') parcEvent(r as CalEvent)
   if (!keepRow(k, r)) { if (prev) onRowDeleted(k, r.id); return }
   set({ rows: { ...state.rows, [k]: { ...state.rows[k], [r.id]: r } } })
+  if (k === 'parcerias') mudouParceria(r as Parceria, prev as Parceria | undefined)
   if (k === 'requisicoes') avisoReq(r as Requisicao, prev as Requisicao | undefined)
   if (k === 'stickers' && !prev) {
     const st = r as Sticker
@@ -336,7 +347,33 @@ export async function mudarReq(id: string, acao: 'editar' | 'itens' | 'apoio' | 
   if (r) onRow('requisicoes', r)
 }
 
+function parcEvent(e: CalEvent | null, id = e?.id ?? '') {
+  const has = !!state.parc.events[id], keep = !!e && keepParcEvent(e) && !keepRow('events', e)
+  if (!has && !keep) return
+  const events = { ...state.parc.events }
+  if (keep && e) events[id] = e
+  else delete events[id]
+  set({ parc: { ...state.parc, events } })
+}
+
+/** parceria nova/decidida: avisa o outro lado; aceita/encerrada na minha sala → recarrega (o banco passa a mostrar/esconder) */
+function mudouParceria(p: Parceria, prev: Parceria | undefined) {
+  const my = state.meId
+  if (!my || state.phase !== 'office') return
+  const eu = state.profiles[my]
+  const gere = (d: string) => !!eu && (!!eu.is_admin || rankOf(eu) === 4 || (rankOf(eu) >= 3 && deptOf(eu) === d))
+  const mod = PAR_NOME[p.modulo]
+  if (p.status === 'pendente' && prev?.status !== 'pendente' && p.por !== my && gere(p.para)) notify(`${deptName(p.de)} pediu pra acompanhar ${mod} da sua sala`, { kind: 'pedido', go: { abasOpen: true } })
+  if (prev && prev.status !== p.status && p.status !== 'pendente' && p.decidido_por !== my && gere(p.de))
+    notify(p.status === 'aceito' ? `${deptName(p.para)} aceitou: agora vocês acompanham ${mod} deles` : `${deptName(p.para)} recusou o pedido de acompanhar ${mod}`, { kind: 'pedido', go: { abasOpen: true } })
+  if (p.de === state.sala && p.status === 'aceito' && prev?.status !== 'aceito') recarregar()
+}
+const recarregar = () => run(backend.loadAll().then(ingest))
+export const PAR_NOME: Record<ParModulo, string> = { agenda: 'a Agenda', plano: 'o Plano', redes: 'as Publicações' }
+
 function onRowDeleted(k: RowTable, id: string) {
+  if (k === 'events') parcEvent(null, id)
+  if (k === 'parcerias') { const p = state.rows.parcerias[id]; if (p?.de === state.sala && p.status === 'aceito') setTimeout(recarregar) }
   const next = { ...state.rows[k] }
   delete next[id]
   set({ rows: { ...state.rows, [k]: next } })
@@ -377,7 +414,18 @@ function onProjectDeleted(id: string) {
   set({ projects, project: state.project === id ? '' : state.project })
 }
 
+/** tarefa de um setor parceiro: entra só na agenda/publicações, nunca no quadro */
+function parcTask(t: Task | null, id = t?.id ?? '') {
+  const has = !!state.parc.tasks[id], keep = !!t && keepParcTask(t)
+  if (!has && !keep) return
+  const tasks = { ...state.parc.tasks }
+  if (keep && t) tasks[id] = t
+  else delete tasks[id]
+  set({ parc: { ...state.parc, tasks } })
+}
+
 function onTaskDeleted(id: string) {
+  parcTask(null, id)
   if (!state.tasks[id]) return
   const tasks = { ...state.tasks }
   delete tasks[id]
@@ -487,13 +535,19 @@ export async function enter(uid: string) {
 
 /** tarefas, projetos e linhas da sala aberta */
 function ingest(snap: Snapshot) {
+  const tasks = snap.tasks.map(norm)
   set({
-    tasks: Object.fromEntries(snap.tasks.map(norm).filter(keepTask).map(t => [t.id, t])),
+    tasks: Object.fromEntries(tasks.filter(keepTask).map(t => [t.id, t])),
     projects: Object.fromEntries((snap.projects ?? []).filter(keepProject).map(p => [p.id, { ...p, criteria: p.criteria ?? [] }])),
     rows: {
       ...(Object.fromEntries(ROW_TABLES.map(k => [k, Object.fromEntries((snap.rows?.[k] ?? []).filter(r => keepRow(k, r)).map(r => [r.id, r]))])) as State['rows']),
     },
   })
+  // depois das parcerias no estado
+  set({ parc: {
+    tasks: Object.fromEntries(tasks.filter(t => !keepTask(t) && keepParcTask(t)).map(t => [t.id, t])),
+    events: Object.fromEntries((snap.rows?.events ?? []).filter(e => !keepRow('events', e) && keepParcEvent(e)).map(e => [e.id, e])),
+  } })
 }
 
 /** abre o andar de outro setor: a Chefe entra em qualquer um (leva o quadro junto); os outros visitam se a porta estiver aberta.
@@ -565,6 +619,27 @@ export async function planoSoltar(id: string, tarefa: string) {
 /** a sala trabalha com publicação? (posts, canais). Marketing antigo sem a coluna conta como sim */
 export const hasCanais = (id: string = state.sala, s: State = state) => s.rows.depts[id]?.canais ?? id === DEPT0
 /** bandeira da porta (ícone Phosphor) e se a sala publica: mesma regra da porta */
+/** abas que a sala escolhe (início, quadro e escritório ficam sempre) */
+export const ABAS: [string, string][] = [['agenda', 'Agenda'], ['plano', 'Plano'], ['redes', 'Publicações'], ['arquivos', 'Arquivos'], ['pedidos', 'Pedidos'], ['legendas', 'Legendas']]
+export const abasPadrao = (id: string) => (id === DEPT0 ? ABAS.map(a => a[0]) : ['agenda', 'arquivos', 'pedidos'])
+/** abas ligadas da sala; parceria aceita liga o módulo mesmo se a sala não usa o seu */
+export function abasDe(id: string = state.sala, s: State = state) {
+  const out = new Set(s.rows.depts[id]?.abas ?? abasPadrao(id))
+  for (const p of Object.values(s.rows.parcerias)) if (p.de === id && p.status === 'aceito') out.add(p.modulo)
+  return out
+}
+export async function setDeptAbas(id: string, abas: string[] | null) {
+  const d = state.rows.depts[id]
+  if (!d) return
+  onRow('depts', { ...d, abas })
+  try { await backend.setDeptAbas(id, abas) } catch (e) { onRow('depts', d); throw e }
+}
+export async function parceria(de: string, para: string, modulo: ParModulo, acao: 'pedir' | 'aceitar' | 'recusar' | 'sair') {
+  const r = await backend.parceria(de, para, modulo, acao)
+  // aplica já (o realtime confirma depois; o demo não ecoa na mesma aba)
+  if (r) onRow('parcerias', r)
+  else { const p = Object.values(state.rows.parcerias).find(x => x.de === de && x.para === para && x.modulo === modulo); if (p) onRowDeleted('parcerias', p.id) }
+}
 /** a sala trabalha com vendas (quadro de quartos, placar) */
 export const hasVendas = (id?: string, s: State = state) => !!s.rows.depts[id ?? myDept(s)]?.vendas
 export async function setDeptLook(id: string, look: { flag?: string | null; canais?: boolean; vendas?: boolean }) {
@@ -599,7 +674,7 @@ export async function signOut() {
   set({ ...initial, phase: 'auth' })
 }
 
-export function setUi(p: Partial<Pick<State, 'tab' | 'viewing' | 'channel' | 'requestTo' | 'editing' | 'pipOpen' | 'error' | 'task' | 'view' | 'drawer' | 'project' | 'projectEdit' | 'aiOpen' | 'chatOpen' | 'lousa' | 'jogo' | 'cassino' | 'bingo' | 'conectar' | 'armario' | 'bellOpen' | 'qApprove' | 'flow' | 'sheet' | 'stickTo'>>) {
+export function setUi(p: Partial<Pick<State, 'tab' | 'viewing' | 'channel' | 'requestTo' | 'editing' | 'pipOpen' | 'error' | 'task' | 'view' | 'drawer' | 'project' | 'projectEdit' | 'aiOpen' | 'chatOpen' | 'lousa' | 'jogo' | 'cassino' | 'bingo' | 'abasOpen' | 'conectar' | 'armario' | 'bellOpen' | 'qApprove' | 'flow' | 'sheet' | 'stickTo'>>) {
   // chat, avisos e aprovação não são mais páginas: viram painel flutuante, sino e filtro do quadro
   if (p.tab === 'chat') { const { tab: _, ...rest } = p; p = { ...rest, chatOpen: true } }
   else if (p.tab === 'avisos') { const { tab: _, ...rest } = p; p = { ...rest, bellOpen: true } }

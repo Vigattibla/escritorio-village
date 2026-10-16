@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import Negrito from './Negrito'
 import { linkedin } from '../data/linkedin'
-import { addTask, fileUrl, run, setUi, updateTask, useStore } from '../store'
+import { addTask, deptName, fileUrl, parceiroDe, run, setUi, updateTask, useStore } from '../store'
 import { CALENDARIOS, type Calendario } from '../data/calendarios'
 import type { Attachment, Channel, Postagem, Task } from '../types'
 import { Bell } from './Avisos'
@@ -11,7 +11,7 @@ import type { PhName } from './ph'
 import { CHANNEL_KEYS, CHANNELS } from './v4'
 import Estudio, { type AbaEstudio, useAprovaEstudio, usePuxar } from './Estudio'
 import { lerAprovar, type ParaAprovar } from '../data/estudio'
-import { rankOf } from '../game/ranks'
+import { deptOf, managerOf, rankOf } from '../game/ranks'
 
 const ES_KEY = 'rd-estudio'
 const lerAberto = () => { try { return localStorage.getItem(ES_KEY) === '1' } catch { return false } }
@@ -54,7 +54,10 @@ export default function Redes({ estudio }: { estudio?: boolean }) {
   const [filtro, setFiltro] = useState('todas')
   const [novo, setNovo] = useState(false)
   const [agora] = useState(() => Date.now())
-  const todas = Object.values(tasks).filter(t => t.channel && t.status !== 'declined')
+  const parc = useStore(s => s.parc.tasks)
+  useStore(s => s.rows.parcerias)
+  // posts dos setores que a sala acompanha (parceria de publicações): só leitura
+  const todas = [...Object.values(tasks), ...Object.values(parc).filter(t => parceiroDe(deptOf(t), 'redes'))].filter(t => t.channel && t.status !== 'declined')
   const lista = todas.filter(t => filtro === 'todas' || redeDe(t.channel)?.id === filtro)
     .sort((a, b) => (posts[b.id]?.quando ?? b.publish_at ?? b.created_at).localeCompare(posts[a.id]?.quando ?? a.publish_at ?? a.created_at))
   const conta = (id: string) => todas.filter(t => redeDe(t.channel)?.id === id).length
@@ -199,21 +202,27 @@ function Capa({ a }: { a: Attachment }) {
 
 function Card({ t, p }: { t: Task; p?: Postagem }) {
   const dono = useStore(s => s.profiles[t.owner_id])
+  const de = useStore(s => s.parc.tasks[t.id] ? deptOf(t) : null)
+  const cor = useStore(s => de ? s.rows.depts[de]?.color : undefined)
+  const g = useStore(s => de ? managerOf(s.profiles, de) : undefined)
   const ch = t.channel ? CHANNELS[t.channel] : null
   const imgs = t.attachments.filter(a => a.type.startsWith('image/'))
   const data = p?.estado === 'publicado' ? p.em : p?.quando ?? t.publish_at
   const auto = redeDe(t.channel)?.auto
   return (
-    <article className="rd-card" tabIndex={0} onClick={() => setUi({ task: t.id })} onKeyDown={e => { if (e.key === 'Enter') setUi({ task: t.id }) }}>
+    <article className={'rd-card' + (de ? ' parc' : '')} tabIndex={0} style={cor ? { boxShadow: `inset 3px 0 0 ${cor}` } : undefined} title={de ? `É de ${deptName(de)}: vocês acompanham, quem edita é o setor` : undefined}
+      onClick={() => !de && setUi({ task: t.id })} onKeyDown={e => { if (e.key === 'Enter' && !de) setUi({ task: t.id }) }}>
       {imgs[0] ? <Capa a={imgs[0]} /> : <div className="rd-capa vazia" style={{ '--rc': redeDe(t.channel)?.cor } as React.CSSProperties}>{ch && <Ph n={ch.ic} size={26} />}<small>Sem arte ainda</small></div>}
       <div className="rd-card-in">
         {ch && <span className={'tag ' + ch.tag}><Ph n={ch.ic} size={12} />{ch.label}{imgs.length > 1 && <em>· {imgs.length} imagens</em>}</span>}
+        {de && <span className="tag gray parc-tag"><i className="sala-dot" style={{ background: cor }} />{deptName(de)}</span>}
         <b>{t.title}</b>
         {t.notes.trim() ? <p><Negrito text={t.notes.trim()} /></p> : <p className="rd-falta">Sem legenda ainda</p>}
         <footer>
           {dono && <span className="rd-quem" title={dono.name}><MiniAvatar avatar={dono.avatar} photo={dono.photo} name={dono.name} size={20} />{dono.name.split(' ')[0]}</span>}
           <span className="grow" />
           {data && <span className="rd-data"><Ph n="calendar-blank" size={13} />{quando(data)}</span>}
+          {de && g && <button className="btn ghost sm" onClick={e => { e.stopPropagation(); setUi({ requestTo: g.id }) }} title={`Mandar pedido para ${g.name}`}><Ph n="paper-plane-tilt" size={13} />Pedir</button>}
           {p?.link && <a href={p.link} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} title="Ver publicado"><Ph n="arrow-square-out" size={14} /></a>}
         </footer>
         {p?.estado === 'erro' && p.erro && <small className="li-erro">{p.erro}</small>}

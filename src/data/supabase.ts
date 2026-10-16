@@ -1,6 +1,6 @@
 import { createClient, type RealtimeChannel, type SupabaseClient } from '@supabase/supabase-js'
 import { slugUser, toEmail } from './login'
-import type { CoffeeLine, JogoRes, Wallet, RowTable, Rows, AccountEdit, AiContext, AiProposal, AiStage, Backend, Handlers, Message, Pos, Profile, Project, Requisicao, Snapshot, Task, TaskNote } from '../types'
+import type { CoffeeLine, JogoRes, Wallet, RowTable, Rows, AccountEdit, AiContext, AiProposal, AiStage, Backend, Handlers, Message, Parceria, Pos, Profile, Project, Requisicao, Snapshot, Task, TaskNote } from '../types'
 import type { Bloqueio } from '../game/vigia'
 import { ROW_TABLES } from '../types'
 import type { Escolha, JogoCassino, Rodada } from '../cassino/regras'
@@ -148,6 +148,18 @@ export class SupabaseBackend implements Backend {
   async setDeptLook(dept: string, flag: string | null, canais: boolean, vendas?: boolean) {
     const { error } = await this.sb.rpc('set_dept_look', { p_dept: dept, p_flag: flag, p_canais: canais, p_vendas: vendas ?? null })
     if (error) throw pt(error)
+  }
+
+  async setDeptAbas(dept: string, abas: string[] | null) {
+    const { error } = await this.sb.rpc('set_dept_abas', { p_dept: dept, p_abas: abas })
+    if (error) throw pt(error)
+  }
+
+  async parceria(de: string, para: string, modulo: string, acao: 'pedir' | 'aceitar' | 'recusar' | 'sair') {
+    const { data, error } = await this.sb.rpc('parceria', { p_de: de, p_para: para, p_modulo: modulo, p_acao: acao })
+    if (error) throw pt(error)
+    const r = (Array.isArray(data) ? data[0] : data) as Parceria | null
+    return r?.id ? r : null
   }
 
   async requisicaoMudar(id: string, acao: string, p: Record<string, unknown>) {
