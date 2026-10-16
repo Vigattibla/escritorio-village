@@ -239,3 +239,9 @@ Pendente: push (precisa da migration 202610080900_v4_agenda_metas.sql e do secre
 
 - 15/10: Legendas com IA (0641380, publicado; functions/migrate/build/deploy ok). Mais → Legendas: vídeo vira 12 quadros JPEG + áudio WAV 16 kHz (≤120 s) no navegador; função `legenda` manda inline pro Gemini (GEMINI_API_KEY já existia) com o guia da tabela `marcas_voz` (seed meudestino, migration 202610251000). 3 opções + hashtags, copiar, ajuste/outra versão; formatos reel/carrossel/stories/post. Guia editável por rank≥3/adm (botão "Identidade da marca"). Nova marca = insert em marcas_voz. Testado no demo; teste real com Gemini pendente (pessoa logada).
 - 16/10: Quadro alinhado no topo, colunas altura cheia (soltar em qualquer ponto), filtros Entrega/Criação/Prioridade.
+
+## 16/10 — 2f511c0
+- Armário de pastas: slot `arquivo` (aço 400 / madeira 450, preço próprio no catalog Row[4]); migration 202610261000. Desenhado à esquerda da mesa (drawArquivo em props.ts); folhas além de 2*PILE vão pra dentro em vez do chão.
+- Montarias sentadas: `pernas()` em bichos.ts desenha coxas/sapatos (antes era só tronco).
+- Relógio de parede (sala.ts `relogio`): hora/minuto/segundo reais de Brasília.
+- clima.ts `tempoReal()`: Open-Meteo Jaboticatubas (-19.51,-43.75), a cada 15 min; chuva/nublado reais; sem rede cai no sorteio.
