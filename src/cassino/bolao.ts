@@ -3,7 +3,7 @@ import type { CoffeeLine } from '../types'
 import { RAROS_BOLAO } from '../shop/catalog'
 
 export const SEMENTE = 30
-export const BILHETE = 15
+export const BILHETE = 1
 export const MAX_BILHETES = 5
 export const LATINHA = 150
 export const MAX_TROCAS = 2
@@ -51,7 +51,7 @@ export class BolaoDemo {
     const log = this.cx.extrato().filter(l => dentro(l, fim))
     const casa = -log.filter(l => l.reason === 'aposta' || l.reason === 'premio').reduce((n, l) => n + l.amount, 0)
     const acum = this.cx.sorteios().find(s => Date.parse(s.fim) === fim - 7 * 864e5 && !s.vencedor)?.pote ?? 0
-    return SEMENTE + Math.max(0, casa) + BILHETE * log.filter(l => l.reason === 'bilhete').length + acum
+    return SEMENTE + Math.max(0, casa) - log.filter(l => l.reason === 'bilhete').reduce((n, l) => n + l.amount, 0) + acum
   }
   private meus(fim: number) {
     const log = this.cx.extrato().filter(l => dentro(l, fim))
@@ -92,7 +92,7 @@ export class BolaoDemo {
     const fim = fimDa(Date.now()), n = this.meus(fim).comprados
     if (n >= MAX_BILHETES) throw new Error(`Limite de ${MAX_BILHETES} bilhetes comprados por semana. Bater meta dá bilhete grátis!`)
     const bal = this.cx.extrato().reduce((s, l) => s + l.amount, 0)
-    if (bal < BILHETE) throw new Error(`Faltam ${BILHETE - bal} cafezinhos para um bilhete.`)
+    if (bal < BILHETE) throw new Error(`Falta ${BILHETE - bal} cafezinho para um bilhete.`)
     this.cx.lanca(-BILHETE, 'bilhete', `${new Date(fim).toISOString().slice(0, 10)}:${n + 1}`)
     return this.estado()
   }
