@@ -1,7 +1,9 @@
 // Salão de Bingo — espelho do SQL (202610161000_bingo). Quem sorteia, confere e paga é o servidor.
 import type { CoffeeLine } from '../types'
 
-export const CARTELA = 10
+export const CARTELA = 1
+/** o que a casa põe no pote de toda rodada */
+export const CASA = 10
 export const MAX_CARTELAS = 4
 export const SLOT = 900e3
 /** a bola k (1..75) aparece em início + ATRASO + (k-1)·PASSO */
@@ -101,7 +103,7 @@ export class BingoDemo {
         for (const c of r.cartelas) Object.assign(c, marcas(c.numeros, r.bolas))
         r.linha_idx = Math.min(...r.cartelas.map(c => c.linha!))
         r.cheia_idx = Math.min(...r.cartelas.map(c => c.cheia!))
-        const pote = r.cartelas.length * CARTELA, lp = Math.floor(pote * LINHA_PCT)
+        const pote = (r.cartelas.length * CARTELA + CASA), lp = Math.floor(pote * LINHA_PCT)
         const venc = (k: 'linha' | 'cheia', idx: number, pool: number) => {
           const cs = r.cartelas.filter(c => c[k] === idx), per = Math.floor(pool / cs.length)
           const by = new Map<string, number>()
@@ -137,7 +139,7 @@ export class BingoDemo {
     r.cartelas.forEach(c => by.set(c.u, (by.get(c.u) ?? 0) + 1))
     const viu = (i?: number) => i !== undefined && n >= i
     return {
-      inicio: new Date(r.inicio).toISOString(), estado: r.estado, pote: r.estado === 'cancelada' ? 0 : r.cartelas.length * CARTELA,
+      inicio: new Date(r.inicio).toISOString(), estado: r.estado, pote: r.estado === 'cancelada' ? 0 : (r.cartelas.length * CARTELA + CASA),
       cartelas: r.cartelas.length, jogadores: by.size, bolas: r.bolas.slice(0, n),
       linha: viu(r.linha_idx) ? r.linha_v : null, linha_idx: viu(r.linha_idx) ? r.linha_idx : null,
       cheia: viu(r.cheia_idx) ? r.cheia_v : null, cheia_idx: viu(r.cheia_idx) ? r.cheia_idx : null,
@@ -161,7 +163,7 @@ export class BingoDemo {
       gratis: !this.cx.extrato().some(l => l.reason === 'bingo' && l.ref === 'g:' + hoje),
       latinhas: this.cx.latinhas(),
       historico: keep.filter(r => r.estado === 'paga').slice(0, 8).map(r => ({
-        inicio: new Date(r.inicio).toISOString(), pote: r.cartelas.length * CARTELA, jogadores: new Set(r.cartelas.map(c => c.u)).size, cartelas: r.cartelas.length,
+        inicio: new Date(r.inicio).toISOString(), pote: (r.cartelas.length * CARTELA + CASA), jogadores: new Set(r.cartelas.map(c => c.u)).size, cartelas: r.cartelas.length,
         linha: r.linha_v ?? [], cheia: r.cheia_v ?? [], itens: r.itens ?? {}, bolas: r.cheia_idx ?? 0,
       })),
     }
@@ -176,7 +178,7 @@ export class BingoDemo {
       this.cx.lanca(0, 'bingo', 'g:' + hoje)
     } else {
       const bal = this.cx.extrato().reduce((s, l) => s + l.amount, 0)
-      if (bal < CARTELA) throw new Error(`Faltam ${CARTELA - bal} cafezinhos para uma cartela.`)
+      if (bal < CARTELA) throw new Error(`Falta ${CARTELA - bal} cafezinho para uma cartela.`)
       this.cx.lanca(-CARTELA, 'bingo', 'c:' + id)
     }
     r.cartelas.push({ id, u: this.cx.me, numeros: novaCartela(), gratis })

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { CARTELA, LETRAS, MAX_CARTELAS, PASSO, ATRASO, RAROS_BINGO, SLOT, LINHA_PCT, faltam, letraDe, type BingoRodada, type BingoVenc, type Cartela } from '../cassino/bingo'
+import { CARTELA, CASA, LETRAS, MAX_CARTELAS, PASSO, ATRASO, RAROS_BINGO, SLOT, LINHA_PCT, faltam, letraDe, type BingoRodada, type BingoVenc, type Cartela } from '../cassino/bingo'
 import { checarBingo, comprarCartela, itemName, primeiroNome, refreshWallet, useStore } from '../store'
 import { Ph } from './Icon'
 import { Fundo } from './Fundo'
@@ -73,7 +73,7 @@ export default function Bingo({ onClose }: { onClose: () => void }) {
   const minhas = palco && palco.minhas.length ? palco.minhas : []
   const minhasProx = prox?.minhas ?? []
   const saldo = wallet?.balance ?? 0
-  const potePrev = (prox?.cartelas ?? 0) * CARTELA
+  const potePrev = (prox?.cartelas ?? 0) * CARTELA + CASA
 
   const status = !b ? 'Abrindo o salão…'
     : !palco ? `Próxima rodada às ${hora(prox!.inicio)}`
