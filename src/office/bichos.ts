@@ -20,7 +20,7 @@ interface Quad {
   a: string; b: string; v: string
   ear: 'ponta' | 'caida' | 'longa' | 'redonda' | 'nenhuma'
   tail: 'fina' | 'fofa' | 'curta' | 'enrolada' | 'crina' | 'nenhuma'
-  focinho?: boolean; crina?: string; chifre?: string; asas?: boolean
+  focinho?: boolean; crina?: string; chifre?: string; asas?: boolean; sela?: string
 }
 /** quadrúpede genérico: gato, cachorro, cavalo... (mov = andando) */
 function quad(c: C2D, q: Quad, t: number, mov: boolean) {
@@ -36,6 +36,7 @@ function quad(c: C2D, q: Quad, t: number, mov: boolean) {
   if (q.tail === 'enrolada') ps.push([q.a, bx - 2, top + 1, 1, 1], [q.a, bx - 3, top, 2, 1])
   if (q.tail === 'crina') ps.push([q.crina ?? q.b, bx - 2, top, 2, q.H + 1])
   ps.push([q.a, bx, top, q.L, q.H])
+  if (q.sela) ps.push([q.sela, -6, top, 12, 3])
   if (q.pesc) ps.push([q.a, hx, hy + q.hh - 1, 3, q.pesc + 2])
   ps.push([q.a, hx, hy, q.hw, q.hh])
   if (q.focinho) ps.push([q.v, hx + q.hw, hy + q.hh - 3, 2, 3])
@@ -55,43 +56,41 @@ function quad(c: C2D, q: Quad, t: number, mov: boolean) {
   if (q.focinho) r(c, OUT, hx + q.hw + 1, hy + q.hh - 3, 1, 1)
   else r(c, '#e8508a', hx + q.hw - 1, hy + q.hh - 2, 1, 1)
 }
-/** quadrúpede visto de frente (ou de costas): corpo entre as pernas do cavaleiro, cabeça na frente do colo */
+/** quadrúpede visto de frente (ou de costas): corpo largo atrás das pernas do cavaleiro; de frente o pescoço e a cabeça cobrem o colo */
 function quadFrente(c: C2D, q: Quad, layer: 'atras' | 'frente', costas: boolean, t: number, mov: boolean) {
   const s = mov ? (Math.floor(t / 140) % 2 ? 1 : 0) : 0
-  const W = q.H >= 7 ? 12 : 10, top = -q.leg - q.H
-  const hw = q.hw + 2, hx = -Math.floor(hw / 2), hy = top - q.hh + 3
-  const cabeca = () => {
-    const ps: Part[] = []
-    ps.push([q.a, hx, hy, hw, q.hh])
-    if (q.ear === 'ponta') ps.push([q.a, hx, hy - 2, 1, 2], [q.a, hx + hw - 1, hy - 2, 1, 2])
-    if (q.ear === 'redonda') ps.push([q.a, hx - 1, hy, 1, 2], [q.a, hx + hw, hy, 1, 2])
-    if (!costas && q.focinho) ps.push([q.v, hx + 1, hy + q.hh - 2, hw - 2, 2])
-    pecas(c, ps)
-    if (q.crina) r(c, q.crina, -1, hy - 1, 2, costas ? q.hh + 1 : 2)
-    if (q.chifre) { r(c, OUT, -1, hy - 4, 3, 4); r(c, q.chifre, 0, hy - 3, 1, 3) }
-    if (costas) return
-    r(c, OUT, hx + 1, hy + 1, 1, 1); r(c, OUT, hx + hw - 2, hy + 1, 1, 1)
-    if (q.focinho) { r(c, OUT, hx + 1, hy + q.hh - 1, 1, 1); r(c, OUT, hx + hw - 2, hy + q.hh - 1, 1, 1) }
-    else r(c, '#e8508a', -1, hy + q.hh - 1, 2, 1)
-  }
+  const W = q.H + 8, top = -q.leg - q.H, x0 = -Math.floor(W / 2)
   if (layer === 'atras') {
-    // corpo e pernas de trás aparecem dos lados, atrás das pernas do cavaleiro
-    const x0 = -W / 2
-    pecas(c, [[q.b, x0, -q.leg + s, 2, q.leg - s], [q.b, x0 + W - 2, -q.leg + 1 - s, 2, q.leg - 1 + s], [q.a, x0, top, W, q.H]])
-    if (costas) cabeca()
+    // lombo inteiro (com a manta) e as pernas de trás saindo pelos lados
+    pecas(c, [[q.b, x0 + 1, -q.leg + s, 2, q.leg - s], [q.b, x0 + W - 3, -q.leg + 1 - s, 2, q.leg - 1 + s], [q.a, x0, top, W, q.H]])
+    if (q.sela) { r(c, OUT, x0 - 1, top + 1, W + 2, 4); r(c, q.sela, x0, top + 1, W, 3) }
     return
   }
-  if (!costas) {
-    // de frente: peito e pernas da frente no meio, entre as pernas do cavaleiro, e a cabeça em cima
-    pecas(c, [[q.a, -4, top, 8, q.H], [q.a, -4, -q.leg, 2, q.leg - s], [q.a, 2, -q.leg, 2, q.leg - 1 + s]])
-    r(c, q.v, -3, top + q.H - 1, 6, 1)
-    cabeca(); return
+  if (costas) {
+    // garupa redonda no meio, pernas de trás e o rabo caindo por cima
+    pecas(c, [[q.a, -5, top + 1, 10, q.H], [q.a, -4, -q.leg, 3, q.leg - s], [q.a, 1, -q.leg, 3, q.leg - 1 + s]])
+    r(c, q.b, -1, top + 3, 2, q.H - 2)
+    const tc = q.tail === 'crina' ? q.crina ?? q.b : q.a
+    if (q.tail === 'crina') pecas(c, [[tc, -1, top + 1, 2, q.H + 3]])
+    else if (q.tail !== 'nenhuma') pecas(c, [[tc, -1, top + 1, 2, 3]])
+    return
   }
-  // de costas: garupa e pernas de trás no meio, o rabo caindo por cima
-  pecas(c, [[q.a, -4, top, 8, q.H], [q.a, -4, -q.leg, 2, q.leg - s], [q.a, 2, -q.leg, 2, q.leg - 1 + s]])
-  const tc = q.tail === 'crina' ? q.crina ?? q.b : q.a
-  if (q.tail === 'crina') pecas(c, [[tc, -1, top + 1, 2, q.H + 1]])
-  else if (q.tail !== 'nenhuma') pecas(c, [[tc, -1, top + 1, 2, 2]])
+  // de frente: peito e pernas da frente entre as canelas do cavaleiro, pescoço e cabeça cobrindo o colo
+  const hw = q.hw + 1, hh = q.hh + 3, hx = -Math.floor(hw / 2)
+  const hy = top - hh + 8
+  const ps: Part[] = [[q.a, -4, top, 8, q.H], [q.a, -4, -q.leg, 3, q.leg - s], [q.a, 1, -q.leg, 3, q.leg - 1 + s]]
+  ps.push([q.a, hx, hy, hw, hh])
+  if (q.ear === 'ponta') ps.push([q.a, hx, hy - 2, 2, 2], [q.a, hx + hw - 2, hy - 2, 2, 2])
+  if (q.ear === 'redonda') ps.push([q.a, hx - 1, hy, 2, 2], [q.a, hx + hw - 1, hy, 2, 2])
+  if (q.focinho) ps.push([q.v, hx + 1, hy + hh - 3, hw - 2, 3])
+  pecas(c, ps)
+  r(c, q.v, -3, top + q.H - 1, 6, 1)
+  if (q.crina) { r(c, q.crina, -1, hy - 1, 2, 3) }
+  if (q.chifre) { r(c, OUT, -1, hy - 5, 3, 5); r(c, q.chifre, 0, hy - 4, 1, 4) }
+  // olhos nas laterais da cara e narinas no focinho
+  r(c, OUT, hx + 1, hy + 2, 1, 2); r(c, OUT, hx + hw - 2, hy + 2, 1, 2)
+  if (q.focinho) { r(c, OUT, hx + 2, hy + hh - 2, 1, 1); r(c, OUT, hx + hw - 3, hy + hh - 2, 1, 1) }
+  else r(c, '#e8508a', -1, hy + hh - 1, 2, 1)
 }
 /** passarinho em pé */
 function ave(c: C2D, a: string, b: string, bico: string, t: number, mov: boolean, extra?: (c: C2D) => void) {
@@ -173,9 +172,10 @@ export interface Montaria {
   /** visto de frente/costas (dir down/up): sem isso usa o desenho de lado */
   frontal?: (c: C2D, layer: 'atras' | 'frente', costas: boolean, t: number, mov: boolean) => void
 }
-const cavalo = (q: Partial<Quad>): Quad => ({ L: 16, H: 6, leg: 6, hw: 6, hh: 4, pesc: 4, a: '#8b5a2b', b: '#6b4220', v: '#5a3a1d', ear: 'ponta', tail: 'crina', focinho: true, crina: '#2b1d16', ...q })
-const montQuad = (alt: number, q: (t: number) => Quad): Montaria => ({
-  alt, sentado: true,
+const cavalo = (q: Partial<Quad>): Quad => ({ L: 22, H: 7, leg: 7, hw: 7, hh: 5, pesc: 5, sela: '#b5452f', a: '#8b5a2b', b: '#6b4220', v: '#5a3a1d', ear: 'ponta', tail: 'crina', focinho: true, crina: '#2b1d16', ...q })
+/** o cavaleiro senta afundado 2px no lombo */
+const montQuad = (q: (t: number) => Quad, q0 = q(0)): Montaria => ({
+  alt: q0.leg + q0.H - 3, sentado: true,
   atras: (c, t, m) => quad(c, q(t), t, m),
   frontal: (c, layer, costas, t, m) => quadFrente(c, q(t), layer, costas, t, m),
 })
@@ -202,13 +202,13 @@ export const MONTARIAS: Record<string, Montaria> = {
       r(c, OUT, -5, -3, 10, 1); roda(c, -6, -2); roda(c, 4, -2)
     },
   },
-  cavalo: montQuad(7, () => cavalo({})),
-  ponei: montQuad(5, () => cavalo({ L: 13, H: 5, leg: 5, hw: 5, pesc: 3, a: '#f4f4f4', b: '#d8d8de', v: '#e8c9d3', crina: '#f28cb1' })),
-  unicornio: montQuad(5, t => cavalo({
-    L: 13, H: 5, leg: 5, hw: 5, pesc: 3, a: '#fbf6ff', b: '#ddd3ee', v: '#f2d9ec', chifre: '#FBC222',
+  cavalo: montQuad(() => cavalo({})),
+  ponei: montQuad(() => cavalo({ L: 18, H: 6, leg: 6, hw: 6, pesc: 4, sela: '#3a6fd8', a: '#f4f4f4', b: '#d8d8de', v: '#e8c9d3', crina: '#f28cb1' })),
+  unicornio: montQuad(t => cavalo({
+    L: 18, H: 6, leg: 6, hw: 6, pesc: 4, sela: '#8e5bd6', a: '#fbf6ff', b: '#ddd3ee', v: '#f2d9ec', chifre: '#FBC222',
     crina: ['#e05a47', '#f39c35', '#FBC222', '#3fa66b', '#3a6fd8', '#8e5bd6'][Math.floor(t / 200) % 6],
   })),
-  'capivara-gigante': montQuad(6, () => ({ L: 17, H: 7, leg: 3, hw: 7, hh: 6, a: '#9b7652', b: '#7a5a3c', v: '#b08a63', ear: 'redonda', tail: 'nenhuma', focinho: true })),
+  'capivara-gigante': montQuad(() => ({ L: 22, H: 8, leg: 4, hw: 8, hh: 6, a: '#9b7652', b: '#7a5a3c', v: '#b08a63', ear: 'redonda', tail: 'nenhuma', focinho: true })),
   'boia-flamingo': {
     alt: 4, sentado: true,
     atras: c => { pecas(c, [['#f28cb1', -8, -6, 15, 4]]); r(c, '#f9c6d6', -7, -6, 13, 1) },
@@ -287,34 +287,27 @@ const SENTA = 4
 /** pernas de quem está montado (o sprite sentado perde as pernas): de lado uma perna dobrada pra frente, de frente/costas as duas abertas */
 function pernas(c: C2D, av: Avatar, fx: number, hy: number, dir: Dir, largo = false) {
   const p = av.bottom, P = shade(av.bottom), h = av.shoes
-  if (largo && (dir === 'down' || dir === 'up')) {
-    // escarranchado num bicho visto de frente: coxas abertas por cima do lombo e as canelas pendendo dos lados
-    c.save(); c.translate(Math.round(fx), Math.round(hy))
-    r(c, OUT, -9, -1, 18, 4); r(c, OUT, -9, 0, 4, 7); r(c, OUT, 5, 0, 4, 7); r(c, OUT, -10, 5, 5, 3); r(c, OUT, 5, 5, 5, 3)
-    r(c, p, -8, 0, 16, 2); r(c, p, -8, 0, 2, 6); r(c, p, 6, 0, 2, 6); r(c, P, -8, 4, 2, 1); r(c, P, 6, 4, 2, 1)
-    r(c, h, -9, 6, 3, 1); r(c, h, 6, 6, 3, 1)
-    c.restore()
-    return
-  }
   if (dir === 'down' || dir === 'up') {
+    // de frente/costas: coxas curtas abertas e canelas finas pendendo dos lados (mais abertas no lombo de bicho)
+    const o = largo ? 6 : 4
     c.save(); c.translate(Math.round(fx), Math.round(hy))
-    r(c, OUT, -5, 0, 10, 3); r(c, OUT, -6, 0, 5, 6); r(c, OUT, 1, 0, 5, 6); r(c, OUT, -7, 4, 6, 4); r(c, OUT, 1, 4, 6, 4)
-    r(c, p, -4, 0, 8, 2); r(c, p, -5, 0, 3, 5); r(c, p, 2, 0, 3, 5); r(c, P, -5, 3, 3, 1); r(c, P, 2, 3, 3, 1)
-    r(c, h, -6, 5, 4, 2); r(c, h, 2, 5, 4, 2)
+    r(c, OUT, -o - 1, -1, 2 * o + 2, 4); r(c, OUT, -o - 1, 0, 4, 7); r(c, OUT, o - 2, 0, 4, 7)
+    r(c, p, -o, 0, 2 * o, 2); r(c, p, -o, 0, 2, 5); r(c, p, o - 1, 0, 2, 5); r(c, P, -o, 3, 2, 1); r(c, P, o - 1, 3, 2, 1)
+    r(c, h, -o, 5, 2, 1); r(c, h, o - 1, 5, 2, 1)
     c.restore()
     return
   }
+  // de lado: coxa curta pra frente e canela fina descendo
   virado(c, fx, hy, dir === 'left', () => {
-    r(c, OUT, -2, 0, 7, 4); r(c, OUT, 1, 0, 5, 7); r(c, OUT, 1, 5, 7, 4)
-    r(c, p, -1, 0, 5, 3); r(c, p, 2, 0, 3, 6); r(c, P, 2, 4, 3, 1)
-    r(c, h, 2, 6, 5, 2)
+    r(c, OUT, -1, -1, 6, 4); r(c, OUT, 2, 0, 4, 7); r(c, OUT, 2, 5, 5, 3)
+    r(c, p, 0, 0, 4, 2); r(c, p, 3, 0, 2, 5); r(c, P, 3, 3, 2, 1)
+    r(c, h, 3, 5, 3, 2)
   })
 }
 /** boneco completo com montaria e bichinho; fx, fy = pés. Devolve quanto subiu (pra nome e balão). */
 export function drawBoneco(c: C2D, av: Avatar, photo: string | null | undefined, fx: number, fy: number, dir: Dir, frame: 0 | 1 | 2, t: number, mov: boolean, pulo = 0) {
   const m = montariaDe(av.gear?.montaria)
-  // de frente/costas o cavaleiro fica mais alto: os pés pendem do lado e as pernas do bicho aparecem embaixo
-  const alt = altDe(m, t) + (m?.frontal && (dir === 'down' || dir === 'up') ? 3 : 0)
+  const alt = altDe(m, t)
   if (dir === 'up') drawPet(c, av.gear?.pet, fx, fy, dir, t, mov)
   drawMontaria(c, m, 'atras', fx, fy, dir, t, mov)
   const ax = Math.round(fx - 8), ay = Math.round(fy - SPRITE_H + 1 - alt - pulo)
