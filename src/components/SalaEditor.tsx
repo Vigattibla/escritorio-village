@@ -14,10 +14,10 @@ type Tool = 'mover' | 'piso' | 'parede' | 'carpinteiro'
 const S = 2
 const SHADOW_OK = 'rgba(63,166,107,.22)', SHADOW_BAD = 'rgba(229,72,58,.28)'
 
-/** pode arrumar o escritório: Gerência/Chefe, ou carpinteiro com prazo valendo */
+/** pode arrumar o escritório: Coordenação/Gerência/Chefe, ou carpinteiro com prazo valendo */
 export function canEditOffice(p: Profile | undefined, carpenters: Record<string, { until: string }>) {
   if (!p) return false
-  if (rankOf(p) >= 3) return true
+  if (rankOf(p) >= 2) return true
   const c = carpenters[p.id]
   return !!c && new Date(c.until).getTime() > Date.now()
 }
