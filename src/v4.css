@@ -1132,3 +1132,15 @@ button.panel { width: 100%; border: 0; text-align: left; font: inherit; color: i
 .qfunil-ver button { border: 1.5px solid #e3b341; background: #fff; color: #8a6200; border-radius: 999px; padding: 3px 10px; font: 600 12px inherit; cursor: pointer; }
 .qfunil-ver button.on { background: #e3b341; color: #fff; }
 .qfunil-ver small { margin-left: 6px; color: var(--muted); font-size: 12px; }
+
+/* Quadro: colunas sempre do topo, altura cheia (soltar em qualquer ponto), cabeçalho de altura fixa */
+.quadro .qlists { align-items: stretch; }
+.quadro .qlist { min-height: calc(100dvh - 140px); }
+.quadro .qlist .qcards { justify-content: flex-start; }
+.quadro .qlist-head { min-height: 56px; box-sizing: border-box; flex: none; }
+.quadro .qlist-head .grow { min-width: 0; }
+.quadro .qlist-head small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.quadro .qperiodo { display: inline-flex; align-items: center; gap: 4px; margin-left: 4px; }
+.quadro .qperiodo input { border: 0; background: none; font: inherit; color: inherit; padding: 0; width: 118px; outline: none; }
+.quadro .qperiodo i { font-style: normal; color: var(--muted); }
+@media (max-width: 900px) { .quadro .qlist { min-height: 200px; } }

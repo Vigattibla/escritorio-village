@@ -21,7 +21,9 @@ import { gereEquipe, norm, respsDe } from '../plano/core'
 import Negrito from './Negrito'
 
 type Group = 'etapa' | 'raias' | 'pessoa'
-type Due = '' | 'late' | 'today' | 'week' | 'none'
+type Due = '' | 'late' | 'today' | 'week' | 'month' | 'none' | 'range'
+type Criada = '' | 'today' | 'week' | 'month' | 'range'
+type Prio = '' | Priority | 'none'
 
 interface List { key: string; title: string; hint?: string; head?: ReactNode; cards: Task[]; status?: TaskStatus; stage?: string; owner?: string; canAdd: boolean }
 /** coluna do quadro: Pedidos (fixa) + as etapas da equipe */
@@ -90,6 +92,12 @@ export default function Quadro() {
   const [mine, setMine] = useState<boolean>(() => load('ev:q:mine', false))
   const [who, setWho] = useState<string[]>([])
   const [due, setDue] = useState<Due>('')
+  const [dueDe, setDueDe] = useState('')
+  const [dueAte, setDueAte] = useState('')
+  const [criada, setCriada] = useState<Criada>('')
+  const [criDe, setCriDe] = useState('')
+  const [criAte, setCriAte] = useState('')
+  const [prio, setPrio] = useState<Prio>('')
   // setor: null = automático (a equipe de quem abre); '' = todas
   const [eqPick, setEq] = useState<string | null>(() => load<string | null>('ev:q:eq', null))
   const [orig, setOrig] = useState<'' | 'plano' | 'geral'>(() => load('ev:q:orig', ''))
@@ -162,7 +170,7 @@ export default function Quadro() {
   // concluídas só da semana atual; as de antes ficam no Relatório da semana
   const since = dayKey(segunda())
   const term = q.trim().toLowerCase()
-  const filtered = mine || qApprove || who.length > 0 || !!due || !!term || !!eqSet || !!orig
+  const filtered = mine || qApprove || who.length > 0 || !!due || !!criada || !!prio || !!term || !!eqSet || !!orig
   const projList = Object.values(projects).filter(p => !p.archived || p.id === project).sort((a, b) => a.name.localeCompare(b.name))
 
   const shown = Object.values(tasksMap).filter(t => {
@@ -177,11 +185,21 @@ export default function Quadro() {
     if (eqSet && !eqSet.has(t.owner_id) && !t.collaborators.some(id => eqSet.has(id)) && !doSetor(t)) return false
     if (orig && (orig === 'plano') !== planoEq.has(t.id)) return false
     if (term && !`${t.title} ${t.notes}`.toLowerCase().includes(term)) return false
+    if (prio && (t.priority ?? 'none') !== prio) return false
+    if (criada) {
+      const c = dayKey(t.created_at)
+      if (criada === 'today' && c !== today) return false
+      if (criada === 'week' && c < addDays(-7)) return false
+      if (criada === 'month' && c < addDays(-30)) return false
+      if (criada === 'range' && ((criDe && c < criDe) || (criAte && c > criAte))) return false
+    }
     if (due === 'none') return !t.due
+    if (due === 'range') return !!t.due && (!dueDe || t.due >= dueDe) && (!dueAte || t.due <= dueAte)
     if (due) {
       if (!t.due || t.status === 'done') return false
       if (due === 'late') return t.due < today
       if (due === 'today') return t.due === today
+      if (due === 'month') return t.due >= today && t.due <= addDays(30)
       return t.due <= week
     }
     return true
@@ -213,7 +231,7 @@ export default function Quadro() {
             head: personHead(p),
             cards: shown.filter(t => comigo(t, p.id) && (t.status !== 'done' || dayKey(t.done_at!) === today)).sort(byStage),
           }))
-          .filter(l => l.owner === meId || !(mine || term || due) || l.cards.length > 0)
+          .filter(l => l.owner === meId || !(mine || term || due || criada || prio) || l.cards.length > 0)
       : []
 
   // raias: uma linha por pessoa, uma coluna por etapa
@@ -225,7 +243,7 @@ export default function Quadro() {
         cards: shown.filter(t => comigo(t, p.id) && inCol(t, c)).sort(sortFor(c.kind)),
       })),
     }))
-    .filter(l => l.p.id === meId || extra.includes(l.p.id) || !(mine || term || due || proj) || l.cells.some(c => c.cards.length > 0))
+    .filter(l => l.p.id === meId || extra.includes(l.p.id) || !(mine || term || due || criada || prio || proj) || l.cells.some(c => c.cards.length > 0))
 
   const dragged = drag ? tasksMap[drag] : undefined
   /** a etapa aceita o cartão? (aprovação só com aprovador; sair da aprovação: dono retira, aprovador aprova) */
@@ -263,7 +281,7 @@ export default function Quadro() {
     })())
   }
   const toggleWho = (id: string) => setWho(w => (w.includes(id) ? w.filter(x => x !== id) : [...w, id]))
-  const clear = () => { setMine(false); setWho([]); setDue(''); setQ(''); setEq(''); setOrig(''); setUi({ qApprove: false }) }
+  const clear = () => { setMine(false); setWho([]); setDue(''); setDueDe(''); setDueAte(''); setCriada(''); setCriDe(''); setCriAte(''); setPrio(''); setQ(''); setEq(''); setOrig(''); setUi({ qApprove: false }) }
 
   /** área que recebe cartões (coluna inteira ou célula da raia) */
   const zone = (l: List, cls: string, header?: ReactNode) => {
@@ -362,12 +380,44 @@ export default function Quadro() {
         <button className={'qchip' + (destaque ? ' on' : '')} onClick={() => setPref('destaque', !destaque)} title="Deixa as suas tarefas mais destacadas no quadro"><Ph n="star" size={14} fill={destaque} />Destacar minhas</button>
         <label className={'qchip' + (due ? ' on' : '')}>
           <Icon n="calendar" size={14} />
-          <select value={due} onChange={e => setDue(e.target.value as Due)} aria-label="Prazo">
-            <option value="">Prazo</option>
+          <select value={due} onChange={e => setDue(e.target.value as Due)} aria-label="Data de entrega">
+            <option value="">Entrega</option>
             <option value="late">Atrasadas</option>
             <option value="today">Vencem hoje</option>
             <option value="week">Até 7 dias</option>
+            <option value="month">Próximos 30 dias</option>
             <option value="none">Sem prazo</option>
+            <option value="range">Escolher período…</option>
+          </select>
+          {due === 'range' && <span className="qperiodo">
+            <input type="date" value={dueDe} max={dueAte || undefined} onChange={e => setDueDe(e.target.value)} aria-label="Entrega de" />
+            <i>até</i>
+            <input type="date" value={dueAte} min={dueDe || undefined} onChange={e => setDueAte(e.target.value)} aria-label="Entrega até" />
+          </span>}
+        </label>
+        <label className={'qchip' + (criada ? ' on' : '')} title="Quando a tarefa foi criada">
+          <Ph n="calendar-blank" size={14} />
+          <select value={criada} onChange={e => setCriada(e.target.value as Criada)} aria-label="Data de criação">
+            <option value="">Criação</option>
+            <option value="today">Criadas hoje</option>
+            <option value="week">Últimos 7 dias</option>
+            <option value="month">Últimos 30 dias</option>
+            <option value="range">Escolher período…</option>
+          </select>
+          {criada === 'range' && <span className="qperiodo">
+            <input type="date" value={criDe} max={criAte || undefined} onChange={e => setCriDe(e.target.value)} aria-label="Criadas de" />
+            <i>até</i>
+            <input type="date" value={criAte} min={criDe || undefined} onChange={e => setCriAte(e.target.value)} aria-label="Criadas até" />
+          </span>}
+        </label>
+        <label className={'qchip' + (prio ? ' on' : '')}>
+          <Ph n="flag-banner" size={14} />
+          <select value={prio} onChange={e => setPrio(e.target.value as Prio)} aria-label="Prioridade">
+            <option value="">Prioridade</option>
+            <option value="alta">Alta</option>
+            <option value="media">Média</option>
+            <option value="baixa">Baixa</option>
+            <option value="none">Sem prioridade</option>
           </select>
         </label>
         <label className={'qchip' + (orig ? ' on' : '')} title="Tarefas que vieram do Plano de marketing ou as de fora dele">
