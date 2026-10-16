@@ -247,3 +247,8 @@ Pendente: push (precisa da migration 202610080900_v4_agenda_metas.sql e do secre
 - Montarias sentadas: `pernas()` em bichos.ts desenha coxas/sapatos (antes era só tronco).
 - Relógio de parede (sala.ts `relogio`): hora/minuto/segundo reais de Brasília.
 - clima.ts `tempoReal()`: Open-Meteo Jaboticatubas (-19.51,-43.75), a cada 15 min; chuva/nublado reais; sem rede cai no sorteio.
+
+## 16/10 (tarde)
+- Bolão: bilhete 1 ☕ (22c5ca4, migration 202610261300). Bingo: cartela 1 ☕ + casa põe 10 no pote (026ec87, 202610261310).
+- Montarias redesenhadas (582eb7d): bicho maior com manta, de frente cabeça no colo, pernas do cavaleiro finas.
+- Pendente: habilidade temporária "roguelike" (semanal/evento); spec anterior não achada; proposta enviada ao usuário.
