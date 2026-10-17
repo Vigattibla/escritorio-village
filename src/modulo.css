@@ -5,6 +5,8 @@
 .md-hoje button { display: flex; align-items: center; gap: 10px; min-width: 0; padding: 10px 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--card, #fff); color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
 .md-hoje button:hover { border-color: var(--ink); }
 .md-hoje button.on { background: var(--ink); border-color: var(--ink); color: #fff; }
+.md-hoje button.alerta:not(.on) { border-color: #F2B8B5; background: #FDF1F0; }
+.md-hoje button.alerta:not(.on) b { color: #C0352B; }
 .md-hoje b { font: 800 22px Poppins; line-height: 1; }
 .md-hoje span { display: grid; min-width: 0; font-size: 13px; font-weight: 600; }
 .md-hoje small { font-weight: 500; font-size: 11.5px; opacity: .7; }

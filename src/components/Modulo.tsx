@@ -55,14 +55,14 @@ export default function ModuloTela({ id }: { id: string }) {
   const [q, setQ] = useState('')
   const [modo, setModo] = useState<'base' | 'lista' | 'cal'>('base')
   const [edit, setEdit] = useState<Registro | null>(null)
-  const [fHoje, setFHoje] = useState<FiltroHoje | null>(null)
+  const [fHoje, setFHoje] = useState<string | null>(null)
   const regs = useMemo(() => Object.values(s.rows.registros).filter(r => r.dept === sala && r.modulo === id).sort((a, b) => a.pos - b.pos), [s.rows.registros, sala, id])
   if (!m) return <p className="pd-vazio">Esse módulo não existe mais.</p>
   const pode = podeEditar(sala)
   const busca = q.trim().toLowerCase()
   const achou = busca ? regs.filter(r => (r.titulo + ' ' + Object.values(r.campos).map(txt).join(' ')).toLowerCase().includes(busca)) : regs
-  const comHoje = temEstadia(m)
-  const vis = comHoje && fHoje ? achou.filter(r => naHoje(r, fHoje)) : achou
+  const comHoje = temEstadia(m), comPrazo = !comHoje && !!m.prazo && m.layout === 'kanban'
+  const vis = fHoje ? achou.filter(r => (comHoje ? naHoje(r, fHoje as FiltroHoje) : comPrazo && noPrazo(m, r, fHoje as FiltroPrazo))) : achou
   const abrir = (p: Partial<Registro> = {}) => pode && setEdit(novoReg(m, sala, p))
   const temLista = m.layout === 'kanban'
   const temBusca = m.layout !== 'rotina' && m.layout !== 'semana'
@@ -81,6 +81,7 @@ export default function ModuloTela({ id }: { id: string }) {
         {pode && m.layout !== 'diario' && m.layout !== 'grade' && <button className="btn primary sm" onClick={() => abrir()}><Ph n="plus" size={16} />{m.novo}</button>}
       </div>
       {comHoje && <Hoje regs={regs} f={fHoje} setF={setFHoje} />}
+      {comPrazo && <Prazos m={m} regs={regs} f={fHoje} setF={setFHoje} />}
       {modo === 'cal' && m.cal ? <Calendario {...ctx} /> : modo === 'lista' ? <Lista {...ctx} /> : <>
         {m.layout === 'kanban' && <Kanban {...ctx} />}
         {m.layout === 'lista' && <Lista {...ctx} />}
@@ -109,7 +110,7 @@ function naHoje(r: Registro, f: FiltroHoje) {
   return !!e && e <= h && (!sa || sa > h) && r.status !== 'saiu'
 }
 const gente = (r: Registro) => num(r.campos.pessoas) || num(r.campos.adultos) + num(r.campos.criancas)
-function Hoje({ regs, f, setF }: { regs: Registro[]; f: FiltroHoje | null; setF: (f: FiltroHoje | null) => void }) {
+function Hoje({ regs, f, setF }: { regs: Registro[]; f: string | null; setF: (f: string | null) => void }) {
   const itens: [FiltroHoje, string, PhName][] = [['chega', 'Chegam hoje', 'person-simple-walk'], ['sai', 'Saem hoje', 'arrow-square-out'], ['casa', 'Na casa', 'bed'], ['amanha', 'Chegam amanhã', 'calendar-blank']]
   return (
     <div className="md-hoje" role="group" aria-label="Resumo do dia">
@@ -118,6 +119,36 @@ function Hoje({ regs, f, setF }: { regs: Registro[]; f: FiltroHoje | null; setF:
         return (
           <button key={k} className={f === k ? 'on' : ''} aria-pressed={f === k} onClick={() => setF(f === k ? null : k)} title={f === k ? 'Mostrar todos' : 'Mostrar só esses'}>
             <Ph n={ic} size={18} /><b>{rs.length}</b><span>{nome}{p > 0 && <small>{p} {p === 1 ? 'pessoa' : 'pessoas'}</small>}</span>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+/** módulos com prazo (chamados, obras, compras, contas…): o que está atrasado e o que vence logo */
+type FiltroPrazo = 'atraso' | 'hoje' | 'semana' | 'sem'
+function noPrazo(m: Modulo, r: Registro, f: FiltroPrazo) {
+  if (m.status.find(e => e.id === r.status)?.fim) return false
+  const d = txt(r.campos[m.prazo!]), h = hoje()
+  if (f === 'sem') return !d
+  if (!d) return false
+  if (f === 'atraso') return d < h
+  if (f === 'hoje') return d === h
+  return d > h && d <= somaDias(h, 7)
+}
+function Prazos({ m, regs, f, setF }: { m: Modulo; regs: Registro[]; f: string | null; setF: (f: string | null) => void }) {
+  const din = m.campos.find(c => c.tipo === 'dinheiro')
+  const itens: [FiltroPrazo, string, PhName][] = [['atraso', 'Atrasados', 'flag-banner'], ['hoje', 'Vencem hoje', 'bell-simple'], ['semana', 'Próximos 7 dias', 'calendar-dots'], ['sem', 'Sem data', 'circle-dashed']]
+  // nada atrasado nem perto de vencer: a faixa só faria barulho
+  if (!f && !regs.some(r => itens.some(([k]) => noPrazo(m, r, k)))) return null
+  return (
+    <div className="md-hoje" role="group" aria-label="Prazos">
+      {itens.map(([k, nome, ic]) => {
+        const rs = regs.filter(r => noPrazo(m, r, k)), v = din ? rs.reduce((a, r) => a + num(r.campos[din.id]), 0) : 0
+        return (
+          <button key={k} className={(f === k ? 'on' : '') + (k === 'atraso' && rs.length ? ' alerta' : '')} aria-pressed={f === k} onClick={() => setF(f === k ? null : k)} title={f === k ? 'Mostrar todos' : 'Mostrar só esses'}>
+            <Ph n={ic} size={18} /><b>{rs.length}</b><span>{nome}{v > 0 && <small>{real(v)}</small>}</span>
           </button>
         )
       })}
