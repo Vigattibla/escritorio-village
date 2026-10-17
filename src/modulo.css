@@ -14,8 +14,8 @@
 .md .grow, .md-ed .grow { flex: 1; }
 
 /* kanban */
-.md-kanban { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(250px, 1fr); gap: 12px; overflow-x: auto; padding-bottom: 8px; align-items: start; }
-.md-col { display: grid; gap: 8px; padding: 10px; border-radius: 14px; background: color-mix(in srgb, var(--c) 7%, var(--bg)); border: 1px solid transparent; min-height: 120px; transition: border-color .15s; }
+.md-kanban { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(210px, 1fr); gap: 12px; overflow-x: auto; padding-bottom: 8px; align-items: start; }
+.md-col { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; padding: 10px; border-radius: 14px; background: color-mix(in srgb, var(--c) 7%, var(--bg)); border: 1px solid transparent; min-height: 120px; transition: border-color .15s; }
 .md-col.sobre { border-color: var(--c); background: color-mix(in srgb, var(--c) 14%, var(--bg)); }
 .md-col.fim { opacity: .85; }
 .md-col header { display: flex; align-items: center; gap: 8px; font-size: 13px; }
