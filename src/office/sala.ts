@@ -215,6 +215,27 @@ export const KINDS: Record<string, Kind> = {
     r(c, OUT, x + 5, y - 2, 6, 14); r(c, '#F76B15', x + 6, y - 1, 4, 13); r(c, '#fbfbf8', x + 6, y + 3, 4, 2); r(c, '#fbfbf8', x + 6, y + 8, 4, 2)
     box(c, '#FBC222', x + 9, y + 7, 6, 4); r(c, '#e0a810', x + 8, y + 10, 8, 1)
   } },
+  // ---- cozinha (A&B) ----
+  'fogao-industrial': { nome: 'Fogão industrial', tema: 'Escritório', w: 2, h: 1, up: 2, draw: (c, x, y, t) => {
+    box(c, '#c9ced8', x + 1, y - 22, 30, 10); r(c, '#9aa1ad', x + 1, y - 13, 30, 1)
+    box(c, '#b8bec9', x + 1, y - 6, 30, 21); r(c, '#2d2d33', x + 2, y - 6, 28, 4)
+    for (const bx of [x + 5, x + 13, x + 21]) { r(c, '#45454e', bx, y - 5, 6, 2); if (blink(t, 220)) r(c, '#f39c35', bx + 2, y - 6, 2, 1) }
+    box(c, '#8b929e', x + 4, y + 2, 24, 9); r(c, '#2d2d33', x + 7, y + 5, 18, 3); r(c, '#c8ccd3', x + 12, y + 1, 8, 1)
+    box(c, '#45454e', x + 7, y - 11, 8, 5); r(c, '#6b6b70', x + 8, y - 10, 6, 1)
+    for (let k = 0; k < 2; k++) { const p = ((t / 1300) + k / 2) % 1; r(c, `rgba(255,255,255,${0.8 - p * 0.8})`, x + 10 + Math.round(Math.sin(p * 6)), y - 13 - p * 8, 2, 1) }
+    r(c, SHADOW, x + 2, y + 15, 28, 1)
+  } },
+  'bancada-inox': { nome: 'Bancada de inox', tema: 'Escritório', w: 2, h: 1, up: 1, draw: (c, x, y) => {
+    box(c, '#d6dbe3', x + 1, y - 5, 30, 6); r(c, '#eef1f5', x + 2, y - 4, 28, 1)
+    box(c, '#fbfbf8', x + 4, y - 9, 9, 4); r(c, '#3fa66b', x + 6, y - 8, 2, 2); r(c, '#e05a47', x + 9, y - 8, 2, 2)
+    box(c, '#a8774c', x + 18, y - 8, 9, 3)
+    r(c, '#9aa1ad', x + 1, y + 1, 30, 1); r(c, OUT, x + 3, y + 2, 2, 12); r(c, OUT, x + 27, y + 2, 2, 12)
+    r(c, '#b8bec9', x + 5, y + 9, 22, 2); r(c, SHADOW, x + 2, y + 15, 28, 1)
+  } },
+  'lousa-cardapio': { nome: 'Lousa do cardápio', tema: 'Escritório', w: 2, h: 1, camada: 'parede', draw: (c, x) => {
+    box(c, '#8a5a36', x + 3, 7, 26, 17); r(c, '#2b3a33', x + 5, 9, 22, 13)
+    r(c, '#fbfbf8', x + 8, 11, 9, 1); r(c, '#d6dbe3', x + 8, 14, 13, 1); r(c, '#d6dbe3', x + 8, 17, 11, 1); r(c, '#FBC222', x + 22, 14, 2, 1); r(c, '#FBC222', x + 22, 17, 2, 1)
+  } },
 
   // ---- Resort ----
   'guarda-sol': {
@@ -590,6 +611,20 @@ export const MODELOS: Record<string, { nome: string; desc: string; piso: Piso; m
     add('planta', 1, 2)
     add('janela', 3, 0); add('mural-ocupacao', 7, 0); add('quadro-kanban', 10, 0); add('relogio', 13, 0)
   } },
+  cozinha: { nome: 'Cozinha e copa', desc: 'fogões e bancadas no fundo, mesas da equipe no salão, lousa do cardápio', piso: 'ceramica', monta: add => {
+    for (let i = 0; i < MAX_DESKS; i++) add('mesa', 9 + (i % 6) * 2, 7 + Math.floor(i / 6) * 4, i)
+    add('fogao-industrial', 9, 2); add('fogao-industrial', 11, 2); add('bancada-inox', 13, 2); add('bancada-inox', 15, 2)
+    add('geladeira', 18, 2); add('geladeira', 19, 2); add('espresso', 22, 2)
+    add('estante', 2, 2); add('planta', 1, 14); add('planta', 22, 14)
+    add('lousa-cardapio', 5, 0); add('janela', 9, 0); add('janela', 13, 0); add('relogio', 17, 0); add('calendario', 18, 0)
+  } },
+  reuniao: { nome: 'Sala de pessoas', desc: 'mesas em L, mesa de reunião pra entrevista e cantinho de conversa', piso: 'carpete', monta: add => {
+    for (let i = 0; i < MAX_DESKS; i++) add('mesa', 7 + (i % 4) * 3, 4 + Math.floor(i / 4) * 3, i)
+    add('mesa-reuniao', 16, 11); add('sofa', 7, 13)
+    add('estante', 2, 2); add('arquivo', 20, 2); add('arquivo', 21, 2); add('bebedouro', 22, 2)
+    for (const [x, y] of [[1, 14], [22, 14], [12, 13]]) add('planta', x, y)
+    add('janela', 5, 0); add('quadro-branco', 9, 0); add('calendario', 13, 0); add('arte', 15, 0); add('janela', 18, 0)
+  } },
   aberto: { nome: 'Open office', desc: '2 bancadas compridas no centro e um cantinho de sofá', piso: 'madeira', monta: add => {
     for (let i = 0; i < MAX_DESKS; i++) add('mesa', 6 + (i % 6) * 2, 5 + Math.floor(i / 6) * 5, i)
     add('sofa', 19, 13); add('estante', 2, 2); add('impressora', 20, 2)
@@ -600,7 +635,7 @@ export const MODELOS: Record<string, { nome: string; desc: string; piso: Piso; m
 /** modelo que cada tipo de setor ganha de fábrica */
 export const MODELO_DO_TIPO: Record<string, string> = {
   marketing: 'ilhas', eventos: 'ilhas', recreacao: 'ilhas', comercial: 'central', reservas: 'central', recepcao: 'central',
-  obras: 'obra', manutencao: 'oficina', governanca: 'rouparia', financeiro: 'aberto', ti: 'aberto',
+  obras: 'obra', manutencao: 'oficina', governanca: 'rouparia', financeiro: 'aberto', ti: 'aberto', ab: 'cozinha', rh: 'reuniao',
 }
 export const modeloDe = (tipo?: string | null) => (tipo && MODELO_DO_TIPO[tipo]) || 'padrao'
 
