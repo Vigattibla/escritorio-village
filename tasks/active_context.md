@@ -265,3 +265,4 @@ Pendente: push (precisa da migration 202610080900_v4_agenda_metas.sql e do secre
 - c45a47a: modelo `cozinha` (A&B: fogão industrial, bancada inox, geladeira, lousa do cardápio) e `reuniao` (RH: mesa de reunião + sofá). MODELO_DO_TIPO agora cobre todos os tipos menos geral.
 - Modelo só vale pra sala sem layout salvo (parseSala cai no original(modelo)); sala já arrumada mantém o que tem.
 - Próximo: conferir sala RH num setor real; varredura de UI no celular (Grade/Quadro).
+- Pente fino celular: Mais → "Da sala" lista os módulos da sala atual (abasDe) menos o 1º, que vai na barra de baixo — vale pra todo tipo de setor, sem mudança.
