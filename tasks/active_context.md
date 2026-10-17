@@ -266,3 +266,6 @@ Pendente: push (precisa da migration 202610080900_v4_agenda_metas.sql e do secre
 - Modelo só vale pra sala sem layout salvo (parseSala cai no original(modelo)); sala já arrumada mantém o que tem.
 - Próximo: conferir sala RH num setor real; varredura de UI no celular (Grade/Quadro).
 - Pente fino celular: Mais → "Da sala" lista os módulos da sala atual (abasDe) menos o 1º, que vai na barra de baixo — vale pra todo tipo de setor, sem mudança.
+- f5bb675: barra do celular encurta nome de módulo longo ("Cardápio da semana" → "Cardápio"); seedSetores não duplica registros ao semear de novo; escala A&B cobre seg–dom.
+- Conferido no celular (demo): Quartos (grade), Escala, Obras (kanban rola na horizontal com a próxima coluna à vista) — ok.
+- Pendente: sala RH (modelo reuniao) só dá pra ver num setor RH real.
