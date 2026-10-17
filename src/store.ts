@@ -1,7 +1,7 @@
 import { pref } from './prefs'
 import { useSyncExternalStore } from 'react'
 import { backend } from './data'
-import { canAssign, DEPT0, deptOf, isChief, managerOf, outranks, rankName, rankOf } from './game/ranks'
+import { canAssign, DEPT0, deptOf, isChief, outranks, pontoDaSala, rankName, rankOf } from './game/ranks'
 import { chegada, HALL, SLOTS } from './office/andar'
 import { dayKey, taskXp } from './game/xp'
 import { MAX_DESKS } from './office/base'
@@ -668,7 +668,7 @@ export function goTo(where: string) {
 }
 /** bate na porta fechada: avisa o gerente da sala (sem gerente, a Chefe) */
 export async function knock(id: string) {
-  const g = managerOf(state.profiles, id) ?? Object.values(state.profiles).find(p => isChief(p) && p.id !== state.meId)
+  const g = pontoDaSala(state.profiles, id, state.meId)
   if (!g || !state.meId || g.id === state.meId) throw new Error('Essa sala ainda não tem quem atenda a porta.')
   await send(dmChannel(state.meId, g.id), `🚪 Toc, toc! Estou na porta da sala ${deptName(id)}.`)
 }

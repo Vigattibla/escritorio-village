@@ -16,6 +16,12 @@ export const managerOf = (profiles: Record<string, Profile>, sala?: string) =>
   Object.values(profiles).filter(p => p.avatar && rankOf(p) === 3 && (!sala || deptOf(p) === sala)).sort((a, b) => a.name.localeCompare(b.name))[0]
 
 /** manda em `b`: Chefe sempre; senão cargo maior na mesma sala (igual ao outranks do banco) */
+/** Quem recebe pedido de uma sala: o Gerente; sem Gerente, o maior cargo de lá; sala vazia, a Chefe */
+export const pontoDaSala = (profiles: Record<string, Profile>, sala: string, meId?: string | null) =>
+  managerOf(profiles, sala)
+  ?? Object.values(profiles).filter(p => p.avatar && p.id !== meId && deptOf(p) === sala).sort((a, b) => rankOf(b) - rankOf(a) || a.name.localeCompare(b.name))[0]
+  ?? Object.values(profiles).filter(p => isChief(p) && p.id !== meId).sort((a, b) => a.name.localeCompare(b.name))[0]
+
 export const outranks = (a: Profile | undefined, b: Profile | undefined) =>
   !!a && !!b && (isChief(a) || (rankOf(a) > rankOf(b) && deptOf(a) === deptOf(b)))
 

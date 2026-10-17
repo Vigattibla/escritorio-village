@@ -11,7 +11,7 @@ import type { PhName } from './ph'
 import { CHANNEL_KEYS, CHANNELS } from './v4'
 import Estudio, { type AbaEstudio, useAprovaEstudio, usePuxar } from './Estudio'
 import { lerAprovar, type ParaAprovar } from '../data/estudio'
-import { deptOf, managerOf, rankOf } from '../game/ranks'
+import { deptOf, pontoDaSala, rankOf } from '../game/ranks'
 
 const ES_KEY = 'rd-estudio'
 const lerAberto = () => { try { return localStorage.getItem(ES_KEY) === '1' } catch { return false } }
@@ -204,7 +204,7 @@ function Card({ t, p }: { t: Task; p?: Postagem }) {
   const dono = useStore(s => s.profiles[t.owner_id])
   const de = useStore(s => s.parc.tasks[t.id] ? deptOf(t) : null)
   const cor = useStore(s => de ? s.rows.depts[de]?.color : undefined)
-  const g = useStore(s => de ? managerOf(s.profiles, de) : undefined)
+  const g = useStore(s => de ? pontoDaSala(s.profiles, de, s.meId) : undefined)
   const ch = t.channel ? CHANNELS[t.channel] : null
   const imgs = t.attachments.filter(a => a.type.startsWith('image/'))
   const data = p?.estado === 'publicado' ? p.em : p?.quando ?? t.publish_at

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { dayKey } from '../game/xp'
 import { addTask, approverOf, canApprove, CHEFIA, deptName, getState, hasCanais, parceiroDe, putRow, review, run, setUi, team as salaTeam, updateTask, useStore } from '../store'
-import { deptOf, managerOf } from '../game/ranks'
+import { deptOf, pontoDaSala } from '../game/ranks'
 import type { CalEvent, Channel, Task } from '../types'
 import { Bell } from './Avisos'
 import Icon, { Ph } from './Icon'
@@ -296,7 +296,7 @@ function ParcCard({ i }: { i: Item }) {
   const depts = useStore(s => s.rows.depts)
   const de = i.de!
   const d = depts[de]
-  const g = managerOf(profiles, de)
+  const g = pontoDaSala(profiles, de, getState().meId)
   const who = i.kind === 'evento' ? profiles[i.e.created_by] : profiles[i.t.owner_id]
   const ch = i.kind === 'post' && i.t.channel ? CHANNELS[i.t.channel] : null
   return (
