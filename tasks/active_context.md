@@ -279,3 +279,4 @@ Pendente: push (precisa da migration 202610080900_v4_agenda_metas.sql e do secre
 - ad4b5d7: FAIXAS.achados (guardados, +30 dias em alerta, sem dono, devolvidos no mês) + seedAchados na demo (recepção). Faixas novas conferidas a 375px sem rolagem lateral.
 - 43d5b60 + 4afc8f0: modelos de sala novos em sala.ts — Recepção de hotel (balcão em 2 fileiras + lobby com sofás) e Sala da recreação (bancadas + roda de pufes); MODELO_DO_TIPO recepcao/recreacao apontam pra eles. Vale só pra sala sem layout salvo (ou Arrumar sala → Montar modelo).
 - a9bda6b: modelo Sala de TI (bancada de monitores + 4 racks com LED piscando + telão) e objeto novo rack-servidor no catálogo; MODELO_DO_TIPO ti → ti. Financeiro segue no Open office.
+- e6418d5: modelo Sala do financeiro (bancadas de 2 em 3 fileiras, 4 arquivos na parede, calendário); MODELO_DO_TIPO financeiro → financeiro. Agora todo tipo de setor tem sala própria (geral = clássico).
