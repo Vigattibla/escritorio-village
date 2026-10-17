@@ -61,8 +61,9 @@ export default function ModuloTela({ id }: { id: string }) {
   const pode = podeEditar(sala)
   const busca = q.trim().toLowerCase()
   const achou = busca ? regs.filter(r => (r.titulo + ' ' + Object.values(r.campos).map(txt).join(' ')).toLowerCase().includes(busca)) : regs
-  const comHoje = temEstadia(m), comPrazo = !comHoje && !!m.prazo && m.layout === 'kanban'
-  const vis = fHoje ? achou.filter(r => (comHoje ? naHoje(r, fHoje as FiltroHoje) : comPrazo && noPrazo(m, r, fHoje as FiltroPrazo))) : achou
+  const comHoje = temEstadia(m), comFila = !comHoje && m.layout === 'kanban' && m.campos.some(c => c.id === 'urg')
+  const comPrazo = !comHoje && !comFila && !!m.prazo && m.layout === 'kanban'
+  const vis = !fHoje ? achou : achou.filter(r => comHoje ? naHoje(r, fHoje as FiltroHoje) : comFila ? naFila(m, r, fHoje as FiltroFila) : comPrazo && noPrazo(m, r, fHoje as FiltroPrazo))
   const abrir = (p: Partial<Registro> = {}) => pode && setEdit(novoReg(m, sala, p))
   const temLista = m.layout === 'kanban'
   const temBusca = m.layout !== 'rotina' && m.layout !== 'semana'
@@ -81,6 +82,7 @@ export default function ModuloTela({ id }: { id: string }) {
         {pode && m.layout !== 'diario' && m.layout !== 'grade' && <button className="btn primary sm" onClick={() => abrir()}><Ph n="plus" size={16} />{m.novo}</button>}
       </div>
       {comHoje && <Hoje regs={regs} f={fHoje} setF={setFHoje} />}
+      {comFila && <Fila m={m} regs={regs} f={fHoje} setF={setFHoje} />}
       {comPrazo && <Prazos m={m} regs={regs} f={fHoje} setF={setFHoje} />}
       {modo === 'cal' && m.cal ? <Calendario {...ctx} /> : modo === 'lista' ? <Lista {...ctx} /> : <>
         {m.layout === 'kanban' && <Kanban {...ctx} />}
@@ -149,6 +151,34 @@ function Prazos({ m, regs, f, setF }: { m: Modulo; regs: Registro[]; f: string |
         return (
           <button key={k} className={(f === k ? 'on' : '') + (k === 'atraso' && rs.length ? ' alerta' : '')} aria-pressed={f === k} onClick={() => setF(f === k ? null : k)} title={f === k ? 'Mostrar todos' : 'Mostrar só esses'}>
             <Ph n={ic} size={18} /><b>{rs.length}</b><span>{nome}{v > 0 && <small>{real(v)}</small>}</span>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+/** filas de chamado (manutenção, TI): o que está aberto, o que é urgente, o que ficou parado */
+type FiltroFila = 'abertos' | 'urgentes' | 'parados' | 'feitos'
+const DIA_MS = 864e5
+function naFila(m: Modulo, r: Registro, f: FiltroFila) {
+  const fim = !!m.status.find(e => e.id === r.status)?.fim
+  if (f === 'feitos') return fim && new Date(r.em).toLocaleDateString('sv-SE') === hoje()
+  if (fim) return false
+  if (f === 'urgentes') return ['Alta', 'Urgente'].includes(txt(r.campos.urg))
+  if (f === 'parados') return Date.now() - new Date(r.em).getTime() > 3 * DIA_MS
+  return true
+}
+function Fila({ m, regs, f, setF }: { m: Modulo; regs: Registro[]; f: string | null; setF: (f: string | null) => void }) {
+  const itens: [FiltroFila, string, PhName][] = [['abertos', 'Em aberto', 'circle-dashed'], ['urgentes', 'Urgentes', 'flag-banner'], ['parados', 'Parados há 3+ dias', 'pause'], ['feitos', 'Resolvidos hoje', 'check-circle']]
+  if (!f && !regs.some(r => itens.some(([k]) => naFila(m, r, k)))) return null
+  return (
+    <div className="md-hoje" role="group" aria-label="Fila">
+      {itens.map(([k, nome, ic]) => {
+        const n = regs.filter(r => naFila(m, r, k)).length
+        return (
+          <button key={k} className={(f === k ? 'on' : '') + ((k === 'urgentes' || k === 'parados') && n ? ' alerta' : '')} aria-pressed={f === k} onClick={() => setF(f === k ? null : k)} title={f === k ? 'Mostrar todos' : 'Mostrar só esses'}>
+            <Ph n={ic} size={18} /><b>{n}</b><span>{nome}</span>
           </button>
         )
       })}
