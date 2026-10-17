@@ -17,8 +17,8 @@ export const FH = HY1 + 1 + MH
 function hallObjs(): [string, number, number][] {
   const o: [string, number, number][] = [['elevador', 1, HY0], ['planta', FW - 2, HY0], ['planta', 1, HY1], ['planta', FW - 2, HY1]]
   for (const r of rooms) {
-    // na emenda entre duas salas: sofá entre plantas (em cima), bebedouro (embaixo)
-    if (r.ox > 0) o.push(...(r.top ? [['planta', r.ox - 3, HY0], ['sofa', r.ox - 2, HY0], ['planta', r.ox + 2, HY0]] : [['bebedouro', r.ox - 1, HY1], ['planta', r.ox, HY1]]) as [string, number, number][])
+    // na emenda entre duas salas: um sofá (em cima) ou uma planta (embaixo); bebedouro já tem dentro das salas
+    if (r.ox > 0) o.push(r.top ? ['sofa', r.ox - 2, HY0] : ['planta', r.ox, HY1])
     if (r.w >= 16) o.push([r.top ? 'banco-madeira' : 'canteiro', r.slot % 2 ? r.ox + r.w - 7 : r.ox + 5, r.top ? HY0 : HY1])
   }
   return o

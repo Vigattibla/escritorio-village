@@ -39,9 +39,9 @@ const deskIdx = (p: Profile, r: Room) => {
   if (p.desk >= 0 && p.desk < MAX_DESKS && hasDesk(r, p.desk)) return p.desk
   return deskIds(r).find(i => i !== BOSS_DESK) ?? 0
 }
-/** o andar é só do setor aberto: em cima a sala dele, cozinha e banheiro; embaixo a sala do gerente (se ele quiser), jogos e uma vaga.
- *  Pra crescer: troca uma 'vaga' por um cômodo novo de comodos.ts. */
-const ANDAR = (gerente: boolean): Kind[] => ['dept', 'cozinha', 'banheiro', gerente ? 'gerente' : 'vaga', 'jogos', 'bingo']
+/** o andar é só do setor aberto: em cima a sala dele, cozinha e banheiro; embaixo a sala do gerente (ou a de reunião), jogos e bingo.
+ *  Pra crescer: entra um cômodo novo de comodos.ts na lista. */
+const ANDAR = (gerente: boolean): Kind[] => ['dept', 'cozinha', 'banheiro', gerente ? 'gerente' : 'reuniao', 'jogos', 'bingo']
 let floorSeen: unknown[] = []
 /** dá pra passar pela porta: vaga nunca, cômodos sempre, sala do setor/gerente pela regra da porta */
 const enterable = (r: Room | undefined, s: State = getState()) => !!r && r.kind !== 'vaga' && (!r.dept || canEnter(r.dept, s))

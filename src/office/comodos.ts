@@ -4,7 +4,7 @@ import type { Dir } from '../types'
 import type { Prop } from './vida'
 
 /** o que cada sala do andar é: o setor, a sala do gerente, os cômodos de uso comum e a sala ainda vazia */
-export type Kind = 'dept' | 'gerente' | 'cozinha' | 'jogos' | 'bingo' | 'banheiro' | 'vaga'
+export type Kind = 'dept' | 'gerente' | 'reuniao' | 'cozinha' | 'jogos' | 'bingo' | 'banheiro' | 'vaga'
 /** cômodo que é de todo mundo do andar (sempre aberto) */
 export const COMUM = new Set<Kind>(['cozinha', 'jogos', 'bingo', 'banheiro'])
 
@@ -54,7 +54,7 @@ export const COMODOS: Record<Exclude<Kind, 'dept' | 'vaga'>, Comodo> = {
       ['relogio', 2, 0], ['menu-giz', 10, 0], ['janela', 12, 0], ['janela', 17, 0], ['cartaz', 19, 0],
       ['mesa-jantar', 3, 7], ['mesa-jantar', 13, 7],
       ['bistro', 2, 11], ['bistro', 17, 11],
-      ['planta', 1, 14], ['planta', 20, 14], ['planta', 8, 7], ['planta', 11, 7],
+      ['planta', 1, 14], ['planta', 20, 14],
     ]),
     spots: [
       S(14, 3, 'up', 'Tomando um café', 20, 60, false, { prop: 'caneca', icon: '☕' }), S(15, 3, 'up', 'Escolhendo um doce', 15, 40),
@@ -93,7 +93,7 @@ export const COMODOS: Record<Exclude<Kind, 'dept' | 'vaga'>, Comodo> = {
       ['caca-niquel', 23, 2], ['caca-niquel', 24, 2], ['caca-niquel', 25, 2], ['caca-niquel', 26, 2],
       ['mesa-roleta', 19, 6], ['mesa-cartas', 19, 10], ['totem-crash', 26, 6], ['totem-minas', 26, 9],
       ['caixa-fichas', 22, 13], ['maquina-refri', 26, 13],
-      ['planta', 5, 2], ['planta', 12, 2], ['planta', 15, 2], ['planta', 1, 11], ['planta', 7, 14], ['planta', 16, 14],
+      ['planta', 1, 11], ['planta', 16, 14],
     ]),
     spots: [
       S(2, 4, 'up', 'No videogame', 60, 200), S(3, 4, 'up', 'No videogame', 60, 200),
@@ -120,7 +120,7 @@ export const COMODOS: Record<Exclude<Kind, 'dept' | 'vaga'>, Comodo> = {
       ['mesa-bingo', 2, 8], ['cadeira-reuniao', 2, 9], ['cadeira-reuniao', 4, 9],
       ['mesa-bingo', 11, 8], ['cadeira-reuniao', 11, 9], ['cadeira-reuniao', 13, 9],
       ['globo-bingo', 7, 12], ['banca-cartelas', 1, 13], ['maquina-refri', 14, 13],
-      ['planta', 1, 2], ['planta', 14, 2], ['planta', 1, 11], ['planta', 14, 11], ['planta', 5, 15], ['planta', 10, 15],
+      ['planta', 1, 11], ['planta', 14, 11],
     ]),
     spots: [
       S(2, 6, 'up', 'Jogando bingo', 60, 200), S(4, 6, 'up', 'Jogando bingo', 60, 200),
@@ -135,9 +135,28 @@ export const COMODOS: Record<Exclude<Kind, 'dept' | 'vaga'>, Comodo> = {
     sala: () => monta('madeira', 16, 14, [
       ['tapete-chefe', 5, 5], ['mesa-chefe', 6, 7, BOSS_DESK], ['cadeira-reuniao', 6, 9], ['cadeira-reuniao', 8, 9],
       ['estante', 2, 11], ['arquivo', 12, 11], ['sofa', 10, 10],
-      ['planta', 1, 2], ['planta', 14, 2], ['planta', 1, 11], ['planta', 14, 11],
+      ['planta', 1, 2], ['planta', 14, 11],
+      ['janela', 3, 0], ['quadro-branco', 7, 0], ['relogio', 11, 0], ['janela', 12, 0],
     ]),
     spots: [],
+  },
+  reuniao: {
+    nome: 'Sala de reunião', cor: '#3f7f6e', top: false,
+    // mesa grande no meio, TV e quadro na parede; corredor de baixo livre pra porta (7-8)
+    sala: () => monta('carpete', 16, 14, [
+      ['quadro-branco', 2, 0], ['tv', 7, 0], ['relogio', 10, 0], ['janela', 12, 0],
+      ['mesa-reuniao', 5, 5],
+      ['cadeira-reuniao', 5, 4], ['cadeira-reuniao', 7, 4], ['cadeira-reuniao', 9, 4],
+      ['cadeira-reuniao', 5, 9], ['cadeira-reuniao', 9, 9],
+      ['cadeira-reuniao', 4, 6], ['cadeira-reuniao', 10, 6],
+      ['bebedouro', 14, 2], ['planta', 1, 2], ['planta', 14, 11],
+    ]),
+    spots: [
+      S(5, 4, 'down', 'Em reunião', 60, 200), S(7, 4, 'down', 'Em reunião', 60, 200), S(9, 4, 'down', 'Apresentando', 40, 150),
+      S(5, 9, 'up', 'Em reunião', 60, 200), S(9, 9, 'up', 'Anotando', 40, 150),
+      S(4, 6, 'right', 'Em call', 40, 150), S(10, 6, 'left', 'Em reunião', 60, 200),
+      S(3, 2, 'up', 'No quadro', 20, 60), S(14, 3, 'up', 'Bebendo água', 8, 20, false, { prop: 'copo', icon: '💧' }),
+    ],
   },
 }
 
