@@ -812,6 +812,11 @@ function seedSetores() {
     r('ab', 'estoque', 'Óleo de soja', 'ok', { qtd: 4, min: 10, unid: 'L', local: 'Despensa' }),
     r('ab', 'estoque', 'Arroz', 'ok', { qtd: 50, min: 20, unid: 'kg', local: 'Despensa' }),
     r('ab', 'rotina', 'Conferir temperatura das câmaras frias', 'ativo', { turno: 'Abertura', resp: 'demo-bruno' }),
+    r('ab', 'escala', 'Cozinheiro', 'ok', { dia: dia(-1), hora: '06:00', resp: 'demo-bruno', local: 'Cozinha', publico: 'Manhã' }),
+    r('ab', 'escala', 'Garçom', 'ok', { dia: dia(0), hora: '11:00', resp: 'demo-ana', local: 'Restaurante', publico: 'Intermediário' }),
+    r('ab', 'escala', 'Cozinheiro', 'ok', { dia: dia(0), hora: '06:00', resp: 'demo-bruno', local: 'Cozinha', publico: 'Manhã' }),
+    r('ab', 'escala', 'Bar da piscina', 'ok', { dia: dia(1), hora: '14:00', resp: 'demo-ana', local: 'Bar', publico: 'Tarde' }),
+    r('ab', 'escala', 'Cozinheiro', 'cancelada', { dia: dia(1), hora: '06:00', resp: 'demo-bruno', local: 'Cozinha', publico: 'Manhã', obs: 'Folga' }),
   ]
   write(K.row + 'registros', { ...read<Record<string, Registro>>(K.row + 'registros', {}), ...Object.fromEntries(regs.map(x => [x.id, x])) })
 }
