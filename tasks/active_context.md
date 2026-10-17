@@ -272,3 +272,4 @@ Pendente: push (precisa da migration 202610080900_v4_agenda_metas.sql e do secre
 - 9f27f1d: kanban dos módulos minmax(210px) → 4 colunas cabem em 1280.
 - Conferido: Reservas (kanban), Contratações (celular), Programação, Chamados, sala central (fileiras de mesas).
 - 0a3bd26: no Quadro a câmera "Escritório agora" começa recolhida (botão Ver câmera/Recolher, guarda em `ev:live:aberto`; recolhida não roda o ciclo de pessoas) — quadro aparece sem rolar. Adesivo do demo nasce no canto (x/y 0.95). Sala oficina (Manutenção) conferida.
+- 4a29313 + b07e85b: módulos com entrada/saída (Chegadas, reservas, grupos) têm faixa Hoje (chegam/saem/na casa/amanhã, clicável como filtro); módulos kanban com prazo (Obras, Compras, Chamados, Contas, Funil) têm faixa de prazos (atrasados com valor, hoje, 7 dias, sem data) — some quando não há nada a mostrar.
