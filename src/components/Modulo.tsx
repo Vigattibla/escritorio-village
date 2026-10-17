@@ -64,7 +64,8 @@ export default function ModuloTela({ id }: { id: string }) {
   const comHoje = temEstadia(m), comFila = !comHoje && m.layout === 'kanban' && m.campos.some(c => c.id === 'urg' || (c.id === 'quando' && c.tipo === 'hora'))
   const comPrazo = !comHoje && !comFila && !!m.prazo && (m.layout === 'kanban' || m.layout === 'lista')
   const comAgenda = !comHoje && !comFila && !comPrazo && m.layout === 'kanban' && !!m.cal && m.campos.some(c => c.tipo === 'dinheiro')
-  const vis = !fHoje ? achou : achou.filter(r => comHoje ? naHoje(r, fHoje as FiltroHoje) : comFila ? naFila(m, r, fHoje as FiltroFila) : comPrazo ? noPrazo(m, r, fHoje as FiltroPrazo) : comAgenda && naAgenda(m, r, fHoje as FiltroAgenda))
+  const faixa = !comHoje && !comFila && !comPrazo && !comAgenda ? FAIXAS[m.id] : undefined
+  const vis = !fHoje ? achou : achou.filter(r => comHoje ? naHoje(r, fHoje as FiltroHoje) : comFila ? naFila(m, r, fHoje as FiltroFila) : comPrazo ? noPrazo(m, r, fHoje as FiltroPrazo) : comAgenda ? naAgenda(m, r, fHoje as FiltroAgenda) : !!faixa?.find(x => x.id === fHoje)?.ok(r))
   const abrir = (p: Partial<Registro> = {}) => pode && setEdit(novoReg(m, sala, p))
   const temLista = m.layout === 'kanban'
   const temBusca = m.layout !== 'rotina' && m.layout !== 'semana'
@@ -86,6 +87,7 @@ export default function ModuloTela({ id }: { id: string }) {
       {comFila && <Fila m={m} regs={regs} f={fHoje} setF={setFHoje} />}
       {comPrazo && <Prazos m={m} regs={regs} f={fHoje} setF={setFHoje} />}
       {comAgenda && <Agenda m={m} regs={regs} f={fHoje} setF={setFHoje} />}
+      {faixa && <Faixa nome={m.nome} itens={faixa} regs={regs} f={fHoje} setF={setFHoje} />}
       {modo === 'cal' && m.cal ? <Calendario {...ctx} /> : modo === 'lista' ? <Lista {...ctx} /> : <>
         {m.layout === 'kanban' && <Kanban {...ctx} />}
         {m.layout === 'lista' && <Lista {...ctx} />}
@@ -182,6 +184,40 @@ function Agenda({ m, regs, f, setF }: { m: Modulo; regs: Registro[]; f: string |
         return (
           <button key={k} className={f === k ? 'on' : ''} aria-pressed={f === k} onClick={() => setF(f === k ? null : k)} title={f === k ? 'Mostrar todos' : 'Mostrar só esses'}>
             <Ph n={ic} size={18} /><b>{rs.length}</b><span>{nome}{v > 0 && <small>{real(v)}</small>}</span>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+/** faixas próprias de um módulo (RH): cada item é um filtro com nome, ícone e se pede atenção */
+type ItemFaixa = { id: string; nome: string; ic: PhName; ok: (r: Registro) => boolean; alerta?: boolean }
+const aberto = (r: Registro) => !['contratado', 'nao', 'gozado', 'negado'].includes(r.status)
+const entre = (d: string, a: string, b: string) => !!d && d >= a && d <= b
+const FAIXAS: Record<string, ItemFaixa[]> = {
+  admissao: [
+    { id: 'processo', nome: 'Em processo', ic: 'circle-dashed', ok: aberto },
+    { id: 'entrevista', nome: 'Para entrevistar', ic: 'user-circle', ok: r => r.status === 'entrevista' },
+    { id: 'comecam', nome: 'Começam em 7 dias', ic: 'calendar-dots', ok: r => r.status !== 'nao' && entre(txt(r.campos.inicio), hoje(), somaDias(hoje(), 7)) },
+    { id: 'mes', nome: 'Contratados no mês', ic: 'check-circle', ok: r => r.status === 'contratado' && txt(r.campos.inicio).slice(0, 7) === hoje().slice(0, 7) },
+  ],
+  ferias: [
+    { id: 'fora', nome: 'Fora hoje', ic: 'person-simple-walk', ok: r => r.status !== 'negado' && entre(hoje(), txt(r.campos.inicio), txt(r.campos.fim) || txt(r.campos.inicio)) },
+    { id: 'saem', nome: 'Saem em 7 dias', ic: 'calendar-dots', ok: r => r.status !== 'negado' && entre(txt(r.campos.inicio), somaDias(hoje(), 1), somaDias(hoje(), 7)) },
+    { id: 'pedidos', nome: 'Esperando resposta', ic: 'bell-simple', ok: r => r.status === 'pedido', alerta: true },
+    { id: 'semcobre', nome: 'Sem quem cobre', ic: 'user-circle', ok: r => aberto(r) && !txt(r.campos.cobre) && (txt(r.campos.fim) || txt(r.campos.inicio)) >= hoje(), alerta: true },
+  ],
+}
+function Faixa({ nome, itens, regs, f, setF }: { nome: string; itens: ItemFaixa[]; regs: Registro[]; f: string | null; setF: (f: string | null) => void }) {
+  if (!f && !regs.some(r => itens.some(x => x.ok(r)))) return null
+  return (
+    <div className="md-hoje" role="group" aria-label={nome}>
+      {itens.map(x => {
+        const n = regs.filter(x.ok).length
+        return (
+          <button key={x.id} className={(f === x.id ? 'on' : '') + (x.alerta && n ? ' alerta' : '')} aria-pressed={f === x.id} onClick={() => setF(f === x.id ? null : x.id)} title={f === x.id ? 'Mostrar todos' : 'Mostrar só esses'}>
+            <Ph n={x.ic} size={18} /><b>{n}</b><span>{x.nome}</span>
           </button>
         )
       })}
