@@ -157,6 +157,64 @@ export const KINDS: Record<string, Kind> = {
   'calendario': { nome: 'Calendário', tema: 'Escritório', w: 1, h: 1, camada: 'parede', draw: (c, x) => { box(c, '#fbfbf8', x + 4, 10, 8, 10); r(c, '#d9694a', x + 4, 10, 8, 3); for (let k = 0; k < 6; k++) r(c, '#c9b98a', x + 5 + (k % 3) * 2, 14 + Math.floor(k / 3) * 3, 1, 1) } },
   'tv': { nome: 'TV de reunião', tema: 'Escritório', w: 2, h: 1, camada: 'parede', draw: (c, x) => { box(c, '#2b2a33', x + 1, 7, 30, 17); r(c, '#3a3944', x + 2, 8, 28, 15); for (const [k, h, col] of [[0, 5, '#7a8b3a'], [1, 9, '#e0b04a'], [2, 7, '#7a8b3a'], [3, 11, '#FBC222']] as const) r(c, col, x + 7 + k * 5, 21 - h, 3, h); r(c, OUT, x + 14, 25, 4, 2) } },
   'arte': { nome: 'Quadro colorido', tema: 'Escritório', w: 2, h: 1, camada: 'parede', draw: (c, x) => { frame(c, x + 5, 8, 18, 15); disc(c, x + 11, 14, 4, '#d9694a'); r(c, '#f4a259', x + 14, 15, 7, 6); r(c, '#5b6e8f', x + 7, 19, 6, 2) } },
+  // ---- por tipo de setor (modelos de sala) ----
+  'quadro-kanban': { nome: 'Quadro kanban', tema: 'Escritório', w: 3, h: 1, camada: 'parede', draw: (c, x) => {
+    const w = 3 * T, y0 = 6
+    box(c, '#26324F', x + 1, y0, w - 2, 20); r(c, '#f3efe6', x + 2, y0 + 1, w - 4, 18)
+    for (let k = 0; k < 3; k++) {
+      const cx = x + 3 + k * 15
+      r(c, ['#e05a47', '#FBC222', '#2E9E6A'][k], cx, y0 + 2, 13, 2)
+      if (k) r(c, '#d6d0c2', cx - 1, y0 + 2, 1, 16)
+      for (let j = 0; j < [3, 2, 4][k]; j++) r(c, ['#fff2a8', '#ffd1dc', '#c9ecff', '#d7f5c8'][(j + k) % 4], cx + 1 + (j % 2) * 6, y0 + 6 + Math.floor(j / 2) * 6, 5, 4)
+    }
+    r(c, OUT, x + 4, y0 + 21, w - 8, 2)
+  } },
+  'painel-tela': { nome: 'Telão de atendimento', tema: 'Escritório', w: 3, h: 1, camada: 'parede', draw: (c, x, _y, t) => {
+    const w = 3 * T
+    box(c, '#1b1d24', x + 1, 6, w - 2, 19); r(c, '#0d1b2a', x + 3, 8, w - 6, 15)
+    r(c, '#3fe08a', x + 5, 10, 9, 2); r(c, '#c8ccd3', x + 5, 14, 12, 1); r(c, '#c8ccd3', x + 5, 16, 9, 1)
+    if (blink(t, 700)) r(c, '#e05a47', x + 5, 19, 2, 2)
+    for (let k = 0; k < 6; k++) { const h = 3 + ((k * 5 + Math.floor(t / 1500)) % 8); r(c, k % 2 ? '#FBC222' : '#5b8cff', x + 21 + k * 4, 22 - h, 3, h) }
+    r(c, OUT, x + 22, 25, 4, 2)
+  } },
+  'mural-ocupacao': { nome: 'Mural dos quartos', tema: 'Escritório', w: 2, h: 1, camada: 'parede', draw: (c, x) => {
+    box(c, '#c8ccd3', x + 2, 7, 28, 18); r(c, '#fbfbf8', x + 3, 8, 26, 16)
+    for (let k = 0; k < 15; k++) r(c, ['#2E9E6A', '#e05a47', '#FBC222', '#e05a47', '#2E9E6A', '#2E9E6A', '#c8ccd3'][(k * 5) % 7], x + 5 + (k % 5) * 5, 10 + Math.floor(k / 5) * 5, 4, 4)
+  } },
+  'planta-obra': { nome: 'Planta da obra', tema: 'Escritório', w: 2, h: 1, camada: 'parede', draw: (c, x) => {
+    box(c, '#1f4e8c', x + 2, 7, 28, 18); r(c, '#2a62a8', x + 3, 8, 26, 16)
+    const L = '#dbe9ff'
+    r(c, L, x + 5, 10, 22, 1); r(c, L, x + 5, 21, 22, 1); r(c, L, x + 5, 10, 1, 12); r(c, L, x + 26, 10, 1, 12)
+    r(c, L, x + 15, 10, 1, 6); r(c, L, x + 15, 19, 1, 3); r(c, L, x + 5, 16, 6, 1); r(c, L, x + 19, 15, 8, 1)
+    r(c, '#e05a47', x + 3, 7, 2, 2); r(c, '#e05a47', x + 27, 7, 2, 2)
+  } },
+  'mesa-planta': { nome: 'Prancheta de projeto', tema: 'Escritório', w: 2, h: 1, up: 1, draw: (c, x, y) => {
+    for (const lx of [x + 4, x + 26]) r(c, OUT, lx, y + 2, 2, 13)
+    box(c, '#cfd6e0', x + 1, y - 6, 30, 9); r(c, '#2a62a8', x + 3, y - 5, 21, 7)
+    r(c, '#dbe9ff', x + 5, y - 3, 12, 1); r(c, '#dbe9ff', x + 5, y - 1, 8, 1); r(c, '#dbe9ff', x + 18, y - 4, 1, 5)
+    r(c, '#FBC222', x + 25, y - 3, 5, 1); r(c, SHADOW, x + 2, y + 15, 28, 1)
+  } },
+  'bancada-ferramentas': { nome: 'Bancada de ferramentas', tema: 'Escritório', w: 2, h: 1, up: 2, draw: (c, x, y) => {
+    box(c, '#c9a46a', x + 1, y - 22, 30, 16)
+    for (let j = 0; j < 3; j++) for (let i = 0; i < 7; i++) r(c, '#a8844f', x + 4 + i * 4, y - 19 + j * 5, 1, 1)
+    r(c, '#8b929e', x + 5, y - 19, 2, 10); r(c, '#8b929e', x + 4, y - 20, 4, 2)
+    r(c, '#6b4a2e', x + 12, y - 17, 2, 9); r(c, '#45454e', x + 10, y - 19, 6, 3)
+    r(c, '#c8ccd3', x + 19, y - 18, 8, 5); r(c, '#e05a47', x + 25, y - 19, 4, 3)
+    box(c, '#8a5a36', x + 1, y - 5, 30, 5); r(c, '#a8774c', x + 1, y - 5, 30, 1)
+    r(c, OUT, x + 3, y, 3, 14); r(c, OUT, x + 26, y, 3, 14)
+    box(c, '#e05a47', x + 10, y + 6, 12, 7); r(c, '#b5452f', x + 14, y + 4, 4, 2)
+    r(c, SHADOW, x + 2, y + 15, 28, 1)
+  } },
+  'carrinho-rouparia': { nome: 'Carrinho de rouparia', tema: 'Escritório', w: 1, h: 1, up: 1, draw: (c, x, y) => {
+    box(c, '#9aa1ad', x + 1, y - 7, 14, 18)
+    for (let k = 0; k < 3; k++) { r(c, ['#fbfbf8', '#bfe3f2', '#fbfbf8'][k], x + 2, y - 6 + k * 6, 12, 4); r(c, '#d6dbe3', x + 2, y - 3 + k * 6, 12, 1) }
+    r(c, OUT, x + 2, y + 12, 3, 3); r(c, OUT, x + 11, y + 12, 3, 3)
+  } },
+  'cone-obra': { nome: 'Cone e capacete', tema: 'Escritório', w: 1, h: 1, draw: (c, x, y) => {
+    r(c, OUT, x + 1, y + 12, 14, 3); r(c, '#F76B15', x + 2, y + 12, 12, 2)
+    r(c, OUT, x + 5, y - 2, 6, 14); r(c, '#F76B15', x + 6, y - 1, 4, 13); r(c, '#fbfbf8', x + 6, y + 3, 4, 2); r(c, '#fbfbf8', x + 6, y + 8, 4, 2)
+    box(c, '#FBC222', x + 9, y + 7, 6, 4); r(c, '#e0a810', x + 8, y + 10, 8, 1)
+  } },
 
   // ---- Resort ----
   'guarda-sol': {
@@ -488,22 +546,75 @@ export function deskSides(objs: Obj[], o: Obj) {
 }
 export const deskFrom = (o: Obj): Desk => { const w = kd(o).w; return { tx: o.x, ty: o.y, w, seat: { x: o.x * T + (w * T) / 2, y: o.y * T + 8 } } }
 
-export function original(baia = false): Sala {
-  const piso = Array.from({ length: MH }, () => Array.from({ length: MW }, () => 'madeira' as Piso))
+type Add = (k: string, x: number, y: number, d?: number) => void
+/** jeitos prontos de montar a sala, inspirados em salas de verdade; cada um tem as 12 mesas + a da chefia */
+export const MODELOS: Record<string, { nome: string; desc: string; piso: Piso; monta: (add: Add, baia: boolean) => void }> = {
+  padrao: { nome: 'Escritório clássico', desc: '3 fileiras de mesas, chefia de lado', piso: 'madeira', monta: (add, baia) => {
+    for (let i = 0; i < MAX_DESKS; i++) { const d = baia ? baiaDesk(i) : defaultDesk(i); add('mesa', d.tx, d.ty, i) }
+    if (baia) { add('painel-quartos', PAINEL.x, PAINEL.y); add('painel-placar', PLACAR.x, PLACAR.y) }
+    for (const [x, y] of [[1, 2], [22, 2], [1, 14], [22, 14]]) add('planta', x, y)
+    add('estante', 2, 2); add('arquivo', 19, 2); add('impressora', 20, 2); add('bebedouro', 21, 2)
+    for (const x of [5, 17]) add('janela', x, 0)
+    add('quadro-branco', 9, 0); add('relogio', 13, 0); add('calendario', 14, 0)
+  } },
+  central: { nome: 'Central de atendimento', desc: '2 bancadas corridas de frente pro telão, mural dos quartos', piso: 'carpete', monta: add => {
+    for (let i = 0; i < MAX_DESKS; i++) { const d = baiaDesk(i); add('mesa', d.tx, d.ty, i) }
+    add('estante', 2, 2); add('arquivo', 21, 2); add('bebedouro', 22, 2)
+    for (const [x, y] of [[1, 14], [22, 14]]) add('planta', x, y)
+    add('janela', 5, 0); add('painel-tela', 9, 0); add('mural-ocupacao', 13, 0); add('relogio', 16, 0); add('janela', 18, 0)
+  } },
+  ilhas: { nome: 'Estúdio criativo', desc: 'ilhas de 4, parede de kanban e mesa de reunião', piso: 'madeira', monta: add => {
+    for (let i = 0; i < MAX_DESKS; i++) add('mesa', 6 + Math.floor((i % 6) / 2) * 6 + (i % 2) * 2, 4 + Math.floor(i / 6) * 4, i)
+    add('mesa-reuniao', 15, 10); add('sofa', 6, 13)
+    add('estante', 2, 2); add('bebedouro', 22, 2)
+    for (const [x, y] of [[1, 14], [22, 14], [11, 10]]) add('planta', x, y)
+    add('quadro-kanban', 6, 0); add('quadro-kanban', 10, 0); add('quadro-branco', 14, 0); add('arte', 18, 0); add('relogio', 21, 0)
+  } },
+  obra: { nome: 'Escritório de obra', desc: 'pranchetas de projeto, plantas na parede, mesas à direita', piso: 'ceramica', monta: add => {
+    for (let i = 0; i < MAX_DESKS; i++) add('mesa', 11 + (i % 4) * 3, 4 + Math.floor(i / 4) * 4, i)
+    add('mesa-planta', 2, 5); add('mesa-planta', 5, 5); add('cone-obra', 7, 13); add('cone-obra', 8, 13)
+    add('estante', 2, 2); add('arquivo', 5, 2); add('arquivo', 6, 2); add('bebedouro', 22, 2)
+    add('planta-obra', 9, 0); add('quadro-kanban', 12, 0); add('planta-obra', 16, 0); add('relogio', 19, 0); add('calendario', 20, 0)
+  } },
+  oficina: { nome: 'Oficina', desc: 'bancadas de ferramentas no fundo, ordens de serviço no kanban', piso: 'ceramica', monta: add => {
+    for (let i = 0; i < MAX_DESKS; i++) add('mesa', 9 + (i % 6) * 2, 6 + Math.floor(i / 6) * 5, i)
+    for (const x of [14, 16, 18]) add('bancada-ferramentas', x, 2)
+    add('arquivo', 2, 2); add('arquivo', 3, 2); add('bebedouro', 22, 2); add('cone-obra', 21, 14)
+    add('planta', 1, 14)
+    add('quadro-kanban', 6, 0); add('mural-ocupacao', 10, 0); add('relogio', 12, 0); add('calendario', 20, 0)
+  } },
+  rouparia: { nome: 'Rouparia', desc: 'mesas no meio, estoque de enxoval e carrinhos', piso: 'ceramica', monta: add => {
+    for (let i = 0; i < MAX_DESKS; i++) { const d = defaultDesk(i); add('mesa', d.tx, d.ty, i) }
+    add('estante', 15, 2); add('estante', 18, 2); add('bebedouro', 22, 2)
+    for (const [x, y] of [[2, 13], [3, 13], [21, 13], [22, 13]]) add('carrinho-rouparia', x, y)
+    add('planta', 1, 2)
+    add('janela', 3, 0); add('mural-ocupacao', 7, 0); add('quadro-kanban', 10, 0); add('relogio', 13, 0)
+  } },
+  aberto: { nome: 'Open office', desc: '2 bancadas compridas no centro e um cantinho de sofá', piso: 'madeira', monta: add => {
+    for (let i = 0; i < MAX_DESKS; i++) add('mesa', 6 + (i % 6) * 2, 5 + Math.floor(i / 6) * 5, i)
+    add('sofa', 19, 13); add('estante', 2, 2); add('impressora', 20, 2)
+    for (const [x, y] of [[1, 14], [22, 2], [18, 13]]) add('planta', x, y)
+    add('janela', 5, 0); add('janela', 8, 0); add('quadro-branco', 11, 0); add('tv', 15, 0); add('janela', 18, 0)
+  } },
+}
+/** modelo que cada tipo de setor ganha de fábrica */
+export const MODELO_DO_TIPO: Record<string, string> = {
+  marketing: 'ilhas', eventos: 'ilhas', recreacao: 'ilhas', comercial: 'central', reservas: 'central', recepcao: 'central',
+  obras: 'obra', manutencao: 'oficina', governanca: 'rouparia', financeiro: 'aberto', ti: 'aberto',
+}
+export const modeloDe = (tipo?: string | null) => (tipo && MODELO_DO_TIPO[tipo]) || 'padrao'
+
+/** sala de fábrica: vendas fica sempre com a baia (o painel de quartos mostra os números); os outros pelo modelo */
+export function original(baia = false, modelo = 'padrao'): Sala {
+  const m = baia ? MODELOS.padrao : MODELOS[modelo] ?? MODELOS.padrao
+  const piso = Array.from({ length: MH }, () => Array.from({ length: MW }, () => m.piso))
   const div = Array.from({ length: MH }, () => Array<boolean>(MW).fill(false))
   let id = 1
   const objs: Obj[] = []
-  const add = (k: string, x: number, y: number, d?: number) => objs.push(d === undefined ? { id: id++, k, x, y } : { id: id++, k, x, y, d })
+  const add: Add = (k, x, y, d) => objs.push(d === undefined ? { id: id++, k, x, y } : { id: id++, k, x, y, d })
   add('tapete-chefe', 1, 7)
-  for (let i = 0; i < MAX_DESKS; i++) { const d = baia ? baiaDesk(i) : defaultDesk(i); add('mesa', d.tx, d.ty, i) }
   add('mesa-chefe', 2, 9, BOSS_DESK)
-  if (baia) { add('painel-quartos', PAINEL.x, PAINEL.y); add('painel-placar', PLACAR.x, PLACAR.y) }
-  for (const [x, y] of [[1, 2], [22, 2], [1, 14], [22, 14], [5, 14], [18, 14]]) add('planta', x, y)
-  add('estante', 2, 2); add('arquivo', 19, 2); add('impressora', 20, 2); add('bebedouro', 21, 2)
-  // parede só entre a estante (2-4) e o arquivo (19): móvel alto na frente tapa o quadro
-  for (const x of [5, 17]) add('janela', x, 0)
-  add('cartaz', 7, 0); add('foto-piscina', 8, 0); add('quadro-branco', 10, 0)
-  add('relogio', 13, 0); add('calendario', 14, 0); add('arte', 15, 0)
+  m.monta(add, baia)
   return { piso, div, objs }
 }
 
@@ -546,13 +657,13 @@ function fitSala(s: Sala, W: number, H: number): Sala {
 }
 
 /** valida o JSON salvo; qualquer coisa estranha volta pro original */
-export function parseSala(data: unknown, baia = false): Sala {
+export function parseSala(data: unknown, baia = false, modelo = 'padrao'): Sala {
   try {
     const s = data as Sala
     const old = Array.isArray(s?.piso) && s.piso.length === OLD_H && Array.isArray(s.piso[0]) && s.piso[0].length === OLD_W
     const W = old ? OLD_W : MW, H = old ? OLD_H : MH
     const grid = (g: unknown, f: (v: unknown) => boolean) => Array.isArray(g) && g.length === H && g.every(r => Array.isArray(r) && r.length === W && r.every(f))
-    if (!s || !grid(s.piso, v => typeof v === 'string' && v in PISOS) || !grid(s.div, v => typeof v === 'boolean') || !Array.isArray(s.objs)) return original(baia)
+    if (!s || !grid(s.piso, v => typeof v === 'string' && v in PISOS) || !grid(s.div, v => typeof v === 'boolean') || !Array.isArray(s.objs)) return original(baia, modelo)
     const ids = new Set<number>(), ds = new Set<number>(), objs: Obj[] = []
     for (const o of s.objs) {
       const k = o && KINDS[o.k]
@@ -569,7 +680,7 @@ export function parseSala(data: unknown, baia = false): Sala {
     }
     const out = { piso: s.piso.map(r => [...r]), div: s.div.map(r => [...r]), objs }
     return arrumaParede(old ? fitSala(out, W, H) : baia ? baiaNova(out) : out)
-  } catch { return original(baia) }
+  } catch { return original(baia, modelo) }
 }
 
 /** tamanho da sala em tiles (o da planta; cômodos podem ser maiores ou menores que a sala do setor) */
@@ -592,6 +703,7 @@ const ALTURA: Record<string, number> = {
   'guarda-sol': 26, coqueiro: 20, 'fogao-lenha': 24, lampiao: 24, 'arvore-natal': 31, 'boneco-neve': 14, fliperama: 15,
   espresso: 11, 'vitrine-doces': 8, geladeira: 19, fogao: 8, 'pia-cozinha': 7, 'micro-ondas': 7, pebolim: 8, 'caca-niquel': 16,
   'totem-crash': 16, 'totem-minas': 16, 'caixa-fichas': 14, 'globo-bingo': 22, 'banca-cartelas': 12, 'maquina-refri': 16, cabine: 13, 'pia-banheiro': 25, rede: 10, fonte: 10, 'cerca-viva': 7,
+  'mesa-planta': 7, 'bancada-ferramentas': 23, 'carrinho-rouparia': 8,
 }
 /** decoração de parede desce até y 26: móvel cuja arte passa disso fica na frente dela */
 const tapa = (o: Obj, w: Obj) => !kd(o).camada && o.y * T - (ALTURA[o.k] ?? 0) < 26 && o.x < w.x + kd(w).w && w.x < o.x + kd(o).w

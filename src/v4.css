@@ -977,6 +977,7 @@ button.panel { width: 100%; border: 0; text-align: left; font: inherit; color: i
 .sl-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; font-size: 13px; }
 .sl-bar label { display: flex; align-items: center; gap: 5px; }
 .sl-sp { flex: 1; }
+.sl-modelo { border: 1px solid var(--line); border-radius: 8px; padding: 5px 8px; font: 600 12.5px Poppins, sans-serif; background: #fff; color: #1d1a2b; max-width: 190px; }
 .sl-carp { background: #fff4d0; border-radius: 8px; padding: 4px 9px; font-weight: 600; }
 .sl-tools { display: flex; gap: 4px; background: #eef1f6; border-radius: 10px; padding: 3px; }
 .sl-tools button, .sl-temas button { border: 0; background: transparent; border-radius: 8px; padding: 6px 10px; font: 600 12.5px Poppins, sans-serif; cursor: pointer; color: #1d1a2b; }

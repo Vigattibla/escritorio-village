@@ -12,7 +12,8 @@ import { addMark, boardMarks, takeErrands, type Errand } from '../office/errands
 import { ACIMA, drawAnim, plateFill, PLATE_CV } from '../office/anim'
 import { ACOES, altDe, drawBoneco, drawEfeitoAcao, lugarNaAcao, montariaDe, type Acao } from '../office/bichos'
 import { drawChair } from '../office/props'
-import { drawFurniture, kd, parseSala, type Obj } from '../office/sala'
+import { drawFurniture, kd, modeloDe, parseSala, type Obj } from '../office/sala'
+import { tipoId } from '../setor/tipos'
 import { blocked, boardSpot, BOSS_DESK, deskAtTile, deskIds, deskOf, deskSidesOf, doorAtTile, doorSpot, drawBoardMarks, drawCarry, drawDesk, emptySala, FH, findPath, floorVersion, furniture, FW, getRooms, hallDecor, hasDesk, elevadorAt, elevadorSpot, jogoAt, bingoAt, roomOfKind, HY0, MAX_DESKS, painelAt, paineisOf, pathToSeat, regionOfPx, renderFloor, roomOfId, setFloor, setPassable, shelfSpot, T, wallObjs, type Room } from '../office/world'
 import { bubbles, owns, canDoor, canEnter, curtainsOpen, deptList, doorOpen, getState, goTo, knock, myDept, openSala, team, positions, roomOf, run, setCurtains, setDoor, setSalaGerente, setUi, useStore, type State } from '../store'
 import type { Dir, Pos, Profile, Task } from '../types'
@@ -45,11 +46,11 @@ let floorSeen: unknown[] = []
 /** dá pra passar pela porta: vaga nunca, cômodos sempre, sala do setor/gerente pela regra da porta */
 const enterable = (r: Room | undefined, s: State = getState()) => !!r && r.kind !== 'vaga' && (!r.dept || canEnter(r.dept, s))
 export function syncFloor() {
-  const s = getState(), id = s.sala, d = s.rows.depts[id], ger = !!d?.sala_gerente, data = roomOf(s, id)
-  const seen = [id, !!d?.vendas, ger, data]
+  const s = getState(), id = s.sala, d = s.rows.depts[id], ger = !!d?.sala_gerente, data = roomOf(s, id), mod = modeloDe(tipoId(d ?? { id, name: id }))
+  const seen = [id, !!d?.vendas, ger, data, mod]
   if (seen.length !== floorSeen.length || seen.some((v, i) => v !== floorSeen[i])) {
     floorSeen = seen
-    const mine = parseSala(data?.data, !!d?.vendas)
+    const mine = parseSala(data?.data, !!d?.vendas, mod)
     // com sala própria, a mesa do gerente (e o tapete dela) sai da sala do setor
     const dept = ger ? { ...mine, objs: mine.objs.filter(o => o.d !== BOSS_DESK && o.k !== 'tapete-chefe') } : mine
     setFloor(ANDAR(ger).map(k => (k === 'dept' ? { kind: k, dept: id, sala: dept, baia: !!d?.vendas } : k === 'vaga' ? { kind: k, sala: emptySala(16) } : { kind: k, dept: k === 'gerente' ? id : null, sala: COMODOS[k].sala() })))

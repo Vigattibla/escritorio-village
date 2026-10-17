@@ -2,13 +2,14 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { drawAvatar } from '../chibi/sprite'
 import { managerOf, rankOf } from '../game/ranks'
 import { drawChair } from '../office/props'
-import { at, bbox, check, defaultDesk, deskSides, hitTest, isDesk, KINDS, kd, original, parseSala, PISOS, reach, renderRoom, solidGrid, TEMAS, type Kind, type Obj, type Piso, type Sala, type Tema } from '../office/sala'
+import { at, bbox, check, defaultDesk, deskSides, hitTest, isDesk, KINDS, kd, modeloDe, MODELOS, original, parseSala, PISOS, reach, renderRoom, solidGrid, TEMAS, type Kind, type Obj, type Piso, type Sala, type Tema } from '../office/sala'
 import { BOSS_DESK, drawDesk, MAX_DESKS, MH, MW, roomOfId, T, upperWall, wallFace } from '../office/world'
 import { dropRow, hasVendas, me, putRow, roomOf, team, useStore } from '../store'
 import type { Poder, Profile } from '../types'
 import { poderDe } from '../game/poderes'
 import { Px } from './Px'
 import { confirmar } from './Dialogo'
+import { tipoId } from '../setor/tipos'
 
 type C2D = CanvasRenderingContext2D
 type Tool = 'mover' | 'piso' | 'parede' | 'carpinteiro'
@@ -46,7 +47,9 @@ export default function SalaEditor({ onClose }: { onClose: () => void }) {
   const meP = me()
   // mesma sala que o jogo está mostrando (com as mudanças automáticas da baia); senão lê do banco
   const live = roomOfId(s.sala), saved = roomOf(s), baiaDb = useStore(x => hasVendas(x.sala, x)), baia = live ? live.baia : baiaDb
-  const [sala, setSala] = useState<Sala>(() => live ? structuredClone(live.sala) : parseSala(saved?.data, baia))
+  const dept = useStore(x => x.rows.depts[x.sala]), mod = modeloDe(tipoId(dept ?? { id: s.sala, name: s.sala }))
+  const [modelo, setModelo] = useState(mod)
+  const [sala, setSala] = useState<Sala>(() => live ? structuredClone(live.sala) : parseSala(saved?.data, baia, mod))
   const [hist, setHist] = useState<Sala[]>([])
   const [dirty, setDirty] = useState(false)
   const [sel, setSel] = useState<number[]>([])
@@ -281,7 +284,8 @@ export default function SalaEditor({ onClose }: { onClose: () => void }) {
       {myCarp && <span className="sl-carp">🪚 carpinteiro até {hhmm(myCarp.until)}</span>}
       <span className="sl-sp" />
       <button className="btn ghost sm" disabled={!hist.length} onClick={() => { setSala(hist[hist.length - 1]); setHist(hist.slice(0, -1)); setSel([]); setDirty(true) }}>↶ Desfazer</button>
-      <button className="btn ghost sm" onClick={async () => { if (!await confirmar('Voltar a sala pro jeito original?', { text: 'Só vale depois de salvar.', ok: 'Voltar ao original' })) return; const next = original(baia); const err = reach(next, nameOf); if (err) { setMsg({ t: err, bad: true }); return } setHist([...hist, sala]); setSala(next); setSel([]); setDirty(true) }}>Voltar ao original</button>
+      {!baia && <select className="sl-modelo" value={modelo} onChange={e => setModelo(e.target.value)} aria-label="Modelo de sala" title={MODELOS[modelo]?.desc}>{Object.entries(MODELOS).map(([k, m]) => <option key={k} value={k}>{m.nome}{k === mod ? ' · do setor' : ''}</option>)}</select>}
+      <button className="btn ghost sm" onClick={async () => { if (!await confirmar(baia ? 'Voltar a sala pro jeito original?' : `Montar a sala como ${MODELOS[modelo].nome}?`, { text: (baia ? '' : MODELOS[modelo].desc + '. ') + 'Os móveis de agora saem. Só vale depois de salvar.', ok: baia ? 'Voltar ao original' : 'Montar' })) return; const next = original(baia, modelo); const err = reach(next, nameOf); if (err) { setMsg({ t: err, bad: true }); return } setHist([...hist, sala]); setSala(next); setSel([]); setDirty(true) }}>{baia ? 'Voltar ao original' : 'Montar modelo'}</button>
       <button className="btn ghost sm" onClick={close}>Fechar</button>
       <button className="btn primary sm" disabled={!dirty || busy || !can} onClick={() => void save()}>{busy ? 'Salvando…' : 'Salvar sala'}</button>
     </div>
