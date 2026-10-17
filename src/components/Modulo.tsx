@@ -502,7 +502,14 @@ function Semana({ m, regs, pode, profiles, editar, abrir, sala }: Ctx) {
       return `*${w[0].toUpperCase() + w.slice(1)}*\n` + rs.map(r => `${txt(r.campos.hora)} ${r.titulo}${r.campos.local ? ' · ' + txt(r.campos.local) : ''}${r.campos.publico ? ' (' + txt(r.campos.publico) + ')' : ''}${r.campos.resp && m.campos.find(c => c.id === 'resp')?.tipo === 'pessoa' ? ' — ' + primeiro(r.campos.resp, profiles) : ''}`).join('\n') }).filter(Boolean).join('\n\n')
     void navigator.clipboard?.writeText(t).then(() => { setCopiado(true); setTimeout(() => setCopiado(false), 2000) })
   }
+  // semana atual com horário: o que vem a seguir hoje, pra quem abre a aba no meio do dia
+  const doDiaHoje = m.campos.some(c => c.id === 'hora') && ini === segunda(hoje()) ? doDia(hoje()).filter(r => r.status !== 'cancelada') : []
+  const prox = doDiaHoje.find(r => txt(r.campos.hora) >= new Date().toTimeString().slice(0, 5))
   return <>
+    {!!doDiaHoje.length && <button className="md-agora" onClick={() => editar(prox ?? doDiaHoje[doDiaHoje.length - 1])}>
+      <Ph n="bell-simple" size={18} /><b>{doDiaHoje.length} hoje</b>
+      {(() => { const r = prox ?? doDiaHoje[doDiaHoje.length - 1]; return <span>{prox ? 'A seguir' : 'Último'}: <b>{txt(r.campos.hora)} {r.titulo}</b>{r.campos.local ? ' · ' + txt(r.campos.local) : ''}</span> })()}
+    </button>}
     <div className="md-sem-h">
       <button className="icon-btn" onClick={() => setIni(somaDias(ini, -7))} aria-label="Semana anterior"><Ph n="caret-left" size={16} /></button>
       <b>{dia(ini)} a {dia(dias[6])}</b>
