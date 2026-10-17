@@ -18,21 +18,25 @@ export function Live({ small = false }: { small?: boolean }) {
   const [i, setI] = useState(0)
   const [paused, setPaused] = useState(false)
   const [dip, setDip] = useState(false)
+  // no quadro a câmera começa recolhida (a Início já mostra); a escolha fica guardada
+  const [aberto, setAberto] = useState(() => { try { return localStorage.getItem('ev:live:aberto') === '1' } catch { return false } })
+  const alterna = () => setAberto(a => { try { localStorage.setItem('ev:live:aberto', a ? '0' : '1') } catch { /* sem storage */ } return !a })
+  const mostra = small || aberto
   const focus = here[i % here.length]
   useEffect(() => {
-    if (paused || here.length < 2) return
+    if (paused || !mostra || here.length < 2) return
     const t = setInterval(() => {
       setDip(true)
       setTimeout(() => { setI(n => n + 1); setDip(false) }, 380)
     }, 7000)
     return () => clearInterval(t)
-  }, [paused, key, here.length])
+  }, [paused, mostra, key, here.length])
   const cut = (n: number) => { setDip(true); setTimeout(() => { setI(n); setDip(false) }, 300) }
   const p = profiles[focus]
   const doing = Object.values(tasks).find(t => t.owner_id === focus && t.status === 'doing')
 
   return (
-    <section className={'live' + (small ? ' sm' : '')}>
+    <section className={'live' + (small ? ' sm' : '') + (mostra ? '' : ' fechado')}>
       {!small && (
         <div className="live-h">
           <span className="pulse" /><h3>Escritório agora</h3><small>{here.length} de {people.length} na sala</small>
@@ -47,9 +51,10 @@ export function Live({ small = false }: { small?: boolean }) {
               )
             })}
           </div>
+          <button className="btn sm ghost" onClick={alterna} aria-expanded={aberto}><Ph n={aberto ? 'eye' : 'video-camera'} size={14} />{aberto ? 'Recolher' : 'Ver câmera'}</button>
         </div>
       )}
-      <div className={'cine-box' + (small ? ' sm' : '')}>
+      {mostra && <div className={'cine-box' + (small ? ' sm' : '')}>
         <Game cine focus={focus} />
         <div className="vig" />
         <div className={'dip' + (dip ? ' on' : '')} />
@@ -68,7 +73,7 @@ export function Live({ small = false }: { small?: boolean }) {
             <button onClick={() => setUi({ view: 'escritorio', drawer: false, viewing: focus })}><Ph n="corners-out" size={16} />Abrir escritório</button>
           </div>
         )}
-      </div>
+      </div>}
     </section>
   )
 }

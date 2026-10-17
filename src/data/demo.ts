@@ -946,7 +946,7 @@ function seed() {
     ],
     goals: [{ id: crypto.randomUUID(), title: 'Publicar 12 posts', target: 12, metric: 'posts', month, reward: 'Almoço da equipe no restaurante', value: 0, created_by: 'demo-carla', created_at: iso(600) }],
     stickers: sessionStorage.getItem(K.session)
-      ? [{ id: crypto.randomUUID(), to_id: sessionStorage.getItem(K.session)!, by_id: 'demo-carla', kind: 'mandou-bem', text: 'Mandou bem no Reels!', x: 0.72, y: 0.78, created_at: iso(20) }]
+      ? [{ id: crypto.randomUUID(), to_id: sessionStorage.getItem(K.session)!, by_id: 'demo-carla', kind: 'mandou-bem', text: 'Mandou bem no Reels!', x: 0.95, y: 0.95, created_at: iso(20) }]
       : [],
     flows: [{
       id: crypto.randomUUID(), name: 'Campanha de Natal 2026', objective: 'Vender 30 pacotes de Natal até 15/12', created_by: 'demo-carla', created_at: iso(300),
