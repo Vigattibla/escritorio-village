@@ -61,7 +61,7 @@ export default function ModuloTela({ id }: { id: string }) {
   const pode = podeEditar(sala)
   const busca = q.trim().toLowerCase()
   const achou = busca ? regs.filter(r => (r.titulo + ' ' + Object.values(r.campos).map(txt).join(' ')).toLowerCase().includes(busca)) : regs
-  const comHoje = temEstadia(m), comFila = !comHoje && m.layout === 'kanban' && m.campos.some(c => c.id === 'urg')
+  const comHoje = temEstadia(m), comFila = !comHoje && m.layout === 'kanban' && m.campos.some(c => c.id === 'urg' || (c.id === 'quando' && c.tipo === 'hora'))
   const comPrazo = !comHoje && !comFila && !!m.prazo && m.layout === 'kanban'
   const vis = !fHoje ? achou : achou.filter(r => comHoje ? naHoje(r, fHoje as FiltroHoje) : comFila ? naFila(m, r, fHoje as FiltroFila) : comPrazo && noPrazo(m, r, fHoje as FiltroPrazo))
   const abrir = (p: Partial<Registro> = {}) => pode && setEdit(novoReg(m, sala, p))
@@ -159,7 +159,7 @@ function Prazos({ m, regs, f, setF }: { m: Modulo; regs: Registro[]; f: string |
 }
 
 /** filas de chamado (manutenção, TI): o que está aberto, o que é urgente, o que ficou parado */
-type FiltroFila = 'abertos' | 'urgentes' | 'parados' | 'feitos'
+type FiltroFila = 'abertos' | 'urgentes' | 'parados' | 'feitos' | 'passou' | 'semresp'
 const DIA_MS = 864e5
 function naFila(m: Modulo, r: Registro, f: FiltroFila) {
   const fim = !!m.status.find(e => e.id === r.status)?.fim
@@ -167,17 +167,23 @@ function naFila(m: Modulo, r: Registro, f: FiltroFila) {
   if (fim) return false
   if (f === 'urgentes') return ['Alta', 'Urgente'].includes(txt(r.campos.urg))
   if (f === 'parados') return Date.now() - new Date(r.em).getTime() > 3 * DIA_MS
+  // pedido do hóspede: o horário pedido já passou (vale pro dia em que foi aberto)
+  if (f === 'passou') { const q = txt(r.campos.quando), d = new Date(r.created_at).toLocaleDateString('sv-SE'); return !!q && (d < hoje() || (d === hoje() && q < new Date().toTimeString().slice(0, 5))) }
+  if (f === 'semresp') return !txt(r.campos.resp)
   return true
 }
 function Fila({ m, regs, f, setF }: { m: Modulo; regs: Registro[]; f: string | null; setF: (f: string | null) => void }) {
-  const itens: [FiltroFila, string, PhName][] = [['abertos', 'Em aberto', 'circle-dashed'], ['urgentes', 'Urgentes', 'flag-banner'], ['parados', 'Parados há 3+ dias', 'pause'], ['feitos', 'Resolvidos hoje', 'check-circle']]
+  const hospede = !m.campos.some(c => c.id === 'urg')
+  const itens: [FiltroFila, string, PhName][] = hospede
+    ? [['abertos', 'Em aberto', 'circle-dashed'], ['passou', 'Passou do horário', 'flag-banner'], ['semresp', 'Sem ninguém', 'user-circle'], ['feitos', 'Atendidos hoje', 'check-circle']]
+    : [['abertos', 'Em aberto', 'circle-dashed'], ['urgentes', 'Urgentes', 'flag-banner'], ['parados', 'Parados há 3+ dias', 'pause'], ['feitos', 'Resolvidos hoje', 'check-circle']]
   if (!f && !regs.some(r => itens.some(([k]) => naFila(m, r, k)))) return null
   return (
     <div className="md-hoje" role="group" aria-label="Fila">
       {itens.map(([k, nome, ic]) => {
         const n = regs.filter(r => naFila(m, r, k)).length
         return (
-          <button key={k} className={(f === k ? 'on' : '') + ((k === 'urgentes' || k === 'parados') && n ? ' alerta' : '')} aria-pressed={f === k} onClick={() => setF(f === k ? null : k)} title={f === k ? 'Mostrar todos' : 'Mostrar só esses'}>
+          <button key={k} className={(f === k ? 'on' : '') + (['urgentes', 'parados', 'passou'].includes(k) && n ? ' alerta' : '')} aria-pressed={f === k} onClick={() => setF(f === k ? null : k)} title={f === k ? 'Mostrar todos' : 'Mostrar só esses'}>
             <Ph n={ic} size={18} /><b>{n}</b><span>{nome}</span>
           </button>
         )
