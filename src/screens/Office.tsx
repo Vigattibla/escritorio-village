@@ -30,6 +30,7 @@ import Vendas, { Lousa } from '../components/Vendas'
 import Jogos from '../components/Jogos'
 import Cassino from '../components/Cassino'
 import Bingo from '../components/Bingo'
+import PoderesHud from '../components/Poderes'
 import Sorteios from '../components/Sorteios'
 import Armario from '../components/Armario'
 import Conectar from '../components/Conectar'
@@ -107,7 +108,7 @@ export default function Office() {
 
   const chief = isChief(me)
   const depts = deptList(s)
-  const canEdit = canEditOffice(me, s.rows.carpenters)
+  const canEdit = canEditOffice(me, s.rows.carpenters, s.rows.poderes)
   // painel do escritório: eu primeiro, depois quem está na sala, depois quem está fora
   const people = team(s.profiles, s).filter(p => p.avatar).sort((a, b) =>
     Number(b.id === me.id) - Number(a.id === me.id) || Number(s.online.has(b.id)) - Number(s.online.has(a.id)) || a.name.localeCompare(b.name))
@@ -255,7 +256,7 @@ export default function Office() {
           {page === 'loja' && <Loja />}
           {office && arrumando && <SalaEditor onClose={() => setArrumando(false)} />}
           {office && !arrumando && <>
-            <div className="game-wrap"><Game /><Sorteios />{canEdit && s.here === s.sala && <button className="btn primary sm game-edit" onClick={() => setArrumando(true)}>🪚 Arrumar sala</button>}
+            <div className="game-wrap"><Game /><Sorteios /><PoderesHud />{canEdit && s.here === s.sala && <button className="btn primary sm game-edit" onClick={() => setArrumando(true)}>🪚 Arrumar sala</button>}
               <button className={'btn sm game-tl' + (new Date().getHours() >= 17 ? ' accent' : ' soft')} onClick={() => setTl(true)} title="Ver como todo mundo se movimentou hoje, acelerado"><Ph n="film-strip" size={16} />Timelapse do dia</button></div>
             {tl && <Timelapse onClose={() => setTl(false)} />}
             {s.lousa && <Lousa onClose={() => setUi({ lousa: false })} />}

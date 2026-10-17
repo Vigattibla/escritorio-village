@@ -31,7 +31,7 @@ export function fimDa(ts: number) {
 }
 
 /** quantos bilhetes cada linha do extrato vale */
-export const valeBilhete = (l: CoffeeLine) => l.reason === 'fase' || l.reason === 'bilhete' ? 1 : l.reason === 'meta' ? 2 : 0
+export const valeBilhete = (l: CoffeeLine) => l.reason === 'fase' || l.reason === 'bilhete' || l.reason === 'coringa' ? 1 : l.reason === 'meta' ? 2 : 0
 const dentro = (l: CoffeeLine, fim: number) => { const t = Date.parse(l.created_at); return t >= fim - 7 * 864e5 && t < fim }
 
 // ---------- motor da demo ----------

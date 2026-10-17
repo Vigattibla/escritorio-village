@@ -26,7 +26,7 @@ export interface Avatar {
 }
 
 /** cafezinhos: extrato só da própria pessoa; itens comprados = linhas 'compra' */
-export interface CoffeeLine { amount: number; reason: 'dia' | 'boasvindas' | 'fase' | 'meta' | 'compra' | 'aposta' | 'premio' | 'bilhete' | 'bolao' | 'troca' | 'bingo'; ref: string; created_at: string }
+export interface CoffeeLine { amount: number; reason: 'dia' | 'boasvindas' | 'fase' | 'meta' | 'compra' | 'aposta' | 'premio' | 'bilhete' | 'bolao' | 'troca' | 'bingo' | 'poder' | 'coringa'; ref: string; created_at: string }
 export interface Wallet { balance: number; owned: string[]; log: CoffeeLine[]; latinhas: number }
 
 export interface Profile {
@@ -210,9 +210,11 @@ export type ParModulo = 'agenda' | 'plano' | 'redes'
 export interface Parceria { id: string; de: string; para: string; modulo: ParModulo; status: 'pendente' | 'aceito' | 'recusado'; por: string | null; decidido_por: string | null; created_at: string }
 /** cartão/linha de um módulo do setor (reserva, obra, chamado, quarto, turno…); campos = valores livres do módulo */
 export interface Registro { id: string; dept: string; modulo: string; titulo: string; status: string; campos: Record<string, unknown>; pos: number; por: string | null; created_at: string; em: string }
-export interface Rows { events: CalEvent; goals: Goal; stickers: Sticker; flows: Flow; stages: Stage; groups: Group; rooms: Room; carpenters: Carpenter; depts: Dept; brand: Brand; quartos: Quarto; vendas: Venda; ajustes: Ajuste; metas_venda: MetaVenda; vendas_cfg: VendasCfg; campanhas: Campanha; caderno: Nota; jogos_pontos: JogoPonto; plano_meses: PlanoMes; plano_nucleos: PlanoNucleo; plano_acoes: PlanoAcao; plano_resp: PlanoResp; equipes: Equipe; relatorios: Relatorio; redes: Rede; postagens: Postagem; requisicoes: Requisicao; parcerias: Parceria; registros: Registro }
+export type PoderTipo = 'ima' | 'coringa' | 'mesada' | 'megafone' | 'turbo' | 'chefe' | 'visao'
+export interface Poder { id: string; user_id: string; tipo: PoderTipo; motivo: 'sorteio' | 'evento'; semana: string | null; inicio: string; fim: string; aviso: string | null; avisado_em: string | null; created_at: string }
+export interface Rows { events: CalEvent; goals: Goal; stickers: Sticker; flows: Flow; stages: Stage; groups: Group; rooms: Room; carpenters: Carpenter; depts: Dept; brand: Brand; quartos: Quarto; vendas: Venda; ajustes: Ajuste; metas_venda: MetaVenda; vendas_cfg: VendasCfg; campanhas: Campanha; caderno: Nota; jogos_pontos: JogoPonto; plano_meses: PlanoMes; plano_nucleos: PlanoNucleo; plano_acoes: PlanoAcao; plano_resp: PlanoResp; equipes: Equipe; relatorios: Relatorio; redes: Rede; postagens: Postagem; requisicoes: Requisicao; parcerias: Parceria; registros: Registro; poderes: Poder }
 export type RowTable = keyof Rows
-export const ROW_TABLES: RowTable[] = ['events', 'goals', 'stickers', 'flows', 'stages', 'groups', 'rooms', 'carpenters', 'depts', 'brand', 'quartos', 'vendas', 'ajustes', 'metas_venda', 'vendas_cfg', 'campanhas', 'caderno', 'jogos_pontos', 'plano_meses', 'plano_nucleos', 'plano_acoes', 'plano_resp', 'equipes', 'relatorios', 'redes', 'postagens', 'requisicoes', 'parcerias', 'registros']
+export const ROW_TABLES: RowTable[] = ['events', 'goals', 'stickers', 'flows', 'stages', 'groups', 'rooms', 'carpenters', 'depts', 'brand', 'quartos', 'vendas', 'ajustes', 'metas_venda', 'vendas_cfg', 'campanhas', 'caderno', 'jogos_pontos', 'plano_meses', 'plano_nucleos', 'plano_acoes', 'plano_resp', 'equipes', 'relatorios', 'redes', 'postagens', 'requisicoes', 'parcerias', 'registros', 'poderes']
 
 export type Priority = 'alta' | 'media' | 'baixa'
 export interface CheckItem {
@@ -386,6 +388,11 @@ export interface Backend {
   jogos(fn: 'iniciar' | 'fim' | 'virar', args: Record<string, unknown>): Promise<JogoRes>
   /** bolão: estado da semana (e sorteia a que fechou), compra de bilhete e troca de cafezinho por latinha */
   bolaoEstado(): Promise<Bolao>
+  /** poderes: sorteia a semana (se faltar), paga mesada/coringa do dia e devolve os da última semana */
+  poderesEstado(): Promise<Poder[]>
+  megafone(texto: string): Promise<void>
+  /** só com o poder Visão: quem tem mais bilhetes no bolão */
+  visaoBolao(): Promise<{ u: string; n: number }[]>
   bolaoComprar(): Promise<Bolao>
   trocarLatinha(): Promise<number>
   /** bingo: rodada atual e próxima (o servidor confere e paga), compra de cartela pra próxima */

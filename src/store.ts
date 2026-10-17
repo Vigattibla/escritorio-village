@@ -8,7 +8,7 @@ import { MAX_DESKS } from './office/base'
 import { parseSala } from './office/sala'
 import { ITEM, type Slot } from './shop/catalog'
 import { REASON } from './shop/economy'
-import type { CalEvent, Equipe, ParModulo, Parceria, Requisicao, Snapshot, Group, RowTable, Rows, Stage, StageKind, Sticker, AccountEdit, AiContext, AiItem, AiProposal, AiStage, Attachment, Avatar, CoffeeLine, Gear, Message, Pos, Profile, Project, Review, Task, TaskNote, TaskStatus, Wallet } from './types'
+import type { CalEvent, Equipe, ParModulo, Parceria, Poder, Requisicao, Snapshot, Group, RowTable, Rows, Stage, StageKind, Sticker, AccountEdit, AiContext, AiItem, AiProposal, AiStage, Attachment, Avatar, CoffeeLine, Gear, Message, Pos, Profile, Project, Review, Task, TaskNote, TaskStatus, Wallet } from './types'
 import { ROW_TABLES } from './types'
 import type { Backend } from './types'
 import type { JogoCassino, Rodada } from './cassino/regras'
@@ -16,6 +16,7 @@ import type { Bolao } from './cassino/bolao'
 import type { Bingo } from './cassino/bingo'
 import { tipoDe } from './setor/tipos'
 import { lerBloqueio, type Bloqueio } from './game/vigia'
+import { ateQuando, PODERES } from './game/poderes'
 
 export type Phase = 'loading' | 'auth' | 'creator' | 'office'
 export type Tab = 'mesa' | 'aprovar' | 'avisos' | 'equipe' | 'chat' | 'geral'
@@ -108,7 +109,7 @@ function viewDaUrl(): View {
 }
 
 const initial: State = {
-  phase: 'loading', meId: null, accountName: '', error: '', profiles: {}, tasks: {}, messages: [], notes: [], projects: {}, rows: { events: {}, goals: {}, stickers: {}, flows: {}, stages: {}, groups: {}, rooms: {}, carpenters: {}, depts: {}, brand: {}, quartos: {}, vendas: {}, ajustes: {}, metas_venda: {}, vendas_cfg: {}, campanhas: {}, caderno: {}, jogos_pontos: {}, plano_meses: {}, plano_nucleos: {}, plano_acoes: {}, plano_resp: {}, equipes: {}, relatorios: {}, redes: {}, postagens: {}, requisicoes: {}, parcerias: {}, registros: {} }, parc: { tasks: {}, events: {} }, online: new Set(),
+  phase: 'loading', meId: null, accountName: '', error: '', profiles: {}, tasks: {}, messages: [], notes: [], projects: {}, rows: { events: {}, goals: {}, stickers: {}, flows: {}, stages: {}, groups: {}, rooms: {}, carpenters: {}, depts: {}, brand: {}, quartos: {}, vendas: {}, ajustes: {}, metas_venda: {}, vendas_cfg: {}, campanhas: {}, caderno: {}, jogos_pontos: {}, plano_meses: {}, plano_nucleos: {}, plano_acoes: {}, plano_resp: {}, equipes: {}, relatorios: {}, redes: {}, postagens: {}, requisicoes: {}, parcerias: {}, registros: {}, poderes: {} }, parc: { tasks: {}, events: {} }, online: new Set(),
   tab: 'mesa', viewing: null, channel: 'geral', reads: {}, requestTo: null, task: null, editing: false, notices: [], pipOpen: false, view: viewDaUrl(), wallet: null, drawer: false,
   project: '', projectEdit: null, aiOpen: false, chatOpen: false, lousa: false, jogo: null, cassino: false, bolao: null, bingo: false, abasOpen: false, conectar: false, armario: false, bingoDados: null, bloqueio: null, bellOpen: false, qApprove: false, flow: null, sheet: false, stickTo: null, sala: DEPT0, here: DEPT0,
 }
@@ -314,6 +315,10 @@ function onRow<K extends RowTable>(k: K, r: Rows[K]) {
   set({ rows: { ...state.rows, [k]: { ...state.rows[k], [r.id]: r } } })
   if (k === 'parcerias') mudouParceria(r as Parceria, prev as Parceria | undefined)
   if (k === 'requisicoes') avisoReq(r as Requisicao, prev as Requisicao | undefined)
+  if (k === 'poderes' && !prev && (r as Poder).user_id === state.meId && Date.parse((r as Poder).fim) > Date.now()) {
+    const po = PODERES[(r as Poder).tipo]
+    notify(`${po.emoji} Você ganhou o poder ${po.nome}: ${po.desc}, até ${ateQuando((r as Poder).fim)}.`, { kind: 'loja' })
+  }
   if (k === 'stickers' && !prev) {
     const st = r as Sticker
     if (st.to_id === state.meId && st.by_id !== state.meId) notify(`${nameOf(st.by_id)} colou um adesivo na sua tela: “${st.text}”`, { kind: 'adesivo', from: st.by_id })
@@ -516,8 +521,8 @@ export async function enter(uid: string) {
   clearInterval(remindTimer)
   clearInterval(coffeeTimer)
   clearInterval(bingoTimer)
-  void claim().then(() => checarBolao()).then(() => checarBingo())
-  coffeeTimer = window.setInterval(() => void claim(), 10 * 60000)
+  void claim().then(() => checarBolao()).then(() => checarBingo()).then(() => checarPoderes())
+  coffeeTimer = window.setInterval(() => { void claim(); void checarPoderes() }, 10 * 60000)
   // bingo: devagar no fundo (placar da sala, aviso de prêmio); a janela aberta acelera
   bingoTimer = window.setInterval(() => { if (!state.bingo && document.visibilityState === 'visible') void checarBingo() }, 60000)
   checkReminders()
@@ -1249,6 +1254,21 @@ export async function checarBingo() {
 export async function comprarCartela(gratis: boolean) {
   pegaBingo(await vigiado(backend.bingoComprar(gratis)))
   await refreshWallet()
+}
+
+// ---------- poderes ----------
+/** sorteio da semana + mesada/coringa do dia; o servidor faz tudo, aqui só junta nas rows */
+export async function checarPoderes() {
+  if (!state.meId) return
+  try {
+    const ps = await backend.poderesEstado()
+    for (const p of ps) if (JSON.stringify(state.rows.poderes[p.id]) !== JSON.stringify(p)) onRow('poderes', p)
+    if (ps.some(p => p.user_id === state.meId && (p.tipo === 'mesada' || p.tipo === 'coringa'))) await refreshWallet()
+  } catch { /* tenta no próximo giro */ }
+}
+export async function mandarMegafone(texto: string) {
+  await backend.megafone(texto)
+  await checarPoderes()
 }
 
 export async function comprarBilhete() {

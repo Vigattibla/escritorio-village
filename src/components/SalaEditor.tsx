@@ -5,7 +5,8 @@ import { drawChair } from '../office/props'
 import { at, bbox, check, defaultDesk, deskSides, hitTest, isDesk, KINDS, kd, original, parseSala, PISOS, reach, renderRoom, solidGrid, TEMAS, type Kind, type Obj, type Piso, type Sala, type Tema } from '../office/sala'
 import { BOSS_DESK, drawDesk, MAX_DESKS, MH, MW, roomOfId, T, upperWall, wallFace } from '../office/world'
 import { dropRow, hasVendas, me, putRow, roomOf, team, useStore } from '../store'
-import type { Profile } from '../types'
+import type { Poder, Profile } from '../types'
+import { poderDe } from '../game/poderes'
 import { Px } from './Px'
 import { confirmar } from './Dialogo'
 
@@ -15,9 +16,9 @@ const S = 2
 const SHADOW_OK = 'rgba(63,166,107,.22)', SHADOW_BAD = 'rgba(229,72,58,.28)'
 
 /** pode arrumar o escritório: Coordenação/Gerência/Chefe, ou carpinteiro com prazo valendo */
-export function canEditOffice(p: Profile | undefined, carpenters: Record<string, { until: string }>) {
+export function canEditOffice(p: Profile | undefined, carpenters: Record<string, { until: string }>, poderes: Record<string, Poder> = {}) {
   if (!p) return false
-  if (rankOf(p) >= 2) return true
+  if (rankOf(p) >= 2 || poderDe(poderes, p.id, 'chefe')) return true
   const c = carpenters[p.id]
   return !!c && new Date(c.until).getTime() > Date.now()
 }
@@ -62,7 +63,7 @@ export default function SalaEditor({ onClose }: { onClose: () => void }) {
   const nextId = useRef(Math.max(0, ...sala.objs.map(o => o.id)) + 1)
 
   const chief = rankOf(meP) >= 3
-  const can = canEditOffice(meP, s.rows.carpenters)
+  const can = canEditOffice(meP, s.rows.carpenters, s.rows.poderes)
   const myCarp = meP && !chief ? s.rows.carpenters[meP.id] : undefined
 
   // quem senta em cada mesa (mesma regra do jogo: chefia na mesa grande)
@@ -237,7 +238,7 @@ export default function SalaEditor({ onClose }: { onClose: () => void }) {
   }
 
   async function save() {
-    if (!meP || !canEditOffice(meP, s.rows.carpenters)) { setMsg({ t: 'Seu tempo de carpinteiro acabou. Peça mais pra chefia.', bad: true }); return }
+    if (!meP || !canEditOffice(meP, s.rows.carpenters, s.rows.poderes)) { setMsg({ t: 'Seu tempo de carpinteiro acabou. Peça mais pra chefia.', bad: true }); return }
     const err = reach(sala, nameOf)
     if (err) { setMsg({ t: err, bad: true }); return }
     setBusy(true)

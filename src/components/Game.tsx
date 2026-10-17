@@ -3,6 +3,7 @@ import { gravar } from '../office/trilha'
 import { onPhotoLoad, SPRITE_H } from '../chibi/sprite'
 import { backend } from '../data'
 import { deptOf, isChief, managerOf } from '../game/ranks'
+import { PODERES, poderDe } from '../game/poderes'
 import { COMODOS, comodoOf, DESENTUPIDOR, type Kind, type Spot } from '../office/comodos'
 import { drawPapel, drawProp, pulo, type Prop } from '../office/vida'
 import { chegada, drawCurtain, drawDoor, drawExit, drawMat, HALL, inkOn } from '../office/andar'
@@ -151,6 +152,7 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
     let at = getState().here, bumped = -1
 
     const myProfile = () => getState().profiles[meId]
+    const turbo = () => poderDe(getState().rows.poderes, meId, 'turbo') ? 2 : 1
     const myRoom = () => homeRoom(myProfile())
     const hallMid = () => ({ x: FW * T / 2, y: (HY0 + 2) * T + 8 })
     /** ponto logo depois da porta, do lado de dentro da sala */
@@ -390,7 +392,7 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
       if (keys.has('s') || keys.has('arrowdown')) vy++
       let moving = false
       if (vx || vy) {
-        const len = Math.hypot(vx, vy), d = SPEED * dt
+        const len = Math.hypot(vx, vy), d = SPEED * dt * turbo()
         const nx = meS.x + (vx / len) * d, ny = meS.y + (vy / len) * d
         const free = (x: number, y: number) => !blocked(x - 4, y) && !blocked(x + 4, y) && !blocked(x - 4, y - 3) && !blocked(x + 4, y - 3)
         if (free(nx, meS.y)) meS.x = nx
@@ -402,7 +404,7 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
         if (k >= 0 && !enterable(getRooms()[k])) { if (bumped !== k) { bumped = k; doorAsk(k) } }
         else bumped = -1
       } else if (path.length) {
-        moving = walk(meS, path, dt)
+        moving = walk(meS, path, dt * turbo())
         if (!path.length) meS.dir = 'down'
       } else if (regionOfPx(meS.x, meS.y) === myRoom()?.slot) moving = runJob(meId, meS, myProfile(), dt, tnow)
       meS.moving = moving
@@ -624,8 +626,16 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
         if (p.photo && !watched.has(p.photo)) { watched.add(p.photo); offPhotos.push(onPhotoLoad(p.photo, () => {})) }
         const job = jobs.get(id)
         const away = id !== meId && !s.online.has(id) && !job
+        const po = poderDe(s.rows.poderes, id)
         items.push({
           key: o.y, draw: () => {
+            // poder ativo: aura que pulsa no chão, na cor do poder
+            if (po) {
+              const k = 0.5 + 0.5 * Math.sin(t / 380), g = ctx.createRadialGradient(o.x, o.y, 1, o.x, o.y, 11 + k * 2)
+              g.addColorStop(0, PODERES[po.tipo].cor + 'aa'); g.addColorStop(1, PODERES[po.tipo].cor + '00')
+              ctx.fillStyle = g
+              ctx.beginPath(); ctx.ellipse(o.x, o.y, 11 + k * 2, 4 + k, 0, 0, Math.PI * 2); ctx.fill()
+            }
             ctx.fillStyle = 'rgba(0,0,0,.18)'
             ctx.beginPath(); ctx.ellipse(o.x, o.y, 6, 2, 0, 0, Math.PI * 2); ctx.fill()
             // fora do escritório: boneco opaco e desbotado (transparente deixava a cadeira aparecer pela cabeça)
@@ -757,6 +767,18 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
         ctx.fillStyle = pl?.fg ?? '#fff'
         ctx.textBaseline = 'middle'
         ctx.fillText(label, lx + pad + 10, ly + 9)
+        // selo do poder ativo, colado na placa
+        const po = poderDe(s.rows.poderes, id)
+        if (po) {
+          const cx = lx + total + 7, cy = ly + 8.5
+          ctx.fillStyle = PODERES[po.tipo].cor
+          ctx.shadowColor = PODERES[po.tipo].cor; ctx.shadowBlur = 6 + 3 * Math.sin(t / 380)
+          ctx.beginPath(); ctx.arc(cx, cy, 8, 0, Math.PI * 2); ctx.fill()
+          ctx.shadowBlur = 0
+          ctx.font = '10px "Segoe UI Emoji", "Apple Color Emoji", sans-serif'; ctx.textAlign = 'center'
+          ctx.fillText(PODERES[po.tipo].emoji, cx, cy + 1)
+          ctx.textAlign = 'left'
+        }
         if (away && !passeando) {
           ctx.font = '700 11px "Pixelify Sans", sans-serif'
           ctx.fillStyle = '#c8cde0'

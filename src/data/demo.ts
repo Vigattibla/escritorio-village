@@ -1,7 +1,7 @@
 import { toEmail, validUser } from './login'
 import { dayKey } from '../game/xp'
 import { deptOf, outranks, rankOf } from '../game/ranks'
-import type { CoffeeLine, Dept, JogoRes, Goal, Wallet, Group, RowTable, Rows, AccountEdit, AiContext, AiProposal, AiStage, Avatar, Backend, Handlers, Message, Pos, Profile, Project, Parceria, Requisicao, Snapshot, Task, TaskNote } from '../types'
+import type { CoffeeLine, Dept, JogoRes, Goal, Wallet, Group, RowTable, Rows, AccountEdit, AiContext, AiProposal, AiStage, Avatar, Backend, Handlers, Message, Pos, Profile, Project, Parceria, Poder, PoderTipo, Requisicao, Snapshot, Task, TaskNote } from '../types'
 import { ROW_TABLES } from '../types'
 import { counts, DAY, MAX_GOALS, payouts, WELCOME } from '../shop/economy'
 import { ITEM } from '../shop/catalog'
@@ -578,6 +578,48 @@ export class DemoBackend implements Backend {
       salva: v => write('ev:bolao', v),
       outros: () => Object.keys(read<Record<string, Profile>>(K.prof, {})).filter(id => id !== me).slice(0, 5).map((u, i) => ({ u, n: 1 + ((i * 3 + 2) % 5) })),
     })
+  }
+  /** poderes da demo: mesmo sorteio do SQL (segunda 9h, 3 pessoas, peso por fase/meta), guardado em ev:row:poderes */
+  async poderesEstado(): Promise<Poder[]> {
+    const me = sessionStorage.getItem(K.session)
+    if (!me) throw new Error('Entre de novo.')
+    const all = read<Record<string, Poder>>(K.row + 'poderes', {})
+    const d = new Date(); d.setHours(d.getHours() - 9); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); d.setHours(9, 0, 0, 0)
+    const sem = d.toISOString(), now = Date.now()
+    if (!Object.values(all).some(p => p.semana === sem)) {
+      const log = this.coffee(), desde = d.getTime() - 7 * 864e5
+      const pts = (u: string) => u !== me ? 0 : log.filter(l => new Date(l.created_at).getTime() >= desde && new Date(l.created_at).getTime() < d.getTime()).reduce((n, l) => n + (l.reason === 'fase' ? 1 : l.reason === 'meta' ? 2 : 0), 0)
+      const gente = Object.values(read<Record<string, Profile>>(K.prof, {})).filter(p => p.avatar).map(p => ({ u: p.id, k: Math.pow(Math.random(), 1 / (1 + pts(p.id))) })).sort((a, b) => b.k - a.k).slice(0, 3)
+      let tipos: PoderTipo[] = ['ima', 'coringa', 'mesada', 'megafone', 'turbo', 'chefe', 'visao']
+      const horas: Record<PoderTipo, number> = { ima: 48, coringa: 72, mesada: 72, megafone: 24, turbo: 168, chefe: 24, visao: 96 }
+      const novos = gente.map(({ u }) => {
+        const tipo = tipos[Math.floor(Math.random() * tipos.length)]
+        tipos = tipos.filter(t => t !== tipo)
+        return { id: crypto.randomUUID(), user_id: u, tipo, motivo: 'sorteio', semana: sem, inicio: new Date(now).toISOString(), fim: new Date(now + horas[tipo] * 36e5).toISOString(), aviso: null, avisado_em: null, created_at: new Date(now).toISOString() } as Poder
+      })
+      await this.upsertRows('poderes', novos)
+      for (const p of novos) await this.sendMessage({ id: crypto.randomUUID(), channel: 'geral', sender_id: p.user_id, body: `✨ Ganhei o poder ${p.tipo} no sorteio da semana.`, created_at: p.created_at })
+      for (const p of novos) all[p.id] = p
+    }
+    const hoje = localDay(new Date().toISOString()), log = this.coffee()
+    for (const p of Object.values(all)) if (p.user_id === me && (p.tipo === 'mesada' || p.tipo === 'coringa') && new Date(p.inicio).getTime() <= now && new Date(p.fim).getTime() > now)
+      this.credit(log, p.tipo === 'mesada' ? 15 : 0, p.tipo === 'mesada' ? 'poder' : 'coringa', `${p.tipo}:${p.id}:${hoje}`, [])
+    write('ev:coffee:' + me, log)
+    return Object.values(all).filter(p => new Date(p.fim).getTime() > now - 7 * 864e5)
+  }
+  async megafone(texto: string) {
+    const me = sessionStorage.getItem(K.session), t = texto.trim()
+    if (t.length < 1 || t.length > 200) throw new Error('O aviso precisa ter de 1 a 200 letras.')
+    const now = Date.now(), p = Object.values(read<Record<string, Poder>>(K.row + 'poderes', {})).find(p => p.user_id === me && p.tipo === 'megafone' && !p.aviso && new Date(p.fim).getTime() > now)
+    if (!p || !me) throw new Error('Você não tem megafone para usar.')
+    await this.upsertRow('poderes', { ...p, aviso: t, avisado_em: new Date(now).toISOString() })
+    await this.sendMessage({ id: crypto.randomUUID(), channel: 'geral', sender_id: me, body: '📣 ' + t, created_at: new Date(now).toISOString() })
+  }
+  async visaoBolao() {
+    const me = sessionStorage.getItem(K.session), now = Date.now()
+    if (!Object.values(read<Record<string, Poder>>(K.row + 'poderes', {})).some(p => p.user_id === me && p.tipo === 'visao' && new Date(p.fim).getTime() > now)) throw new Error('Só quem tem o poder Visão vê isso.')
+    const b = this.bolao(), e = await b.estado()
+    return [...Object.keys(read<Record<string, Profile>>(K.prof, {})).filter(id => id !== me).slice(0, 5).map((u, i) => ({ u, n: 1 + ((i * 3 + 2) % 5) })), { u: me!, n: e.gratis + e.comprados }].sort((a, b) => b.n - a.n).slice(0, 5)
   }
   async bolaoEstado() { return this.bolao().estado() }
   async bolaoComprar() { return this.bolao().comprar() }

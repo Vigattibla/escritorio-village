@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { BILHETE, LATINHA, MAX_BILHETES, MAX_TROCAS, latinhasDoPremio, type Sorteio } from '../cassino/bolao'
 import { checarBolao, comprarBilhete, itemName, primeiroNome, run, trocarLatinha, useStore } from '../store'
 import { Ph } from './Icon'
+import { VisaoBolao } from './Poderes'
 
 const CASA = 112 // largura de cada nome na faixa da roleta
 const RODOU = 'ev:bolao:roleta'
@@ -100,7 +101,7 @@ export default function Bolao() {
         <div className="bl-card">
           <h4>Meus bilhetes</h4>
           <div className="bl-big">{meus}<small> {meus === 1 ? 'bilhete' : 'bilhetes'}{b.bilhetes ? ` · ${chance}% de chance` : ''}</small></div>
-          <small className="muted">{b.gratis} grátis (1 por fase de meta, 2 por meta batida) · {b.comprados}/{MAX_BILHETES} comprados</small>
+          <small className="muted">{b.gratis} grátis (1 por fase de meta, 2 por meta batida, 1 por dia com Coringa) · {b.comprados}/{MAX_BILHETES} comprados</small>
           <button className="btn accent" disabled={!!busy || b.comprados >= MAX_BILHETES}
             onClick={() => act('bilhete', comprarBilhete, 'Bilhete comprado. Boa sorte!')}>
             {busy === 'bilhete' ? 'Comprando…' : b.comprados >= MAX_BILHETES ? 'Limite da semana' : `Comprar bilhete · ☕ ${BILHETE}`}
@@ -114,6 +115,7 @@ export default function Bolao() {
             {busy === 'troca' ? 'Trocando…' : `Trocar ☕ ${LATINHA} → 1 ⚡`}
           </button>
         </div>
+        <VisaoBolao />
       </div>
       {msg && <p className={msg.err ? 'cs-erro' : 'bl-ok'}>{msg.text}</p>}
 

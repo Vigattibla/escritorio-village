@@ -1,6 +1,6 @@
 import { createClient, type RealtimeChannel, type SupabaseClient } from '@supabase/supabase-js'
 import { slugUser, toEmail } from './login'
-import type { CoffeeLine, JogoRes, Wallet, RowTable, Rows, AccountEdit, AiContext, AiProposal, AiStage, Backend, Handlers, Message, Parceria, Pos, Profile, Project, Requisicao, Snapshot, Task, TaskNote } from '../types'
+import type { CoffeeLine, JogoRes, Wallet, RowTable, Rows, AccountEdit, AiContext, AiProposal, AiStage, Backend, Handlers, Message, Parceria, Poder, Pos, Profile, Project, Requisicao, Snapshot, Task, TaskNote } from '../types'
 import type { Bloqueio } from '../game/vigia'
 import { ROW_TABLES } from '../types'
 import type { Escolha, JogoCassino, Rodada } from '../cassino/regras'
@@ -288,12 +288,15 @@ export class SupabaseBackend implements Backend {
     return data as JogoRes
   }
 
-  private async rpc<T>(fn: string) {
-    const { data, error } = await this.sb.rpc(fn)
+  private async rpc<T>(fn: string, args?: Record<string, unknown>) {
+    const { data, error } = await this.sb.rpc(fn, args)
     if (error) throw pt(error)
     return data as T
   }
   bolaoEstado() { return this.rpc<Bolao>('bolao_estado') }
+  poderesEstado() { return this.rpc<Poder[]>('poderes_estado') }
+  async megafone(texto: string) { await this.rpc<null>('megafone', { texto }) }
+  visaoBolao() { return this.rpc<{ u: string; n: number }[]>('visao_bolao') }
   bolaoComprar() { return this.rpc<Bolao>('bolao_comprar') }
   bingoEstado() { return this.rpc<Bingo>('bingo_estado') }
   async bingoComprar(gratis: boolean) {
