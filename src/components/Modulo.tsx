@@ -208,6 +208,13 @@ const FAIXAS: Record<string, ItemFaixa[]> = {
     { id: 'pedidos', nome: 'Esperando resposta', ic: 'bell-simple', ok: r => r.status === 'pedido', alerta: true },
     { id: 'semcobre', nome: 'Sem quem cobre', ic: 'user-circle', ok: r => aberto(r) && !txt(r.campos.cobre) && (txt(r.campos.fim) || txt(r.campos.inicio)) >= hoje(), alerta: true },
   ],
+  // achados e perdidos: guardado há mais de 30 dias = hora de doar ou descartar
+  achados: [
+    { id: 'guardados', nome: 'Guardados', ic: 'circle-dashed', ok: r => r.status === 'guardado' },
+    { id: 'velhos', nome: 'Há mais de 30 dias', ic: 'calendar-dots', ok: r => r.status === 'guardado' && !!txt(r.campos.data) && txt(r.campos.data) < somaDias(hoje(), -30), alerta: true },
+    { id: 'semdono', nome: 'Sem dono achado', ic: 'user-circle', ok: r => r.status === 'guardado' && !txt(r.campos.dono) },
+    { id: 'devolvidos', nome: 'Devolvidos no mês', ic: 'check-circle', ok: r => r.status === 'devolvido' && new Date(r.em).toLocaleDateString('sv-SE').slice(0, 7) === hoje().slice(0, 7) },
+  ],
 }
 function Faixa({ nome, itens, regs, f, setF }: { nome: string; itens: ItemFaixa[]; regs: Registro[]; f: string | null; setF: (f: string | null) => void }) {
   if (!f && !regs.some(r => itens.some(x => x.ok(r)))) return null

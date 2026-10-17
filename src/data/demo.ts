@@ -88,6 +88,7 @@ export class DemoBackend implements Backend {
     if (!read<Record<string, Dept>>(K.row + 'depts', {}).obras) seedSetores()
     if (!read<Record<string, Dept>>(K.row + 'depts', {}).reservas) seedAndar3()
     if (!localStorage.getItem('ev:seed:comercial')) seedComercial()
+    if (!localStorage.getItem('ev:seed:achados')) seedAchados()
     return {
       profiles: Object.values(read<Record<string, Profile>>(K.prof, {})),
       tasks: Object.values(read<Record<string, Task>>(K.task, {})),
@@ -914,6 +915,24 @@ function seedComercial() {
     r('retornos', 'Sônia', 'aberto', { quando: dia(0), assunto: 'Cardápio do aniversário' }),
     r('retornos', 'Marcos', 'aberto', { quando: dia(-2), assunto: 'Mandar proposta revisada' }),
     r('retornos', 'Rota Sul Viagens', 'sem', { quando: dia(4), assunto: 'Tarifário de agência' }),
+  ]
+  write(K.row + 'registros', { ...read<Record<string, Registro>>(K.row + 'registros', {}), ...Object.fromEntries(regs.map(x => [x.id, x])) })
+}
+
+/** achados e perdidos da recepção: um guardado há mais de 30 dias, um sem dono, um devolvido */
+function seedAchados() {
+  localStorage.setItem('ev:seed:achados', '1')
+  const now = new Date()
+  const dia = (d: number) => dayKey(new Date(now.getTime() + d * 864e5))
+  const ago = (h: number) => new Date(now.getTime() - h * 36e5).toISOString()
+  let pos = 0
+  const r = (titulo: string, status: string, campos: Record<string, unknown>, h = 2): Registro =>
+    ({ id: crypto.randomUUID(), dept: 'recepcao', modulo: 'achados', titulo, status, campos, pos: pos++, por: 'demo-ana', created_at: ago(h), em: ago(h) })
+  const regs = [
+    r('Óculos de sol preto', 'guardado', { local: 'Piscina', data: dia(-2), guarda: 'Gaveta da recepção' }),
+    r('Boné infantil azul', 'guardado', { local: 'Parquinho', data: dia(-41), guarda: 'Caixa de achados', dono: '' }, 980),
+    r('Carregador de celular', 'guardado', { local: 'Apto 108', data: dia(-5), guarda: 'Gaveta da recepção', dono: 'Sr. Henrique (31) 99811-2030' }),
+    r('Toalha de praia estampada', 'devolvido', { local: 'Quiosque', data: dia(-8), guarda: 'Rouparia', dono: 'Família Andrade' }, 30),
   ]
   write(K.row + 'registros', { ...read<Record<string, Registro>>(K.row + 'registros', {}), ...Object.fromEntries(regs.map(x => [x.id, x])) })
 }
