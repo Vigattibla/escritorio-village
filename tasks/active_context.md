@@ -254,3 +254,9 @@ Pendente: push (precisa da migration 202610080900_v4_agenda_metas.sql e do secre
 - Bolão: bilhete 1 ☕ (22c5ca4, migration 202610261300). Bingo: cartela 1 ☕ + casa põe 10 no pote (026ec87, 202610261310).
 - Montarias redesenhadas (582eb7d): bicho maior com manta, de frente cabeça no colo, pernas do cavaleiro finas.
 - Pendente: habilidade temporária "roguelike" (semanal/evento); spec anterior não achada; proposta enviada ao usuário.
+
+## 17/10 — setores personalizados + app celular (no ar)
+- APK: 5f2eef2 (site/app/escritorio.apk) · escritorio-celular 1c401f3 (WebView do site publicado; atualiza sozinho).
+- c7702a2: módulos novos por setor + menu "Da sala" no celular. Escudo virou Mesada.
+- 85d1fb5: demo com Obras/Governança/Recepção/A&B (andar 2), emblemas martelo/cama/sino/xícara/chave/livro, obra mostra % do orçamento gasto (alerta quando passa do avanço), abas do hero rolam e centralizam a sala atual, Semana rola até hoje.
+- Próximo: varredura UI/UX restante (Grade no celular, Escala A&B), remontar layout dos andares.
