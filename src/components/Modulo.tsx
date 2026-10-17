@@ -62,8 +62,9 @@ export default function ModuloTela({ id }: { id: string }) {
   const busca = q.trim().toLowerCase()
   const achou = busca ? regs.filter(r => (r.titulo + ' ' + Object.values(r.campos).map(txt).join(' ')).toLowerCase().includes(busca)) : regs
   const comHoje = temEstadia(m), comFila = !comHoje && m.layout === 'kanban' && m.campos.some(c => c.id === 'urg' || (c.id === 'quando' && c.tipo === 'hora'))
-  const comPrazo = !comHoje && !comFila && !!m.prazo && m.layout === 'kanban'
-  const vis = !fHoje ? achou : achou.filter(r => comHoje ? naHoje(r, fHoje as FiltroHoje) : comFila ? naFila(m, r, fHoje as FiltroFila) : comPrazo && noPrazo(m, r, fHoje as FiltroPrazo))
+  const comPrazo = !comHoje && !comFila && !!m.prazo && (m.layout === 'kanban' || m.layout === 'lista')
+  const comAgenda = !comHoje && !comFila && !comPrazo && m.layout === 'kanban' && !!m.cal && m.campos.some(c => c.tipo === 'dinheiro')
+  const vis = !fHoje ? achou : achou.filter(r => comHoje ? naHoje(r, fHoje as FiltroHoje) : comFila ? naFila(m, r, fHoje as FiltroFila) : comPrazo ? noPrazo(m, r, fHoje as FiltroPrazo) : comAgenda && naAgenda(m, r, fHoje as FiltroAgenda))
   const abrir = (p: Partial<Registro> = {}) => pode && setEdit(novoReg(m, sala, p))
   const temLista = m.layout === 'kanban'
   const temBusca = m.layout !== 'rotina' && m.layout !== 'semana'
@@ -84,6 +85,7 @@ export default function ModuloTela({ id }: { id: string }) {
       {comHoje && <Hoje regs={regs} f={fHoje} setF={setFHoje} />}
       {comFila && <Fila m={m} regs={regs} f={fHoje} setF={setFHoje} />}
       {comPrazo && <Prazos m={m} regs={regs} f={fHoje} setF={setFHoje} />}
+      {comAgenda && <Agenda m={m} regs={regs} f={fHoje} setF={setFHoje} />}
       {modo === 'cal' && m.cal ? <Calendario {...ctx} /> : modo === 'lista' ? <Lista {...ctx} /> : <>
         {m.layout === 'kanban' && <Kanban {...ctx} />}
         {m.layout === 'lista' && <Lista {...ctx} />}
@@ -141,7 +143,7 @@ function noPrazo(m: Modulo, r: Registro, f: FiltroPrazo) {
 }
 function Prazos({ m, regs, f, setF }: { m: Modulo; regs: Registro[]; f: string | null; setF: (f: string | null) => void }) {
   const din = m.campos.find(c => c.tipo === 'dinheiro')
-  const itens: [FiltroPrazo, string, PhName][] = [['atraso', 'Atrasados', 'flag-banner'], ['hoje', 'Vencem hoje', 'bell-simple'], ['semana', 'Próximos 7 dias', 'calendar-dots'], ['sem', 'Sem data', 'circle-dashed']]
+  const itens: [FiltroPrazo, string, PhName][] = [['atraso', 'Atrasados', 'flag-banner'], ['hoje', 'Para hoje', 'bell-simple'], ['semana', 'Em 7 dias', 'calendar-dots'], ['sem', 'Sem data', 'circle-dashed']]
   // nada atrasado nem perto de vencer: a faixa só faria barulho
   if (!f && !regs.some(r => itens.some(([k]) => noPrazo(m, r, k)))) return null
   return (
@@ -150,6 +152,35 @@ function Prazos({ m, regs, f, setF }: { m: Modulo; regs: Registro[]; f: string |
         const rs = regs.filter(r => noPrazo(m, r, k)), v = din ? rs.reduce((a, r) => a + num(r.campos[din.id]), 0) : 0
         return (
           <button key={k} className={(f === k ? 'on' : '') + (k === 'atraso' && rs.length ? ' alerta' : '')} aria-pressed={f === k} onClick={() => setF(f === k ? null : k)} title={f === k ? 'Mostrar todos' : 'Mostrar só esses'}>
+            <Ph n={ic} size={18} /><b>{rs.length}</b><span>{nome}{v > 0 && <small>{real(v)}</small>}</span>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+/** módulos de data marcada com valor (eventos): o que vem aí, o que está em negociação e o que já fechou */
+type FiltroAgenda = 'semana' | 'mes' | 'negocia' | 'fechados'
+function naAgenda(m: Modulo, r: Registro, f: FiltroAgenda) {
+  const abertas = m.status.filter(e => !e.fim), i = abertas.findIndex(e => e.id === r.status)
+  if (i < 0) return false
+  // a última etapa em aberto é a de "fechado"; as anteriores ainda estão em conversa
+  if (f === 'negocia') return i < abertas.length - 1
+  if (f === 'fechados') return i === abertas.length - 1
+  const d = txt(r.campos[m.cal!]), h = hoje()
+  return !!d && d >= h && d <= somaDias(h, f === 'semana' ? 7 : 30)
+}
+function Agenda({ m, regs, f, setF }: { m: Modulo; regs: Registro[]; f: string | null; setF: (f: string | null) => void }) {
+  const din = m.campos.find(c => c.tipo === 'dinheiro')!, abertas = m.status.filter(e => !e.fim)
+  const itens: [FiltroAgenda, string, PhName][] = [['semana', 'Em 7 dias', 'bell-simple'], ['mes', 'Em 30 dias', 'calendar-dots'], ['negocia', 'Em negociação', 'circle-dashed'], ['fechados', abertas[abertas.length - 1]?.nome ?? 'Fechados', 'check-circle']]
+  if (!f && !regs.some(r => itens.some(([k]) => naAgenda(m, r, k)))) return null
+  return (
+    <div className="md-hoje" role="group" aria-label="Agenda">
+      {itens.map(([k, nome, ic]) => {
+        const rs = regs.filter(r => naAgenda(m, r, k)), v = rs.reduce((a, r) => a + num(r.campos[din.id]), 0)
+        return (
+          <button key={k} className={f === k ? 'on' : ''} aria-pressed={f === k} onClick={() => setF(f === k ? null : k)} title={f === k ? 'Mostrar todos' : 'Mostrar só esses'}>
             <Ph n={ic} size={18} /><b>{rs.length}</b><span>{nome}{v > 0 && <small>{real(v)}</small>}</span>
           </button>
         )

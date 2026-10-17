@@ -87,6 +87,7 @@ export class DemoBackend implements Backend {
     if (!localStorage.getItem(K.row + 'quartos')) seedVendas()
     if (!read<Record<string, Dept>>(K.row + 'depts', {}).obras) seedSetores()
     if (!read<Record<string, Dept>>(K.row + 'depts', {}).reservas) seedAndar3()
+    if (!localStorage.getItem('ev:seed:comercial')) seedComercial()
     return {
       profiles: Object.values(read<Record<string, Profile>>(K.prof, {})),
       tasks: Object.values(read<Record<string, Task>>(K.task, {})),
@@ -888,6 +889,33 @@ function seedAndar3() {
     r('recreacao', 'rotina', 'Conferir coletes da piscina', 'ativo', { turno: 'Abertura' }),
     r('recreacao', 'estoque', 'Tinta guache', 'ok', { qtd: 8, min: 12, unid: 'pote', local: 'Salão' }),
   ])
+}
+
+/** registros de exemplo da sala Comercial: funil, eventos e retornos */
+function seedComercial() {
+  localStorage.setItem('ev:seed:comercial', '1')
+  const now = new Date()
+  const dia = (d: number) => dayKey(new Date(now.getTime() + d * 864e5))
+  const ago = (h: number) => new Date(now.getTime() - h * 36e5).toISOString()
+  let pos = 0
+  const r = (modulo: string, titulo: string, status: string, campos: Record<string, unknown> = {}, h = 2): Registro =>
+    ({ id: crypto.randomUUID(), dept: 'comercial', modulo, titulo, status, campos, pos: pos++, por: 'demo-carla', created_at: ago(h), em: ago(h) })
+  const regs = [
+    r('leads', 'Patrícia (RH)', 'proposta', { empresa: 'Farmácia Vida', origem: 'Indicação', valor: 42000, retorno: dia(-1) }),
+    r('leads', 'Marcos', 'contato', { empresa: 'Escola Horizonte', origem: 'Prospecção', valor: 15000, retorno: dia(0) }),
+    r('leads', 'Agência Rota Sul', 'novo', { empresa: 'Rota Sul Viagens', origem: 'Agência', retorno: dia(3) }),
+    r('leads', 'Cláudia', 'negociacao', { empresa: 'Construtora Pilar', origem: 'Feira', valor: 68000, retorno: dia(5) }),
+    r('leads', 'Igreja São José', 'ganho', { origem: 'Indicação', valor: 21000 }, 30),
+    r('eventos', 'Casamento Júlia & Rafa', 'fechado', { cliente: 'Júlia', data: dia(40), convidados: 120, espaco: 'Gramado', valor: 58000 }),
+    r('eventos', 'Aniversário 15 anos Bia', 'proposta', { cliente: 'Sônia', data: dia(5), convidados: 80, espaco: 'Salão', valor: 18000 }),
+    r('eventos', 'Confraternização Pilar', 'consulta', { cliente: 'Construtora Pilar', data: dia(24), convidados: 150, espaco: 'Restaurante' }),
+    r('eventos', 'Batizado Theo', 'fechado', { cliente: 'Renata', data: dia(3), convidados: 40, espaco: 'Quiosque', valor: 6500 }),
+    r('eventos', 'Bodas de prata', 'realizado', { cliente: 'Sr. Antônio', data: dia(-6), convidados: 60, espaco: 'Salão', valor: 12000 }, 200),
+    r('retornos', 'Sônia', 'aberto', { quando: dia(0), assunto: 'Cardápio do aniversário' }),
+    r('retornos', 'Marcos', 'aberto', { quando: dia(-2), assunto: 'Mandar proposta revisada' }),
+    r('retornos', 'Rota Sul Viagens', 'sem', { quando: dia(4), assunto: 'Tarifário de agência' }),
+  ]
+  write(K.row + 'registros', { ...read<Record<string, Registro>>(K.row + 'registros', {}), ...Object.fromEntries(regs.map(x => [x.id, x])) })
 }
 
 function seed() {
