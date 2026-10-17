@@ -7,6 +7,7 @@ import { Modal } from '../plano/ui'
 import { abasDe, deptName, dropRow, me, myDept, putRow, run, useStore } from '../store'
 import type { Profile, Registro } from '../types'
 import { MOD, type Campo, type Etapa, type Modulo } from '../setor/tipos'
+import type { PhName } from './ph'
 import { confirmar } from './Dialogo'
 import { Ph } from './Icon'
 import MiniAvatar from './MiniAvatar'
@@ -54,11 +55,14 @@ export default function ModuloTela({ id }: { id: string }) {
   const [q, setQ] = useState('')
   const [modo, setModo] = useState<'base' | 'lista' | 'cal'>('base')
   const [edit, setEdit] = useState<Registro | null>(null)
+  const [fHoje, setFHoje] = useState<FiltroHoje | null>(null)
   const regs = useMemo(() => Object.values(s.rows.registros).filter(r => r.dept === sala && r.modulo === id).sort((a, b) => a.pos - b.pos), [s.rows.registros, sala, id])
   if (!m) return <p className="pd-vazio">Esse módulo não existe mais.</p>
   const pode = podeEditar(sala)
   const busca = q.trim().toLowerCase()
-  const vis = busca ? regs.filter(r => (r.titulo + ' ' + Object.values(r.campos).map(txt).join(' ')).toLowerCase().includes(busca)) : regs
+  const achou = busca ? regs.filter(r => (r.titulo + ' ' + Object.values(r.campos).map(txt).join(' ')).toLowerCase().includes(busca)) : regs
+  const comHoje = temEstadia(m)
+  const vis = comHoje && fHoje ? achou.filter(r => naHoje(r, fHoje)) : achou
   const abrir = (p: Partial<Registro> = {}) => pode && setEdit(novoReg(m, sala, p))
   const temLista = m.layout === 'kanban'
   const temBusca = m.layout !== 'rotina' && m.layout !== 'semana'
@@ -76,6 +80,7 @@ export default function ModuloTela({ id }: { id: string }) {
         </div>}
         {pode && m.layout !== 'diario' && m.layout !== 'grade' && <button className="btn primary sm" onClick={() => abrir()}><Ph n="plus" size={16} />{m.novo}</button>}
       </div>
+      {comHoje && <Hoje regs={regs} f={fHoje} setF={setFHoje} />}
       {modo === 'cal' && m.cal ? <Calendario {...ctx} /> : modo === 'lista' ? <Lista {...ctx} /> : <>
         {m.layout === 'kanban' && <Kanban {...ctx} />}
         {m.layout === 'lista' && <Lista {...ctx} />}
@@ -86,6 +91,36 @@ export default function ModuloTela({ id }: { id: string }) {
         {m.layout === 'estoque' && <Estoque {...ctx} />}
       </>}
       {edit && <Editor m={m} reg={edit} novo={!regs.some(r => r.id === edit.id)} pode={pode} onClose={() => setEdit(null)} />}
+    </div>
+  )
+}
+
+/** módulos com entrada e saída (reservas, chegadas, grupos) ganham a faixa do dia */
+type FiltroHoje = 'chega' | 'sai' | 'casa' | 'amanha'
+const temEstadia = (m: Modulo) => ['entrada', 'saida'].every(k => m.campos.some(c => c.id === k && c.tipo === 'data'))
+/** só conta quem vem mesmo: fora consulta/cotação e perdidos/cancelados */
+const FORA_DO_DIA = new Set(['contato', 'cotacao', 'consulta', 'perdida', 'noshow', 'cancelado'])
+function naHoje(r: Registro, f: FiltroHoje) {
+  if (FORA_DO_DIA.has(r.status)) return false
+  const e = txt(r.campos.entrada), sa = txt(r.campos.saida), h = hoje()
+  if (f === 'chega') return e === h
+  if (f === 'sai') return sa === h
+  if (f === 'amanha') return e === somaDias(h, 1)
+  return !!e && e <= h && (!sa || sa > h) && r.status !== 'saiu'
+}
+const gente = (r: Registro) => num(r.campos.pessoas) || num(r.campos.adultos) + num(r.campos.criancas)
+function Hoje({ regs, f, setF }: { regs: Registro[]; f: FiltroHoje | null; setF: (f: FiltroHoje | null) => void }) {
+  const itens: [FiltroHoje, string, PhName][] = [['chega', 'Chegam hoje', 'person-simple-walk'], ['sai', 'Saem hoje', 'arrow-square-out'], ['casa', 'Na casa', 'bed'], ['amanha', 'Chegam amanhã', 'calendar-blank']]
+  return (
+    <div className="md-hoje" role="group" aria-label="Resumo do dia">
+      {itens.map(([k, nome, ic]) => {
+        const rs = regs.filter(r => naHoje(r, k)), p = rs.reduce((a, r) => a + gente(r), 0)
+        return (
+          <button key={k} className={f === k ? 'on' : ''} aria-pressed={f === k} onClick={() => setF(f === k ? null : k)} title={f === k ? 'Mostrar todos' : 'Mostrar só esses'}>
+            <Ph n={ic} size={18} /><b>{rs.length}</b><span>{nome}{p > 0 && <small>{p} {p === 1 ? 'pessoa' : 'pessoas'}</small>}</span>
+          </button>
+        )
+      })}
     </div>
   )
 }

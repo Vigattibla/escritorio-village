@@ -1,6 +1,14 @@
 /* Módulos do setor (setor/tipos + components/Modulo) */
 .md { display: grid; gap: 14px; align-content: start; min-width: 0; flex: 1; width: 100%; padding: 4px 24px 40px; box-sizing: border-box; overflow-y: auto; }
 .md-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.md-hoje { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.md-hoje button { display: flex; align-items: center; gap: 10px; min-width: 0; padding: 10px 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--card, #fff); color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
+.md-hoje button:hover { border-color: var(--ink); }
+.md-hoje button.on { background: var(--ink); border-color: var(--ink); color: #fff; }
+.md-hoje b { font: 800 22px Poppins; line-height: 1; }
+.md-hoje span { display: grid; min-width: 0; font-size: 13px; font-weight: 600; }
+.md-hoje small { font-weight: 500; font-size: 11.5px; opacity: .7; }
+@media (max-width: 760px) { .md-hoje { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .md-desc { margin: 0; color: var(--muted); font-size: 14px; min-width: 200px; }
 .md-desc small { font-weight: 700; }
 .md-busca { display: flex; align-items: center; gap: 6px; padding: 0 10px; height: 34px; border: 1px solid var(--line); border-radius: 999px; background: #fff; color: var(--muted); }
