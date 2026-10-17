@@ -96,7 +96,8 @@
 .md-sem { display: grid; grid-template-columns: repeat(7, minmax(130px, 1fr)); gap: 8px; overflow-x: auto; padding-bottom: 6px; }
 .md-sem section { display: grid; gap: 6px; align-content: start; padding: 8px; border-radius: 12px; background: var(--hover); min-height: 160px; }
 .md-sem section.hoje { background: color-mix(in srgb, var(--yellow) 20%, #fff); }
-.md-sem header { display: flex; align-items: center; gap: 6px; text-transform: capitalize; }
+.md-sem header { display: flex; align-items: center; gap: 6px; }
+.md-sem header b { text-transform: capitalize; }
 .md-sem header small { color: var(--muted); flex: 1; }
 .md-ativ { all: unset; cursor: pointer; display: grid; gap: 2px; padding: 8px; border-radius: 9px; background: #fff; font-size: 13px; }
 .md-ativ > small { font-weight: 700; color: var(--muted); }
@@ -135,6 +136,9 @@
   .md-busca input { width: 100px; }
   .md-cal-d { min-height: 58px; }
   .md-cal-d button { font-size: 0; height: 6px; padding: 0; }
+  /* semana no celular: um dia embaixo do outro, dia vazio fica fininho */
+  .md-sem { grid-template-columns: 1fr; overflow: visible; }
+  .md-sem section { min-height: 0; }
 }
 
 /* chamados nos Pedidos */

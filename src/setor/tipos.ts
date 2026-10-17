@@ -24,6 +24,8 @@ export interface Modulo {
   prazo?: string
   /** outros setores podem abrir (chamado de manutenção, TI) */
   externo?: boolean
+  /** texto de ajuda da caixa (diário) */
+  dica?: string
 }
 export interface TipoSetor { id: string; nome: string; desc: string; abas: string[] }
 
@@ -142,25 +144,75 @@ export const MODULOS: Modulo[] = [
     status: [{ id: 'novo', nome: 'Novo', cor: C.cinza }, { id: 'contato', nome: 'Em contato', cor: C.azul }, { id: 'proposta', nome: 'Proposta', cor: C.amarelo }, { id: 'negociacao', nome: 'Negociação', cor: C.laranja }, { id: 'ganho', nome: 'Fechado', cor: C.verde, fim: true }, { id: 'perdido', nome: 'Perdido', cor: C.vermelho, fim: true }],
     campos: [{ id: 'empresa', nome: 'Empresa', tipo: 'texto', card: true }, tel, { id: 'origem', nome: 'Origem', tipo: 'sel', ops: ['Indicação', 'Instagram', 'Site', 'Feira', 'Agência', 'Prospecção'], card: true }, { id: 'valor', nome: 'Valor', tipo: 'dinheiro', card: true }, { id: 'retorno', nome: 'Próximo contato', tipo: 'data', card: true }, obs],
   },
+  {
+    id: 'diarioobra', nome: 'Diário de obra', ic: 'building-office', layout: 'diario', novo: 'Anotar', titulo: 'Registro', dica: 'Como foi hoje? Equipe, serviço feito, clima, material que chegou, problema…',
+    desc: 'O dia a dia da obra: quem trabalhou, o que avançou e o que travou.',
+    status: [{ id: 'nota', nome: 'Registro', cor: C.cinza }, { id: 'pendente', nome: 'Problema', cor: C.laranja }, { id: 'resolvido', nome: 'Resolvido', cor: C.verde, fim: true }],
+    campos: [{ id: 'turno', nome: 'Período', tipo: 'sel', ops: ['Manhã', 'Tarde'], card: true }],
+  },
+  {
+    id: 'avisos', nome: 'Mural de avisos', ic: 'megaphone', layout: 'diario', novo: 'Avisar', titulo: 'Aviso', dica: 'Aviso pra todo mundo do setor (escala, reunião, regra nova…)',
+    desc: 'Recado pra equipe toda. Cada um marca "Li".',
+    status: [{ id: 'nota', nome: 'Aviso', cor: C.azul }, { id: 'pendente', nome: 'Importante', cor: C.vermelho }, { id: 'resolvido', nome: 'Encerrado', cor: C.cinza, fim: true }],
+    campos: [{ id: 'turno', nome: 'Para', tipo: 'sel', ops: [], card: true }],
+  },
+  {
+    id: 'cardapio', nome: 'Cardápio da semana', ic: 'coffee', layout: 'semana', novo: 'Novo prato', titulo: 'Prato',
+    desc: 'O que sai em cada refeição. Copie pro grupo da equipe com um toque.',
+    status: [{ id: 'ok', nome: 'No cardápio', cor: C.verde }, { id: 'cancelada', nome: 'Trocado', cor: C.cinza, fim: true }],
+    campos: [{ id: 'dia', nome: 'Dia', tipo: 'data' }, { id: 'hora', nome: 'Horário', tipo: 'hora', card: true },
+      { id: 'publico', nome: 'Refeição', tipo: 'sel', ops: ['Café da manhã', 'Almoço', 'Lanche', 'Jantar', 'Evento'], card: true },
+      { id: 'local', nome: 'Onde', tipo: 'sel', ops: ['Restaurante', 'Bar da piscina', 'Quiosque', 'Salão de eventos', 'Room service'], card: true },
+      { id: 'resp', nome: 'Cozinheiro', tipo: 'pessoa', card: true }, obs],
+  },
+  {
+    id: 'escala', nome: 'Escala', ic: 'calendar-dots', layout: 'semana', novo: 'Novo turno', titulo: 'Função',
+    desc: 'Quem trabalha em cada dia e horário. Repita a semana anterior e ajuste.',
+    status: [{ id: 'ok', nome: 'Escalado', cor: C.azul }, { id: 'cancelada', nome: 'Folga / falta', cor: C.cinza, fim: true }],
+    campos: [{ id: 'dia', nome: 'Dia', tipo: 'data' }, { id: 'hora', nome: 'Entrada', tipo: 'hora', card: true }, { id: 'resp', nome: 'Pessoa', tipo: 'pessoa', card: true },
+      { id: 'local', nome: 'Posto', tipo: 'texto', card: true }, { id: 'publico', nome: 'Turno', tipo: 'sel', ops: ['Manhã', 'Tarde', 'Noite', 'Intermediário'], card: true }, obs],
+  },
+  {
+    id: 'grupos', nome: 'Grupos e bloqueios', ic: 'users-three', layout: 'kanban', novo: 'Novo grupo', titulo: 'Grupo / empresa', cal: 'entrada', prazo: 'opcao',
+    desc: 'Grupos, empresas e casamentos: bloqueio de quartos até o contrato.',
+    status: [{ id: 'consulta', nome: 'Consulta', cor: C.cinza }, { id: 'bloqueio', nome: 'Bloqueio', cor: C.amarelo }, { id: 'contrato', nome: 'Contrato assinado', cor: C.verde }, { id: 'hospedado', nome: 'Hospedado', cor: C.roxo, fim: true }, { id: 'cancelado', nome: 'Cancelado', cor: C.vermelho, fim: true }],
+    campos: [{ id: 'resp', nome: 'Contato', tipo: 'texto', card: true }, { ...tel }, { id: 'entrada', nome: 'Entrada', tipo: 'data', card: true }, { id: 'saida', nome: 'Saída', tipo: 'data' },
+      { id: 'quartos', nome: 'Quartos bloqueados', tipo: 'num', card: true }, { id: 'pessoas', nome: 'Pessoas', tipo: 'num' }, { id: 'opcao', nome: 'Opção vale até', tipo: 'data', card: true },
+      { id: 'valor', nome: 'Valor total', tipo: 'dinheiro', card: true }, obs],
+  },
+  {
+    id: 'pedhosp', nome: 'Pedidos do hóspede', ic: 'bell', layout: 'kanban', novo: 'Novo pedido', titulo: 'Pedido', externo: true,
+    desc: 'Toalha, berço, transfer, late check-out… do pedido ao atendido.',
+    status: [{ id: 'aberto', nome: 'Pedido', cor: C.amarelo }, { id: 'andamento', nome: 'Encaminhado', cor: C.azul }, { id: 'feito', nome: 'Atendido', cor: C.verde, fim: true }],
+    campos: [{ id: 'quarto', nome: 'Quarto', tipo: 'texto', card: true }, { id: 'tipo', nome: 'Tipo', tipo: 'sel', ops: ['Enxoval', 'Berço / cama extra', 'Manutenção', 'Transfer', 'Late check-out', 'Restaurante', 'Outro'], card: true },
+      { id: 'quando', nome: 'Para quando', tipo: 'hora', card: true }, { id: 'resp', nome: 'Quem atende', tipo: 'pessoa', card: true }, obs],
+  },
+  {
+    id: 'ferias', nome: 'Férias e folgas', ic: 'calendar-blank', layout: 'lista', novo: 'Novo pedido', titulo: 'Pessoa', cal: 'inicio',
+    desc: 'Pedidos de férias, folga e banco de horas, com quem cobre.',
+    status: [{ id: 'pedido', nome: 'Pedido', cor: C.amarelo }, { id: 'aprovado', nome: 'Aprovado', cor: C.verde }, { id: 'gozado', nome: 'Gozado', cor: C.cinza, fim: true }, { id: 'negado', nome: 'Negado', cor: C.vermelho, fim: true }],
+    campos: [{ id: 'tipo', nome: 'Tipo', tipo: 'sel', ops: ['Férias', 'Folga', 'Banco de horas', 'Atestado', 'Licença'], card: true }, { id: 'inicio', nome: 'De', tipo: 'data', card: true }, { id: 'fim', nome: 'Até', tipo: 'data', card: true },
+      { id: 'cobre', nome: 'Quem cobre', tipo: 'pessoa', card: true }, obs],
+  },
 ]
 export const MOD: Record<string, Modulo> = Object.fromEntries(MODULOS.map(m => [m.id, m]))
 
 const P = ['pedidos']
 export const TIPOS: TipoSetor[] = [
   { id: 'marketing', nome: 'Marketing', desc: 'Quadro, plano, publicações e legendas', abas: ['agenda', 'plano', 'redes', 'legendas', 'arquivos', ...P] },
-  { id: 'comercial', nome: 'Comercial / Vendas', desc: 'Funil de contatos, eventos e retornos', abas: ['leads', 'eventos', 'retornos', 'agenda', 'arquivos', ...P] },
-  { id: 'reservas', nome: 'Central de reservas', desc: 'Reservas do contato ao check-in, retornos e livro de turno', abas: ['reservas', 'retornos', 'turno', 'agenda', 'arquivos', ...P] },
-  { id: 'recepcao', nome: 'Recepção', desc: 'Chegadas e saídas, livro de turno, achados e perdidos', abas: ['chegadas', 'turno', 'achados', 'rotina', ...P] },
+  { id: 'comercial', nome: 'Comercial / Vendas', desc: 'Funil de contatos, eventos e retornos', abas: ['leads', 'grupos', 'eventos', 'retornos', 'agenda', 'arquivos', ...P] },
+  { id: 'reservas', nome: 'Central de reservas', desc: 'Reservas do contato ao check-in, grupos, retornos e livro de turno', abas: ['reservas', 'grupos', 'retornos', 'turno', 'agenda', 'arquivos', ...P] },
+  { id: 'recepcao', nome: 'Recepção', desc: 'Chegadas e saídas, pedidos do hóspede, livro de turno, achados', abas: ['chegadas', 'pedhosp', 'turno', 'achados', 'rotina', ...P] },
   { id: 'governanca', nome: 'Governança', desc: 'Situação dos quartos, rotina, enxoval e achados', abas: ['uhs', 'rotina', 'estoque', 'achados', 'turno', ...P] },
   { id: 'manutencao', nome: 'Manutenção', desc: 'Chamados, preventiva, peças e livro de turno', abas: ['os', 'rotina', 'estoque', 'compras', 'turno', ...P] },
-  { id: 'obras', nome: 'Obras e projetos', desc: 'Obras com avanço e orçamento, compras e chamados', abas: ['obras', 'compras', 'os', 'agenda', 'arquivos', ...P] },
+  { id: 'obras', nome: 'Obras e projetos', desc: 'Obras com avanço e orçamento, diário de obra, compras e chamados', abas: ['obras', 'diarioobra', 'compras', 'os', 'agenda', 'arquivos', ...P] },
   { id: 'eventos', nome: 'Eventos', desc: 'Eventos da consulta ao dia, rotina de montagem', abas: ['eventos', 'rotina', 'compras', 'agenda', 'arquivos', ...P] },
-  { id: 'ab', nome: 'Alimentos e bebidas', desc: 'Rotina da cozinha, estoque, compras e turno', abas: ['rotina', 'estoque', 'compras', 'turno', ...P] },
+  { id: 'ab', nome: 'Alimentos e bebidas', desc: 'Cardápio da semana, rotina da cozinha, estoque, escala e turno', abas: ['cardapio', 'rotina', 'estoque', 'compras', 'escala', 'turno', ...P] },
   { id: 'recreacao', nome: 'Recreação', desc: 'Programação da semana, rotina e materiais', abas: ['programacao', 'rotina', 'estoque', 'agenda', ...P] },
-  { id: 'rh', nome: 'RH / Pessoas', desc: 'Contratações, agenda e documentos', abas: ['admissao', 'agenda', 'arquivos', ...P] },
+  { id: 'rh', nome: 'RH / Pessoas', desc: 'Contratações, escala, férias e mural de avisos', abas: ['admissao', 'escala', 'ferias', 'avisos', 'agenda', 'arquivos', ...P] },
   { id: 'financeiro', nome: 'Financeiro', desc: 'Contas a pagar e a receber, compras', abas: ['contas', 'compras', 'agenda', 'arquivos', ...P] },
   { id: 'ti', nome: 'TI', desc: 'Chamados de TI, rotina e equipamentos', abas: ['ti', 'rotina', 'estoque', 'arquivos', ...P] },
-  { id: 'geral', nome: 'Geral', desc: 'Agenda, arquivos e pedidos', abas: ['agenda', 'arquivos', ...P] },
+  { id: 'geral', nome: 'Geral', desc: 'Mural de avisos, agenda, arquivos e pedidos', abas: ['avisos', 'agenda', 'arquivos', ...P] },
 ]
 export const TIPO: Record<string, TipoSetor> = Object.fromEntries(TIPOS.map(t => [t.id, t]))
 

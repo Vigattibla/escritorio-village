@@ -254,29 +254,31 @@ function Lote({ m, sala, existentes, onClose }: { m: Modulo; sala: string; exist
   )
 }
 
+const nomeSt = (m: Modulo, id: string) => m.status.find(e => e.id === id)?.nome ?? id
 const turnoAgora = () => { const h = new Date().getHours(); return h < 12 ? 'Manhã' : h < 18 ? 'Tarde' : 'Noite' }
 function Diario({ m, regs, pode, profiles, sala }: Ctx) {
   const [t, setT] = useState('')
-  const [turno, setTurno] = useState(turnoAgora)
+  const turnos = m.campos.find(c => c.id === 'turno')?.ops ?? ['Manhã', 'Tarde', 'Noite']
+  const [turno, setTurno] = useState(() => turnos.includes(turnoAgora()) ? turnoAgora() : turnos[0] ?? '')
   const [pend, setPend] = useState(false)
   const [so, setSo] = useState(false)
   const eu = me()
   const vis = regs.filter(r => !so || r.status === 'pendente').sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 120)
   const dias = [...new Set(vis.map(r => r.created_at.slice(0, 10)))]
-  const enviar = () => { if (!t.trim() || !eu) return; salva(novoReg(m, sala, { titulo: t.trim(), status: pend ? 'pendente' : 'nota', campos: { turno, lidos: [eu.id] } })); setT(''); setPend(false) }
+  const enviar = () => { if (!t.trim() || !eu) return; salva(novoReg(m, sala, { titulo: t.trim(), status: pend ? 'pendente' : 'nota', campos: { ...(turno ? { turno } : {}), lidos: [eu.id] } })); setT(''); setPend(false) }
   const li = (r: Registro) => { if (!eu) return; const l = (r.campos.lidos as string[] | undefined) ?? []; if (!l.includes(eu.id)) salva({ ...r, campos: { ...r.campos, lidos: [...l, eu.id] } }) }
   const abertas = regs.filter(r => r.status === 'pendente').length
   return <>
     {pode && <form className="md-diario-f" onSubmit={e => { e.preventDefault(); enviar() }}>
-      <textarea value={t} onChange={e => setT(e.target.value)} rows={2} maxLength={2000} placeholder="O que o próximo turno precisa saber?" onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) enviar() }} />
+      <textarea value={t} onChange={e => setT(e.target.value)} rows={2} maxLength={2000} placeholder={m.dica ?? 'O que o próximo turno precisa saber?'} onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) enviar() }} />
       <div className="md-diario-a">
-        <div className="pd-seg">{['Manhã', 'Tarde', 'Noite'].map(x => <button type="button" key={x} className={turno === x ? 'on' : ''} onClick={() => setTurno(x)}>{x}</button>)}</div>
-        <label className="pd-chk"><input type="checkbox" checked={pend} onChange={e => setPend(e.target.checked)} /> Pendência (alguém precisa resolver)</label>
-        <button className="btn primary sm" disabled={!t.trim()}>Anotar</button>
+        {turnos.length > 0 && <div className="pd-seg">{turnos.map(x => <button type="button" key={x} className={turno === x ? 'on' : ''} onClick={() => setTurno(x)}>{x}</button>)}</div>}
+        <label className="pd-chk"><input type="checkbox" checked={pend} onChange={e => setPend(e.target.checked)} /> {nomeSt(m, 'pendente')} (alguém precisa ver)</label>
+        <button className="btn primary sm" disabled={!t.trim()}>{m.novo}</button>
       </div>
     </form>}
-    <div className="pd-seg md-filtro"><button className={!so ? 'on' : ''} onClick={() => setSo(false)}>Tudo</button><button className={so ? 'on' : ''} onClick={() => setSo(true)}>Pendências · {abertas}</button></div>
-    {!vis.length && <p className="pd-vazio">{so ? 'Nenhuma pendência aberta.' : 'Nada anotado ainda.'}</p>}
+    <div className="pd-seg md-filtro"><button className={!so ? 'on' : ''} onClick={() => setSo(false)}>Tudo</button><button className={so ? 'on' : ''} onClick={() => setSo(true)}>{nomeSt(m, 'pendente')} · {abertas}</button></div>
+    {!vis.length && <p className="pd-vazio">{so ? 'Nada em aberto.' : 'Nada anotado ainda.'}</p>}
     {dias.map(d => (
       <section key={d} className="md-dia">
         <h3>{d === hoje() ? 'Hoje' : d === somaDias(hoje(), -1) ? 'Ontem' : dia(d)}</h3>
@@ -288,7 +290,7 @@ function Diario({ m, regs, pode, profiles, sala }: Ctx) {
             <article key={r.id} className={'md-nota st-' + r.status}>
               <MiniAvatar avatar={autor?.avatar ?? null} photo={autor?.photo ?? null} name={autor?.name ?? '?'} size={30} />
               <div className="grow">
-                <small><b>{autor?.name.split(' ')[0] ?? 'Alguém'}</b> · {txt(r.campos.turno)} · {hora(r.created_at)}{r.status === 'pendente' && <em className="md-tag-p">Pendência</em>}{r.status === 'resolvido' && <em className="md-tag-ok">Resolvido</em>}</small>
+                <small><b>{autor?.name.split(' ')[0] ?? 'Alguém'}</b> {r.campos.turno ? ' · ' + txt(r.campos.turno) : ''} · {hora(r.created_at)}{r.status === 'pendente' && <em className="md-tag-p">{nomeSt(m, 'pendente')}</em>}{r.status === 'resolvido' && <em className="md-tag-ok">{nomeSt(m, 'resolvido')}</em>}</small>
                 <p>{r.titulo}</p>
                 <div className="md-nota-a">
                   {lidos.length > 0 && <small className="muted">Lido por {lidos.map(x => primeiro(x, profiles)).join(', ')}</small>}
@@ -318,7 +320,7 @@ function Semana({ m, regs, pode, profiles, editar, abrir, sala }: Ctx) {
   const copiar = () => {
     const t = dias.map(d => { const rs = doDia(d).filter(r => r.status !== 'cancelada'); if (!rs.length) return ''
       const w = new Date(d + 'T12:00').toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit' })
-      return `*${w[0].toUpperCase() + w.slice(1)}*\n` + rs.map(r => `${txt(r.campos.hora)} ${r.titulo}${r.campos.local ? ' · ' + txt(r.campos.local) : ''}${r.campos.publico ? ' (' + txt(r.campos.publico) + ')' : ''}`).join('\n') }).filter(Boolean).join('\n\n')
+      return `*${w[0].toUpperCase() + w.slice(1)}*\n` + rs.map(r => `${txt(r.campos.hora)} ${r.titulo}${r.campos.local ? ' · ' + txt(r.campos.local) : ''}${r.campos.publico ? ' (' + txt(r.campos.publico) + ')' : ''}${r.campos.resp && m.campos.find(c => c.id === 'resp')?.tipo === 'pessoa' ? ' — ' + primeiro(r.campos.resp, profiles) : ''}`).join('\n') }).filter(Boolean).join('\n\n')
     void navigator.clipboard?.writeText(t).then(() => { setCopiado(true); setTimeout(() => setCopiado(false), 2000) })
   }
   return <>
@@ -335,10 +337,10 @@ function Semana({ m, regs, pode, profiles, editar, abrir, sala }: Ctx) {
       {dias.map(d => (
         <section key={d} className={d === hoje() ? 'hoje' : ''}>
           <header><b>{new Date(d + 'T12:00').toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '')}</b><small>{dia(d)}</small>
-            {pode && <button className="icon-btn" onClick={() => abrir({ campos: { dia: d } })} aria-label={`Atividade em ${dia(d)}`}><Ph n="plus" size={14} /></button>}</header>
+            {pode && <button className="icon-btn" onClick={() => abrir({ campos: { dia: d } })} aria-label={`${m.novo} em ${dia(d)}`}><Ph n="plus" size={14} /></button>}</header>
           {doDia(d).map(r => (
             <button key={r.id} className={'md-ativ' + (r.status === 'cancelada' ? ' canc' : '')} onClick={() => editar(r)}>
-              <small>{txt(r.campos.hora)}</small><b>{r.titulo}</b><Info m={m} r={r} profiles={profiles} so={['local', 'publico', 'resp']} />
+              <small>{txt(r.campos.hora)}</small><b>{r.titulo}</b><Info m={m} r={r} profiles={profiles} so={m.campos.filter(c => c.id !== 'hora' && c.id !== 'dia').map(c => c.id)} />
             </button>
           ))}
         </section>

@@ -454,6 +454,9 @@ button.panel { width: 100%; border: 0; text-align: left; font: inherit; color: i
 .menu-pop.more-pop, .mbar .menu-pop.more-pop { right: 0; left: auto; width: 230px; }
 .more-pop button { align-items: center; }
 .more-pop .nav-n { position: static; }
+.more-pop { max-height: calc(100dvh - 180px); overflow-y: auto; }
+.more-pop .more-sec { padding: 6px 12px 2px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.more-pop hr { border: 0; border-top: 1px solid var(--line); margin: 4px 8px; }
 .stk-inline { display: none; }
 .who-tabs button.off { opacity: .55; cursor: default; }
 .who-tabs button.off:hover { background: var(--bg); }
@@ -1039,7 +1042,7 @@ button.panel { width: 100%; border: 0; text-align: left; font: inherit; color: i
 /* kanban: as etapas dividem a largura toda (nenhuma some pela direita); muitas → rola de lado com a barra à vista;
    cada coluna tem altura máxima e rola por dentro, então a lista longa não empurra o quadro */
 .quadro .qlists { display: flex; align-items: stretch; gap: 12px; overflow-x: auto; scrollbar-width: thin; scrollbar-color: #D9D5CB transparent; }
-.quadro .qlist { flex: 1 1 0; min-width: 196px; max-width: 440px; width: auto; min-height: 320px; max-height: calc(100dvh - 140px); display: flex; flex-direction: column; }
+.quadro .qlist { flex: 1 1 0; min-width: 196px; max-width: 440px; width: auto; min-height: 320px; max-height: calc(100dvh - 180px); display: flex; flex-direction: column; }
 .quadro .qlist .qcards { flex: 1 1 auto; min-height: 60px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: #D9D5CB transparent; margin: 0 -6px; padding: 2px 6px 8px; }
 .quadro .qnew { flex: 0 0 48px; min-width: 48px; width: 48px; min-height: 320px; writing-mode: vertical-rl; padding: 16px 0; }
 .quadro .qnew-form { flex: 0 0 280px; min-width: 280px; max-height: none; }
