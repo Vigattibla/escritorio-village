@@ -260,3 +260,8 @@ Pendente: push (precisa da migration 202610080900_v4_agenda_metas.sql e do secre
 - c7702a2: módulos novos por setor + menu "Da sala" no celular. Escudo virou Mesada.
 - 85d1fb5: demo com Obras/Governança/Recepção/A&B (andar 2), emblemas martelo/cama/sino/xícara/chave/livro, obra mostra % do orçamento gasto (alerta quando passa do avanço), abas do hero rolam e centralizam a sala atual, Semana rola até hoje.
 - Próximo: varredura UI/UX restante (Grade no celular, Escala A&B), remontar layout dos andares.
+
+### 17/10 (cont.) — salas por tipo de setor
+- c45a47a: modelo `cozinha` (A&B: fogão industrial, bancada inox, geladeira, lousa do cardápio) e `reuniao` (RH: mesa de reunião + sofá). MODELO_DO_TIPO agora cobre todos os tipos menos geral.
+- Modelo só vale pra sala sem layout salvo (parseSala cai no original(modelo)); sala já arrumada mantém o que tem.
+- Próximo: conferir sala RH num setor real; varredura de UI no celular (Grade/Quadro).
