@@ -196,10 +196,24 @@ export const MONTARIAS: Record<string, Montaria> = {
     frente: c => { pecas(c, [['#9aa0a6', 5, -17, 1, 14]]); pecas(c, [['#2d2d33', 3, -18, 5, 1]]) },
   },
   cadeira: {
+    // cadeira de escritório: encosto alto com friso amarelo, braço, pistão e base estrela de rodinhas
     alt: 5, sentado: true,
     atras: c => {
-      pecas(c, [['#2d2d33', -7, -19, 2, 11], ['#9aa0a6', -1, -6, 2, 3], ['#2d2d33', -6, -8, 11, 2]])
-      r(c, OUT, -5, -3, 10, 1); roda(c, -6, -2); roda(c, 4, -2)
+      pecas(c, [['#3a3d46', -11, -22, 4, 15], ['#3a3d46', -9, -8, 16, 2], ['#9aa0a6', -1, -6, 2, 3], ['#55596a', -8, -3, 15, 1]])
+      r(c, '#FBC222', -11, -22, 1, 14); r(c, '#55596a', -10, -21, 2, 1); r(c, '#55596a', -8, -8, 14, 1)
+      roda(c, -9, -2); roda(c, -1, -2); roda(c, 6, -2)
+    },
+    frente: c => { pecas(c, [['#3a3d46', 0, -12, 7, 1], ['#55596a', 4, -11, 1, 3]]) },
+    frontal: (c, layer, costas) => {
+      const encosto = (y0: number) => { pecas(c, [['#3a3d46', -9, y0, 18, -8 - y0]]); r(c, '#FBC222', -9, y0, 1, -8 - y0); r(c, '#FBC222', 8, y0, 1, -8 - y0); r(c, '#55596a', -7, y0 + 1, 14, 1) }
+      if (layer === 'atras') {
+        if (!costas) encosto(-23)
+        pecas(c, [['#3a3d46', -8, -8, 16, 2], ['#9aa0a6', -1, -6, 2, 3], ['#55596a', -8, -3, 16, 1]])
+        roda(c, -9, -2); roda(c, -1, -1); roda(c, 7, -2)
+      } else {
+        if (costas) encosto(-18)
+        pecas(c, [['#3a3d46', -11, -12, 3, 1], ['#3a3d46', 8, -12, 3, 1], ['#55596a', -10, -11, 1, 3], ['#55596a', 9, -11, 1, 3]])
+      }
     },
   },
   cavalo: montQuad(() => cavalo({})),
@@ -210,33 +224,73 @@ export const MONTARIAS: Record<string, Montaria> = {
   })),
   'capivara-gigante': montQuad(() => ({ L: 22, H: 8, leg: 4, hw: 8, hh: 6, a: '#9b7652', b: '#7a5a3c', v: '#b08a63', ear: 'redonda', tail: 'nenhuma', focinho: true })),
   'boia-flamingo': {
+    // boia de flamingo: anel gordo com brilho, rabinho, pescoço em S e bico preto
     alt: 4, sentado: true,
-    atras: c => { pecas(c, [['#f28cb1', -8, -6, 15, 4]]); r(c, '#f9c6d6', -7, -6, 13, 1) },
-    frente: c => { pecas(c, [['#f28cb1', 6, -14, 2, 9], ['#f28cb1', 6, -16, 4, 3]]); r(c, OUT, 10, -15, 1, 2); r(c, OUT, 8, -15, 1, 1) },
-    frontal: (c, layer, costas) => {
-      const pescoco = () => { pecas(c, [['#f28cb1', -1, -14, 2, 9], ['#f28cb1', -2, -17, 4, 3]]); if (!costas) { r(c, OUT, -1, -16, 1, 1); r(c, OUT, 1, -16, 1, 1); r(c, OUT, -1, -14, 2, 2) } }
-      if (layer === 'atras') { pecas(c, [['#f28cb1', -8, -6, 16, 4]]); r(c, '#f9c6d6', -7, -6, 14, 1); if (costas) pescoco() }
+    atras: (c, t) => { anelBoia(c, t, 16); pecas(c, [['#f28cb1', -11, -9, 2, 3], ['#f28cb1', -12, -10, 2, 2]]) },
+    frente: c => {
+      pecas(c, [['#f28cb1', 6, -10, 2, 5], ['#f28cb1', 5, -14, 2, 5], ['#f28cb1', 6, -17, 4, 4], ['#fdf3f6', 10, -16, 2, 2]])
+      r(c, '#f9c6d6', 5, -13, 1, 3); r(c, OUT, 11, -15, 1, 1); r(c, OUT, 8, -16, 1, 1); r(c, '#e8508a', 7, -17, 2, 1)
+    },
+    frontal: (c, layer, costas, t) => {
+      const pescoco = () => {
+        pecas(c, [['#f28cb1', -1, -14, 2, 9], ['#f28cb1', -2, -18, 4, 4]])
+        r(c, '#e8508a', -1, -18, 2, 1)
+        if (!costas) { r(c, OUT, -2, -16, 1, 1); r(c, OUT, 1, -16, 1, 1); pecas(c, [['#fdf3f6', -1, -14, 2, 2]]); r(c, OUT, -1, -13, 2, 1) }
+      }
+      if (layer === 'atras') { anelBoia(c, t, 18); if (costas) pescoco() }
       else if (!costas) pescoco()
     },
   },
   tapete: {
+    // tapete voador: borda dourada, losangos vermelho/azul, franjas balançando nas pontas
     alt: 7, sentado: true, flutua: true,
     atras: (c, t) => {
-      for (let k = 0; k < 18; k++) {
-        const y = -4 + Math.round(Math.sin(t / 220 + k / 3))
-        r(c, OUT, -9 + k, y - 1, 1, 4); r(c, k % 4 < 2 ? '#b5452f' : '#8f2b26', -9 + k, y, 1, 2)
+      const L = 20, x0 = -10
+      for (let k = 0; k < L; k++) {
+        const y = -5 + Math.round(Math.sin(t / 220 + k / 3)), x = x0 + k
+        r(c, OUT, x, y - 1, 1, 5)
+        r(c, '#d9a520', x, y, 1, 1); r(c, '#d9a520', x, y + 2, 1, 1)
+        const d = (k + 2) % 5
+        r(c, k === 0 || k === L - 1 ? '#d9a520' : d === 0 ? '#FBC222' : d === 2 ? '#2b3f8f' : '#b5452f', x, y + 1, 1, 1)
+        if (k === 0 || k === L - 1) {
+          const f = Math.round(Math.sin(t / 160 + k)) , lado = k === 0 ? -1 : 1
+          for (let j = 0; j < 3; j++) r(c, '#FBC222', x + lado * (1 + (j === 1 ? f : 0)), y + j, 1, 1)
+        }
       }
-      r(c, '#FBC222', -10, -4, 1, 2); r(c, '#FBC222', 9, -4, 1, 2)
     },
   },
   nuvem: {
+    // nuvem fofa de bolotas: sombra azulada embaixo, brilho em cima, tufos na frente e às vezes um pinguinho
     alt: 7, sentado: true, flutua: true,
     atras: (c, t) => {
       const y = Math.round(Math.sin(t / 400))
-      pecas(c, [['#f4f8ff', -9, -6 + y, 18, 4], ['#f4f8ff', -6, -8 + y, 6, 2], ['#f4f8ff', 1, -9 + y, 6, 3]])
-      r(c, '#dbe6f7', -8, -3 + y, 16, 1)
+      bolotas(c, [[-10, -6 + y, 3], [-5, -9 + y, 4], [3, -10 + y, 4], [9, -6 + y, 3], [0, -5 + y, 4]], '#f4f8ff', '#dbe6f7')
+      r(c, '#ffffff', -7, -12 + y, 3, 1); r(c, '#ffffff', 1, -13 + y, 3, 1)
+      const p = t % 2400
+      if (p < 900) r(c, '#7fb2ff', -3 + Math.floor(t / 2400) % 3 * 3, y + Math.floor(p / 150), 1, 1)
+    },
+    frente: (c, t) => {
+      const y = Math.round(Math.sin(t / 400))
+      bolotas(c, [[-8, -4 + y, 2], [8, -4 + y, 2]], '#f4f8ff', '#dbe6f7')
     },
   },
+}
+/** bolinhas de pixel (x, y do centro, raio) com um contorno só e a metade de baixo sombreada */
+function bolotas(c: C2D, bs: [number, number, number][], cor: string, sombra: string) {
+  const ps: Part[] = [], base = Math.max(...bs.map(([, y, rr]) => y + rr))
+  for (const [x, y, rr] of bs) for (let dy = -rr; dy <= rr; dy++) {
+    const h = Math.round(Math.sqrt(rr * rr - dy * dy) + 0.3)
+    ps.push([y + dy >= base - 1 ? sombra : cor, x - h, y + dy, 2 * h + 1, 1])
+  }
+  pecas(c, ps)
+}
+/** anel da boia (largura w), com brilho em cima e sombra embaixo, balançando de leve na água */
+function anelBoia(c: C2D, t: number, w: number) {
+  const x = -Math.floor(w / 2), y = Math.round(Math.sin(t / 500) * 0.6)
+  pecas(c, [['#f28cb1', x + 2, -8 + y, w - 4, 1], ['#f28cb1', x, -7 + y, w, 4], ['#f28cb1', x + 2, -3 + y, w - 4, 1]])
+  r(c, '#f9c6d6', x + 2, -8 + y, w - 6, 1); r(c, '#fde4ec', x + 3, -7 + y, 3, 1)
+  r(c, '#d9658f', x + 1, -4 + y, w - 2, 1); r(c, '#d9658f', x + 3, -3 + y, w - 6, 1)
+  r(c, '#9fd3f0', x - 1, -1 + y, 3, 1); r(c, '#9fd3f0', x + w - 2, -1 + y, 3, 1)
 }
 export const montariaDe = (k?: string) => (k ? MONTARIAS[k] : undefined)
 /** sobe/desce de leve quando a montaria flutua */
