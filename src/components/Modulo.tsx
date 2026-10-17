@@ -346,7 +346,7 @@ function Semana({ m, regs, pode, profiles, editar, abrir, sala }: Ctx) {
     <div className="md-sem" ref={grade}>
       {dias.map(d => (
         <section key={d} className={d === hoje() ? 'hoje' : ''}>
-          <header><b>{new Date(d + 'T12:00').toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '')}</b><small>{dia(d)}</small>
+          <header><b>{new Date(d + 'T12:00').toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '')}</b><small>{d.slice(8)}/{d.slice(5, 7)}</small>
             {pode && <button className="icon-btn" onClick={() => abrir({ campos: { dia: d } })} aria-label={`${m.novo} em ${dia(d)}`}><Ph n="plus" size={14} /></button>}</header>
           {doDia(d).map(r => (
             <button key={r.id} className={'md-ativ' + (r.status === 'cancelada' ? ' canc' : '')} onClick={() => editar(r)}>

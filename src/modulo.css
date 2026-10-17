@@ -98,12 +98,12 @@
 .md-x:hover { color: var(--red); }
 
 /* semana (programação) */
-.md-sem { display: grid; grid-template-columns: repeat(7, minmax(130px, 1fr)); gap: 8px; overflow-x: auto; padding-bottom: 6px; }
-.md-sem section { display: grid; gap: 6px; align-content: start; padding: 8px; border-radius: 12px; background: var(--hover); min-height: 160px; }
+.md-sem { display: grid; grid-template-columns: repeat(7, minmax(108px, 1fr)); gap: 8px; overflow-x: auto; padding-bottom: 6px; }
+.md-sem section { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; align-content: start; padding: 8px; border-radius: 12px; background: var(--hover); min-height: 160px; min-width: 0; }
 .md-sem section.hoje { background: color-mix(in srgb, var(--yellow) 20%, #fff); }
 .md-sem header { display: flex; align-items: center; gap: 6px; }
 .md-sem header b { text-transform: capitalize; }
-.md-sem header small { color: var(--muted); flex: 1; white-space: nowrap; }
+.md-sem header small { color: var(--muted); flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .md-ativ { all: unset; cursor: pointer; display: grid; gap: 2px; padding: 8px; border-radius: 9px; background: #fff; font-size: 13px; }
 .md-ativ > small { font-weight: 700; color: var(--muted); }
 .md-ativ.canc { opacity: .5; text-decoration: line-through; }

@@ -86,6 +86,7 @@ export class DemoBackend implements Backend {
       write(K.row + 'depts', { marketing: { id: 'marketing', name: 'Marketing', color: '#0B235D', floor: 1, slot: 0, canais: true, flag: 'megafone', created_at: new Date(0).toISOString() } })
     if (!localStorage.getItem(K.row + 'quartos')) seedVendas()
     if (!read<Record<string, Dept>>(K.row + 'depts', {}).obras) seedSetores()
+    if (!read<Record<string, Dept>>(K.row + 'depts', {}).reservas) seedAndar3()
     return {
       profiles: Object.values(read<Record<string, Profile>>(K.prof, {})),
       tasks: Object.values(read<Record<string, Task>>(K.task, {})),
@@ -790,7 +791,7 @@ function seedSetores() {
     r('obras', 'diarioobra', 'Equipe de 6. Reboco do chalé 2 terminado, começou o 3.', 'nota', { turno: 'Manhã' }, 5),
     r('obras', 'diarioobra', 'Chuva parou a obra do telhado às 14h. Lona colocada.', 'pendente', { turno: 'Tarde' }, 26),
     r('obras', 'diarioobra', 'Chegaram 40 sacos de argamassa e o piso do deck.', 'nota', { turno: 'Manhã' }, 30),
-    r('obras', 'compras', 'Telhas cerâmicas', 'aberto', { qtd: '600 un', fornecedor: 'Cerâmica Sul', valor: 4800, previsao: dia(5) }),
+    r('obras', 'compras', 'Telhas cerâmicas', 'pedido', { qtd: '600 un', fornecedor: 'Cerâmica Sul', valor: 4800, previsao: dia(5) }),
     ...['101', '102', '103', '104', '105', '106', '201', '202', '203', '204', '205', '206'].map((q, i) =>
       r('governanca', 'uhs', q, ['suja', 'limpando', 'limpa', 'inspecionada', 'ocupada', 'ocupada', 'suja', 'limpa', 'bloqueada', 'ocupada', 'inspecionada', 'suja'][i], { bloco: q[0] === '1' ? 'Bloco A' : 'Bloco B', camareira: i % 2 ? 'demo-carla' : 'demo-ana' })),
     r('governanca', 'rotina', 'Conferir frigobar dos quartos ocupados', 'ativo', { turno: 'Manhã', resp: 'demo-carla' }),
@@ -822,10 +823,71 @@ function seedSetores() {
       ]
     }),
   ]
-  // semear de novo não duplica: sai o que já havia desses setores
+  gravaRegs(regs)
+}
+
+/** semear de novo não duplica: sai o que já havia desses setores */
+function gravaRegs(regs: Registro[]) {
   const novos = new Set(regs.map(x => x.dept))
   const antes = Object.entries(read<Record<string, Registro>>(K.row + 'registros', {})).filter(([, x]) => !novos.has(x.dept))
   write(K.row + 'registros', { ...Object.fromEntries(antes), ...Object.fromEntries(regs.map(x => [x.id, x])) })
+}
+
+/** 3º andar de exemplo: central de reservas, RH, manutenção e recreação */
+function seedAndar3() {
+  const now = new Date(), t0 = new Date(0).toISOString()
+  const dia = (d: number) => dayKey(new Date(now.getTime() + d * 864e5))
+  const ago = (h: number) => new Date(now.getTime() - h * 36e5).toISOString()
+  const seg = (k: number) => dia(k - (now.getDay() + 6) % 7)
+  const d = (id: string, name: string, color: string, slot: number, tipo: string, flag: string): Dept => ({ id, name, color, floor: 3, slot, tipo, flag, created_at: t0 })
+  write(K.row + 'depts', {
+    ...read<Record<string, Dept>>(K.row + 'depts', {}),
+    reservas: d('reservas', 'Central de reservas', '#7A4BD1', 0, 'reservas', 'balao'),
+    rh: d('rh', 'RH', '#D14B7A', 1, 'rh', 'coracao'),
+    manutencao: d('manutencao', 'Manutenção', '#5B6B7A', 2, 'manutencao', 'chave'),
+    recreacao: d('recreacao', 'Recreação', '#FF7A1A', 3, 'recreacao', 'sol'),
+  })
+  let pos = 0
+  const r = (dept: string, modulo: string, titulo: string, status: string, campos: Record<string, unknown> = {}, h = 2): Registro =>
+    ({ id: crypto.randomUUID(), dept, modulo, titulo, status, campos, pos: pos++, por: 'demo-ana', created_at: ago(h), em: ago(h) })
+  const prog: [number, string, string, string, string][] = [
+    [0, '09:00', 'Gincana na piscina', 'Piscina', 'Todas as idades'], [0, '15:00', 'Oficina de pintura', 'Salão', '04 a 07'],
+    [1, '10:00', 'Caça ao tesouro', 'Gramado', '08 a 12'], [2, '16:00', 'Futebol de sabão', 'Campo', 'Adolescentes'],
+    [3, '09:30', 'Hidroginástica', 'Piscina', 'Adultos'], [4, '20:00', 'Cinema ao ar livre', 'Gramado', 'Família'],
+    [5, '10:00', 'Tirolesa', 'Mata', '08 a 12'], [5, '15:00', 'Teatro de fantoches', 'Salão', '04 a 07'], [6, '11:00', 'Passeio a cavalo', 'Haras', 'Família'],
+  ]
+  gravaRegs([
+    r('reservas', 'reservas', 'Família Andrade', 'cotacao', { tel: '(31) 99876-1122', entrada: dia(6), saida: dia(9), adultos: 2, criancas: 2, quarto: 'Chalé família', canal: 'WhatsApp', valor: 3900 }),
+    r('reservas', 'reservas', 'Marina e Paulo', 'pagamento', { tel: '(31) 98765-4433', entrada: dia(13), saida: dia(15), adultos: 2, quarto: 'Suíte Orquídea', canal: 'Instagram', valor: 2100 }),
+    r('reservas', 'reservas', 'Grupo Souza (3 quartos)', 'confirmada', { entrada: dia(2), saida: dia(4), adultos: 6, criancas: 3, quarto: '3 apartamentos', canal: 'Telefone', valor: 6300 }),
+    r('reservas', 'reservas', 'Carlos Lima', 'contato', { tel: '(11) 97654-2211', entrada: dia(20), saida: dia(22), adultos: 2, canal: 'Site' }),
+    r('reservas', 'grupos', 'Casamento Júlia & Rafa', 'bloqueio', { resp: 'Júlia', entrada: dia(40), saida: dia(42), quartos: 18, pessoas: 60, opcao: dia(7) }),
+    r('reservas', 'grupos', 'Convenção farmacêutica', 'contrato', { resp: 'Patrícia', entrada: dia(25), saida: dia(27), quartos: 30, pessoas: 80, opcao: dia(-2) }),
+    r('reservas', 'retornos', 'Família Andrade', 'aberto', { tel: '(31) 99876-1122', quando: dia(0), assunto: 'Confirmar se fecham o chalé' }),
+    r('reservas', 'retornos', 'Carlos Lima', 'sem', { tel: '(11) 97654-2211', quando: dia(-1), assunto: 'Mandou mensagem pelo site' }),
+    r('reservas', 'turno', 'Booking com overbooking no feriado: segurei 2 chalés', 'pendente', { turno: 'Tarde' }, 4),
+    r('rh', 'admissao', 'Luana Ribeiro', 'entrevista', { cargo: 'Camareira', setor: 'Governança', inicio: dia(10) }),
+    r('rh', 'admissao', 'Diego Martins', 'docs', { cargo: 'Garçom', setor: 'A&B', inicio: dia(3) }),
+    r('rh', 'admissao', 'Renata Alves', 'triagem', { cargo: 'Recepcionista', setor: 'Recepção' }),
+    r('rh', 'admissao', 'Tiago Rocha', 'contratado', { cargo: 'Monitor', setor: 'Recreação', inicio: dia(-5) }),
+    r('rh', 'ferias', 'Bruno', 'aprovado', { tipo: 'Férias', inicio: dia(15), fim: dia(29), cobre: 'demo-carla' }),
+    r('rh', 'ferias', 'Ana', 'pedido', { tipo: 'Folga', inicio: dia(4), fim: dia(4) }),
+    r('rh', 'avisos', 'Exame periódico: todos até sexta, no posto da cidade', 'pendente', {}, 20),
+    r('rh', 'avisos', 'Uniforme novo chega segunda; trocar na rouparia', 'nota', {}, 48),
+    ...[0, 2, 4, 5, 6].map(k => r('rh', 'escala', 'Plantão do RH', 'ok', { dia: seg(k), hora: '08:00', resp: 'demo-ana', local: 'RH', publico: 'Manhã' })),
+    r('manutencao', 'os', 'Ar do 105 pingando', 'atendimento', { local: 'Apto 105', cat: 'Ar-condicionado', urg: 'Alta', resp: 'demo-bruno', prazo: dia(0) }),
+    r('manutencao', 'os', 'Lâmpada queimada no corredor B', 'aberta', { local: 'Bloco B', cat: 'Elétrica', urg: 'Baixa', prazo: dia(2) }),
+    r('manutencao', 'os', 'Bomba da piscina fazendo barulho', 'peca', { local: 'Piscina', cat: 'Piscina', urg: 'Média', resp: 'demo-bruno', prazo: dia(-1) }),
+    r('manutencao', 'os', 'Porta do chalé 3 emperrando', 'resolvida', { local: 'Chalé 3', cat: 'Marcenaria', urg: 'Média' }),
+    r('manutencao', 'rotina', 'Medir cloro e pH da piscina', 'ativo', { turno: 'Abertura', resp: 'demo-bruno' }),
+    r('manutencao', 'rotina', 'Ronda nos quadros de luz', 'ativo', { turno: 'Tarde' }),
+    r('manutencao', 'estoque', 'Lâmpada LED 9W', 'ok', { qtd: 6, min: 20, unid: 'un', local: 'Oficina' }),
+    r('manutencao', 'estoque', 'Cloro granulado', 'ok', { qtd: 30, min: 10, unid: 'kg', local: 'Casa de máquinas' }),
+    r('manutencao', 'compras', 'Selo mecânico da bomba', 'cotando', { qtd: '1 un', fornecedor: 'Piscinas BH', valor: 380, previsao: dia(3) }),
+    ...prog.map(([k, hora, t, local, publico]) => r('recreacao', 'programacao', t, 'ok', { dia: seg(k), hora, local, publico, resp: k % 2 ? 'demo-carla' : 'demo-ana' })),
+    r('recreacao', 'rotina', 'Conferir coletes da piscina', 'ativo', { turno: 'Abertura' }),
+    r('recreacao', 'estoque', 'Tinta guache', 'ok', { qtd: 8, min: 12, unid: 'pote', local: 'Salão' }),
+  ])
 }
 
 function seed() {
