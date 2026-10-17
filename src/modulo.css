@@ -37,6 +37,11 @@
 .md-v-sel { background: var(--hover); padding: 1px 7px; border-radius: 999px; }
 .md-pct { height: 5px; border-radius: 99px; background: var(--hover); overflow: hidden; }
 .md-pct i { display: block; height: 100%; background: var(--green); border-radius: inherit; }
+.md-pctl { display: flex; align-items: center; gap: 8px; }
+.md-pctl .md-pct { flex: 1; }
+.md-pctl b { font-size: 11px; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--muted); }
+.md-gasto { display: block; font-size: 11px; color: var(--muted); margin-top: 4px; }
+.md-gasto.alerta { color: #C2410C; font-weight: 700; }
 
 /* lista */
 .md-lista, .md-est { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
@@ -98,7 +103,7 @@
 .md-sem section.hoje { background: color-mix(in srgb, var(--yellow) 20%, #fff); }
 .md-sem header { display: flex; align-items: center; gap: 6px; }
 .md-sem header b { text-transform: capitalize; }
-.md-sem header small { color: var(--muted); flex: 1; }
+.md-sem header small { color: var(--muted); flex: 1; white-space: nowrap; }
 .md-ativ { all: unset; cursor: pointer; display: grid; gap: 2px; padding: 8px; border-radius: 9px; background: #fff; font-size: 13px; }
 .md-ativ > small { font-weight: 700; color: var(--muted); }
 .md-ativ.canc { opacity: .5; text-decoration: line-through; }

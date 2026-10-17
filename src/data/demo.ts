@@ -1,7 +1,7 @@
 import { toEmail, validUser } from './login'
 import { dayKey } from '../game/xp'
 import { deptOf, outranks, rankOf } from '../game/ranks'
-import type { CoffeeLine, Dept, JogoRes, Goal, Wallet, Group, RowTable, Rows, AccountEdit, AiContext, AiProposal, AiStage, Avatar, Backend, Handlers, Message, Pos, Profile, Project, Parceria, Poder, PoderTipo, Requisicao, Snapshot, Task, TaskNote } from '../types'
+import type { CoffeeLine, Dept, JogoRes, Goal, Wallet, Group, RowTable, Rows, AccountEdit, AiContext, AiProposal, AiStage, Avatar, Backend, Handlers, Message, Pos, Profile, Project, Parceria, Poder, PoderTipo, Registro, Requisicao, Snapshot, Task, TaskNote } from '../types'
 import { ROW_TABLES } from '../types'
 import { counts, DAY, MAX_GOALS, payouts, WELCOME } from '../shop/economy'
 import { ITEM } from '../shop/catalog'
@@ -83,8 +83,9 @@ export class DemoBackend implements Backend {
   async loadAll(): Promise<Snapshot> {
     if (!localStorage.getItem(K.seeded)) seed()
     if (!localStorage.getItem(K.row + 'depts'))
-      write(K.row + 'depts', { marketing: { id: 'marketing', name: 'Marketing', color: '#0B235D', floor: 1, slot: 0, canais: true, flag: 'megaphone', created_at: new Date(0).toISOString() } })
+      write(K.row + 'depts', { marketing: { id: 'marketing', name: 'Marketing', color: '#0B235D', floor: 1, slot: 0, canais: true, flag: 'megafone', created_at: new Date(0).toISOString() } })
     if (!localStorage.getItem(K.row + 'quartos')) seedVendas()
+    if (!read<Record<string, Dept>>(K.row + 'depts', {}).obras) seedSetores()
     return {
       profiles: Object.values(read<Record<string, Profile>>(K.prof, {})),
       tasks: Object.values(read<Record<string, Task>>(K.task, {})),
@@ -762,6 +763,57 @@ function seedVendas() {
     c('Feriado de novembro', 'Pré-venda com 10% até dia 20. Mínimo de 3 noites nos chalés.', 0, 30, '#2440FF', null),
   ]
   write(K.row + 'campanhas', Object.fromEntries(camps.map(x => [x.id, x])))
+}
+
+/** outros setores de exemplo no 2º andar (obras, governança, recepção, A&B), cada um com as abas do seu tipo e alguns registros */
+function seedSetores() {
+  const now = new Date(), t0 = new Date(0).toISOString()
+  const dia = (d: number) => dayKey(new Date(now.getTime() + d * 864e5))
+  const ago = (h: number) => new Date(now.getTime() - h * 36e5).toISOString()
+  const depts = read<Record<string, Dept>>(K.row + 'depts', {})
+  const d = (id: string, name: string, color: string, slot: number, tipo: string, flag: string): Dept => ({ id, name, color, floor: 2, slot, tipo, flag, created_at: t0 })
+  write(K.row + 'depts', {
+    ...depts,
+    obras: d('obras', 'Obras', '#C98A4B', 0, 'obras', 'martelo'),
+    governanca: d('governanca', 'Governança', '#3fa66b', 1, 'governanca', 'cama'),
+    recepcao: d('recepcao', 'Recepção', '#2440FF', 2, 'recepcao', 'sino'),
+    ab: d('ab', 'Alimentos e bebidas', '#E8B400', 3, 'ab', 'xicara'),
+  })
+  let pos = 0
+  const r = (dept: string, modulo: string, titulo: string, status: string, campos: Record<string, unknown> = {}, h = 2): Registro =>
+    ({ id: crypto.randomUUID(), dept, modulo, titulo, status, campos, pos: pos++, por: 'demo-ana', created_at: ago(h), em: ago(h) })
+  const regs = [
+    r('obras', 'obras', 'Reforma dos chalés 1 a 4', 'andamento', { local: 'Chalés', resp: 'demo-bruno', previsao: dia(20), avanco: 45, orcamento: 180000, gasto: 72000 }),
+    r('obras', 'obras', 'Deck da piscina', 'planejada', { local: 'Piscina', previsao: dia(45), orcamento: 38000 }),
+    r('obras', 'obras', 'Telhado do restaurante', 'parada', { local: 'Restaurante', resp: 'demo-carla', previsao: dia(-3), avanco: 70, orcamento: 52000, gasto: 41000 }),
+    r('obras', 'obras', 'Playground novo', 'vistoria', { local: 'Gramado', previsao: dia(2), avanco: 95, orcamento: 24000, gasto: 23100 }),
+    r('obras', 'diarioobra', 'Equipe de 6. Reboco do chalé 2 terminado, começou o 3.', 'nota', { turno: 'Manhã' }, 5),
+    r('obras', 'diarioobra', 'Chuva parou a obra do telhado às 14h. Lona colocada.', 'pendente', { turno: 'Tarde' }, 26),
+    r('obras', 'diarioobra', 'Chegaram 40 sacos de argamassa e o piso do deck.', 'nota', { turno: 'Manhã' }, 30),
+    r('obras', 'compras', 'Telhas cerâmicas', 'aberto', { qtd: '600 un', fornecedor: 'Cerâmica Sul', valor: 4800, previsao: dia(5) }),
+    ...['101', '102', '103', '104', '105', '106', '201', '202', '203', '204', '205', '206'].map((q, i) =>
+      r('governanca', 'uhs', q, ['suja', 'limpando', 'limpa', 'inspecionada', 'ocupada', 'ocupada', 'suja', 'limpa', 'bloqueada', 'ocupada', 'inspecionada', 'suja'][i], { bloco: q[0] === '1' ? 'Bloco A' : 'Bloco B', camareira: i % 2 ? 'demo-carla' : 'demo-ana' })),
+    r('governanca', 'rotina', 'Conferir frigobar dos quartos ocupados', 'ativo', { turno: 'Manhã', resp: 'demo-carla' }),
+    r('governanca', 'rotina', 'Levar enxoval sujo pra lavanderia', 'ativo', { turno: 'Tarde' }),
+    r('governanca', 'estoque', 'Toalha de banho', 'ok', { qtd: 38, min: 60, unid: 'un', local: 'Rouparia' }),
+    r('governanca', 'estoque', 'Sabonete', 'ok', { qtd: 240, min: 100, unid: 'un', local: 'Almoxarifado' }),
+    r('governanca', 'estoque', 'Papel higiênico', 'ok', { qtd: 12, min: 20, unid: 'pct', local: 'Almoxarifado' }),
+    r('recepcao', 'chegadas', 'Família Souza', 'previsto', { quarto: 'Chalé 3', entrada: dia(0), saida: dia(2), pessoas: 4 }),
+    r('recepcao', 'chegadas', 'Marina e Paulo', 'chegou', { quarto: 'Suíte 2', entrada: dia(0), saida: dia(3), pessoas: 2 }),
+    r('recepcao', 'chegadas', 'Grupo Escola Alfa', 'previsto', { quarto: 'Aptos 201–206', entrada: dia(1), saida: dia(3), pessoas: 28 }),
+    r('recepcao', 'pedhosp', 'Berço no quarto', 'aberto', { quarto: '104', tipo: 'Berço / cama extra', quando: '15:00' }),
+    r('recepcao', 'pedhosp', 'Late check-out até 14h', 'andamento', { quarto: 'Chalé 1', tipo: 'Late check-out', resp: 'demo-ana' }),
+    r('recepcao', 'turno', 'Hóspede do 203 pediu travesseiro extra, já entregue', 'nota', { turno: 'Noite' }, 10),
+    r('recepcao', 'turno', 'Ar do 105 pingando, chamado aberto pra manutenção', 'pendente', { turno: 'Manhã' }, 3),
+    r('ab', 'cardapio', 'Pão de queijo, frutas e omelete', 'ok', { dia: dia(0), hora: '07:00', publico: 'Café da manhã', local: 'Restaurante' }),
+    r('ab', 'cardapio', 'Feijoada completa', 'ok', { dia: dia(0), hora: '12:00', publico: 'Almoço', local: 'Restaurante', resp: 'demo-bruno' }),
+    r('ab', 'cardapio', 'Massas ao molho', 'ok', { dia: dia(1), hora: '19:30', publico: 'Jantar', local: 'Restaurante' }),
+    r('ab', 'cardapio', 'Petiscos e sucos', 'ok', { dia: dia(2), hora: '15:00', publico: 'Lanche', local: 'Bar da piscina' }),
+    r('ab', 'estoque', 'Óleo de soja', 'ok', { qtd: 4, min: 10, unid: 'L', local: 'Despensa' }),
+    r('ab', 'estoque', 'Arroz', 'ok', { qtd: 50, min: 20, unid: 'kg', local: 'Despensa' }),
+    r('ab', 'rotina', 'Conferir temperatura das câmaras frias', 'ativo', { turno: 'Abertura', resp: 'demo-bruno' }),
+  ]
+  write(K.row + 'registros', { ...read<Record<string, Registro>>(K.row + 'registros', {}), ...Object.fromEntries(regs.map(x => [x.id, x])) })
 }
 
 function seed() {

@@ -25,6 +25,13 @@ function Sala() {
   const [dip, setDip] = useState(false)
   const [porta, setPorta] = useState(false)
   const [toc, setToc] = useState('')
+  const [indo, setIndo] = useState('')
+  const abas = useRef<HTMLSpanElement>(null)
+  // muitas salas: a aba da sala atual fica à vista (só rola na horizontal)
+  useEffect(() => {
+    const box = abas.current, b = box?.querySelector<HTMLElement>('.on')
+    if (box && b) box.scrollLeft += b.getBoundingClientRect().left - box.getBoundingClientRect().left - (box.clientWidth - b.offsetWidth) / 2
+  }, [s.sala])
   useEffect(() => {
     if (here.length < 2) return
     const t = setInterval(() => { setDip(true); setTimeout(() => { setI(n => n + 1); setDip(false) }, 380) }, 7000)
@@ -47,13 +54,13 @@ function Sala() {
       <div className="tsala-cine"><Game cine focus={focus} /><div className={'dip' + (dip ? ' on' : '')} /></div>
       <div className="tsala-top">
         <span className="tvivo"><i />ao vivo</span>
-        <span className="tsala-tabs">
+        <span className="tsala-tabs" ref={abas}>
           {depts.map(d => {
             const n = team(s.profiles, { sala: d.id }).length
             const on = d.id === s.sala
             const pode = canEnter(d.id, s)
-            return <button key={d.id} className={on ? 'on' : ''} title={on ? undefined : pode ? `Ver a sala ${d.name}` : 'Porta fechada: clique para bater'}
-              onClick={() => { if (!on) void (pode ? run(openSala(d.id)) : bater(d.id)) }}>{d.name}<i>{n}</i></button>
+            return <button key={d.id} className={on ? 'on' : indo === d.id ? 'vai' : ''} title={on ? undefined : pode ? `Ver a sala ${d.name}` : 'Porta fechada: clique para bater'} aria-busy={indo === d.id || undefined}
+              onClick={() => { if (on) return; if (!pode) { void bater(d.id); return } setIndo(d.id); run(openSala(d.id).finally(() => setIndo(''))) }}>{d.name}<i>{n}</i></button>
           })}
         </span>
       </div>

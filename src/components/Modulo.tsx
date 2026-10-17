@@ -1,6 +1,6 @@
 // Tela de um módulo do setor (Reservas, Obras, Chamados, Quartos, Turno…). Um só componente monta
 // cada layout a partir do catálogo em setor/tipos; os cartões ficam na tabela `registros`.
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { deptOf } from '../game/ranks'
 import { gereEquipe } from '../plano/core'
 import { Modal } from '../plano/ui'
@@ -95,9 +95,13 @@ interface Ctx { m: Modulo; regs: Registro[]; todos: Registro[]; pode: boolean; p
 function Info({ m, r, profiles, so }: { m: Modulo; r: Registro; profiles: Record<string, Profile>; so?: string[] }) {
   const cs = m.campos.filter(c => c.card && (!so || so.includes(c.id)) && c.tipo !== 'pct')
   const pct = m.campos.find(c => c.tipo === 'pct' && c.card)
+  // obra: quanto do orçamento já foi; acende quando o gasto corre na frente do avanço
+  const orc = num(r.campos.orcamento), gas = num(r.campos.gasto)
+  const gasto = m.campos.some(c => c.id === 'gasto') && orc > 0 && gas > 0 ? Math.round(gas / orc * 100) : null
   return <>
     <div className="md-info">{cs.map(c => { const v = mostra(c, r.campos[c.id], profiles); return v ? <span key={c.id} className={'md-v md-v-' + c.tipo + (m.prazo === c.id && vencido(m, r) ? ' venc' : '')} title={c.nome}>{v}</span> : null })}</div>
-    {pct && r.campos[pct.id] != null && <div className="md-pct" title={`${pct.nome}: ${num(r.campos[pct.id])}%`}><i style={{ width: Math.min(100, num(r.campos[pct.id])) + '%' }} /></div>}
+    {pct && r.campos[pct.id] != null && <div className="md-pctl" title={`${pct.nome}: ${num(r.campos[pct.id])}%`}><div className="md-pct"><i style={{ width: Math.min(100, num(r.campos[pct.id])) + '%' }} /></div><b>{num(r.campos[pct.id])}%</b></div>}
+    {gasto != null && <small className={'md-gasto' + (gasto > num(pct ? r.campos[pct.id] : 0) + 10 ? ' alerta' : '')}>{gasto > 100 ? `Estourou: ${gasto}% do orçamento` : `Gastou ${gasto}% do orçamento`}</small>}
   </>
 }
 
@@ -312,6 +316,12 @@ const segunda = (d: string) => { const x = new Date(d + 'T12:00'); x.setDate(x.g
 function Semana({ m, regs, pode, profiles, editar, abrir, sala }: Ctx) {
   const [ini, setIni] = useState(() => segunda(hoje()))
   const [copiado, setCopiado] = useState(false)
+  const grade = useRef<HTMLDivElement>(null)
+  // semana com rolagem lateral: o dia de hoje aparece sem precisar procurar
+  useEffect(() => {
+    const box = grade.current, h = box?.querySelector<HTMLElement>('.hoje')
+    if (box && h && box.scrollWidth > box.clientWidth) box.scrollLeft += h.getBoundingClientRect().left - box.getBoundingClientRect().left - 8
+  }, [ini])
   const dias = Array.from({ length: 7 }, (_, i) => somaDias(ini, i))
   const doDia = (d: string) => regs.filter(r => txt(r.campos.dia) === d).sort((a, b) => txt(a.campos.hora).localeCompare(txt(b.campos.hora)))
   const semana = regs.filter(r => dias.includes(txt(r.campos.dia)))
@@ -333,7 +343,7 @@ function Semana({ m, regs, pode, profiles, editar, abrir, sala }: Ctx) {
       {pode && !semana.length && !!anterior.length && <button className="btn sm ghost" onClick={repetir}>Repetir semana anterior ({anterior.length})</button>}
       {!!semana.length && <button className="btn sm ghost" onClick={copiar}><Ph n="copy" size={14} />{copiado ? 'Copiado' : 'Copiar pro WhatsApp'}</button>}
     </div>
-    <div className="md-sem">
+    <div className="md-sem" ref={grade}>
       {dias.map(d => (
         <section key={d} className={d === hoje() ? 'hoje' : ''}>
           <header><b>{new Date(d + 'T12:00').toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '')}</b><small>{dia(d)}</small>

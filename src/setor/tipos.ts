@@ -145,7 +145,7 @@ export const MODULOS: Modulo[] = [
     campos: [{ id: 'empresa', nome: 'Empresa', tipo: 'texto', card: true }, tel, { id: 'origem', nome: 'Origem', tipo: 'sel', ops: ['Indicação', 'Instagram', 'Site', 'Feira', 'Agência', 'Prospecção'], card: true }, { id: 'valor', nome: 'Valor', tipo: 'dinheiro', card: true }, { id: 'retorno', nome: 'Próximo contato', tipo: 'data', card: true }, obs],
   },
   {
-    id: 'diarioobra', nome: 'Diário de obra', ic: 'building-office', layout: 'diario', novo: 'Anotar', titulo: 'Registro', dica: 'Como foi hoje? Equipe, serviço feito, clima, material que chegou, problema…',
+    id: 'diarioobra', nome: 'Diário de obra', ic: 'pencil-simple-line', layout: 'diario', novo: 'Anotar', titulo: 'Registro', dica: 'Como foi hoje? Equipe, serviço feito, clima, material que chegou, problema…',
     desc: 'O dia a dia da obra: quem trabalhou, o que avançou e o que travou.',
     status: [{ id: 'nota', nome: 'Registro', cor: C.cinza }, { id: 'pendente', nome: 'Problema', cor: C.laranja }, { id: 'resolvido', nome: 'Resolvido', cor: C.verde, fim: true }],
     campos: [{ id: 'turno', nome: 'Período', tipo: 'sel', ops: ['Manhã', 'Tarde'], card: true }],

@@ -13,6 +13,7 @@ export const EMBLEMAS: Record<string, { label: string; px: string[] }> = {
   sol: { label: 'Sol', px: ['#.#.#', '.###.', '#####', '.###.', '#.#.#'] },
   balao: { label: 'Conversa', px: ['.###.', '#####', '#####', '.##..', '.#...'] },
   visto: { label: 'Visto', px: ['....#', '...#.', '#.#..', '.#...', '.....'] },
+martelo: { label: 'Martelo', px: ['#####', '#####', '..#..', '..#..', '..#..'] },  cama: { label: 'Cama', px: ['#....', '#.##.', '#####', '#####', '#...#'] },  sino: { label: 'Sino', px: ['..#..', '.###.', '.###.', '#####', '..#..'] },  xicara: { label: 'Xícara', px: ['.#.#.', '.....', '####.', '#####', '.##..'] },  chave: { label: 'Chave', px: ['.##..', '#..#.', '.##..', '..#..', '..##.'] },  livro: { label: 'Livro', px: ['##.##', '##.##', '##.##', '##.##', '#####'] },
 }
 export const EMBLEMA_KEYS = Object.keys(EMBLEMAS)
 

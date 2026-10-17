@@ -121,11 +121,14 @@ button.tlogo.img:hover { box-shadow: inset 0 0 0 2px var(--acc2); }
 .sala-dot { width: 10px; height: 10px; border-radius: 99px; flex: none; }
 .ttoc { position: absolute; left: 50%; top: 14px; transform: translateX(-50%); z-index: 5; padding: 8px 14px; border-radius: 99px; background: var(--tinta); color: var(--creme); font-size: 14px; font-weight: 600; white-space: nowrap; animation: ttoc .25s ease-out; }
 @keyframes ttoc { from { opacity: 0; transform: translate(-50%, -6px); } }
-.tvivo { display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 14px 0 12px; border-radius: 99px; background: var(--tinta); color: var(--creme); font-size: 14px; font-weight: 700; }
+.tvivo { flex: none; white-space: nowrap; display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 14px 0 12px; border-radius: 99px; background: var(--tinta); color: var(--creme); font-size: 14px; font-weight: 700; }
 .tvivo i { width: 9px; height: 9px; border-radius: 99px; background: var(--tang); box-shadow: 0 0 0 3px rgba(255, 122, 26, .3); animation: tvivo 2s ease-in-out infinite; }
 @keyframes tvivo { 50% { box-shadow: 0 0 0 6px rgba(255, 122, 26, 0); } }
-.tsala-tabs { margin-left: auto; display: inline-flex; gap: 2px; padding: 3px; border-radius: 99px; background: var(--creme); }
-.tsala-tabs button { display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 10px 0 14px; border: 0; border-radius: 99px; background: none; color: var(--tinta); font-size: 14px; font-weight: 700; cursor: pointer; }
+.tsala-tabs { margin-left: auto; display: inline-flex; gap: 2px; padding: 3px; border-radius: 99px; background: var(--creme); min-width: 0; overflow-x: auto; scrollbar-width: none; overscroll-behavior-x: contain; }
+.tsala-tabs::-webkit-scrollbar { display: none; }
+.tsala-tabs button.vai { animation: tvai .8s ease-in-out infinite alternate; }
+@keyframes tvai { to { background: var(--areia-2); } }
+.tsala-tabs button { flex: none; display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 10px 0 14px; border: 0; border-radius: 99px; background: none; color: var(--tinta); font-size: 14px; font-weight: 700; cursor: pointer; }
 .tsala-tabs button:disabled { cursor: default; opacity: .75; }
 .tsala-tabs button:not(.on):not(:disabled):hover { background: var(--areia-2); }
 .tsala-tabs button.on { background: var(--acc); color: var(--creme); }
