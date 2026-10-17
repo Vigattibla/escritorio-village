@@ -50,6 +50,8 @@ import Creator from './Creator'
 import BloqueioJogos from '../components/BloqueioJogos'
 import { backend } from '../data'
 import { isChief, rankName, rankOf } from '../game/ranks'
+import ModuloTela from '../components/Modulo'
+import { MOD } from '../setor/tipos'
 import { ABAS, abasDe, canDoor, deptList, deptName, myDept, openSala, run, setUi, signOut, team, unread, useStore, type Tab, type View } from '../store'
 import AbasSetor from '../components/AbasSetor'
 import { Fundo } from '../components/Fundo'
@@ -99,11 +101,11 @@ export default function Office() {
     if (sv) { if (!SV_PAGES.includes(s.view as Page) || s.drawer) setUi({ view: 'vendas', drawer: false }) }
     else if (VD_PAGES.includes(s.view as Page) && !(me?.is_admin && dev)) setUi({ view: 'inicio' })
   }, [sv, dev, s.view, s.drawer]) // eslint-disable-line react-hooks/exhaustive-deps
+  const mini = usePref('navMini')
+  const [tl, setTl] = useState(false)
   if (!me) return null
 
   const chief = isChief(me)
-  const mini = usePref('navMini')
-  const [tl, setTl] = useState(false)
   const depts = deptList(s)
   const canEdit = canEditOffice(me, s.rows.carpenters)
   // painel do escritório: eu primeiro, depois quem está na sala, depois quem está fora
@@ -136,6 +138,9 @@ export default function Office() {
   if (!sv) {
     const on = abasDe(s.sala, s)
     for (let i = items.length - 1; i >= 0; i--) if (ABAS.some(a => a[0] === items[i].id) && !on.has(items[i].id)) items.splice(i, 1)
+    // módulos do tipo do setor (Reservas, Obras, Chamados…) entram logo depois do Quadro
+    const mods = [...on].filter(id => MOD[id]).map(id => ({ id: `m:${id}` as Page, label: MOD[id].nome, ic: 'quadro' as TName, ph: MOD[id].ic }))
+    items.splice(items.findIndex(i => i.id === 'quadro') + 1, 0, ...mods)
   }
   // Equipe e Geral só no modo desenvolvedor (liga no menu do perfil)
   if (dev && !sv) items.push({ id: 'equipe', label: 'Equipe', ic: 'equipe', more: true })
@@ -160,10 +165,13 @@ export default function Office() {
     )
   }
 
+  // no celular o 2º botão é o módulo principal do setor (Reservas, Obras…) ou a Agenda
+  const mod1 = [...abasDe(s.sala, s)].find(id => MOD[id])
   const tabs = [
-    { id: 'inicio', label: 'Início', ic: 'house' }, { id: 'agenda', label: 'Agenda', ic: 'calendar-dots' },
+    { id: 'inicio', label: 'Início', ic: 'house' },
+    ...(mod1 ? [{ id: `m:${mod1}`, label: MOD[mod1].nome, ic: MOD[mod1].ic }] : abasDe(s.sala, s).has('agenda') ? [{ id: 'agenda', label: 'Agenda', ic: 'calendar-dots' }] : []),
     { id: 'quadro', label: 'Quadro', ic: 'kanban' }, { id: 'escritorio', label: 'Escritório', ic: 'desk' },
-  ].filter(t => t.id !== 'agenda' || abasDe(s.sala, s).has('agenda')) as { id: Page; label: string; ic: PhName }[]
+  ] as { id: Page; label: string; ic: PhName }[]
   const Tab = ({ it }: { it: (typeof tabs)[number] }) => (
     <button className={page === it.id ? 'on' : ''} onClick={() => goTo(it.id)} aria-current={page === it.id ? 'page' : undefined}>
       <Ph n={it.ic} size={24} fill={page === it.id} />{it.label}
@@ -236,6 +244,7 @@ export default function Office() {
           {page === 'fluxos' && <Fluxos />}
           {page === 'plano' && <Plano />}
           {page === 'pedidos' && <Pedidos />}
+          {page.startsWith('m:') && <ModuloTela key={page} id={page.slice(2)} />}
           {page === 'legendas' && <Legendas />}
           {/* 14/10: Estúdio virou painel dentro de Publicações; 'estudio' abre já com ele */}
           {(page === 'redes' || page === 'estudio') && <Redes estudio={page === 'estudio'} />}

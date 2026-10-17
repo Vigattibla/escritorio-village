@@ -14,12 +14,13 @@ import type { Backend } from './types'
 import type { JogoCassino, Rodada } from './cassino/regras'
 import type { Bolao } from './cassino/bolao'
 import type { Bingo } from './cassino/bingo'
+import { tipoDe } from './setor/tipos'
 import { lerBloqueio, type Bloqueio } from './game/vigia'
 
 export type Phase = 'loading' | 'auth' | 'creator' | 'office'
 export type Tab = 'mesa' | 'aprovar' | 'avisos' | 'equipe' | 'chat' | 'geral'
 /** quadro = trabalho do dia a dia (estilo Trello); escritório = visualização em pixel */
-export type View = 'quadro' | 'escritorio' | 'agenda' | 'metas' | 'fluxos' | 'inicio' | 'arquivos' | 'loja' | 'vendas' | 'placar' | 'kit' | 'plano' | 'redes' | 'estudio' | 'pedidos' | 'legendas'
+export type View = 'quadro' | 'escritorio' | 'agenda' | 'metas' | 'fluxos' | 'inicio' | 'arquivos' | 'loja' | 'vendas' | 'placar' | 'kit' | 'plano' | 'redes' | 'estudio' | 'pedidos' | 'legendas' | `m:${string}`
 export interface Go { view?: View; tab?: Tab; viewing?: string; channel?: string; task?: string; cassino?: 'bolao'; bingo?: boolean; abasOpen?: boolean }
 export type NoticeKind = 'data' | 'plano' | 'prazo' | 'lembrete' | 'pedido' | 'colab' | 'aprov' | 'msg' | 'adesivo' | 'loja' | 'time'
 export interface Notice { id: string; text: string; at: number; from?: string; go?: Go; kind?: NoticeKind }
@@ -107,7 +108,7 @@ function viewDaUrl(): View {
 }
 
 const initial: State = {
-  phase: 'loading', meId: null, accountName: '', error: '', profiles: {}, tasks: {}, messages: [], notes: [], projects: {}, rows: { events: {}, goals: {}, stickers: {}, flows: {}, stages: {}, groups: {}, rooms: {}, carpenters: {}, depts: {}, brand: {}, quartos: {}, vendas: {}, ajustes: {}, metas_venda: {}, vendas_cfg: {}, campanhas: {}, caderno: {}, jogos_pontos: {}, plano_meses: {}, plano_nucleos: {}, plano_acoes: {}, plano_resp: {}, equipes: {}, relatorios: {}, redes: {}, postagens: {}, requisicoes: {}, parcerias: {} }, parc: { tasks: {}, events: {} }, online: new Set(),
+  phase: 'loading', meId: null, accountName: '', error: '', profiles: {}, tasks: {}, messages: [], notes: [], projects: {}, rows: { events: {}, goals: {}, stickers: {}, flows: {}, stages: {}, groups: {}, rooms: {}, carpenters: {}, depts: {}, brand: {}, quartos: {}, vendas: {}, ajustes: {}, metas_venda: {}, vendas_cfg: {}, campanhas: {}, caderno: {}, jogos_pontos: {}, plano_meses: {}, plano_nucleos: {}, plano_acoes: {}, plano_resp: {}, equipes: {}, relatorios: {}, redes: {}, postagens: {}, requisicoes: {}, parcerias: {}, registros: {} }, parc: { tasks: {}, events: {} }, online: new Set(),
   tab: 'mesa', viewing: null, channel: 'geral', reads: {}, requestTo: null, task: null, editing: false, notices: [], pipOpen: false, view: viewDaUrl(), wallet: null, drawer: false,
   project: '', projectEdit: null, aiOpen: false, chatOpen: false, lousa: false, jogo: null, cassino: false, bolao: null, bingo: false, abasOpen: false, conectar: false, armario: false, bingoDados: null, bloqueio: null, bellOpen: false, qApprove: false, flow: null, sheet: false, stickTo: null, sala: DEPT0, here: DEPT0,
 }
@@ -621,10 +622,11 @@ export const hasCanais = (id: string = state.sala, s: State = state) => s.rows.d
 /** bandeira da porta (ícone Phosphor) e se a sala publica: mesma regra da porta */
 /** abas que a sala escolhe (início, quadro e escritório ficam sempre) */
 export const ABAS: [string, string][] = [['agenda', 'Agenda'], ['plano', 'Plano'], ['redes', 'Publicações'], ['arquivos', 'Arquivos'], ['pedidos', 'Pedidos'], ['legendas', 'Legendas']]
-export const abasPadrao = (id: string) => (id === DEPT0 ? ABAS.map(a => a[0]) : ['agenda', 'arquivos', 'pedidos'])
+/** padrão = o do tipo do setor (marcado ou deduzido pelo nome) */
+export const abasPadrao = (id: string, s: Pick<State, 'rows'> = state) => tipoDe(s.rows.depts[id] ?? { id, name: id }).abas
 /** abas ligadas da sala; parceria aceita liga o módulo mesmo se a sala não usa o seu */
 export function abasDe(id: string = state.sala, s: State = state) {
-  const out = new Set(s.rows.depts[id]?.abas ?? abasPadrao(id))
+  const out = new Set(s.rows.depts[id]?.abas ?? abasPadrao(id, s))
   for (const p of Object.values(s.rows.parcerias)) if (p.de === id && p.status === 'aceito') out.add(p.modulo)
   return out
 }
@@ -633,6 +635,13 @@ export async function setDeptAbas(id: string, abas: string[] | null) {
   if (!d) return
   onRow('depts', { ...d, abas })
   try { await backend.setDeptAbas(id, abas) } catch (e) { onRow('depts', d); throw e }
+}
+/** troca o tipo do setor (Reservas, Obras…): as abas voltam ao padrão do tipo */
+export async function setDeptTipo(id: string, tipo: string | null) {
+  const d = state.rows.depts[id]
+  if (!d) return
+  onRow('depts', { ...d, tipo, abas: null })
+  try { await backend.setDeptTipo(id, tipo) } catch (e) { onRow('depts', d); throw e }
 }
 export async function parceria(de: string, para: string, modulo: ParModulo, acao: 'pedir' | 'aceitar' | 'recusar' | 'sair') {
   const r = await backend.parceria(de, para, modulo, acao)

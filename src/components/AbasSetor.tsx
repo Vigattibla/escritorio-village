@@ -1,5 +1,7 @@
 import { useState } from 'react'
-import { ABAS, abasPadrao, canDoor, deptList, deptName, PAR_NOME, parceria, run, setDeptAbas, setUi, useStore } from '../store'
+import { ABAS, abasPadrao, canDoor, deptList, deptName, PAR_NOME, parceria, run, setDeptAbas, setDeptTipo, setUi, useStore } from '../store'
+import { MODULOS, TIPO, TIPOS, tipoId } from '../setor/tipos'
+import { Ph } from './Icon'
 import type { ParModulo, Parceria } from '../types'
 import { Fundo } from './Fundo'
 
@@ -19,8 +21,13 @@ export default function AbasSetor() {
     const n = new Set(ligadas)
     if (n.has(id)) n.delete(id)
     else n.add(id)
-    run(setDeptAbas(sala, ABAS.map(a => a[0]).filter(a => n.has(a))))
+    // ordem: a do tipo, depois módulos extras, depois as abas comuns
+    const ordem = [...new Set([...tipo.abas, ...MODULOS.map(m => m.id), ...ABAS.map(a => a[0])])]
+    run(setDeptAbas(sala, ordem.filter(a => n.has(a))))
   }
+  const tipo = TIPO[tipoId(d)]
+  const auto = TIPO[tipoId({ ...d, tipo: null })]
+  const ordemMods = [...MODULOS].sort((a, b) => Number(!tipo.abas.includes(a.id)) - Number(!tipo.abas.includes(b.id)))
   const outras = deptList(s).filter(x => x.id !== sala)
   const pars = Object.values(s.rows.parcerias)
   const minha = (para: string, m: ParModulo) => pars.find(p => p.de === sala && p.para === para && p.modulo === m)
@@ -38,6 +45,28 @@ export default function AbasSetor() {
             </select>
           ) : <b>{deptName(sala, s)}</b>}
         </div>
+
+        <section>
+          <h3>Tipo do setor</h3>
+          <small className="muted">Cada tipo vem com as telas que o setor precisa: Reservas tem funil de reservas e passagem de turno, Obras tem andamento e orçamento, Governança tem o mapa dos quartos… Trocar o tipo volta as abas ao padrão dele.</small>
+          <select value={d.tipo ?? ''} disabled={!pode} onChange={e => run(setDeptTipo(sala, e.target.value || null))} aria-label="Tipo do setor">
+            <option value="">Automático pelo nome ({auto.nome})</option>
+            {TIPOS.map(t => <option key={t.id} value={t.id}>{t.nome}</option>)}
+          </select>
+          <small className="muted">{tipo.desc}</small>
+        </section>
+
+        <section>
+          <h3>Telas do setor</h3>
+          <div className="abas-lista">
+            {ordemMods.map(m => (
+              <label key={m.id} className="abas-op" title={m.desc}>
+                <input type="checkbox" checked={ligadas.has(m.id)} disabled={!pode} onChange={() => toggle(m.id)} />
+                <Ph n={m.ic} size={18} /><span className="grow">{m.nome}</span>
+              </label>
+            ))}
+          </div>
+        </section>
 
         <section>
           <h3>Abas que a sala usa</h3>

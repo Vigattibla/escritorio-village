@@ -150,6 +150,11 @@ export class SupabaseBackend implements Backend {
     if (error) throw pt(error)
   }
 
+  async setDeptTipo(dept: string, tipo: string | null) {
+    const { error } = await this.sb.rpc('set_dept_tipo', { p_dept: dept, p_tipo: tipo ?? '' })
+    if (error) throw pt(error)
+  }
+
   async setDeptAbas(dept: string, abas: string[] | null) {
     const { error } = await this.sb.rpc('set_dept_abas', { p_dept: dept, p_abas: abas })
     if (error) throw pt(error)

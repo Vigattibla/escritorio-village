@@ -12,6 +12,7 @@ import { confirmar, pedirTexto } from './Dialogo'
 import { Ph } from './Icon'
 import type { PhName } from './ph'
 import MiniAvatar from './MiniAvatar'
+import { Chamados } from './Modulo'
 import '../plano/plano.css'
 import '../pedidos.css'
 
@@ -67,6 +68,7 @@ export default function Pedidos() {
         </div>
         <button className="btn accent" onClick={() => setNovo(true)}><Ph n="plus" size={16} /> Novo pedido</button>
       </div>
+      <Chamados />
       {!lista.length && <p className="pd-vazio">{hist ? 'Nada no histórico ainda.' : 'Nenhum pedido aberto. Precisa de material, folga ou outra coisa? Faça um pedido — fica registrado.'}</p>}
       <ul className="pd-lista">
         {lista.map(r => <Cartao key={r.id} r={r} aberto={open === r.id} onToggle={() => setOpen(open === r.id ? null : r.id)} profiles={profiles} meId={meId} />)}

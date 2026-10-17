@@ -151,6 +151,14 @@ export class DemoBackend implements Backend {
     await this.upsertRow('depts', { ...d, flag, canais, vendas: vendas ?? d.vendas })
   }
 
+  async setDeptTipo(dept: string, tipo: string | null) {
+    const me = read<Record<string, Profile>>(K.prof, {})[sessionStorage.getItem(K.session) ?? '']
+    const d = read<Record<string, Dept>>(K.row + 'depts', {})[dept]
+    if (!d) throw new Error('Essa sala não existe.')
+    if (!(me?.is_admin || me?.rank === 4 || ((me?.rank ?? 1) >= 3 && (me?.dept || 'marketing') === dept))) throw new Error('Só o gerente da sala, a Chefe ou o adm mudam o tipo do setor.')
+    await this.upsertRow('depts', { ...d, tipo, abas: null })
+  }
+
   async setDeptAbas(dept: string, abas: string[] | null) {
     const me = read<Record<string, Profile>>(K.prof, {})[sessionStorage.getItem(K.session) ?? '']
     const d = read<Record<string, Dept>>(K.row + 'depts', {})[dept]
