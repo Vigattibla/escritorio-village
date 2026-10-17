@@ -5,6 +5,14 @@ import { setUi, signOut, useStore } from '../store'
 import Icon, { Ph } from './Icon'
 import type { PhName } from './ph'
 import { setPref, usePref } from '../prefs'
+import { confirmar } from './Dialogo'
+
+/** dentro do app Android o botão some; no navegador do celular, Android baixa o APK e iPhone aprende a pôr na tela */
+const noApp = /EscritorioApp/.test(navigator.userAgent)
+const iphone = /iPhone|iPad|iPod/.test(navigator.userAgent)
+const baixarApp = () => iphone
+  ? confirmar('Pôr na tela do iPhone', { text: 'No Safari, toque em Compartilhar (quadrado com seta) e depois em "Adicionar à Tela de Início". Abre como app e já vem sempre atualizado.', ok: 'Entendi', ic: 'download-simple' })
+  : void (location.href = new URL('app/escritorio.apk', location.href.split(/[?#]/)[0]).href)
 
 /** Celular: o que não cabe na barra de baixo (Quadro, Fluxos, Equipe, Geral, Sair) fica num menu só. */
 export default function MoreMenu() {
@@ -40,6 +48,7 @@ export default function MoreMenu() {
         <div className="menu-pop more-pop">
           {items.map(([ic, l, fn, n]) => <button key={l} onClick={go(fn)}><Ph n={ic} size={20} /><b className="grow">{l}</b>{!!n && <i className="nav-n">{n > 9 ? '9+' : n}</i>}</button>)}
           <button onClick={go(() => setUi({ editing: true }))}><Ph n="smiley" size={20} /><b className="grow">Meu personagem</b></button>
+          {!noApp && <button onClick={go(baixarApp)}><Ph n="download-simple" size={20} /><b className="grow">{iphone ? 'Pôr na tela do iPhone' : 'Baixar o app'}</b></button>}
           <button onClick={go(() => setUi({ conectar: true }))}><Ph n="link" size={20} /><b className="grow">Conectar IA</b></button>
           <button onClick={() => setPref('dev', !dev)} aria-pressed={dev}><Ph n="gear-six" size={20} /><b className="grow">Modo desenvolvedor</b><i className={'tswitch' + (dev ? ' on' : '')} /></button>
           <button onClick={go(() => signOut())}><Icon n="logout" size={20} /><b className="grow">Sair</b></button>
