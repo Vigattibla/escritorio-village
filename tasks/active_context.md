@@ -268,4 +268,6 @@ Pendente: push (precisa da migration 202610080900_v4_agenda_metas.sql e do secre
 - Pente fino celular: Mais → "Da sala" lista os módulos da sala atual (abasDe) menos o 1º, que vai na barra de baixo — vale pra todo tipo de setor, sem mudança.
 - f5bb675: barra do celular encurta nome de módulo longo ("Cardápio da semana" → "Cardápio"); seedSetores não duplica registros ao semear de novo; escala A&B cobre seg–dom.
 - Conferido no celular (demo): Quartos (grade), Escala, Obras (kanban rola na horizontal com a próxima coluna à vista) — ok.
-- Pendente: sala RH (modelo reuniao) só dá pra ver num setor RH real.
+- 9e1fd0d: demo ganha 3º andar (seedAndar3, guarda `!depts.reservas`): Central de reservas, RH, Manutenção, Recreação com registros em todos os módulos; compras de obras com status válido (pedido). Semana (.md-sem) cabe inteira no desktop (minmax 108, coluna minmax(0,1fr), data dd/mm).
+- 9f27f1d: kanban dos módulos minmax(210px) → 4 colunas cabem em 1280.
+- Conferido: Reservas (kanban), Contratações (celular), Programação, Chamados, sala central (fileiras de mesas).
