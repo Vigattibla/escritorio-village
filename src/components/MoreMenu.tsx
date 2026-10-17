@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { isChief } from '../game/ranks'
 import { vende } from '../game/vendas'
-import { abasDe, setUi, signOut, useStore } from '../store'
+import { abasDe, canDoor, deptList, openSala, run, setUi, signOut, useStore } from '../store'
 import { MOD } from '../setor/tipos'
 import Icon, { Ph } from './Icon'
 import type { PhName } from './ph'
@@ -22,6 +22,10 @@ export default function MoreMenu() {
   const pend = useStore(s => Object.values(s.tasks).filter(t => t.owner_id === s.meId && t.status === 'inbox').length)
   const dev = usePref('dev')
   const go = (fn: () => void) => () => { setOpen(false); fn() }
+  const sala = useStore(s => s.sala)
+  const porta = useStore(s => canDoor(s.sala, s))
+  const depts = useStore(s => s.rows.depts)
+  const salas = dev && me && isChief(me) ? deptList({ rows: { depts } } as Parameters<typeof deptList>[0]) : []
   const sv = useStore(s => !!me && !me.is_admin && vende(me, s))
   // abas da sala que não couberam na barra de baixo (lá fica só o 1º módulo, ou a Agenda)
   const abas = useStore(s => [...abasDe(s.sala, s)].join(',')).split(',').filter(Boolean)
@@ -62,7 +66,14 @@ export default function MoreMenu() {
           <button onClick={go(() => setUi({ editing: true }))}><Ph n="smiley" size={20} /><b className="grow">Meu personagem</b></button>
           {!noApp && <button onClick={go(baixarApp)}><Ph n="download-simple" size={20} /><b className="grow">{iphone ? 'Pôr na tela do iPhone' : 'Baixar o app'}</b></button>}
           <button onClick={go(() => setUi({ conectar: true }))}><Ph n="link" size={20} /><b className="grow">Conectar IA</b></button>
+          {porta && !sv && <button onClick={go(() => setUi({ abasOpen: true }))}><Ph n="squares-four" size={20} /><b className="grow">Abas do setor</b></button>}
           <button onClick={() => setPref('dev', !dev)} aria-pressed={dev}><Ph n="gear-six" size={20} /><b className="grow">Modo desenvolvedor</b><i className={'tswitch' + (dev ? ' on' : '')} /></button>
+          {salas.length > 1 && <>
+            <hr />
+            <small className="more-sec">Salas do andar</small>
+            {salas.map(d => <button key={d.id} className={d.id === sala ? 'on' : ''} onClick={go(() => run(openSala(d.id)))}><i className="sala-dot" style={{ background: d.color }} /><b className="grow">{d.name}</b>{d.id === sala && <small>aqui</small>}</button>)}
+            <hr />
+          </>}
           <button onClick={go(() => signOut())}><Icon n="logout" size={20} /><b className="grow">Sair</b></button>
         </div>
       </>}

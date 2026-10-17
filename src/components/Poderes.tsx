@@ -39,7 +39,7 @@ export default function PoderesHud() {
       <span className="grow"><b>{primeiroNome(aviso.user_id)}:</b> {aviso.aviso}</span>
       <button className="pd-x" onClick={() => fechar(aviso.id)} aria-label="Fechar aviso">×</button>
     </div>}
-    {(ativos.length > 0 || meuMega) && <div className="pd">
+    {(ativos.length > 0 || meuMega) && <div className="pdr">
       <button className={'pd-chip' + (meu ? ' meu' : '')} style={meu ? { ['--pc' as string]: PODERES[meu.tipo].cor } : undefined} onClick={() => setAberto(!aberto)} aria-expanded={aberto}>
         <span aria-hidden>{meu ? PODERES[meu.tipo].emoji : '✨'}</span>{meu ? PODERES[meu.tipo].nome : `Poderes · ${ativos.length}`}
       </button>

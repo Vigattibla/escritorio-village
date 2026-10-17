@@ -485,7 +485,8 @@ button.panel { width: 100%; border: 0; text-align: left; font: inherit; color: i
   .office[data-page=agenda] .mbar { display: none; }
   .stk-layer { display: none; }
   .stk-inline { display: grid; gap: 10px; }
-  .stk-inline .sticker { position: static; transform: none; width: auto; cursor: default; animation: none; max-width: none; }
+  .stk-inline .sticker { position: relative; transform: none; width: auto; cursor: default; animation: none; max-width: none; }
+  .stk-inline .sticker .x { top: -8px; right: -2px; }
   .mtop h2 { font-size: 20px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .mtop > .grow { min-width: 0; }
   .inicio .cap { display: none; }

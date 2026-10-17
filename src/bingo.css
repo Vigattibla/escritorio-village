@@ -151,7 +151,7 @@
 @keyframes srt-sai { to { opacity: 0; transform: translateY(12px); } }
 
 /* poderes (roguelike): chip + pop no topo do escritório, aviso do megafone, visão no bolão */
-.pd { position: absolute; top: 12px; left: 12px; z-index: 4; display: grid; justify-items: start; gap: 6px; }
+.pdr { position: absolute; top: 12px; left: 12px; z-index: 4; display: grid; justify-items: start; gap: 6px; max-width: calc(100% - 24px); }
 .pd-chip { display: flex; align-items: center; gap: 6px; border: 0; border-radius: 999px; padding: 6px 14px; font: 600 13px/1 inherit; color: #fff; background: rgba(20, 26, 51, .88); box-shadow: 0 4px 14px #0003; cursor: pointer; }
 .pd-chip.meu { background: var(--pc); box-shadow: 0 0 0 3px color-mix(in srgb, var(--pc) 35%, transparent), 0 4px 14px #0003; animation: pd-brilho 2.4s ease-in-out infinite; }
 @keyframes pd-brilho { 50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--pc) 20%, transparent), 0 4px 14px #0003; } }
@@ -173,4 +173,4 @@
 .pd-visao li { display: flex; gap: 8px; font-size: 13px; counter-increment: v; }
 .pd-visao li::before { content: counter(v) '.'; color: #5b6275; width: 16px; }
 .pd-visao li.eu { font-weight: 700; color: #0B235D; }
-@media (max-width: 860px) { .pd { top: 8px; } .pd-aviso { top: 48px; } }
+@media (max-width: 860px) { .pdr { top: 8px; } .pd-aviso { top: 48px; } }
