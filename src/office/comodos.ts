@@ -80,17 +80,16 @@ export const COMODOS: Record<Exclude<Kind, 'dept' | 'vaga'>, Comodo> = {
   },
   jogos: {
     nome: 'Sala de jogos', cor: '#8e5bd6', top: false,
-    // esquerda: videogame, pebolim, sinuca, tabuleiro e fliperamas; direita: o cassino; meio livre pra porta
+    // esquerda: videogame, pebolim, sinuca, tabuleiro e fliperamas; direita: o cassino; meio livre pra porta (café é na cozinha)
     sala: () => monta('carpete', 28, 16, [
       // parede de vidro: nada de móvel alto embaixo da decoração; porta fica no meio (13-14)
-      ['tv-grande', 2, 0], ['neon', 6, 0], ['alvo-dardos', 11, 0], ['letreiro-cassino', 18, 0],
-      ['tapete-gamer', 1, 3], ['console', 2, 2], ['pufe', 1, 4], ['pufe', 4, 4], ['sofa', 1, 6],
+      ['tv-grande', 2, 0], ['letreiro-cassino', 18, 0],
+      ['tapete-gamer', 1, 3], ['console', 2, 2], ['pufe', 4, 4], ['sofa', 1, 6],
       ['estante', 8, 2], ['pebolim', 8, 5],
       ['sinuca', 3, 9], ['mesa-jantar', 8, 10], ['cadeira-reuniao', 8, 12], ['cadeira-reuniao', 11, 12],
-      ['fliperama', 2, 13], ['fliperama', 3, 13], ['fliperama', 4, 13], ['fliperama', 5, 13],
-      ['vitrine-doces', 9, 14], ['espresso', 11, 14], ['bistro', 13, 13],
+      ['fliperama', 2, 13], ['fliperama', 4, 13],
       ['tapete-cassino', 17, 5],
-      ['caca-niquel', 23, 2], ['caca-niquel', 24, 2], ['caca-niquel', 25, 2], ['caca-niquel', 26, 2],
+      ['caca-niquel', 23, 2], ['caca-niquel', 24, 2], ['caca-niquel', 25, 2],
       ['mesa-roleta', 19, 6], ['mesa-cartas', 19, 10], ['totem-crash', 26, 6], ['totem-minas', 26, 9],
       ['caixa-fichas', 22, 13], ['maquina-refri', 26, 13],
       ['planta', 1, 11], ['planta', 16, 14],
@@ -101,11 +100,10 @@ export const COMODOS: Record<Exclude<Kind, 'dept' | 'vaga'>, Comodo> = {
       S(9, 4, 'down', 'No pebolim', 40, 120), S(9, 6, 'up', 'No pebolim', 40, 120),
       S(2, 9, 'right', 'Jogando sinuca', 60, 180), S(7, 10, 'left', 'Jogando sinuca', 60, 180),
       S(9, 9, 'down', 'Jogo de tabuleiro', 60, 180), S(10, 12, 'up', 'Jogo de tabuleiro', 60, 180),
-      S(2, 14, 'up', 'No fliperama', 30, 90), S(4, 14, 'up', 'No fliperama', 30, 90), S(5, 14, 'up', 'No fliperama', 30, 90),
+      S(2, 14, 'up', 'No fliperama', 30, 90), S(4, 14, 'up', 'No fliperama', 30, 90),
       S(23, 3, 'up', 'No caça-níquel', 30, 90), S(25, 3, 'up', 'No caça-níquel', 30, 90),
       S(18, 6, 'right', 'Na roleta', 40, 120), S(23, 7, 'left', 'Na roleta', 40, 120), S(21, 8, 'up', 'Na roleta', 40, 120),
       S(19, 12, 'up', 'No blackjack', 40, 120), S(21, 12, 'up', 'No blackjack', 40, 120),
-      S(12, 14, 'left', 'Pegando um café', 10, 30, false, { prop: 'caneca', icon: '☕' }), S(14, 14, 'up', 'Lanchando', 30, 90),
       S(26, 7, 'up', 'No crash', 20, 60), S(26, 10, 'up', 'Nas minas', 20, 60),
     ],
   },
