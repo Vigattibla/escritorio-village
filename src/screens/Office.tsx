@@ -170,7 +170,7 @@ export default function Office() {
   const mod1 = [...abasDe(s.sala, s)].find(id => MOD[id])
   const tabs = [
     { id: 'inicio', label: 'Início', ic: 'house' },
-    ...(mod1 ? [{ id: `m:${mod1}`, label: MOD[mod1].nome, ic: MOD[mod1].ic }] : abasDe(s.sala, s).has('agenda') ? [{ id: 'agenda', label: 'Agenda', ic: 'calendar-dots' }] : []),
+    ...(mod1 ? [{ id: `m:${mod1}`, label: MOD[mod1].nome.length > 11 ? MOD[mod1].nome.split(' ')[0] : MOD[mod1].nome, ic: MOD[mod1].ic }] : abasDe(s.sala, s).has('agenda') ? [{ id: 'agenda', label: 'Agenda', ic: 'calendar-dots' }] : []),
     { id: 'quadro', label: 'Quadro', ic: 'kanban' }, { id: 'escritorio', label: 'Escritório', ic: 'desk' },
   ] as { id: Page; label: string; ic: PhName }[]
   const Tab = ({ it }: { it: (typeof tabs)[number] }) => (

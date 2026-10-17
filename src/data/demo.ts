@@ -812,13 +812,20 @@ function seedSetores() {
     r('ab', 'estoque', 'Óleo de soja', 'ok', { qtd: 4, min: 10, unid: 'L', local: 'Despensa' }),
     r('ab', 'estoque', 'Arroz', 'ok', { qtd: 50, min: 20, unid: 'kg', local: 'Despensa' }),
     r('ab', 'rotina', 'Conferir temperatura das câmaras frias', 'ativo', { turno: 'Abertura', resp: 'demo-bruno' }),
-    r('ab', 'escala', 'Cozinheiro', 'ok', { dia: dia(-1), hora: '06:00', resp: 'demo-bruno', local: 'Cozinha', publico: 'Manhã' }),
-    r('ab', 'escala', 'Garçom', 'ok', { dia: dia(0), hora: '11:00', resp: 'demo-ana', local: 'Restaurante', publico: 'Intermediário' }),
-    r('ab', 'escala', 'Cozinheiro', 'ok', { dia: dia(0), hora: '06:00', resp: 'demo-bruno', local: 'Cozinha', publico: 'Manhã' }),
-    r('ab', 'escala', 'Bar da piscina', 'ok', { dia: dia(1), hora: '14:00', resp: 'demo-ana', local: 'Bar', publico: 'Tarde' }),
-    r('ab', 'escala', 'Cozinheiro', 'cancelada', { dia: dia(1), hora: '06:00', resp: 'demo-bruno', local: 'Cozinha', publico: 'Manhã', obs: 'Folga' }),
+    // escala da semana inteira (seg a dom): cozinha todo dia com uma folga, salão no almoço, bar no fim de semana
+    ...[0, 1, 2, 3, 4, 5, 6].flatMap(k => {
+      const off = k - (now.getDay() + 6) % 7, fds = k >= 4
+      return [
+        r('ab', 'escala', 'Cozinheiro', k === 2 ? 'cancelada' : 'ok', { dia: dia(off), hora: '06:00', resp: 'demo-bruno', local: 'Cozinha', publico: 'Manhã', ...(k === 2 ? { obs: 'Folga' } : {}) }),
+        r('ab', 'escala', 'Garçom', 'ok', { dia: dia(off), hora: '11:00', resp: 'demo-ana', local: 'Restaurante', publico: 'Intermediário' }),
+        ...(fds ? [r('ab', 'escala', 'Bar da piscina', 'ok', { dia: dia(off), hora: '14:00', resp: 'demo-carla', local: 'Bar', publico: 'Tarde' })] : []),
+      ]
+    }),
   ]
-  write(K.row + 'registros', { ...read<Record<string, Registro>>(K.row + 'registros', {}), ...Object.fromEntries(regs.map(x => [x.id, x])) })
+  // semear de novo não duplica: sai o que já havia desses setores
+  const novos = new Set(regs.map(x => x.dept))
+  const antes = Object.entries(read<Record<string, Registro>>(K.row + 'registros', {})).filter(([, x]) => !novos.has(x.dept))
+  write(K.row + 'registros', { ...Object.fromEntries(antes), ...Object.fromEntries(regs.map(x => [x.id, x])) })
 }
 
 function seed() {
