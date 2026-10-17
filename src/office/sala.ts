@@ -122,6 +122,11 @@ export const KINDS: Record<string, Kind> = {
   },
   'arquivo': { nome: 'Arquivo', tema: 'Escritório', w: 1, h: 1, up: 1, draw: (c, x, y) => { box(c, '#9aa1ad', x + 2, y - 6, 12, 21); for (let k = 0; k < 3; k++) { r(c, '#7d8490', x + 2, y - 6 + k * 7 + 6, 12, 1); r(c, OUT, x + 6, y - 3 + k * 7, 4, 1) } } },
   'impressora': { nome: 'Impressora', tema: 'Escritório', w: 1, h: 1, up: 1, draw: (c, x, y) => { box(c, '#8a5a36', x + 1, y + 3, 14, 12); box(c, '#e6e8ee', x + 2, y - 5, 12, 8); r(c, '#2d2d33', x + 4, y - 1, 8, 1); r(c, '#fbfbf8', x + 5, y - 8, 6, 3); r(c, '#3fa66b', x + 12, y - 4, 1, 1) } },
+  'rack-servidor': { nome: 'Rack de servidor', tema: 'Escritório', w: 1, h: 1, up: 2, draw: (c, x, y, t) => {
+    box(c, '#22252d', x + 1, y - 18, 14, 33); r(c, '#14161b', x + 3, y - 16, 10, 29)
+    for (let k = 0; k < 6; k++) { r(c, '#3a3f4a', x + 3, y - 15 + k * 5, 10, 3); r(c, (k + Math.floor(t / 400)) % 3 ? '#3fe08a' : '#2a6b47', x + 11, y - 14 + k * 5, 1, 1) }
+    if (blink(t, 900)) r(c, '#FFC600', x + 4, y - 14, 1, 1)
+  } },
   'tapete-reuniao': { nome: 'Tapete grande', tema: 'Escritório', w: 8, h: 7, camada: 'chao', draw: (c, x, y) => { rug(c, x + 10, y - 2, 8 * T - 4, 7 * T - 8, '#7f8655', '#9aa06a', '#c9b98a') } },
   'tapete-chefe': { nome: 'Tapete vinho', tema: 'Escritório', w: 5, h: 4, camada: 'chao', draw: (c, x, y) => { rug(c, x + 6, y + 10, 4 * T + 4, 3 * T + 2, '#5a1f2c', '#7a2e3a', '#FBC222') } },
   'janela': {
@@ -639,6 +644,13 @@ export const MODELOS: Record<string, { nome: string; desc: string; piso: Piso; m
     for (const [x, y] of [[1, 14], [22, 14], [15, 13]]) add('planta', x, y)
     add('quadro-kanban', 9, 0); add('cartaz', 13, 0); add('arte', 15, 0); add('relogio', 18, 0); add('janela', 20, 0)
   } },
+  ti: { nome: 'Sala de TI', desc: 'bancada de monitores, racks no fundo e telão de monitoramento', piso: 'carpete', monta: add => {
+    for (let i = 0; i < MAX_DESKS; i++) add('mesa', 8 + (i % 6) * 2, 5 + Math.floor(i / 6) * 4, i)
+    for (const x of [17, 18, 19, 20]) add('rack-servidor', x, 12)
+    add('estante', 2, 2); add('impressora', 21, 2); add('bebedouro', 22, 2)
+    for (const [x, y] of [[1, 14], [22, 14]]) add('planta', x, y)
+    add('janela', 5, 0); add('painel-tela', 9, 0); add('quadro-kanban', 13, 0); add('relogio', 17, 0); add('janela', 19, 0)
+  } },
   aberto: { nome: 'Open office', desc: '2 bancadas compridas no centro e um cantinho de sofá', piso: 'madeira', monta: add => {
     for (let i = 0; i < MAX_DESKS; i++) add('mesa', 6 + (i % 6) * 2, 5 + Math.floor(i / 6) * 5, i)
     add('sofa', 19, 13); add('estante', 2, 2); add('impressora', 20, 2)
@@ -649,7 +661,7 @@ export const MODELOS: Record<string, { nome: string; desc: string; piso: Piso; m
 /** modelo que cada tipo de setor ganha de fábrica */
 export const MODELO_DO_TIPO: Record<string, string> = {
   marketing: 'ilhas', eventos: 'ilhas', recreacao: 'recreacao', comercial: 'central', reservas: 'central', recepcao: 'recepcao',
-  obras: 'obra', manutencao: 'oficina', governanca: 'rouparia', financeiro: 'aberto', ti: 'aberto', ab: 'cozinha', rh: 'reuniao',
+  obras: 'obra', manutencao: 'oficina', governanca: 'rouparia', financeiro: 'aberto', ti: 'ti', ab: 'cozinha', rh: 'reuniao',
 }
 export const modeloDe = (tipo?: string | null) => (tipo && MODELO_DO_TIPO[tipo]) || 'padrao'
 
