@@ -271,3 +271,4 @@ Pendente: push (precisa da migration 202610080900_v4_agenda_metas.sql e do secre
 - 9e1fd0d: demo ganha 3º andar (seedAndar3, guarda `!depts.reservas`): Central de reservas, RH, Manutenção, Recreação com registros em todos os módulos; compras de obras com status válido (pedido). Semana (.md-sem) cabe inteira no desktop (minmax 108, coluna minmax(0,1fr), data dd/mm).
 - 9f27f1d: kanban dos módulos minmax(210px) → 4 colunas cabem em 1280.
 - Conferido: Reservas (kanban), Contratações (celular), Programação, Chamados, sala central (fileiras de mesas).
+- 0a3bd26: no Quadro a câmera "Escritório agora" começa recolhida (botão Ver câmera/Recolher, guarda em `ev:live:aberto`; recolhida não roda o ciclo de pessoas) — quadro aparece sem rolar. Adesivo do demo nasce no canto (x/y 0.95). Sala oficina (Manutenção) conferida.
