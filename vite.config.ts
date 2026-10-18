@@ -6,6 +6,8 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), 'VITE_')
   return {
     base: './',
+    // widget.html: a página do Turmeo Widget do PC (turmeo-widget/Turmeo.exe)
+    build: { rollupOptions: { input: { main: 'index.html', widget: 'widget.html' } } },
     plugins: [react(), {
       // ponte/config.json: endereço e chave pública do Supabase para a ponte da IA baixada pelo instalador
       name: 'ponte-config', apply: 'build',

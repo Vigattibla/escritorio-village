@@ -107,10 +107,15 @@ function viewDaUrl(): View {
   const h = typeof location === 'undefined' ? '' : location.hash.slice(1)
   return (VIEWS as string[]).includes(h) ? h as View : 'quadro'
 }
+/** …/#tarefa=ID abre o detalhe da tarefa (o widget do PC usa) */
+function tarefaDaUrl(): string | null {
+  const m = typeof location === 'undefined' ? null : location.hash.match(/^#tarefa=([\w-]+)$/)
+  return m ? m[1] : null
+}
 
 const initial: State = {
   phase: 'loading', meId: null, accountName: '', error: '', profiles: {}, tasks: {}, messages: [], notes: [], projects: {}, rows: { events: {}, goals: {}, stickers: {}, flows: {}, stages: {}, groups: {}, rooms: {}, carpenters: {}, depts: {}, brand: {}, quartos: {}, vendas: {}, ajustes: {}, metas_venda: {}, vendas_cfg: {}, campanhas: {}, caderno: {}, jogos_pontos: {}, plano_meses: {}, plano_nucleos: {}, plano_acoes: {}, plano_resp: {}, equipes: {}, relatorios: {}, redes: {}, postagens: {}, requisicoes: {}, parcerias: {}, registros: {}, poderes: {} }, parc: { tasks: {}, events: {} }, online: new Set(),
-  tab: 'mesa', viewing: null, channel: 'geral', reads: {}, requestTo: null, task: null, editing: false, notices: [], pipOpen: false, view: viewDaUrl(), wallet: null, drawer: false,
+  tab: 'mesa', viewing: null, channel: 'geral', reads: {}, requestTo: null, task: tarefaDaUrl(), editing: false, notices: [], pipOpen: false, view: viewDaUrl(), wallet: null, drawer: false,
   project: '', projectEdit: null, aiOpen: false, chatOpen: false, lousa: false, jogo: null, cassino: false, bolao: null, bingo: false, abasOpen: false, conectar: false, armario: false, bingoDados: null, bloqueio: null, bellOpen: false, qApprove: false, flow: null, sheet: false, stickTo: null, sala: DEPT0, here: DEPT0,
 }
 

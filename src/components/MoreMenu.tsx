@@ -14,6 +14,12 @@ const iphone = /iPhone|iPad|iPod/.test(navigator.userAgent)
 const baixarApp = () => iphone
   ? confirmar('Pôr na tela do iPhone', { text: 'No Safari, toque em Compartilhar (quadrado com seta) e depois em "Adicionar à Tela de Início". Abre como app e já vem sempre atualizado.', ok: 'Entendi', ic: 'download-simple' })
   : void (location.href = new URL('app/escritorio.apk', location.href.split(/[?#]/)[0]).href)
+/** Windows: widget de tarefas no canto da tela (repo turmeo-widget; o exe se instala sozinho, sem admin) */
+const windows = /Windows NT/.test(navigator.userAgent)
+const baixarWidget = async () => {
+  if (!await confirmar('Turmeo no canto da tela', { text: 'Um programinha que mostra suas tarefas no canto do Windows e avisa quando chega pedido novo. Baixe, abra o Turmeo.exe e entre com a sua conta. Se o Windows avisar "protegeu o computador", clique em Mais informações → Executar assim mesmo. Pra tirar: menu ⋯ do widget → Desinstalar.', ok: 'Baixar', ic: 'download-simple' })) return
+  location.href = new URL('app/Turmeo.exe', location.href.split(/[?#]/)[0]).href
+}
 
 /** Celular: o que não cabe na barra de baixo (Quadro, Fluxos, Equipe, Geral, Sair) fica num menu só. */
 export default function MoreMenu() {
@@ -65,6 +71,7 @@ export default function MoreMenu() {
           {items.map(([ic, l, fn, n]) => <button key={l} onClick={go(fn)}><Ph n={ic} size={20} /><b className="grow">{l}</b>{!!n && <i className="nav-n">{n > 9 ? '9+' : n}</i>}</button>)}
           <button onClick={go(() => setUi({ editing: true }))}><Ph n="smiley" size={20} /><b className="grow">Meu personagem</b></button>
           {!noApp && <button onClick={go(baixarApp)}><Ph n="download-simple" size={20} /><b className="grow">{iphone ? 'Pôr na tela do iPhone' : 'Baixar o app'}</b></button>}
+          {windows && <button onClick={go(baixarWidget)}><Ph n="download-simple" size={20} /><b className="grow">Widget pro PC</b></button>}
           <button onClick={go(() => setUi({ conectar: true }))}><Ph n="link" size={20} /><b className="grow">Conectar IA</b></button>
           {porta && !sv && <button onClick={go(() => setUi({ abasOpen: true }))}><Ph n="squares-four" size={20} /><b className="grow">Abas do setor</b></button>}
           <button onClick={() => setPref('dev', !dev)} aria-pressed={dev}><Ph n="gear-six" size={20} /><b className="grow">Modo desenvolvedor</b><i className={'tswitch' + (dev ? ' on' : '')} /></button>
