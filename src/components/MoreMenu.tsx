@@ -7,6 +7,7 @@ import Icon, { Ph } from './Icon'
 import type { PhName } from './ph'
 import { setPref, usePref } from '../prefs'
 import { confirmar } from './Dialogo'
+import { baixarWidget, windows } from './Widget'
 
 /** dentro do app Android o botão some; no navegador do celular, Android baixa o APK e iPhone aprende a pôr na tela */
 const noApp = /EscritorioApp/.test(navigator.userAgent)
@@ -14,12 +15,6 @@ const iphone = /iPhone|iPad|iPod/.test(navigator.userAgent)
 const baixarApp = () => iphone
   ? confirmar('Pôr na tela do iPhone', { text: 'No Safari, toque em Compartilhar (quadrado com seta) e depois em "Adicionar à Tela de Início". Abre como app e já vem sempre atualizado.', ok: 'Entendi', ic: 'download-simple' })
   : void (location.href = new URL('app/escritorio.apk', location.href.split(/[?#]/)[0]).href)
-/** Windows: widget de tarefas no canto da tela (repo turmeo-widget; o exe se instala sozinho, sem admin) */
-const windows = /Windows NT/.test(navigator.userAgent)
-const baixarWidget = async () => {
-  if (!await confirmar('Turmeo no canto da tela', { text: 'Um programinha que mostra suas tarefas no canto do Windows e avisa quando chega pedido novo. Baixe, abra o Turmeo.exe e entre com a sua conta. Se o Windows avisar "protegeu o computador", clique em Mais informações → Executar assim mesmo. Pra tirar: menu ⋯ do widget → Desinstalar.', ok: 'Baixar', ic: 'download-simple' })) return
-  location.href = new URL('app/Turmeo.exe', location.href.split(/[?#]/)[0]).href
-}
 
 /** Celular: o que não cabe na barra de baixo (Quadro, Fluxos, Equipe, Geral, Sair) fica num menu só. */
 export default function MoreMenu() {

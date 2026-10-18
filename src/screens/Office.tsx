@@ -34,6 +34,7 @@ import PoderesHud from '../components/Poderes'
 import Sorteios from '../components/Sorteios'
 import Armario from '../components/Armario'
 import Conectar from '../components/Conectar'
+import WidgetAviso, { baixarWidget, windows } from '../components/Widget'
 import type { Jogo } from '../office/world'
 import Caderno from '../components/Caderno'
 import Accounts from '../components/Accounts'
@@ -206,6 +207,7 @@ export default function Office() {
               <button onClick={() => { setMeOpen(false); setUi({ editing: true }) }}><Ph n="smiley" size={20} /><b className="grow">Meu personagem</b></button>
               <button onClick={() => { setMeOpen(false); setUi({ armario: true }) }}><Ph n="smiley" size={20} /><b className="grow">Meu armário</b></button>
               <button onClick={() => { setMeOpen(false); goTo('loja') }}><Ph n="coffee" size={20} /><b className="grow">Almoxarifado</b>{s.wallet && <small className="me-pop-cf">☕ {s.wallet.balance}</small>}</button>
+              {windows && <button onClick={() => { setMeOpen(false); void baixarWidget() }}><Ph n="download-simple" size={20} /><b className="grow">Widget pro PC</b></button>}
               <button onClick={() => { setMeOpen(false); setUi({ conectar: true }) }}><Ph n="link" size={20} /><b className="grow">Conectar IA</b></button>
               {(me.is_admin || rankOf(me) >= 3) && <button onClick={() => { setMeOpen(false); setContas(true) }}><Ph n="users-three" size={20} /><b className="grow">Contas da equipe</b></button>}
               {canDoor(s.sala, s) && <button onClick={() => { setMeOpen(false); setUi({ abasOpen: true }) }}><Ph n="squares-four" size={20} /><b className="grow">Abas do setor</b>{!!parcPend && <small className="me-pop-cf">{parcPend}</small>}</button>}
@@ -301,6 +303,7 @@ export default function Office() {
       </nav>}
       <FloatChat />
       <Toast />
+      <WidgetAviso />
       {s.editing && <div className="overlay"><Creator /></div>}
       {s.bingo && <Bingo onClose={() => setUi({ bingo: false })} />}
       {s.abasOpen && <AbasSetor />}

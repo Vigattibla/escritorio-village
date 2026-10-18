@@ -855,3 +855,10 @@ button.tlogo.img:hover { box-shadow: inset 0 0 0 2px var(--acc2); }
 .gato-wrap.left .gato-n { left: 10px; top: -6px; }
 .gato-wrap.right .gato-balao { right: 76px; }
 .gato-wrap.left .gato-balao { left: 76px; }
+
+/* aviso do widget pro PC (Widget.tsx): canto de baixo, ao lado do botão do chat */
+.wdg-aviso { position: fixed; right: 84px; bottom: 20px; z-index: 54; display: flex; align-items: center; gap: 12px; width: min(400px, calc(100vw - 120px)); padding: 12px 10px 12px 14px; background: #FBF8F1; color: var(--text); border: 2px solid var(--acc); border-radius: 14px; box-shadow: 0 3px 0 var(--acc); animation: pop .25s ease-out; }
+.wdg-aviso > svg { color: var(--acc); flex: none; }
+.wdg-aviso span { display: grid; gap: 2px; min-width: 0; }
+.wdg-aviso b { font-size: 14px; } .wdg-aviso small { color: var(--muted); font-size: 12px; line-height: 1.3; }
+@media (max-width: 760px) { .wdg-aviso { display: none; } }
