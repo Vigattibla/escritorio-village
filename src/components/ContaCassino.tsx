@@ -1,11 +1,15 @@
 import { useCallback, useEffect, useState } from 'react'
 import Cassino from './Cassino'
 import Bingo from './Bingo'
+import Game from './Game'
+import Jogos from './Jogos'
+import SalaEditor from './SalaEditor'
+import type { Jogo } from '../office/world'
 import BloqueioJogos from './BloqueioJogos'
 import { Toast } from './Avisos'
 import { Ph } from './Icon'
 import { confirmar } from './Dialogo'
-import { cassinoPainel, cassinoTaxa, primeiroNome, refreshWallet, signOut, torneioCriar, useStore } from '../store'
+import { cassinoPainel, cassinoTaxa, primeiroNome, refreshWallet, setUi, signOut, torneioCriar, useStore } from '../store'
 import type { CassinoPainel, Torneio } from '../types'
 
 // conta "só cassino": joga, cuida do imposto da casa e marca torneios (tudo com teto no servidor)
@@ -16,6 +20,10 @@ export default function ContaCassino() {
   const eu = useStore(s => (s.meId ? s.profiles[s.meId] : undefined))
   const wallet = useStore(s => s.wallet)
   const [aberto, setAberto] = useState<'cassino' | 'bingo' | null>(null)
+  const [sala, setSala] = useState(false)
+  const [arrumando, setArrumando] = useState(false)
+  const uiCassino = useStore(s => s.cassino), uiBingo = useStore(s => s.bingo), uiJogo = useStore(s => s.jogo)
+  const naSala = useStore(s => s.here === s.sala)
   const [p, setP] = useState<CassinoPainel | null>(null)
   const [erro, setErro] = useState('')
   const [taxa, setTaxa] = useState(10)
@@ -52,10 +60,15 @@ export default function ContaCassino() {
       <header className="cc-top">
         <span className="cc-logo">🎰</span>
         <div className="grow"><b>{eu?.name ?? 'Cassino'}</b><small>Gerente do cassino</small></div>
+        <button className="btn ghost sm" onClick={() => { setSala(!sala); setArrumando(false) }}>{sala ? 'Painel' : '🎰 Minha sala'}</button>
         <span className="cs-saldo"><Ph n="coffee" size={16} fill /> <b>{wallet ? saldo : '…'}</b></span>
         <button className="btn ghost sm" onClick={() => void signOut()}>Sair</button>
       </header>
 
+      {sala ? <section className="cc-sala">
+        {arrumando ? <SalaEditor onClose={() => setArrumando(false)} /> : <div className="game-wrap"><Game />
+          {naSala && <button className="btn primary sm game-edit" onClick={() => setArrumando(true)}>🪚 Arrumar sala</button>}</div>}
+      </section> :
       <main className="cc-main">
         <section className="cc-jogos">
           <button className="cc-card cassino" onClick={() => setAberto('cassino')}><span>🎲</span><b>Cassino</b><small>Caça-níquel, roleta, blackjack, crash e minas</small></button>
@@ -101,10 +114,14 @@ export default function ContaCassino() {
             {p.historico.map(h => <div key={h.id}><span className="grow">{JOGO[h.jogo]} · {h.premio} ☕</span><b>{h.estado === 'pago' && h.vencedor ? primeiroNome(h.vencedor) : h.estado === 'cancelado' ? 'cancelado' : 'devolvido'}</b></div>)}
           </div>}
         </section>
-      </main>
+      </main>}
 
       {aberto === 'cassino' && <Cassino onClose={() => setAberto(null)} />}
       {aberto === 'bingo' && <Bingo onClose={() => setAberto(null)} />}
+      {/* na sala: as máquinas abrem pelo store, igual no escritório */}
+      {uiCassino && <Cassino inicial={typeof uiCassino === 'string' ? uiCassino : undefined} onClose={() => setUi({ cassino: false })} />}
+      {uiBingo && <Bingo onClose={() => setUi({ bingo: false })} />}
+      {uiJogo && <Jogos inicio={uiJogo as Jogo} onClose={() => setUi({ jogo: null })} />}
       <BloqueioJogos />
       <Toast />
     </div>

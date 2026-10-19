@@ -35,7 +35,7 @@ interface Hover { id: string; sx: number; sy: number }
 
 /** Mesa de alguém na sala do setor dela: o Gerente vai para a mesa dele, o resto usa a sorteada */
 const deskIdx = (p: Profile, r: Room) => {
-  if (managerOf(getState().profiles, deptOf(p))?.id === p.id && hasDesk(r, BOSS_DESK)) return BOSS_DESK
+  if ((p.cassino || managerOf(getState().profiles, deptOf(p))?.id === p.id) && hasDesk(r, BOSS_DESK)) return BOSS_DESK
   if (p.desk >= 0 && p.desk < MAX_DESKS && hasDesk(r, p.desk)) return p.desk
   return deskIds(r).find(i => i !== BOSS_DESK) ?? 0
 }

@@ -212,6 +212,7 @@ export const TIPOS: TipoSetor[] = [
   { id: 'rh', nome: 'RH / Pessoas', desc: 'Contratações, escala, férias e mural de avisos', abas: ['admissao', 'escala', 'ferias', 'avisos', 'agenda', 'arquivos', ...P] },
   { id: 'financeiro', nome: 'Financeiro', desc: 'Contas a pagar e a receber, compras', abas: ['contas', 'compras', 'agenda', 'arquivos', ...P] },
   { id: 'ti', nome: 'TI', desc: 'Chamados de TI, rotina e equipamentos', abas: ['ti', 'rotina', 'estoque', 'arquivos', ...P] },
+  { id: 'cassino', nome: 'Cassino', desc: 'Sala do gerente do cassino: máquinas, mesas e bingo', abas: ['avisos'] },
   { id: 'geral', nome: 'Geral', desc: 'Mural de avisos, agenda, arquivos e pedidos', abas: ['avisos', 'agenda', 'arquivos', ...P] },
 ]
 export const TIPO: Record<string, TipoSetor> = Object.fromEntries(TIPOS.map(t => [t.id, t]))
@@ -220,7 +221,7 @@ const REGRAS: [RegExp, string][] = [
   [/market|comunica|social|mkt|midia/, 'marketing'], [/reserva|central/, 'reservas'], [/comerc|vend/, 'comercial'], [/recep|front|portaria/, 'recepcao'],
   [/govern|camar|limpeza|housekeep|lavand/, 'governanca'], [/manut/, 'manutencao'], [/obra|engenh|constru/, 'obras'], [/evento/, 'eventos'],
   [/a ?& ?b|\baeb\b|aliment|bebida|cozinha|restaur|\bbar\b/, 'ab'], [/recrea|lazer|kids|monitor/, 'recreacao'], [/\brh\b|recursos humanos|pessoas|\bdp\b/, 'rh'],
-  [/financ|contab|fatur|tesour/, 'financeiro'], [/\bti\b|tecnolog|informat|sistemas/, 'ti'],
+  [/financ|contab|fatur|tesour/, 'financeiro'], [/\bti\b|tecnolog|informat|sistemas/, 'ti'], [/cassino/, 'cassino'],
 ]
 const sem = (t: string) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
 /** tipo marcado na sala ou deduzido pelo nome (Marketing antigo = marketing) */

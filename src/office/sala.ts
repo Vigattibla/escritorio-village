@@ -658,6 +658,13 @@ export const MODELOS: Record<string, { nome: string; desc: string; piso: Piso; m
     for (const [x, y] of [[1, 14], [22, 14], [12, 13]]) add('planta', x, y)
     add('janela', 5, 0); add('quadro-branco', 9, 0); add('calendario', 13, 0); add('relogio', 14, 0); add('janela', 16, 0)
   } },
+  cassino: { nome: 'Cassino', desc: 'tapete vinho, roleta e blackjack no meio, fileira de caça-níqueis e caixa de fichas', piso: 'carpete', monta: add => {
+    add('tapete-cassino', 8, 4); add('mesa-roleta', 9, 5); add('mesa-cartas', 14, 5); add('totem-crash', 10, 9); add('totem-minas', 15, 9)
+    for (const x of [7, 8, 9, 15, 16, 17]) add('caca-niquel', x, 2)
+    add('caixa-fichas', 20, 5); add('caca-niquel', 21, 9); add('caca-niquel', 22, 9)
+    add('letreiro-cassino', 10, 0); add('janela', 4, 0); add('relogio', 16, 0); add('janela', 19, 0)
+    for (const [x, y] of [[1, 14], [22, 14], [22, 2]]) add('planta', x, y)
+  } },
   aberto: { nome: 'Open office', desc: '2 bancadas compridas no centro e um cantinho de sofá', piso: 'madeira', monta: add => {
     for (let i = 0; i < MAX_DESKS; i++) add('mesa', 6 + (i % 6) * 2, 5 + Math.floor(i / 6) * 5, i)
     add('sofa', 19, 13); add('estante', 2, 2); add('impressora', 20, 2)
@@ -668,7 +675,7 @@ export const MODELOS: Record<string, { nome: string; desc: string; piso: Piso; m
 /** modelo que cada tipo de setor ganha de fábrica */
 export const MODELO_DO_TIPO: Record<string, string> = {
   marketing: 'ilhas', eventos: 'ilhas', recreacao: 'recreacao', comercial: 'central', reservas: 'central', recepcao: 'recepcao',
-  obras: 'obra', manutencao: 'oficina', governanca: 'rouparia', financeiro: 'financeiro', ti: 'ti', ab: 'cozinha', rh: 'reuniao',
+  obras: 'obra', manutencao: 'oficina', governanca: 'rouparia', financeiro: 'financeiro', ti: 'ti', ab: 'cozinha', rh: 'reuniao', cassino: 'cassino',
 }
 export const modeloDe = (tipo?: string | null) => (tipo && MODELO_DO_TIPO[tipo]) || 'padrao'
 

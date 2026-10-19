@@ -260,11 +260,12 @@ export const elevadorSpot = () => ({ x: 2 * T, y: (HY0 + 1) * T, tx: 1, ty: HY0 
 
 export function jogoAt(gx: number, gy: number) {
   for (const r of rooms) {
-    if (r.kind !== 'jogos') continue
+    // máquina abre o jogo em qualquer sala (o cassino tem as dele); só o salão de jogos tem lugar marcado
+    if (r.kind !== 'jogos' && r.kind !== 'dept') continue
     for (const o of r.sala.objs) {
       const m = MAQUINAS[o.k], d = kd(o)
       if (!m || !d || gx < r.ox + o.x || gx >= r.ox + o.x + d.w || gy < r.oy + o.y - (d.up ?? 0) || gy >= r.oy + o.y + d.h) continue
-      const sp = (comodoOf('jogos')?.spots ?? []).filter(s => s.act === m.act)
+      const sp = (r.kind === 'jogos' ? comodoOf('jogos')?.spots ?? [] : []).filter(s => s.act === m.act)
         .sort((a, b) => Math.hypot(a.x - o.x, a.y - o.y) - Math.hypot(b.x - o.x, b.y - o.y))[0]
       return { jogo: m.jogo, cassino: m.cassino, tx: r.ox + (sp?.x ?? o.x), ty: r.oy + (sp?.y ?? o.y + d.h) }
     }

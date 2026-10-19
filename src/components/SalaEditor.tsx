@@ -19,7 +19,7 @@ const SHADOW_OK = 'rgba(63,166,107,.22)', SHADOW_BAD = 'rgba(229,72,58,.28)'
 /** pode arrumar o escritório: Coordenação/Gerência/Chefe, ou carpinteiro com prazo valendo */
 export function canEditOffice(p: Profile | undefined, carpenters: Record<string, { until: string }>, poderes: Record<string, Poder> = {}) {
   if (!p) return false
-  if (rankOf(p) >= 2 || poderDe(poderes, p.id, 'chefe')) return true
+  if (rankOf(p) >= 2 || poderDe(poderes, p.id, 'chefe') || p.cassino) return true
   const c = carpenters[p.id]
   return !!c && new Date(c.until).getTime() > Date.now()
 }
