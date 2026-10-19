@@ -4,6 +4,8 @@ import Bingo from './Bingo'
 import Game from './Game'
 import Jogos from './Jogos'
 import SalaEditor from './SalaEditor'
+import Loja from './Loja'
+import Armario from './Armario'
 import type { Jogo } from '../office/world'
 import BloqueioJogos from './BloqueioJogos'
 import { Toast } from './Avisos'
@@ -20,8 +22,14 @@ export default function ContaCassino() {
   const eu = useStore(s => (s.meId ? s.profiles[s.meId] : undefined))
   const wallet = useStore(s => s.wallet)
   const [aberto, setAberto] = useState<'cassino' | 'bingo' | null>(null)
-  const [sala, setSala] = useState(false)
+  // painel do cassino, sala de jogos ou loja de roupas (sem os painéis do escritório)
+  const [view, setView] = useState<'painel' | 'sala' | 'loja'>('painel')
+  const sala = view === 'sala'
   const [arrumando, setArrumando] = useState(false)
+  const armario = useStore(s => s.armario)
+  // "Ir ao Almoxarifado" do armário pede a view loja do store
+  const uiView = useStore(s => s.view)
+  useEffect(() => { if (uiView === 'loja') { setView('loja'); setArrumando(false); setUi({ view: 'quadro' }) } }, [uiView])
   const uiCassino = useStore(s => s.cassino), uiBingo = useStore(s => s.bingo), uiJogo = useStore(s => s.jogo)
   const [p, setP] = useState<CassinoPainel | null>(null)
   const [erro, setErro] = useState('')
@@ -59,7 +67,9 @@ export default function ContaCassino() {
       <header className="cc-top">
         <span className="cc-logo">🎰</span>
         <div className="grow"><b>{eu?.name ?? 'Cassino'}</b><small>Gerente do cassino</small></div>
-        <button className="btn ghost sm" onClick={() => { setSala(!sala); setArrumando(false) }}>{sala ? 'Painel' : '🎰 Sala de jogos'}</button>
+        {view !== 'painel' && <button className="btn ghost sm" onClick={() => { setView('painel'); setArrumando(false) }}>Painel</button>}
+        {view !== 'sala' && <button className="btn ghost sm" onClick={() => { setView('sala'); setArrumando(false) }}>🎰 Sala de jogos</button>}
+        {view !== 'loja' && <button className="btn ghost sm" onClick={() => { setView('loja'); setArrumando(false) }}>👕 Loja</button>}
         <span className="cs-saldo"><Ph n="coffee" size={16} fill /> <b>{wallet ? saldo : '…'}</b></span>
         <button className="btn ghost sm" onClick={() => void signOut()}>Sair</button>
       </header>
@@ -67,7 +77,7 @@ export default function ContaCassino() {
       {sala ? <section className="cc-sala">
         {arrumando ? <SalaEditor comodo onClose={() => setArrumando(false)} /> : <div className="game-wrap"><Game />
           <button className="btn primary sm game-edit" onClick={() => setArrumando(true)}>🪚 Arrumar sala</button></div>}
-      </section> :
+      </section> : view === 'loja' ? <section className="cc-loja"><Loja /></section> :
       <main className="cc-main">
         <section className="cc-jogos">
           <button className="cc-card cassino" onClick={() => setAberto('cassino')}><span>🎲</span><b>Cassino</b><small>Caça-níquel, roleta, blackjack, crash e minas</small></button>
@@ -121,6 +131,7 @@ export default function ContaCassino() {
       {uiCassino && <Cassino inicial={typeof uiCassino === 'string' ? uiCassino : undefined} onClose={() => setUi({ cassino: false })} />}
       {uiBingo && <Bingo onClose={() => setUi({ bingo: false })} />}
       {uiJogo && <Jogos inicio={uiJogo as Jogo} onClose={() => setUi({ jogo: null })} />}
+      {armario && <Armario onClose={() => setUi({ armario: false })} />}
       <BloqueioJogos />
       <Toast />
     </div>

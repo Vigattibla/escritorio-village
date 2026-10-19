@@ -98,6 +98,7 @@ export default function Loja() {
   const [busy, setBusy] = useState('')
   const [msg, setMsg] = useState<{ text: string; err?: boolean } | null>(null)
   if (!p?.avatar) return null
+  const cassino = !!p.cassino
   const av = p.avatar, gear = av.gear ?? {}, first = p.name.split(' ')[0]
   const coins = wallet?.balance ?? 0
   const prev = trying ? wear(av, trying.slot, trying.art) : av
@@ -124,7 +125,7 @@ export default function Loja() {
 
   return (
     <div className="quadro loja">
-      <div className="qbar"><span className="grow" /><Bell /></div>
+      {!cassino && <div className="qbar"><span className="grow" /><Bell /></div>}
       <div className="qhead"><div><h1>Almoxarifado</h1><div className="sub">Troque cafezinhos por coisas pro seu boneco e pra sua mesa. Só o servidor credita; ninguém transfere.</div></div></div>
 
       <div className="lj-shop panel">
@@ -178,7 +179,7 @@ export default function Loja() {
           {!wallet?.log.length && <div className="muted lj-empty">Nada ainda.</div>}
           {wallet?.log.slice(0, 40).map((l, k) => <div key={k} className="lj-log"><span>{when(l.created_at)}</span><span>{why(l, id => goals[id]?.title)}</span><b className={l.amount > 0 ? 'pos' : 'neg'}>{l.amount > 0 ? '+' : ''}{l.amount}</b></div>)}
         </div>
-        <div className="panel lj-box">
+        {!cassino && <div className="panel lj-box">
           <h4>Como ganhar</h4>
           <div className="lj-how">
             <div><Ph n="gift" size={18} /> <span><b>+{WELCOME}</b> na primeira vez que entra, uma vez por pessoa</span></div>
@@ -192,7 +193,7 @@ export default function Loja() {
             <li>Card só conta se outra pessoa participou: pediu, aprovou ou é mestre do projeto.</li>
             <li>Meta manual: só a Chefe atualiza o número.</li>
           </ul>
-        </div>
+        </div>}
       </div>
     </div>
   )

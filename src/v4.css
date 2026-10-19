@@ -1196,3 +1196,4 @@ button.panel { width: 100%; border: 0; text-align: left; font: inherit; color: i
 .cc-tor small { display: block; }
 .cc-sala { display: flex; height: calc(100dvh - 60px); min-height: 420px; }
 .cc-sala > * { flex: 1; min-width: 0; }
+.cc-loja { max-width: 1200px; margin: 0 auto; padding: 16px; }
