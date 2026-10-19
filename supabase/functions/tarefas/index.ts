@@ -68,6 +68,7 @@ function ferramentas() {
           prazo: { type: 'string', description: 'AAAA-MM-DD (também aceita DD/MM, hoje, amanhã, sexta)' },
           notas: { type: 'string', description: 'Descrição / detalhes' },
           prioridade: { type: 'string', enum: ['alta', 'media', 'baixa'] },
+          checklist: { type: 'array', items: { type: 'string' }, description: 'Itens da lista (ex.: as peças de uma campanha)' },
         },
       },
     },
@@ -80,6 +81,20 @@ function ferramentas() {
       name: 'mover_tarefa',
       description: 'Muda a situação de uma tarefa minha: todo (a fazer), doing (fazendo) ou done (feito; se o projeto tem aprovador, vai pra aprovação).',
       inputSchema: { type: 'object', required: ['id', 'situacao'], properties: { id: { type: 'string' }, situacao: { type: 'string', enum: ['todo', 'doing', 'done'] } } },
+    },
+    {
+      name: 'checklist_tarefa',
+      description: 'Mexe no checklist de uma tarefa de que eu participo: marca/desmarca um item (pelo texto ou id), adiciona itens novos ou tira um item.',
+      inputSchema: {
+        type: 'object', required: ['id'],
+        properties: {
+          id: { type: 'string' },
+          marcar: { type: 'string', description: 'Texto ou id do item a marcar' },
+          feito: { type: 'boolean', description: 'true marca, false desmarca; vazio inverte' },
+          adicionar: { type: 'array', items: { type: 'string' }, description: 'Itens novos no fim da lista' },
+          tirar: { type: 'string', description: 'Texto ou id do item a remover' },
+        },
+      },
     },
     {
       name: 'comentar_tarefa',
@@ -109,9 +124,20 @@ async function ler(t: string, id: string) {
   return d
 }
 
+const checklist = (t: string, a: Record<string, unknown>) => rpc('api_tarefa_checklist', {
+  p_token: t, p_id: a.id, p_item: a.marcar ?? null, p_feito: typeof a.feito === 'boolean' ? a.feito : null,
+  p_adicionar: Array.isArray(a.adicionar) ? a.adicionar.map(String) : null, p_tirar: a.tirar ?? null,
+})
+
 async function chamar(t: string, nome: string, a: Record<string, unknown>) {
   switch (nome) {
-    case 'criar_tarefa': return criar(t, a)
+    case 'criar_tarefa': {
+      const r = await criar(t, a)
+      const itens = Array.isArray(a.checklist) ? a.checklist : typeof a.checklist === 'string' ? a.checklist.split('\n') : []
+      if (r?.id && itens.length) r.checklist = (await checklist(t, { id: r.id, adicionar: itens })).checklist
+      return r
+    }
+    case 'checklist_tarefa': return checklist(t, a)
     case 'listar_tarefas': return rpc('api_tarefas', { p_token: t, p_situacao: a.situacao ?? null })
     case 'mover_tarefa': return rpc('api_tarefa_mover', { p_token: t, p_id: a.id, p_situacao: a.situacao })
     case 'comentar_tarefa': return rpc('api_comentar', { p_token: t, p_id: a.id, p_texto: a.texto })
