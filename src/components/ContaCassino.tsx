@@ -8,7 +8,8 @@ import Loja from './Loja'
 import Armario from './Armario'
 import type { Jogo } from '../office/world'
 import BloqueioJogos from './BloqueioJogos'
-import { Toast } from './Avisos'
+import { Bell, Toast } from './Avisos'
+import FloatChat from './FloatChat'
 import { Ph } from './Icon'
 import { confirmar } from './Dialogo'
 import { cassinoPainel, cassinoTaxa, primeiroNome, refreshWallet, setUi, signOut, torneioCriar, useStore } from '../store'
@@ -70,6 +71,7 @@ export default function ContaCassino() {
         {view !== 'painel' && <button className="btn ghost sm" onClick={() => { setView('painel'); setArrumando(false) }}>Painel</button>}
         {view !== 'sala' && <button className="btn ghost sm" onClick={() => { setView('sala'); setArrumando(false) }}>🎰 Sala de jogos</button>}
         {view !== 'loja' && <button className="btn ghost sm" onClick={() => { setView('loja'); setArrumando(false) }}>👕 Loja</button>}
+        <Bell />
         <span className="cs-saldo"><Ph n="coffee" size={16} fill /> <b>{wallet ? saldo : '…'}</b></span>
         <button className="btn ghost sm" onClick={() => void signOut()}>Sair</button>
       </header>
@@ -132,6 +134,7 @@ export default function ContaCassino() {
       {uiBingo && <Bingo onClose={() => setUi({ bingo: false })} />}
       {uiJogo && <Jogos inicio={uiJogo as Jogo} onClose={() => setUi({ jogo: null })} />}
       {armario && <Armario onClose={() => setUi({ armario: false })} />}
+      <FloatChat />
       <BloqueioJogos />
       <Toast />
     </div>

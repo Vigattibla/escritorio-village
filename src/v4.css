@@ -1197,3 +1197,7 @@ button.panel { width: 100%; border: 0; text-align: left; font: inherit; color: i
 .cc-sala { display: flex; height: calc(100dvh - 60px); min-height: 420px; }
 .cc-sala > * { flex: 1; min-width: 0; }
 .cc-loja { max-width: 1200px; margin: 0 auto; padding: 16px; }
+.cc-top .icon-btn { background: rgba(255,255,255,.12); border-color: transparent; color: #fff; }
+.cc-top .icon-btn.on { background: #FFC600; color: #26324F; }
+.cc-top:has(.bell .pop) { z-index: 60; }
+.cc-top .bell .pop { left: auto; right: 0; color: #26324F; }
