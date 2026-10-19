@@ -8,6 +8,8 @@ import { createClient } from 'jsr:@supabase/supabase-js@2'
 
 const env = (k: string) => Deno.env.get(k) ?? ''
 const sb = createClient(env('SUPABASE_URL'), env('SUPABASE_ANON_KEY'))
+// só assina link de anexo, e só depois que api_tarefa_ler conferiu que a chave participa da tarefa
+const adm = createClient(env('SUPABASE_URL'), env('SUPABASE_SERVICE_ROLE_KEY'))
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-turmeo-token, content-type, mcp-session-id, mcp-protocol-version, apikey',
@@ -85,11 +87,26 @@ function ferramentas() {
       inputSchema: { type: 'object', required: ['id', 'texto'], properties: { id: { type: 'string' }, texto: { type: 'string' } } },
     },
     {
+      name: 'ler_tarefa',
+      description: 'Lê uma tarefa inteira: texto, checklist, comentários e anexos (com link que vale 1 hora).',
+      inputSchema: { type: 'object', required: ['id'], properties: { id: { type: 'string' } } },
+    },
+    {
       name: 'listar_pessoas',
       description: 'Lista as pessoas do escritório (nome, cargo, sala) pra escolher pra quem vai a tarefa.',
       inputSchema: { type: 'object', properties: {} },
     },
   ]
+}
+
+async function ler(t: string, id: string) {
+  const d = await rpc('api_tarefa_ler', { p_token: t, p_id: id })
+  for (const a of d.anexos ?? []) {
+    const { data } = await adm.storage.from('anexos').createSignedUrl(a.caminho, 3600)
+    a.link = data?.signedUrl ?? null
+    delete a.caminho
+  }
+  return d
 }
 
 async function chamar(t: string, nome: string, a: Record<string, unknown>) {
@@ -98,6 +115,7 @@ async function chamar(t: string, nome: string, a: Record<string, unknown>) {
     case 'listar_tarefas': return rpc('api_tarefas', { p_token: t, p_situacao: a.situacao ?? null })
     case 'mover_tarefa': return rpc('api_tarefa_mover', { p_token: t, p_id: a.id, p_situacao: a.situacao })
     case 'comentar_tarefa': return rpc('api_comentar', { p_token: t, p_id: a.id, p_texto: a.texto })
+    case 'ler_tarefa': return ler(t, String(a.id ?? ''))
     case 'listar_pessoas': return rpc('api_pessoas', { p_token: t })
   }
   throw new Error(`Ferramenta desconhecida: ${nome}`)
