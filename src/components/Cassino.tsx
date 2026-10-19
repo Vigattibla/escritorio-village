@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import Bolao from './Bolao'
-import { apostar, refreshWallet, useStore } from '../store'
-import type { Backend } from '../types'
+import { apostar, cassinoPainel, primeiroNome, refreshWallet, torneioCancelar, useStore } from '../store'
+import type { Backend, CassinoPainel } from '../types'
+import { confirmar } from './Dialogo'
 import { DOIS, FACE, MAX, MIN, NAIPE, RODA, SIMBOLOS, TRES, corDe, type JogoCassino, type Rodada, type TipoRoleta } from '../cassino/regras'
 import { Ph } from './Icon'
 import { Fundo } from './Fundo'
@@ -263,11 +264,15 @@ export default function Cassino({ onClose, inicial }: { onClose: () => void; ini
   const [erro, setErro] = useState('')
   const [hist, setHist] = useState<Rodada[]>([])
   const wallet = useStore(s => s.wallet)
+  const adm = useStore(s => !!(s.meId && s.profiles[s.meId]?.is_admin))
+  const [painel, setPainel] = useState<CassinoPainel | null>(null)
   const saldo = segura ?? wallet?.balance ?? 0
   const info = JOGOS.find(j => j.id === jogo)
   const Tela = jogo === 'bolao' ? null : TELAS[jogo]
 
   useEffect(() => { void refreshWallet() }, [])
+  // torneio aberto + imposto do gerente; recarrega a cada rodada fechada
+  useEffect(() => { cassinoPainel().then(setPainel, () => setPainel(null)) }, [hist.length])
   useEffect(() => {
     const k = (e: KeyboardEvent) => { if (e.key === 'Escape' && !travado) onClose() }
     window.addEventListener('keydown', k)
@@ -286,6 +291,11 @@ export default function Cassino({ onClose, inicial }: { onClose: () => void; ini
   }
   const fim = (r: Rodada) => { setSegura(null); setHist(h => [r, ...h.filter(x => x.id !== r.id)].slice(0, 8)) }
   const troca = (j: JogoCassino | 'bolao') => { if (!travado) { setJogo(j); setErro(''); setSegura(null) } }
+  const cancela = async (id: string) => {
+    if (!await confirmar('Cancelar o torneio?', { text: 'O prêmio volta pra quem abriu e o placar some.', ok: 'Cancelar torneio', danger: true, ic: 'trophy' })) return
+    try { await torneioCancelar(id); setPainel(await cassinoPainel()) } catch (e) { setErro((e as Error).message) }
+  }
+  const tor = painel?.torneio
   const muda = (v: number) => setAposta(Math.max(MIN, Math.min(MAX, Math.round(v))))
 
   return (
@@ -301,6 +311,12 @@ export default function Cassino({ onClose, inicial }: { onClose: () => void; ini
           <span className="cs-saldo lata" title="Latinhas">⚡ <b>{wallet ? wallet.latinhas : '…'}</b></span>
           <button className="btn ghost sm" onClick={onClose} disabled={travado} aria-label="Fechar"><Ph n="x" size={18} /></button>
         </div>
+        {tor && <div className="cs-tor">
+          <Ph n="trophy" size={16} fill />
+          <span className="grow">Torneio <b>{tor.jogo === 'todos' ? 'em todos os jogos' : NOME[tor.jogo]}</b> · prêmio <b>{tor.premio} ☕</b> pra quem lucrar mais · até {new Date(tor.fim).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+            {!!tor.placar?.length && <> · na frente: <b>{primeiroNome(tor.placar[0].u)}</b> ({tor.placar[0].lucro > 0 ? '+' : ''}{tor.placar[0].lucro})</>}</span>
+          {adm && <button className="btn ghost sm" onClick={() => cancela(tor.id)}>Cancelar</button>}
+        </div>}
         {!Tela || !info ? <div className="jg-body bl-body"><Bolao /></div> : <div className="jg-body cs-body">
           <div className="cs-play">
             <Tela key={jogo} aposta={aposta} busy={busy} jogada={jogada} fim={fim} trava={setTravado} saldo={saldo} />
@@ -325,7 +341,7 @@ export default function Cassino({ onClose, inicial }: { onClose: () => void; ini
               <small>Suas últimas</small>
               {hist.map(h => <div key={h.id}><span className="grow">{NOME[h.jogo]}</span><b className={h.premio > 0 ? 'pos' : 'neg'}>{h.premio > 0 ? `+${h.premio}` : `−${h.aposta * (h.dobrou ? 2 : 1)}`}</b></div>)}
             </div>}
-            <small className="jg-note">Só diversão: cafezinho não vale dinheiro. Aposta de {MIN} a {MAX}; a casa fica com cerca de 3%.</small>
+            <small className="jg-note">Só diversão: cafezinho não vale dinheiro. Aposta de {MIN} a {MAX}; a casa fica com cerca de 3%{painel?.taxa ? ` e o gerente do cassino leva ${painel.taxa}% do que se perde (sai da parte da casa, você não paga a mais)` : ''}.</small>
           </aside>
         </div>}
       </section>

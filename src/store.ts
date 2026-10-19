@@ -8,7 +8,7 @@ import { MAX_DESKS } from './office/base'
 import { parseSala } from './office/sala'
 import { ITEM, type Slot } from './shop/catalog'
 import { REASON } from './shop/economy'
-import type { CalEvent, Equipe, ParModulo, Parceria, Poder, Requisicao, Snapshot, Group, RowTable, Rows, Stage, StageKind, Sticker, AccountEdit, AiContext, AiItem, AiProposal, AiStage, Attachment, Avatar, CoffeeLine, Gear, Message, Pos, Profile, Project, Review, Task, TaskNote, TaskStatus, Wallet } from './types'
+import type { CalEvent, Equipe, ParModulo, Parceria, Poder, Requisicao, Snapshot, Group, RowTable, Rows, Stage, StageKind, Sticker, AccountEdit, AiContext, AiItem, AiProposal, AiStage, Attachment, Avatar, CoffeeLine, Gear, Message, Pos, Profile, Project, Review, Task, TaskNote, TaskStatus, Torneio, Wallet } from './types'
 import { ROW_TABLES } from './types'
 import type { Backend } from './types'
 import type { JogoCassino, Rodada } from './cassino/regras'
@@ -154,7 +154,7 @@ export const myDept = (s: State = state) => deptOf(s.meId ? s.profiles[s.meId] :
 export const deptList = (s: Pick<State, 'rows'> = state) => Object.values(s.rows.depts).sort((a, b) => a.floor - b.floor || a.slot - b.slot)
 export const deptName = (id: string, s: State = state) => s.rows.depts[id]?.name ?? (id === DEPT0 ? 'Marketing' : id)
 /** pessoas da sala aberta (o andar todo fica em `profiles`: conversa, nomes, visitas) */
-export const team = (profiles: Record<string, Profile>, s: Pick<State, 'sala'> = state) => Object.values(profiles).filter(p => deptOf(p) === s.sala)
+export const team = (profiles: Record<string, Profile>, s: Pick<State, 'sala'> = state) => Object.values(profiles).filter(p => deptOf(p) === s.sala && !p.cassino)
 /** layout da sala (o Marketing herda o antigo 'escritorio') */
 export const roomOf = (s: Pick<State, 'rows' | 'sala'> = state, sala = s.sala) => s.rows.rooms[sala] ?? (sala === DEPT0 ? s.rows.rooms['escritorio'] : undefined)
 /** tabelas que são de uma sala só */
@@ -1194,8 +1194,20 @@ async function claim() {
   try {
     const got = await backend.claimCoffee()
     for (const l of got.slice().reverse()) notify(coffeeText(l), { kind: 'loja', go: { view: 'loja' } })
+    if (me()?.cassino && await backend.cassinoMesada() > 0) notify('🎰 Mesada do cassino: +20 cafezinhos.', { kind: 'loja' })
   } catch { /* tenta de novo no próximo ciclo */ }
   await refreshWallet()
+}
+
+// ---------- conta do cassino ----------
+export const cassinoPainel = () => backend.cassinoPainel()
+export async function torneioCriar(jogo: Torneio['jogo'], premio: number, horas: number) { await backend.torneioCriar(jogo, premio, horas); await refreshWallet() }
+export const torneioCancelar = (id: string) => backend.torneioCancelar(id)
+export const cassinoTaxa = (taxa: number) => backend.cassinoTaxa(taxa)
+export async function setCassino(id: string, on: boolean) {
+  await backend.setCassino(id, on)
+  const p = state.profiles[id]
+  if (p) set({ profiles: { ...state.profiles, [id]: { ...p, cassino: on } } })
 }
 
 /** compra no servidor; quem confere o saldo e o preço é ele */

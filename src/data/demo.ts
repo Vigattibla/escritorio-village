@@ -1,7 +1,7 @@
 import { toEmail, validUser } from './login'
 import { dayKey } from '../game/xp'
 import { deptOf, outranks, rankOf } from '../game/ranks'
-import type { CoffeeLine, Dept, JogoRes, Goal, Wallet, Group, RowTable, Rows, AccountEdit, AiContext, AiProposal, AiStage, Avatar, Backend, Handlers, Message, Pos, Profile, Project, Parceria, Poder, PoderTipo, Registro, Requisicao, Snapshot, Task, TaskNote } from '../types'
+import type { CoffeeLine, Dept, JogoRes, Goal, Wallet, Group, RowTable, Rows, AccountEdit, AiContext, AiProposal, AiStage, Avatar, Backend, Handlers, Message, Pos, Profile, Project, Parceria, Poder, PoderTipo, Registro, Requisicao, Snapshot, Task, TaskNote, CassinoPainel, Torneio } from '../types'
 import { ROW_TABLES } from '../types'
 import { counts, DAY, MAX_GOALS, payouts, WELCOME } from '../shop/economy'
 import { ITEM } from '../shop/catalog'
@@ -15,6 +15,9 @@ import { erroBloqueio, vigiar } from '../game/vigia'
 // (a sessão fica no sessionStorage), sincronizadas por BroadcastChannel.
 
 interface Account { id: string; email: string; hash: string; name: string }
+/** cassino da demo: rodadas fechadas (placar), comissão do dia, imposto e torneios */
+const CS = { fim: 'ev:cassino:fim', casa: 'ev:cassino:casa', cfg: 'ev:cassino:cfg', tor: 'ev:cassino:torneios' }
+interface Fim { u: string; jogo: JogoCassino; gasto: number; premio: number; t: number }
 const K = { acc: 'ev:accounts', prof: 'ev:profiles', task: 'ev:tasks', msg: 'ev:messages', note: 'ev:notes', proj: 'ev:projects', file: 'ev:file:', seeded: 'ev:seeded', row: 'ev:row:', session: 'ev:session' }
 
 function read<T>(k: string, fb: T): T {
@@ -106,7 +109,7 @@ export class DemoBackend implements Backend {
     // como no servidor: cargo e adm não vêm do cliente; o primeiro a entrar sem adm vira adm
     const adm = Object.values(all).some(x => x.is_admin && x.id !== p.id)
     // demo: quem entra primeiro já é Coordenação, pra ver Metas, Fluxos e aprovações
-    p = { ...p, rank: all[p.id]?.rank ?? (adm ? 1 : 3), is_admin: all[p.id]?.is_admin ?? !adm, dept: all[p.id]?.dept }
+    p = { ...p, rank: all[p.id]?.rank ?? (adm ? 1 : 3), is_admin: all[p.id]?.is_admin ?? !adm, dept: all[p.id]?.dept, cassino: all[p.id]?.cassino }
     all[p.id] = p
     write(K.prof, all)
     this.post({ t: 'profile', p })
@@ -528,16 +531,123 @@ export class DemoBackend implements Backend {
     return new Mesa({
       saldo: () => read<CoffeeLine[]>(ck, []).reduce((n, l) => n + l.amount, 0),
       lanca: (amount, reason, ref) => { const log = read<CoffeeLine[]>(ck, []); this.credit(log, amount, reason, ref, []); write(ck, log) },
+      fechou: (jogo, gasto, premio) => {
+        write(CS.fim, [{ u: me, jogo, gasto, premio, t: Date.now() }, ...read<Fim[]>(CS.fim, [])].slice(0, 2000))
+        if (premio === 0) this.comissao(me, gasto)
+      },
     }, read(rk, []), r => write(rk, r))
   }
+
+  // ---------- conta do cassino (espelho de 202610291000_conta_cassino.sql) ----------
+  private gerente() { return Object.values(read<Record<string, Profile>>(K.prof, {})).find(p => p.cassino) }
+  private lanca(u: string, amount: number, reason: CoffeeLine['reason'], ref: string) {
+    const k = 'ev:coffee:' + u, log = read<CoffeeLine[]>(k, [])
+    this.credit(log, amount, reason, ref, []); write(k, log)
+  }
+  private comissao(perdedor: string, valor: number) {
+    const g = this.gerente(), hoje = localDay(new Date().toISOString())
+    if (!g || g.id === perdedor || valor < 1) return
+    const taxa = read(CS.cfg, { taxa: 10, mudou: '' }).taxa
+    let c = read(CS.casa, { dia: hoje, perdido: 0, devido: 0, pago: 0 })
+    if (c.dia !== hoje) c = { dia: hoje, perdido: 0, devido: 0, pago: 0 }
+    c.perdido += valor; c.devido += valor * taxa
+    const dev = Math.min(50, Math.floor(c.devido / 100)) - c.pago
+    if (dev >= 1) { c.pago += dev; this.lanca(g.id, dev, 'casa', `${hoje}:${c.pago}`) }
+    write(CS.casa, c)
+  }
+  private placar(t: Torneio) {
+    const prof = read<Record<string, Profile>>(K.prof, {}), i = Date.parse(t.inicio), f = Date.parse(t.fim), m = new Map<string, { lucro: number; rodadas: number }>()
+    for (const r of read<Fim[]>(CS.fim, [])) {
+      if (r.t < i || r.t >= f || (t.jogo !== 'todos' && r.jogo !== t.jogo) || prof[r.u]?.cassino) continue
+      const x = m.get(r.u) ?? { lucro: 0, rodadas: 0 }
+      x.lucro += r.premio - r.gasto; x.rodadas++; m.set(r.u, x)
+    }
+    return [...m].map(([u, x]) => ({ u, ...x })).sort((a, b) => b.lucro - a.lucro || a.rodadas - b.rodadas)
+  }
+  private torneioFechar() {
+    const ts = read<Torneio[]>(CS.tor, [])
+    for (const t of ts) {
+      if (t.estado !== 'aberto' || Date.parse(t.fim) > Date.now()) continue
+      const p = this.placar(t)
+      if (p.filter(x => x.lucro > 0).length >= 2) { Object.assign(t, { estado: 'pago', vencedor: p[0].u, lucro: p[0].lucro }); this.lanca(p[0].u, t.premio, 'torneio', 'v:' + t.id) }
+      else { t.estado = 'devolvido'; this.lanca(t.criado_por, t.premio, 'torneio', 'd:' + t.id) }
+    }
+    write(CS.tor, ts)
+    return ts
+  }
+  async cassinoPainel(): Promise<CassinoPainel> {
+    const me = read<Record<string, Profile>>(K.prof, {})[sessionStorage.getItem(K.session) ?? '']
+    if (!me) throw new Error('Entre de novo.')
+    const ts = this.torneioFechar(), aberto = ts.find(t => t.estado === 'aberto'), hoje = localDay(new Date().toISOString())
+    const cfg = read(CS.cfg, { taxa: 10, mudou: '' }), c = read(CS.casa, { dia: hoje, perdido: 0, devido: 0, pago: 0 }), g = this.gerente()
+    const mes = g ? read<CoffeeLine[]>('ev:coffee:' + g.id, []).filter(l => l.reason === 'casa' && Date.parse(l.created_at) > Date.now() - 30 * 86400_000).reduce((n, l) => n + l.amount, 0) : 0
+    return {
+      torneio: aberto ? { ...aberto, placar: this.placar(aberto).slice(0, 5) } : null,
+      historico: ts.filter(t => t.estado !== 'aberto').slice(0, 8),
+      taxa: cfg.taxa,
+      casa: me.cassino || me.is_admin ? {
+        perdido: c.dia === hoje ? c.perdido : 0, pago: c.dia === hoje ? c.pago : 0, teto: 50, mesada: 20, podeMudar: cfg.mudou !== hoje, mesAberto: mes,
+        semana: ts.filter(t => t.criado_por === g?.id && t.estado !== 'cancelado' && Date.parse(t.created_at ?? t.inicio) > Date.now() - 7 * 86400_000).length,
+      } : null,
+    }
+  }
+  async cassinoMesada() {
+    const me = read<Record<string, Profile>>(K.prof, {})[sessionStorage.getItem(K.session) ?? '']
+    if (!me?.cassino) return 0
+    const log = this.coffee(), out: CoffeeLine[] = []
+    this.credit(log, 20, 'mesada', localDay(new Date().toISOString()), out)
+    write('ev:coffee:' + me.id, log)
+    return out.length ? 20 : 0
+  }
+  async cassinoTaxa(taxa: number) {
+    const me = read<Record<string, Profile>>(K.prof, {})[sessionStorage.getItem(K.session) ?? '']
+    if (!me?.cassino) throw new Error('Só a conta do cassino muda o imposto.')
+    if (!Number.isInteger(taxa) || taxa < 0 || taxa > 15) throw new Error('O imposto vai de 0 a 15 por cento.')
+    const cfg = read(CS.cfg, { taxa: 10, mudou: '' }), hoje = localDay(new Date().toISOString())
+    if (cfg.taxa === taxa) return
+    if (cfg.mudou === hoje) throw new Error('O imposto só muda uma vez por dia. Amanhã dá pra trocar de novo.')
+    write(CS.cfg, { taxa, mudou: hoje })
+  }
+  async torneioCriar(jogo: Torneio['jogo'], premio: number, horas: number) {
+    const me = read<Record<string, Profile>>(K.prof, {})[sessionStorage.getItem(K.session) ?? '']
+    if (!me?.cassino) throw new Error('Só a conta do cassino cria torneio.')
+    if (!Number.isInteger(premio) || premio < 10 || premio > 100) throw new Error('O prêmio vai de 10 a 100 cafezinhos.')
+    if (!Number.isInteger(horas) || horas < 1 || horas > 12) throw new Error('O torneio dura de 1 a 12 horas.')
+    const ts = this.torneioFechar()
+    if (ts.some(t => t.estado === 'aberto')) throw new Error('Já tem um torneio rolando. Espere ele acabar.')
+    if (ts.filter(t => t.criado_por === me.id && t.estado !== 'cancelado' && Date.parse(t.created_at ?? t.inicio) > Date.now() - 7 * 86400_000).length >= 3) throw new Error('Limite de 3 torneios por semana.')
+    const bal = this.coffee().reduce((n, l) => n + l.amount, 0)
+    if (bal < premio) throw new Error(`O prêmio sai do seu saldo: faltam ${premio - bal} cafezinhos.`)
+    const agora = new Date(), t: Torneio = { id: crypto.randomUUID(), criado_por: me.id, jogo, premio, inicio: agora.toISOString(), fim: new Date(agora.getTime() + horas * 3600_000).toISOString(), estado: 'aberto', vencedor: null, lucro: null, created_at: agora.toISOString() }
+    write(CS.tor, [t, ...ts])
+    this.lanca(me.id, -premio, 'torneio', 'p:' + t.id)
+  }
+  async torneioCancelar(id: string) {
+    if (!read<Record<string, Profile>>(K.prof, {})[sessionStorage.getItem(K.session) ?? '']?.is_admin) throw new Error('Só o adm cancela torneio.')
+    const ts = read<Torneio[]>(CS.tor, []), t = ts.find(x => x.id === id && x.estado === 'aberto')
+    if (!t) throw new Error('Esse torneio já acabou.')
+    t.estado = 'cancelado'; write(CS.tor, ts)
+    this.lanca(t.criado_por, t.premio, 'torneio', 'd:' + t.id)
+  }
+  async setCassino(id: string, on: boolean) {
+    const all = read<Record<string, Profile>>(K.prof, {})
+    if (!all[sessionStorage.getItem(K.session) ?? '']?.is_admin) throw new Error('Só o adm marca a conta do cassino.')
+    const t = all[id]
+    if (!t) throw new Error('Conta não encontrada.')
+    if (on && t.is_admin) throw new Error('Conta de adm não pode ser a conta do cassino.')
+    if (on && Object.values(all).some(p => p.cassino && p.id !== id)) throw new Error('Já existe uma conta do cassino. Desmarque a outra primeiro.')
+    await this.upsertProfileRaw({ ...t, cassino: on })
+  }
+
   /** vigia dos jogos (mesmas regras do SQL): bloqueado → erro marcado; senão conta a partida */
+  private limiteDia() { return read<Record<string, Profile>>(K.prof, {})[sessionStorage.getItem(K.session) ?? '']?.cassino ? 480 : 240 }
   private vigia() {
     const k = 'ev:vigia:' + sessionStorage.getItem(K.session), ts = read<number[]>(k, [])
-    const b = vigiar(ts)
+    const b = vigiar(ts, Date.now(), this.limiteDia())
     if (b) throw erroBloqueio(b)
     write(k, [...ts.filter(t => t > Date.now() - 2 * 86400_000), Date.now()])
   }
-  async jogosBloqueio() { return vigiar(read<number[]>('ev:vigia:' + sessionStorage.getItem(K.session), [])) }
+  async jogosBloqueio() { return vigiar(read<number[]>('ev:vigia:' + sessionStorage.getItem(K.session), []), Date.now(), this.limiteDia()) }
   async cassinoJogar(jogo: JogoCassino, aposta: number, e: Escolha) { this.vigia(); return this.mesa().jogar(jogo, aposta, e) }
   async cassinoAbrir(jogo: JogoCassino, aposta: number, e: Escolha) { if (!(await this.mesa().estado(jogo))) this.vigia(); return this.mesa().abrir(jogo, aposta, e) }
   async cassinoAcao(id: string, acao: string, casa?: number) { return this.mesa().acao(id, acao, casa) }

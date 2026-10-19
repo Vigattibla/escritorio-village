@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { makePassword, slugUser } from '../data/login'
 import { RANKS, outranks, rankOf } from '../game/ranks'
-import { accountLogins, createAccount, putRow, deleteAccount, deptList, deptName, hasCanais, run, saveDept, setDept, setDeptLook, setDoor, setPassword, updateAccount, useStore } from '../store'
+import { accountLogins, createAccount, putRow, deleteAccount, deptList, deptName, hasCanais, run, saveDept, setCassino, setDept, setDeptLook, setDoor, setPassword, updateAccount, useStore } from '../store'
 import { FlagPicker } from './Bandeira'
 import { SLOTS } from '../office/andar'
 import { deptOf } from '../game/ranks'
@@ -154,6 +154,9 @@ export default function Accounts({ open }: { open?: boolean }) {
             </label>}
             {adm && <label className="acc-check"><input type="checkbox" checked={edit.is_admin} disabled={who === meId}
               onChange={e => setEdit({ ...edit, is_admin: e.target.checked })} /> Adm (mexe nas contas)</label>}
+            {adm && <label className="acc-check" title="Só entra no cassino e no bingo: ganha mesada, imposto da casa e abre torneios. Fica fora das salas, do ranking e do Plano.">
+              <input type="checkbox" checked={!!profiles[who]?.cassino} disabled={busy || !!profiles[who]?.is_admin || who === meId}
+                onChange={e => run(setCassino(who, e.target.checked))} /> Só cassino (gerente)</label>}
           </div>
           <div className="row gap">
             <button className="btn primary" disabled={busy}>{busy ? 'Salvando…' : 'Salvar'}</button>

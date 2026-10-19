@@ -26,7 +26,7 @@ export const respsDe = (a: PlanoAcao, resp: Record<string, PlanoResp>) => resp[a
 
 /** quem recebe pela sigla: as pessoas dela e as das equipes ligadas a ela */
 export const membros = (r: PlanoResp | undefined, equipes: Record<string, Equipe>, profiles: Record<string, Profile>) =>
-  [...new Set([...(r?.pessoas ?? []), ...(r?.equipes ?? []).flatMap(e => equipes[e]?.pessoas ?? [])])].filter(id => profiles[id])
+  [...new Set([...(r?.pessoas ?? []), ...(r?.equipes ?? []).flatMap(e => equipes[e]?.pessoas ?? [])])].filter(id => profiles[id] && !profiles[id].cassino)
 /** quem pode receber a ação: as pessoas da sigla e de todas as equipes ligadas a ela */
 export function candidatos(a: PlanoAcao, resp: Record<string, PlanoResp>, profiles: Record<string, Profile>, equipes: Record<string, Equipe> = {}) {
   return [...new Set(respsDe(a, resp).flatMap(r => membros(r, equipes, profiles)))]
@@ -34,12 +34,12 @@ export function candidatos(a: PlanoAcao, resp: Record<string, PlanoResp>, profil
 
 /** quem executa: o dono escolhido, as pessoas da ação; senão, a sigla (RESP.) ou alguém com esse nome; sala idem */
 export function quem(a: PlanoAcao, resp: Record<string, PlanoResp>, profiles: Record<string, Profile>, equipes: Record<string, Equipe> = {}) {
-  let pessoas = a.pessoas.filter(id => profiles[id])
+  let pessoas = a.pessoas.filter(id => profiles[id] && !profiles[id].cassino)
   const rs = respsDe(a, resp)
   if (!pessoas.length) pessoas = candidatos(a, resp, profiles, equipes)
   if (!pessoas.length && a.resp && !rs.length) {
     const n = norm(a.resp.trim())
-    pessoas = Object.values(profiles).filter(p => n.length > 2 && norm(p.name).split(' ')[0] === n.split(' ')[0]).map(p => p.id).slice(0, 1)
+    pessoas = Object.values(profiles).filter(p => !p.cassino && n.length > 2 && norm(p.name).split(' ')[0] === n.split(' ')[0]).map(p => p.id).slice(0, 1)
   }
   if (a.dono && profiles[a.dono]) pessoas = [a.dono, ...pessoas.filter(id => id !== a.dono)]
   const dept = a.dept ?? rs.find(r => r.dept)?.dept ?? (pessoas[0] ? deptOf(profiles[pessoas[0]]) : null)

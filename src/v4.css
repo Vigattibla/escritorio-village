@@ -1156,3 +1156,41 @@ button.panel { width: 100%; border: 0; text-align: left; font: inherit; color: i
 .ar-pasta-w:hover .ar-pasta-x, .ar-pasta-x:focus-visible { opacity: 1; }
 .ar-pasta-x:hover { background: #E5484D; color: #fff; }
 @media (hover: none) { .ar-pasta-x { opacity: .85; } }
+
+/* conta só cassino */
+.cc { min-height: 100dvh; background: #F4F1EA; color: #26324F; }
+.cc-top { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 12px; padding: 12px 20px; background: #26324F; color: #fff; }
+.cc-top .grow { display: grid; line-height: 1.2; }
+.cc-top small { opacity: .7; font-size: 12px; }
+.cc-top .btn.ghost { color: #fff; }
+.cc-logo { font-size: 26px; }
+.cc-main { display: grid; gap: 16px; max-width: 880px; margin: 0 auto; padding: 20px 16px 40px; }
+.cc-jogos { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.cc-card { display: grid; gap: 4px; justify-items: start; text-align: left; padding: 20px; border: 0; border-radius: 16px; background: #26324F; color: #fff; cursor: pointer; transition: transform .15s; }
+.cc-card.bingo { background: #1F6F5C; }
+.cc-card span { font-size: 34px; }
+.cc-card b { font-size: 18px; }
+.cc-card small { opacity: .8; }
+.cc-card:hover { transform: translateY(-2px); }
+.cc-box { display: grid; gap: 12px; padding: 18px; border-radius: 16px; background: #fff; }
+.cc-box h2 { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 16px; }
+.cc-nums { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+.cc-nums div { display: grid; padding: 12px; border-radius: 12px; background: #F4F1EA; }
+.cc-nums b { font-size: 24px; font-variant-numeric: tabular-nums; }
+.cc-nums i { font-style: normal; font-size: 14px; opacity: .55; }
+.cc-nums small { font-size: 12px; opacity: .7; }
+.cc-taxa { display: flex; align-items: end; gap: 12px; }
+.cc-taxa label { display: grid; gap: 6px; }
+.cc-taxa input { width: 100%; accent-color: #FFC600; }
+.cc-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; align-items: end; }
+.cc-form label { display: grid; gap: 4px; font-size: 13px; }
+.cc-tor p { margin: 0; }
+.cc-tor ol { display: grid; gap: 4px; margin: 8px 0; padding-left: 20px; }
+.cc-tor li > * { margin-left: 8px; }
+.cc-tor li { display: list-item; }
+.cc-tor li span.grow { margin-left: 0; display: inline-block; min-width: 50%; }
+.cc-hist { margin-top: 4px; }
+.cc .pos { color: #1F8F5C; } .cc .neg { color: #C4373C; }
+.cs-tor { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: #FFF4D1; color: #26324F; font-size: 13px; }
+@media (max-width: 560px) { .cc-taxa { flex-direction: column; align-items: stretch; } }
+.cc-tor small { display: block; }

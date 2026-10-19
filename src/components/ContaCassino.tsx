@@ -1,0 +1,112 @@
+import { useCallback, useEffect, useState } from 'react'
+import Cassino from './Cassino'
+import Bingo from './Bingo'
+import BloqueioJogos from './BloqueioJogos'
+import { Toast } from './Avisos'
+import { Ph } from './Icon'
+import { confirmar } from './Dialogo'
+import { cassinoPainel, cassinoTaxa, primeiroNome, refreshWallet, signOut, torneioCriar, useStore } from '../store'
+import type { CassinoPainel, Torneio } from '../types'
+
+// conta "só cassino": joga, cuida do imposto da casa e marca torneios (tudo com teto no servidor)
+const JOGO: Record<Torneio['jogo'], string> = { todos: 'Todos os jogos', caca: 'Caça-níquel', roleta: 'Roleta', blackjack: 'Blackjack', crash: 'Crash', minas: 'Minas' }
+const hora = (iso: string) => new Date(iso).toLocaleString('pt-BR', { weekday: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+
+export default function ContaCassino() {
+  const eu = useStore(s => (s.meId ? s.profiles[s.meId] : undefined))
+  const wallet = useStore(s => s.wallet)
+  const [aberto, setAberto] = useState<'cassino' | 'bingo' | null>(null)
+  const [p, setP] = useState<CassinoPainel | null>(null)
+  const [erro, setErro] = useState('')
+  const [taxa, setTaxa] = useState(10)
+  const [jogo, setJogo] = useState<Torneio['jogo']>('todos')
+  const [premio, setPremio] = useState(30)
+  const [horas, setHoras] = useState(3)
+  const [busy, setBusy] = useState(false)
+
+  const carrega = useCallback(async () => {
+    try { const r = await cassinoPainel(); setP(r); setTaxa(r.taxa) } catch (e) { setErro((e as Error).message) }
+  }, [])
+  useEffect(() => { void carrega(); void refreshWallet() }, [carrega])
+  useEffect(() => { if (!aberto) void carrega() }, [aberto, carrega])
+
+  const faz = async (fn: () => Promise<unknown>) => {
+    setBusy(true); setErro('')
+    try { await fn(); await carrega() } catch (e) { setErro((e as Error).message) } finally { setBusy(false) }
+  }
+  const salvaTaxa = async () => {
+    if (!p || taxa === p.taxa) return
+    const ok = await confirmar(`Mudar o imposto para ${taxa}%?`, { text: 'Só dá pra mudar uma vez por dia e o aviso sai no canal geral. Sai das apostas perdidas: quem joga não paga a mais.', ok: 'Mudar imposto', ic: 'coffee' })
+    if (ok) await faz(() => cassinoTaxa(taxa))
+  }
+  const criaTorneio = async () => {
+    const ok = await confirmar(`Abrir torneio de ${premio} ☕?`, { text: `${JOGO[jogo]} por ${horas} h. O prêmio sai do seu saldo agora; ganha quem lucrar mais no período. Se menos de 2 pessoas fecharem no lucro, o prêmio volta pra você.`, ok: 'Abrir torneio', ic: 'trophy' })
+    if (ok) await faz(() => torneioCriar(jogo, premio, horas))
+  }
+
+  const c = p?.casa
+  const t = p?.torneio
+  const saldo = wallet?.balance ?? 0
+  return (
+    <div className="cc">
+      <header className="cc-top">
+        <span className="cc-logo">🎰</span>
+        <div className="grow"><b>{eu?.name ?? 'Cassino'}</b><small>Gerente do cassino</small></div>
+        <span className="cs-saldo"><Ph n="coffee" size={16} fill /> <b>{wallet ? saldo : '…'}</b></span>
+        <button className="btn ghost sm" onClick={() => void signOut()}>Sair</button>
+      </header>
+
+      <main className="cc-main">
+        <section className="cc-jogos">
+          <button className="cc-card cassino" onClick={() => setAberto('cassino')}><span>🎲</span><b>Cassino</b><small>Caça-níquel, roleta, blackjack, crash e minas</small></button>
+          <button className="cc-card bingo" onClick={() => setAberto('bingo')}><span>🎱</span><b>Salão de Bingo</b><small>Cartelas e sorteio com todo mundo</small></button>
+        </section>
+
+        {erro && <p className="cs-erro">{erro}</p>}
+
+        {c && <section className="cc-box">
+          <h2>Hoje na casa</h2>
+          <div className="cc-nums">
+            <div><b>{c.perdido}</b><small>☕ apostados e perdidos</small></div>
+            <div><b>{c.pago}<i>/{c.teto}</i></b><small>☕ de imposto pra você</small></div>
+            <div><b>+{c.mesada}</b><small>☕ de mesada por dia</small></div>
+            <div><b>{c.semana}<i>/3</i></b><small>torneios na semana</small></div>
+          </div>
+          <div className="cc-taxa">
+            <label className="grow">Imposto da casa <b>{taxa}%</b>
+              <input type="range" min={0} max={15} step={1} value={taxa} disabled={!c.podeMudar || busy} onChange={e => setTaxa(Number(e.target.value))} />
+            </label>
+            <button className="btn primary sm" disabled={!c.podeMudar || busy || taxa === p.taxa} onClick={salvaTaxa}>Salvar</button>
+          </div>
+          <small className="jg-note">{c.podeMudar ? 'De 0 a 15%, sobre as apostas que os outros perdem. Muda uma vez por dia.' : 'Imposto já mudou hoje. Amanhã dá pra trocar de novo.'} Teto de {c.teto} ☕ por dia.</small>
+        </section>}
+
+        <section className="cc-box">
+          <h2><Ph n="trophy" size={18} /> Torneio</h2>
+          {t ? <div className="cc-tor">
+            <p><b>{JOGO[t.jogo]}</b> · prêmio <b>{t.premio} ☕</b> · termina {hora(t.fim)}</p>
+            {t.placar?.length ? <ol>{t.placar.map(l => <li key={l.u}><span className="grow">{primeiroNome(l.u)}</span><small>{l.rodadas} rodadas</small><b className={l.lucro > 0 ? 'pos' : 'neg'}>{l.lucro > 0 ? '+' : ''}{l.lucro}</b></li>)}</ol>
+              : <small className="jg-note">Ninguém jogou ainda.</small>}
+            <small className="jg-note">Só um torneio por vez. Você não entra no placar.</small>
+          </div> : c && c.semana >= 3 ? <small className="jg-note">Já foram 3 torneios nesta semana. Na próxima dá pra abrir de novo.</small> : <div className="cc-form">
+            <label>Jogo<select value={jogo} onChange={e => setJogo(e.target.value as Torneio['jogo'])}>
+              {Object.entries(JOGO).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            </select></label>
+            <label>Prêmio (☕)<input type="number" min={10} max={100} value={premio} onChange={e => setPremio(Math.max(10, Math.min(100, Math.round(Number(e.target.value) || 10))))} /></label>
+            <label>Duração (h)<input type="number" min={1} max={12} value={horas} onChange={e => setHoras(Math.max(1, Math.min(12, Math.round(Number(e.target.value) || 1))))} /></label>
+            <button className="btn primary" disabled={busy || saldo < premio} onClick={criaTorneio}>{saldo < premio ? 'Saldo curto' : 'Abrir torneio'}</button>
+          </div>}
+          {!!p?.historico.length && <div className="cs-hist cc-hist">
+            <small>Últimos torneios</small>
+            {p.historico.map(h => <div key={h.id}><span className="grow">{JOGO[h.jogo]} · {h.premio} ☕</span><b>{h.estado === 'pago' && h.vencedor ? primeiroNome(h.vencedor) : h.estado === 'cancelado' ? 'cancelado' : 'devolvido'}</b></div>)}
+          </div>}
+        </section>
+      </main>
+
+      {aberto === 'cassino' && <Cassino onClose={() => setAberto(null)} />}
+      {aberto === 'bingo' && <Bingo onClose={() => setAberto(null)} />}
+      <BloqueioJogos />
+      <Toast />
+    </div>
+  )
+}

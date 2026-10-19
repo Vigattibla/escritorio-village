@@ -1,6 +1,6 @@
 import { createClient, type RealtimeChannel, type SupabaseClient } from '@supabase/supabase-js'
 import { slugUser, toEmail } from './login'
-import type { CoffeeLine, JogoRes, Wallet, RowTable, Rows, AccountEdit, AiContext, AiProposal, AiStage, Backend, Handlers, Message, Parceria, Poder, Pos, Profile, Project, Requisicao, Snapshot, Task, TaskNote } from '../types'
+import type { CoffeeLine, JogoRes, Wallet, RowTable, Rows, AccountEdit, AiContext, AiProposal, AiStage, Backend, Handlers, Message, Parceria, Poder, Pos, Profile, CassinoPainel, Torneio, Project, Requisicao, Snapshot, Task, TaskNote } from '../types'
 import type { Bloqueio } from '../game/vigia'
 import { ROW_TABLES } from '../types'
 import type { Escolha, JogoCassino, Rodada } from '../cassino/regras'
@@ -114,7 +114,7 @@ export class SupabaseBackend implements Backend {
   }
 
   async upsertProfile(p: Profile) {
-    const { rank: _rank, is_admin: _adm, dept: _dept, estudio_dono: _dono, aprova_estudio: _ap, ...row } = p // cargo, adm, sala e marcas do Estúdio são do servidor
+    const { rank: _rank, is_admin: _adm, dept: _dept, estudio_dono: _dono, aprova_estudio: _ap, cassino: _cs, ...row } = p // cargo, adm, sala, marcas do Estúdio e do cassino são do servidor
     const { data, error } = await this.sb.from('profiles').upsert(row).select().single()
     if (error) throw pt(error)
     return data as Profile
@@ -281,6 +281,12 @@ export class SupabaseBackend implements Backend {
   cassinoAbrir(jogo: JogoCassino, aposta: number, e: Escolha) { return this.cassino('cassino_abrir', { p_jogo: jogo, p_aposta: aposta, p_escolha: e }) }
   cassinoAcao(id: string, acao: string, casa?: number) { return this.cassino('cassino_acao', { p_rodada: id, p_acao: acao, p_casa: casa ?? null }) }
   async cassinoEstado(jogo: JogoCassino) { return (await this.cassino('cassino_estado', { p_jogo: jogo })) ?? null }
+  cassinoPainel() { return this.rpc<CassinoPainel>('cassino_painel') }
+  cassinoMesada() { return this.rpc<number>('cassino_mesada') }
+  async torneioCriar(jogo: Torneio['jogo'], premio: number, horas: number) { await this.rpc<null>('cassino_torneio_criar', { p_jogo: jogo, p_premio: premio, p_horas: horas }) }
+  async torneioCancelar(id: string) { await this.rpc<null>('cassino_torneio_cancelar', { tid: id }) }
+  async cassinoTaxa(taxa: number) { await this.rpc<null>('cassino_taxa', { p_taxa: taxa }) }
+  async setCassino(id: string, on: boolean) { await this.rpc<null>('admin_set_cassino', { target: id, sim: on }) }
 
   async jogos(fn: 'iniciar' | 'fim' | 'virar', args: Record<string, unknown>) {
     const { data, error } = await this.sb.rpc('jogos_' + fn, args)

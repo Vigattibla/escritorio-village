@@ -26,7 +26,7 @@ export interface Avatar {
 }
 
 /** cafezinhos: extrato só da própria pessoa; itens comprados = linhas 'compra' */
-export interface CoffeeLine { amount: number; reason: 'dia' | 'boasvindas' | 'fase' | 'meta' | 'compra' | 'aposta' | 'premio' | 'bilhete' | 'bolao' | 'troca' | 'bingo' | 'poder' | 'coringa'; ref: string; created_at: string }
+export interface CoffeeLine { amount: number; reason: 'dia' | 'boasvindas' | 'fase' | 'meta' | 'compra' | 'aposta' | 'premio' | 'bilhete' | 'bolao' | 'troca' | 'bingo' | 'poder' | 'coringa' | 'mesada' | 'casa' | 'torneio'; ref: string; created_at: string }
 export interface Wallet { balance: number; owned: string[]; log: CoffeeLine[]; latinhas: number }
 
 export interface Profile {
@@ -47,8 +47,29 @@ export interface Profile {
   aprova_estudio?: boolean
   /** sala (departamento); só o adm ou a Chefe muda (setDept) */
   dept?: string
+  /** conta do cassino: só joga e cuida do cassino (só o adm marca; fora das salas e do quadro) */
+  cassino?: boolean
   created_at: string
 }
+
+/** torneio do cassino: maior lucro no período leva o prêmio (que sai do bolso da conta do cassino) */
+export interface Torneio {
+  id: string
+  criado_por: string
+  jogo: 'todos' | JogoCassino
+  premio: number
+  inicio: string
+  fim: string
+  estado: 'aberto' | 'pago' | 'devolvido' | 'cancelado'
+  vencedor: string | null
+  lucro: number | null
+  created_at?: string
+  placar?: { u: string; lucro: number; rodadas: number }[]
+}
+/** números da casa: só a conta do cassino e o adm recebem */
+export interface CasaHoje { perdido: number; pago: number; teto: number; mesada: number; semana: number; mesAberto: number; podeMudar: boolean }
+/** taxa = imposto do gerente (0–15%) sobre as apostas perdidas */
+export interface CassinoPainel { torneio: Torneio | null; historico: Torneio[]; taxa: number; casa: CasaHoje | null }
 
 /** inbox = pedido esperando aceite (fica no computador); review = esperando o mestre do projeto aprovar; declined = recusado */
 export type TaskStatus = 'inbox' | 'todo' | 'doing' | 'review' | 'done' | 'declined'
@@ -384,6 +405,16 @@ export interface Backend {
   cassinoAbrir(jogo: JogoCassino, aposta: number, e: Escolha): Promise<Rodada>
   cassinoAcao(id: string, acao: string, casa?: number): Promise<Rodada>
   cassinoEstado(jogo: JogoCassino): Promise<Rodada | null>
+  /** conta do cassino: torneio aberto, histórico e (pra ela e o adm) os números da casa */
+  cassinoPainel(): Promise<CassinoPainel>
+  /** paga a mesada do dia da conta do cassino (0 se já pagou ou não é ela) */
+  cassinoMesada(): Promise<number>
+  torneioCriar(jogo: Torneio['jogo'], premio: number, horas: number): Promise<void>
+  torneioCancelar(id: string): Promise<void>
+  /** só a conta do cassino: imposto de 0 a 15%, muda 1x por dia */
+  cassinoTaxa(taxa: number): Promise<void>
+  /** só o adm: marca/desmarca a conta do cassino */
+  setCassino(id: string, on: boolean): Promise<void>
   /** sala de jogos: a partida nasce no servidor, que confere o tempo e o teto (a Memória é jogada lá) */
   jogos(fn: 'iniciar' | 'fim' | 'virar', args: Record<string, unknown>): Promise<JogoRes>
   /** bolão: estado da semana (e sorteia a que fechou), compra de bilhete e troca de cafezinho por latinha */

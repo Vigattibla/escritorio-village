@@ -65,7 +65,11 @@ interface Interna {
   baralho?: number[]; mao?: number[]; banca?: number[]; dobrou?: boolean; minas?: number[]; abertas: number[]
 }
 /** a carteira de quem joga: saldo e lançamento no extrato */
-export interface Caixa { saldo(): number; lanca(amount: number, reason: 'aposta' | 'premio', ref: string): void }
+export interface Caixa {
+  saldo(): number; lanca(amount: number, reason: 'aposta' | 'premio', ref: string): void
+  /** rodada fechada: gasto = aposta (×2 se dobrou), premio 0 = perdeu */
+  fechou?(jogo: JogoCassino, gasto: number, premio: number): void
+}
 
 const rnd = (n: number) => Math.floor(Math.random() * n)
 const embaralha = <T,>(a: T[]) => { for (let i = a.length - 1; i > 0; i--) { const j = rnd(i + 1);[a[i], a[j]] = [a[j], a[i]] } return a }
@@ -83,6 +87,7 @@ export class Mesa {
   private fecha(r: Interna, valor: number, res: Rodada['resultado']) {
     r.aberta = false; r.premio = valor; r.resultado = { ...r.resultado, ...res }
     if (valor > 0) this.cx.lanca(valor, 'premio', r.id)
+    this.cx.fechou?.(r.jogo, r.aposta * (r.dobrou ? 2 : 1), valor)
   }
   private vista(r: Interna): Rodada {
     const v: Rodada = { id: r.id, jogo: r.jogo, aposta: r.aposta, aberta: r.aberta, premio: r.premio, resultado: r.resultado, saldo: this.cx.saldo() }
