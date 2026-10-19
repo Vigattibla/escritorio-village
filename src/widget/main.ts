@@ -174,6 +174,7 @@ function telaPainel() {
     <button class="ib" data-a="menu" title="Opções">${I('mais')}</button>
     <button class="ib" data-a="fecharPainel" title="Recolher">${I('baixo')}</button>
   </header>
+  ${velha() ? `<button class="atualiza" data-a="atualizar">${I('cima')}<span><b>Nova versão do widget</b><small>Fica na barra de tarefas, sem cobrir nada. Baixe e abra o arquivo.</small></span></button>` : ''}
   ${S.menu ? menu() : ''}
   <div class="rolo">${blocos || `<div class="vazio">${meo(true)}<b>Tudo em dia</b><small>Quando chegar tarefa nova, eu aviso aqui.</small></div>`}</div>
   ${S.erro ? `<p class="erro">${esc(S.erro)}</p>` : ''}
@@ -313,6 +314,7 @@ el.addEventListener('click', e => {
   const a = b.dataset.a!, id = b.dataset.id ?? ''
   if (a !== 'menu' && a !== 'iniciar') S.menu = false
   if (a === 'abrirPainel') { S.tela = 'painel'; casca({ t: 'focar' }) }
+  else if (a === 'atualizar') abrir(APP + 'app/Turmeo.exe')
   else if (a === 'fecharPainel') S.tela = 'barra'
   else if (a === 'menu') S.menu = !S.menu
   else if (a === 'ver') abrir(APP + '#tarefa=' + id)
@@ -342,12 +344,26 @@ document.addEventListener('keydown', e => {
 wv?.addEventListener('message', e => {
   const m = e.data
   if (m.t === 'info') { S.iniciar = !!m.iniciar; S.versao = String(m.versao ?? '') }
+  else if (m.t === 'doca') return void docar(Number(m.w) || 0, Number(m.h) || 0)
   else if (m.t === 'trocarConta') return void trocarConta()
   else if (m.t === 'abrirPainel' && S.uid) S.tela = 'painel'
   else if (m.t === 'desfoco' && S.tela === 'painel') { S.tela = 'barra'; S.menu = false }
   else return
   desenhar()
 })
+
+// ---------- na barra de tarefas ----------
+// a casca acha um vão livre na barra de tarefas e diz o tamanho; a barra recolhida cabe nele
+function docar(w: number, h: number) {
+  const b = document.body, r = document.documentElement.style
+  if (!w || !h) { delete b.dataset.doca; r.removeProperty('--bar-w'); r.removeProperty('--bar-h'); return medir() }
+  b.dataset.doca = w < 150 ? 'mini' : '1'
+  r.setProperty('--bar-w', Math.min(w, 300) + 'px')
+  r.setProperty('--bar-h', h + 'px')
+  medir()
+}
+const VERSAO_NOVA = '1.1.0'
+const velha = () => !!S.versao && S.versao.localeCompare(VERSAO_NOVA, undefined, { numeric: true }) < 0
 
 // ---------- começo ----------
 desenhar()

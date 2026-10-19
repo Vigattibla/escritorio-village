@@ -21,7 +21,7 @@ b { font-weight: 700; }
 .cab .meo { width: 28px; height: 18px; }
 
 /* ---------- barra recolhida ---------- */
-.barra { display: flex; align-items: center; width: 300px; height: 56px; padding: 0 8px 0 2px; background: var(--papel); }
+.barra { display: flex; align-items: center; width: var(--bar-w, 300px); height: var(--bar-h, 56px); padding: 0 8px 0 2px; background: var(--papel); }
 .grip { display: grid; place-items: center; width: 18px; height: 100%; color: #B9B1A0; cursor: grab; }
 .corpo { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; height: 44px; padding: 0 6px 0 2px; border-radius: 14px; text-align: left; transition: background .15s; }
 .corpo:hover { background: var(--areia); }
@@ -127,3 +127,22 @@ footer .btn .i { width: 14px; height: 14px; }
 .olhos { animation: pisca 5s infinite; transform-origin: center 5.5px; transform-box: view-box; }
 @keyframes pisca { 0%, 94%, 100% { transform: none } 97% { transform: scaleY(.15) } }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+/* ---------- morando na barra de tarefas (a casca manda o vão: --bar-w × --bar-h) ---------- */
+body[data-doca] .barra { padding: 0 4px; }
+body[data-doca] .grip { display: none; }
+body[data-doca] .corpo { height: 100%; gap: 8px; padding: 0 4px; border-radius: 10px; }
+body[data-doca] .cab { width: calc(var(--bar-h) - 10px); height: calc(var(--bar-h) - 10px); border-radius: 9px; }
+body[data-doca] .cab .meo { width: 70%; height: auto; }
+body[data-doca] .txt b { font-size: 13px; }
+body[data-doca] .txt small { font-size: 11px; }
+body[data-doca] .seta { width: 18px; }
+body[data-doca="mini"] .txt, body[data-doca="mini"] .seta { display: none; }
+body[data-doca="mini"] .barra { width: auto; }
+body[data-doca="mini"] .pino { position: absolute; top: 2px; right: 2px; min-width: 16px; height: 16px; font-size: 10px; padding: 0 4px; }
+body[data-doca="mini"] .corpo { position: relative; }
+body[data-tela="carregando"][data-doca] .barra { padding-left: 6px; }
+
+.atualiza { display: flex; align-items: center; gap: 10px; margin: 0 12px 8px; padding: 10px 12px; border-radius: 14px; background: var(--postit); text-align: left; }
+.atualiza span { display: flex; flex-direction: column; line-height: 1.25; }
+.atualiza small { color: var(--mudo); }
