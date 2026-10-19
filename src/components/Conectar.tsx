@@ -32,7 +32,8 @@ function receita(a: Aba, k: string): { passos: string; codigo: string } {
 export default function Conectar({ onClose }: { onClose: () => void }) {
   const [chaves, setChaves] = useState<Chave[]>([])
   const [nova, setNova] = useState('')
-  const [nome, setNome] = useState('')
+  const praPilula = typeof location !== 'undefined' && location.hash === '#conectar-pilula'
+  const [nome, setNome] = useState(praPilula ? 'Pílula' : '')
   const [aba, setAba] = useState<Aba>('claude')
   const [busy, setBusy] = useState(false)
   const [erro, setErro] = useState('')
@@ -55,7 +56,11 @@ export default function Conectar({ onClose }: { onClose: () => void }) {
         k = 'tv_demo' + Math.random().toString(16).slice(2, 14)
         demo = [{ id: crypto.randomUUID(), nome: n, dica: k.slice(-4), criado: new Date().toISOString(), usado: null }, ...demo]
       }
-      setNova(k); setNome(''); await carregar()
+      setNova(k); setNome('')
+      /* já vai pra área de transferência: a pílula do PC percebe e pergunta se é pra ela */
+      void navigator.clipboard.writeText(k).then(() => { setCopiado(true); setTimeout(() => setCopiado(false), 1500) }, () => {})
+      if (praPilula) history.replaceState(null, '', location.pathname + location.search)
+      await carregar()
     } catch (e) { setErro((e as Error).message) }
     setBusy(false)
   }

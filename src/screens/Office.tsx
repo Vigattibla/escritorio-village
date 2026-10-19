@@ -99,6 +99,8 @@ export default function Office() {
   const [contas, setContas] = useState(false)
   // a porta de entrada é o Início (celular e computador); vendas abre em Vendas
   useEffect(() => { if (!sv && s.view === 'quadro' && !s.drawer) setUi({ view: 'inicio' }) }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  /* …/#conectar-pilula: a pílula do PC abre direto no Conectar IA */
+  useEffect(() => { if (location.hash === '#conectar-pilula') setUi({ conectar: true }) }, []) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (sv) { if (!SV_PAGES.includes(s.view as Page) || s.drawer) setUi({ view: 'vendas', drawer: false }) }
     else if (VD_PAGES.includes(s.view as Page) && !(me?.is_admin && dev)) setUi({ view: 'inicio' })
