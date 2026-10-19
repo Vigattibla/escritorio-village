@@ -1,8 +1,8 @@
-import { MH, MW, OUT, rect, SHADOW, T, WALL, WALL_HI, type C2D } from './base'
+import { BOSS_DESK, MH, MW, OUT, rect, SHADOW, T, WALL, WALL_HI, type C2D } from './base'
 import { exitX, glassDoorX, glassStrip, glassWall } from './andar'
 import { drawArquivo, drawDecor, drawFloor, drawNotebook, MESA, mesaExtra, type DeskLook } from './props'
-import { defaultDesk, deskFrom, deskSides, dimOf, isDesk, kd, renderRoom, solidGrid, type Desk, type Obj, type Sala } from './sala'
-import { comodoOf, type Kind } from './comodos'
+import { defaultDesk, deskFrom, deskSides, dimOf, isDesk, kd, parseComodo, renderRoom, solidGrid, type Desk, type Obj, type Sala } from './sala'
+import { COMODOS, comodoOf, type Kind } from './comodos'
 import type { JogoCassino } from '../cassino/regras'
 
 export * from './base'
@@ -258,14 +258,20 @@ export function elevadorAt(gx: number, gy: number) {
 }
 export const elevadorSpot = () => ({ x: 2 * T, y: (HY0 + 1) * T, tx: 1, ty: HY0 + 1 })
 
+/** sala de jogos do andar: a arrumada (rooms 'jogos-<setor>') ou a original; com o gerente do cassino no andar, ganha a mesa dele */
+export function salaJogos(data: unknown, gerente: boolean): Sala {
+  const s = parseComodo(data, COMODOS.jogos.sala())
+  if (!gerente || s.objs.some(o => o.d === BOSS_DESK)) return s
+  return { ...s, objs: [...s.objs, { id: Math.max(0, ...s.objs.map(o => o.id)) + 1, k: 'mesa-chefe', x: 19, y: 3, d: BOSS_DESK }] }
+}
+
 export function jogoAt(gx: number, gy: number) {
   for (const r of rooms) {
-    // máquina abre o jogo em qualquer sala (o cassino tem as dele); só o salão de jogos tem lugar marcado
-    if (r.kind !== 'jogos' && r.kind !== 'dept') continue
+    if (r.kind !== 'jogos') continue
     for (const o of r.sala.objs) {
       const m = MAQUINAS[o.k], d = kd(o)
       if (!m || !d || gx < r.ox + o.x || gx >= r.ox + o.x + d.w || gy < r.oy + o.y - (d.up ?? 0) || gy >= r.oy + o.y + d.h) continue
-      const sp = (r.kind === 'jogos' ? comodoOf('jogos')?.spots ?? [] : []).filter(s => s.act === m.act)
+      const sp = (comodoOf('jogos')?.spots ?? []).filter(s => s.act === m.act)
         .sort((a, b) => Math.hypot(a.x - o.x, a.y - o.y) - Math.hypot(b.x - o.x, b.y - o.y))[0]
       return { jogo: m.jogo, cassino: m.cassino, tx: r.ox + (sp?.x ?? o.x), ty: r.oy + (sp?.y ?? o.y + d.h) }
     }

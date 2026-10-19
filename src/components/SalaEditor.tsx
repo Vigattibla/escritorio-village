@@ -2,8 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { drawAvatar } from '../chibi/sprite'
 import { managerOf, rankOf } from '../game/ranks'
 import { drawChair } from '../office/props'
-import { at, bbox, check, defaultDesk, deskSides, hitTest, isDesk, KINDS, kd, modeloDe, MODELOS, original, parseSala, PISOS, reach, renderRoom, solidGrid, TEMAS, type Kind, type Obj, type Piso, type Sala, type Tema } from '../office/sala'
-import { BOSS_DESK, drawDesk, MAX_DESKS, MH, MW, roomOfId, T, upperWall, wallFace } from '../office/world'
+import { at, bbox, check, dimOf, defaultDesk, deskSides, hitTest, isDesk, KINDS, kd, modeloDe, MODELOS, original, parseSala, PISOS, reach, renderRoom, solidGrid, TEMAS, type Kind, type Obj, type Piso, type Sala, type Tema } from '../office/sala'
+import { BOSS_DESK, drawDesk, MAX_DESKS, roomOfId, roomOfKind, salaJogos, T, upperWall, wallFace } from '../office/world'
 import { dropRow, hasVendas, me, putRow, roomOf, team, useStore } from '../store'
 import type { Poder, Profile } from '../types'
 import { poderDe } from '../game/poderes'
@@ -42,19 +42,22 @@ function KindThumb({ k, id }: { k: Kind; id: string }) {
   }} />
 }
 
-export default function SalaEditor({ onClose }: { onClose: () => void }) {
+/** comodo: arruma a sala de jogos do andar (gerente do cassino) em vez da sala do setor */
+export default function SalaEditor({ onClose, comodo = false }: { onClose: () => void; comodo?: boolean }) {
   const s = { rows: useStore(x => x.rows), profiles: useStore(x => x.profiles), sala: useStore(x => x.sala) }
   const meP = me()
   // mesma sala que o jogo está mostrando (com as mudanças automáticas da baia); senão lê do banco
-  const live = roomOfId(s.sala), saved = roomOf(s), baiaDb = useStore(x => hasVendas(x.sala, x)), baia = live ? live.baia : baiaDb
+  const roomId = comodo ? 'jogos-' + s.sala : s.sala
+  const live = comodo ? roomOfKind('jogos') : roomOfId(s.sala), saved = roomOf(s, roomId), baiaDb = useStore(x => hasVendas(x.sala, x)), baia = comodo ? false : live ? live.baia : baiaDb
   const dept = useStore(x => x.rows.depts[x.sala]), mod = modeloDe(tipoId(dept ?? { id: s.sala, name: s.sala }))
   const [modelo, setModelo] = useState(mod)
-  const [sala, setSala] = useState<Sala>(() => live ? structuredClone(live.sala) : parseSala(saved?.data, baia, mod))
+  const [sala, setSala] = useState<Sala>(() => live ? structuredClone(live.sala) : comodo ? salaJogos(saved?.data, true) : parseSala(saved?.data, baia, mod))
+  const { w: MW, h: MH } = dimOf(sala)
   const [hist, setHist] = useState<Sala[]>([])
   const [dirty, setDirty] = useState(false)
   const [sel, setSel] = useState<number[]>([])
   const [tool, setTool] = useState<Tool>('mover')
-  const [tema, setTema] = useState<Tema>('Escritório')
+  const [tema, setTema] = useState<Tema>(comodo ? 'Cassino' : 'Escritório')
   const [pal, setPal] = useState<string | null>(null)
   const [piso, setPiso] = useState<Piso>('carpete')
   const [people, setPeople] = useState(true)
@@ -73,13 +76,14 @@ export default function SalaEditor({ onClose }: { onClose: () => void }) {
   const boss = managerOf(s.profiles, s.sala)
   const sitter = useMemo(() => {
     const m = new Map<number, Profile>()
+    if (comodo) { for (const p of Object.values(s.profiles)) if (p.cassino && p.avatar && p.dept === s.sala) m.set(BOSS_DESK, p); return m }
     for (const p of team(s.profiles, s)) {
       if (!p.avatar) continue
       if (boss?.id === p.id) m.set(BOSS_DESK, p)
       else if (p.desk >= 0 && p.desk < MAX_DESKS && !m.has(p.desk)) m.set(p.desk, p)
     }
     return m
-  }, [s.profiles, boss])
+  }, [s.profiles, boss, comodo, s.sala])
   const person = (o: Obj) => o.d === undefined ? undefined : sitter.get(o.d)
   const nameOf = (d: number) => sitter.get(d)?.name.split(' ')[0] ?? null
   const deskLabel = (o: Obj) => { const p = person(o); return o.d === BOSS_DESK ? 'da chefia' : p ? 'de ' + p.name.split(' ')[0] : 'vaga' }
@@ -246,7 +250,7 @@ export default function SalaEditor({ onClose }: { onClose: () => void }) {
     if (err) { setMsg({ t: err, bad: true }); return }
     setBusy(true)
     try {
-      await putRow('rooms', { id: s.sala, data: sala, created_by: meP.id, created_at: new Date().toISOString() })
+      await putRow('rooms', { id: roomId, data: sala, created_by: meP.id, created_at: new Date().toISOString() })
       setDirty(false); setMsg({ t: 'Sala salva — todo mundo vê a mudança na hora.' })
     } catch (e) {
       setMsg({ t: `Não salvou: ${e instanceof Error ? e.message : 'erro'}`, bad: true })
@@ -272,7 +276,7 @@ export default function SalaEditor({ onClose }: { onClose: () => void }) {
   const kinds = Object.entries(KINDS).filter(([, k]) => k.tema === tema)
   const nDesks = sala.objs.filter(o => isDesk(o.k)).length, vagas = sala.objs.filter(o => isDesk(o.k) && !person(o)).length
   const tools: [Tool, string][] = [['mover', '✋ Móveis'], ['piso', '🖌 Piso'], ['parede', '🧱 Paredes']]
-  if (chief) tools.push(['carpinteiro', '🪚 Carpinteiro'])
+  if (chief && !comodo) tools.push(['carpinteiro', '🪚 Carpinteiro'])
 
   return <div className="sl">
     <div className="sl-bar">
@@ -284,8 +288,8 @@ export default function SalaEditor({ onClose }: { onClose: () => void }) {
       {myCarp && <span className="sl-carp">🪚 carpinteiro até {hhmm(myCarp.until)}</span>}
       <span className="sl-sp" />
       <button className="btn ghost sm" disabled={!hist.length} onClick={() => { setSala(hist[hist.length - 1]); setHist(hist.slice(0, -1)); setSel([]); setDirty(true) }}>↶ Desfazer</button>
-      {!baia && <select className="sl-modelo" value={modelo} onChange={e => setModelo(e.target.value)} aria-label="Modelo de sala" title={MODELOS[modelo]?.desc}>{Object.entries(MODELOS).map(([k, m]) => <option key={k} value={k}>{m.nome}{k === mod ? ' · do setor' : ''}</option>)}</select>}
-      <button className="btn ghost sm" onClick={async () => { if (!await confirmar(baia ? 'Voltar a sala pro jeito original?' : `Montar a sala como ${MODELOS[modelo].nome}?`, { text: (baia ? '' : MODELOS[modelo].desc + '. ') + 'Os móveis de agora saem. Só vale depois de salvar.', ok: baia ? 'Voltar ao original' : 'Montar' })) return; const next = original(baia, modelo); const err = reach(next, nameOf); if (err) { setMsg({ t: err, bad: true }); return } setHist([...hist, sala]); setSala(next); setSel([]); setDirty(true) }}>{baia ? 'Voltar ao original' : 'Montar modelo'}</button>
+      {!baia && !comodo && <select className="sl-modelo" value={modelo} onChange={e => setModelo(e.target.value)} aria-label="Modelo de sala" title={MODELOS[modelo]?.desc}>{Object.entries(MODELOS).map(([k, m]) => <option key={k} value={k}>{m.nome}{k === mod ? ' · do setor' : ''}</option>)}</select>}
+      <button className="btn ghost sm" onClick={async () => { if (!await confirmar(baia || comodo ? 'Voltar a sala pro jeito original?' : `Montar a sala como ${MODELOS[modelo].nome}?`, { text: (baia || comodo ? '' : MODELOS[modelo].desc + '. ') + 'Os móveis de agora saem. Só vale depois de salvar.', ok: baia || comodo ? 'Voltar ao original' : 'Montar' })) return; const next = comodo ? salaJogos(null, true) : original(baia, modelo); const err = reach(next, nameOf); if (err) { setMsg({ t: err, bad: true }); return } setHist([...hist, sala]); setSala(next); setSel([]); setDirty(true) }}>{baia || comodo ? 'Voltar ao original' : 'Montar modelo'}</button>
       <button className="btn ghost sm" onClick={close}>Fechar</button>
       <button className="btn primary sm" disabled={!dirty || busy || !can} onClick={() => void save()}>{busy ? 'Salvando…' : 'Salvar sala'}</button>
     </div>

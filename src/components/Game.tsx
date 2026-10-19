@@ -14,7 +14,7 @@ import { ACOES, altDe, drawBoneco, drawEfeitoAcao, lugarNaAcao, montariaDe, type
 import { drawChair } from '../office/props'
 import { drawFurniture, kd, modeloDe, parseSala, type Obj } from '../office/sala'
 import { tipoId } from '../setor/tipos'
-import { blocked, boardSpot, BOSS_DESK, deskAtTile, deskIds, deskOf, deskSidesOf, doorAtTile, doorSpot, drawBoardMarks, drawCarry, drawDesk, emptySala, FH, findPath, floorVersion, furniture, FW, getRooms, hallDecor, hasDesk, elevadorAt, elevadorSpot, jogoAt, bingoAt, roomOfKind, HY0, MAX_DESKS, painelAt, paineisOf, pathToSeat, regionOfPx, renderFloor, roomOfId, setFloor, setPassable, shelfSpot, T, wallObjs, type Room } from '../office/world'
+import { blocked, boardSpot, BOSS_DESK, deskAtTile, deskIds, deskOf, deskSidesOf, doorAtTile, doorSpot, drawBoardMarks, drawCarry, drawDesk, emptySala, FH, findPath, floorVersion, furniture, FW, getRooms, hallDecor, hasDesk, elevadorAt, elevadorSpot, jogoAt, salaJogos, bingoAt, roomOfKind, HY0, MAX_DESKS, painelAt, paineisOf, pathToSeat, regionOfPx, renderFloor, roomOfId, setFloor, setPassable, shelfSpot, T, wallObjs, type Room } from '../office/world'
 import { bubbles, owns, canDoor, canEnter, curtainsOpen, deptList, doorOpen, getState, goTo, knock, myDept, openSala, team, positions, roomOf, run, setCurtains, setDoor, setSalaGerente, setUi, useStore, type State } from '../store'
 import type { Dir, Pos, Profile, Task } from '../types'
 import Icon from './Icon'
@@ -47,13 +47,14 @@ let floorSeen: unknown[] = []
 const enterable = (r: Room | undefined, s: State = getState()) => !!r && r.kind !== 'vaga' && (!r.dept || canEnter(r.dept, s))
 export function syncFloor() {
   const s = getState(), id = s.sala, d = s.rows.depts[id], ger = !!d?.sala_gerente, data = roomOf(s, id), mod = modeloDe(tipoId(d ?? { id, name: id }))
-  const seen = [id, !!d?.vendas, ger, data, mod]
+  const jg = roomOf(s, 'jogos-' + id), cassino = Object.values(s.profiles).some(p => p.cassino && deptOf(p) === id)
+  const seen = [id, !!d?.vendas, ger, data, mod, jg, cassino]
   if (seen.length !== floorSeen.length || seen.some((v, i) => v !== floorSeen[i])) {
     floorSeen = seen
     const mine = parseSala(data?.data, !!d?.vendas, mod)
     // com sala própria, a mesa do gerente (e o tapete dela) sai da sala do setor
     const dept = ger ? { ...mine, objs: mine.objs.filter(o => o.d !== BOSS_DESK && o.k !== 'tapete-chefe') } : mine
-    setFloor(ANDAR(ger).map(k => (k === 'dept' ? { kind: k, dept: id, sala: dept, baia: !!d?.vendas } : k === 'vaga' ? { kind: k, sala: emptySala(16) } : { kind: k, dept: k === 'gerente' ? id : null, sala: COMODOS[k].sala() })))
+    setFloor(ANDAR(ger).map(k => (k === 'dept' ? { kind: k, dept: id, sala: dept, baia: !!d?.vendas } : k === 'vaga' ? { kind: k, sala: emptySala(16) } : k === 'jogos' ? { kind: k, dept: null, sala: salaJogos(jg?.data, cassino) } : { kind: k, dept: k === 'gerente' ? id : null, sala: COMODOS[k].sala() })))
   }
   setPassable(getRooms().map(r => enterable(r, s)))
 }
@@ -61,6 +62,8 @@ export function syncFloor() {
 function homeRoom(p: Profile | undefined) {
   const s = getState()
   if (!p || deptOf(p) !== s.sala) return undefined
+  // gerente do cassino: mesa dele na sala de jogos do andar
+  if (p.cassino) return roomOfKind('jogos')
   const g = roomOfKind('gerente')
   return g && managerOf(s.profiles, s.sala)?.id === p.id ? g : roomOfKind('dept')
 }

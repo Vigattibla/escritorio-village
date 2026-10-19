@@ -759,6 +759,21 @@ export function parseSala(data: unknown, baia = false, modelo = 'padrao'): Sala 
 }
 
 /** tamanho da sala em tiles (o da planta; cômodos podem ser maiores ou menores que a sala do setor) */
+/** cômodo salvo (sala de jogos arrumada): só vale com o mesmo tamanho do original */
+export function parseComodo(data: unknown, base: Sala): Sala {
+  try {
+    const s = data as Sala, { w: W, h: H } = dimOf(base)
+    const grid = (g: unknown, f: (v: unknown) => boolean) => Array.isArray(g) && g.length === H && g.every(r => Array.isArray(r) && r.length === W && r.every(f))
+    if (!s || !grid(s.piso, v => typeof v === 'string' && v in PISOS) || !grid(s.div, v => typeof v === 'boolean') || !Array.isArray(s.objs)) return base
+    const ids = new Set<number>(), objs: Obj[] = []
+    for (const o of s.objs) {
+      const k = o && KINDS[o.k]
+      if (!k || !Number.isInteger(o.id) || ids.has(o.id) || !Number.isInteger(o.x) || !Number.isInteger(o.y) || o.x < 0 || o.y < 0 || o.x + k.w > W || o.y + k.h > H) continue
+      ids.add(o.id); objs.push(o.d === undefined ? { id: o.id, k: o.k, x: o.x, y: o.y } : { id: o.id, k: o.k, x: o.x, y: o.y, d: o.d })
+    }
+    return { piso: s.piso, div: s.div, objs }
+  } catch { return base }
+}
 export const dimOf = (s: Sala) => ({ w: s.piso[0]?.length ?? MW, h: s.piso.length || MH })
 
 /** tiles com móvel que bloqueia (tapete, parede e cadeira solta não contam) */
@@ -789,7 +804,7 @@ export function arrumaParede(s: Sala): Sala {
   for (const w of objs.filter(o => kd(o).camada === 'parede')) {
     const i = objs.indexOf(w)
     if (!check(out, w, () => null)) continue
-    for (let d = 1; d < MW; d++) {
+    for (let d = 1; d < dimOf(s).w; d++) {
       const c = [w.x - d, w.x + d].map(x => ({ ...w, x })).find(c => !check(out, c, () => null))
       if (c) { objs[i] = c; break }
     }
@@ -808,14 +823,14 @@ const deskName = (o: Obj, nameOf: NameOf) => o.d === undefined ? null : nameOf(o
 
 /** motivo de não poder ficar ali, ou null */
 export function check(s: Sala, o: Obj, nameOf: NameOf): string | null {
-  const k = kd(o)
+  const k = kd(o), { w: SW, h: SH } = dimOf(s)
   if (k.camada === 'parede') {
-    if (o.x < 1 || o.x + k.w > MW - 1) return 'Fora da parede'
+    if (o.x < 1 || o.x + k.w > SW - 1) return 'Fora da parede'
     for (const p of s.objs) if (p.id !== o.id && kd(p).camada === 'parede' && o.x < p.x + kd(p).w && p.x < o.x + k.w) return 'Já tem coisa nesse pedaço da parede'
     if (s.objs.some(p => p.id !== o.id && tapa(p, o))) return 'Tem móvel alto na frente desse pedaço da parede'
     return null
   }
-  if (o.x < 1 || o.y < 2 || o.x + k.w > MW - 1 || o.y + k.h > MH - 1) return 'Fora da sala'
+  if (o.x < 1 || o.y < 2 || o.x + k.w > SW - 1 || o.y + k.h > SH - 1) return 'Fora da sala'
   if (k.camada === 'chao') return null
   if (s.objs.some(p => p.id !== o.id && kd(p).camada === 'parede' && tapa(o, p))) return 'Ia tapar a decoração da parede'
   const solid = solidGrid(s, o.id)
@@ -833,21 +848,21 @@ export function check(s: Sala, o: Obj, nameOf: NameOf): string | null {
 
 /** todo mundo continua chegando na própria mesa? */
 export function reach(s: Sala, nameOf: NameOf): string | null {
-  const solid = solidGrid(s)
-  const ok = (x: number, y: number) => x >= 1 && y >= 2 && x < MW - 1 && y < MH - 1 && !solid[y][x] && !s.div[y][x]
+  const solid = solidGrid(s), { w: SW, h: SH } = dimOf(s)
+  const ok = (x: number, y: number) => x >= 1 && y >= 2 && x < SW - 1 && y < SH - 1 && !solid[y][x] && !s.div[y][x]
   const desks = s.objs.filter(o => isDesk(o.k))
   if (!desks.length) return null
   const seen = new Set<number>(), q: [number, number][] = [[desks[0].x, desks[0].y - 1]]
-  seen.add(q[0][1] * MW + q[0][0])
+  seen.add(q[0][1] * SW + q[0][0])
   while (q.length) {
     const [x, y] = q.shift()!
     for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
       const nx = x + dx, ny = y + dy
-      if (!ok(nx, ny) || seen.has(ny * MW + nx)) continue
-      seen.add(ny * MW + nx); q.push([nx, ny])
+      if (!ok(nx, ny) || seen.has(ny * SW + nx)) continue
+      seen.add(ny * SW + nx); q.push([nx, ny])
     }
   }
-  const lost = desks.find(d => !seen.has((d.y - 1) * MW + d.x))
+  const lost = desks.find(d => !seen.has((d.y - 1) * SW + d.x))
   if (!lost) return null
   const n = deskName(lost, nameOf)
   return `Assim ${n ? 'a mesa de ' + n : 'uma mesa'} fica sem caminho`

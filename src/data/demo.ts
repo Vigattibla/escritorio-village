@@ -637,16 +637,10 @@ export class DemoBackend implements Backend {
     if (on && t.is_admin) throw new Error('Conta de adm não pode ser a conta do cassino.')
     if (on && Object.values(all).some(p => p.cassino && p.id !== id)) throw new Error('Já existe uma conta do cassino. Desmarque a outra primeiro.')
     if (on) {
-      const ds = read<Record<string, Dept>>(K.row + 'depts', {})
-      if (!ds.cassino) {
-        let floor = 1, slot = -1
-        while (slot < 0) { slot = [0, 1, 2, 3].find(x => !Object.values(ds).some(d => d.floor === floor && d.slot === x)) ?? -1; if (slot < 0) floor++ }
-        write(K.row + 'depts', { ...ds, cassino: { id: 'cassino', name: 'Cassino', color: '#7A1F3D', floor, slot, tipo: 'cassino', created_at: new Date().toISOString() } })
-      }
       const k = 'ev:coffee:' + id, log = read<CoffeeLine[]>(k, [])
       if (!log.some(l => l.ref === 'cassino-300')) write(k, [{ amount: 300, reason: 'boasvindas', ref: 'cassino-300', created_at: new Date().toISOString() }, ...log])
     }
-    await this.upsertProfileRaw({ ...t, cassino: on, dept: on ? 'cassino' : 'marketing', desk: -1 })
+    await this.upsertProfileRaw({ ...t, cassino: on, dept: 'marketing', desk: -1 })
   }
 
   /** vigia dos jogos (mesmas regras do SQL): bloqueado → erro marcado; senão conta a partida */

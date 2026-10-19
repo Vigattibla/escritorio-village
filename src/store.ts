@@ -154,7 +154,7 @@ export const myDept = (s: State = state) => deptOf(s.meId ? s.profiles[s.meId] :
 export const deptList = (s: Pick<State, 'rows'> = state) => Object.values(s.rows.depts).sort((a, b) => a.floor - b.floor || a.slot - b.slot)
 export const deptName = (id: string, s: State = state) => s.rows.depts[id]?.name ?? (id === DEPT0 ? 'Marketing' : id)
 /** pessoas da sala aberta (o andar todo fica em `profiles`: conversa, nomes, visitas) */
-export const team = (profiles: Record<string, Profile>, s: Pick<State, 'sala'> = state) => Object.values(profiles).filter(p => deptOf(p) === s.sala && (!p.cassino || s.sala === 'cassino'))
+export const team = (profiles: Record<string, Profile>, s: Pick<State, 'sala'> = state) => Object.values(profiles).filter(p => deptOf(p) === s.sala && !p.cassino)
 /** layout da sala (o Marketing herda o antigo 'escritorio') */
 export const roomOf = (s: Pick<State, 'rows' | 'sala'> = state, sala = s.sala) => s.rows.rooms[sala] ?? (sala === DEPT0 ? s.rows.rooms['escritorio'] : undefined)
 /** tabelas que são de uma sala só */
@@ -565,7 +565,7 @@ function ingest(snap: Snapshot) {
  *  Pelo elevador chega no corredor, na frente dele. */
 export async function openSala(id: string, elevador = false) {
   if (id === state.sala || (id !== myDept() && !canEnter(id))) return
-  if (me()?.cassino && id !== 'cassino') return
+  if (me()?.cassino && id !== myDept()) return
   const snap = await backend.loadAll()
   if (elevador) chegada.elevador = true
   set({ sala: id, here: elevador ? HALL : id, project: '', task: null, flow: null, viewing: state.meId })

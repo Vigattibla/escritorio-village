@@ -23,7 +23,6 @@ export default function ContaCassino() {
   const [sala, setSala] = useState(false)
   const [arrumando, setArrumando] = useState(false)
   const uiCassino = useStore(s => s.cassino), uiBingo = useStore(s => s.bingo), uiJogo = useStore(s => s.jogo)
-  const naSala = useStore(s => s.here === s.sala)
   const [p, setP] = useState<CassinoPainel | null>(null)
   const [erro, setErro] = useState('')
   const [taxa, setTaxa] = useState(10)
@@ -60,14 +59,14 @@ export default function ContaCassino() {
       <header className="cc-top">
         <span className="cc-logo">🎰</span>
         <div className="grow"><b>{eu?.name ?? 'Cassino'}</b><small>Gerente do cassino</small></div>
-        <button className="btn ghost sm" onClick={() => { setSala(!sala); setArrumando(false) }}>{sala ? 'Painel' : '🎰 Minha sala'}</button>
+        <button className="btn ghost sm" onClick={() => { setSala(!sala); setArrumando(false) }}>{sala ? 'Painel' : '🎰 Sala de jogos'}</button>
         <span className="cs-saldo"><Ph n="coffee" size={16} fill /> <b>{wallet ? saldo : '…'}</b></span>
         <button className="btn ghost sm" onClick={() => void signOut()}>Sair</button>
       </header>
 
       {sala ? <section className="cc-sala">
-        {arrumando ? <SalaEditor onClose={() => setArrumando(false)} /> : <div className="game-wrap"><Game />
-          {naSala && <button className="btn primary sm game-edit" onClick={() => setArrumando(true)}>🪚 Arrumar sala</button>}</div>}
+        {arrumando ? <SalaEditor comodo onClose={() => setArrumando(false)} /> : <div className="game-wrap"><Game />
+          <button className="btn primary sm game-edit" onClick={() => setArrumando(true)}>🪚 Arrumar sala</button></div>}
       </section> :
       <main className="cc-main">
         <section className="cc-jogos">
