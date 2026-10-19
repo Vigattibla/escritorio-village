@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { download, driveOn, takeOpenAt, FOLDER, isImage, kb, list, mkdir, thumb, upload, type DFile } from '../data/drive'
+import { download, driveOn, takeOpenAt, FOLDER, isImage, kb, list, mkdir, rmdir, thumb, upload, type DFile } from '../data/drive'
 import { Bell } from './Avisos'
 import { Ph } from './Icon'
 import Meo from './Meo'
 import SegInd from './SegInd'
 import type { PhName } from './ph'
-import { pedirTexto } from './Dialogo'
+import { confirmar, pedirTexto } from './Dialogo'
 import Acervo from './Acervo'
 import { useStore } from '../store'
 
@@ -113,6 +113,13 @@ function Pasta({ adm, onAcervo }: { adm: boolean; onAcervo: () => void }) {
     try { const f = await mkdir(path, name); setFiles(fs => [f, ...(fs ?? [])]) } catch (e) { setErr((e as Error).message) }
   }
 
+  const apagar = async (f: DFile) => {
+    const ok = await confirmar(`Apagar a pasta “${f.name}”?`, { text: 'Vai pra lixeira do Drive e dá pra recuperar por 30 dias. Pasta com arquivos só o adm apaga.', ok: 'Apagar pasta', danger: true, ic: 'trash' })
+    if (!ok) return
+    try { await rmdir(path, f.id); setFiles(fs => (fs ?? []).filter(x => x.id !== f.id)) } catch (e) { setErr((e as Error).message) }
+  }
+  const fixa = (f: DFile) => crumbs.length === 1 && f.name === 'Backups'
+
   const get = async (f: DFile) => {
     setGetting(f.id)
     try { await download(path, f) } catch (e) { setErr((e as Error).message) } finally { setGetting('') }
@@ -205,9 +212,12 @@ function Pasta({ adm, onAcervo }: { adm: boolean; onAcervo: () => void }) {
       {folders.length > 0 && <section className="ar-sec">
         <h4>Pastas <small>{folders.length}</small></h4>
         <div className="ar-pastas">
-          {folders.map(f => <button key={f.id} className={'ar-pasta ' + corPasta(f)} onClick={() => tap(f)}>
-            <Ph n="folder-simple" size={22} fill /><b>{f.name}</b><small>{quando(f.modified)}</small>
-          </button>)}
+          {folders.map(f => <div key={f.id} className="ar-pasta-w">
+            <button className={'ar-pasta ' + corPasta(f)} onClick={() => tap(f)}>
+              <Ph n="folder-simple" size={22} fill /><b>{f.name}</b><small>{quando(f.modified)}</small>
+            </button>
+            {!fixa(f) && <button className="ar-pasta-x" onClick={() => apagar(f)} aria-label={'Apagar a pasta ' + f.name} title="Apagar pasta"><Ph n="trash" size={15} /></button>}
+          </div>)}
         </div>
       </section>}
 

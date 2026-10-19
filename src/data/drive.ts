@@ -27,6 +27,11 @@ export async function mkdir(path: string[], name: string) {
   if (!driveOn) return demo.mkdir(path, name)
   return (await call({ a: 'mkdir', path, name })).json() as Promise<DFile & { root: string }>
 }
+/** manda a pasta (filha direta de `path`) pra lixeira do Drive */
+export async function rmdir(path: string[], id: string) {
+  if (!driveOn) return demo.rmdir(path, id)
+  await call({ a: 'rmdir', path, id })
+}
 
 // miniaturas: no máximo 4 de cada vez, guardadas enquanto a página estiver aberta
 const thumbs = new Map<string, Promise<string>>()

@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import { download, driveOn, FOLDER, isImage, list, mkdir, setOpenAt, thumb, upload, type DFile } from '../data/drive'
+import { download, driveOn, FOLDER, isImage, list, mkdir, rmdir, setOpenAt, thumb, upload, type DFile } from '../data/drive'
 import { setUi } from '../store'
 import type { DriveLink } from '../types'
 import { Thumb } from './Arquivos'
 import { Ph } from './Icon'
-import { pedirTexto } from './Dialogo'
+import { confirmar, pedirTexto } from './Dialogo'
 import { Fundo } from './Fundo'
 
 type Crumb = DriveLink['crumbs'][number]
@@ -114,6 +114,13 @@ export function FolderBox({ link, own, edit, suggest, base, onLink, onZoom }: {
     if (f.mime === FOLDER) { setOpenAt([...link!.crumbs, { id: f.id, name: f.name }]); setUi({ view: 'arquivos', task: null }); return }
     try { if (isImage(f)) onZoom(await thumb(path, f.id, 1600)); else await download(path, f) } catch (e) { setErr((e as Error).message) }
   }
+  const apagar = async () => {
+    if (!link) return
+    const ok = await confirmar(`Apagar a pasta “${folderName(link)}”?`, { text: 'Desvincula da tarefa e manda a pasta pra lixeira do Drive (recupera em até 30 dias). Pasta com arquivos só o adm apaga.', ok: 'Apagar pasta', danger: true, ic: 'trash' })
+    if (!ok) return
+    setBusy(true); setErr('')
+    try { await rmdir(ids(link.crumbs.slice(0, -1)), link.crumbs.at(-1)!.id); onLink(null) } catch (e) { setErr((e as Error).message) } finally { setBusy(false) }
+  }
   const picker = picking && <FolderPicker start={link ?? base} onClose={() => setPicking(false)} onPick={l => { setPicking(false); onLink(l) }} />
 
   if (!link) return edit ? (
@@ -141,6 +148,7 @@ export function FolderBox({ link, own, edit, suggest, base, onLink, onZoom }: {
           {files && <span className="count">{files.length}</span>}</h3>
         <button className="btn ghost sm" onClick={() => { setOpenAt(link.crumbs); setUi({ view: 'arquivos', task: null }) }} title="Abrir na aba Arquivos">Abrir<Ph n="arrow-right" size={14} /></button>
         {edit && <button className="btn ghost sm" onClick={() => setPicking(true)}>Trocar</button>}
+        {edit && own && <button className="btn ghost sm" onClick={apagar} disabled={busy} title="Apagar a pasta (vai pra lixeira do Drive)" aria-label="Apagar pasta"><Ph n="trash" size={14} /></button>}
         {edit && own && <button className="btn ghost sm" onClick={() => onLink(null)} title="Desvincular (a pasta continua no Drive)">✕</button>}
       </div>
       {err && <p className="ar-err-in">{err}</p>}

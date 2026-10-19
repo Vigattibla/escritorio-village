@@ -41,6 +41,13 @@ export async function mkdir(path: string[], name: string) {
   tree[f.id] = []; (tree[where(path)] ??= []).unshift(f)
   return { ...f, root: ROOT }
 }
+export async function rmdir(path: string[], id: string) {
+  await espera()
+  const at = where(path), f = tree[at]?.find(x => x.id === id)
+  if (!f) throw new Error('Pasta fora deste lugar.')
+  if (at === ROOT && f.name === 'Backups') throw new Error('A pasta Backups não pode ser apagada.')
+  tree[at] = tree[at].filter(x => x.id !== id)
+}
 const enviados = new Map<string, string>()
 export async function thumb(_path: string[], id: string) { await espera(150 + hash(id) % 400); return enviados.get(id) ?? cena(id) }
 export async function download(_path: string[], f: DFile) {

@@ -182,6 +182,20 @@ Deno.serve(async req => {
         const c = await (await g(`/files?fields=${FIELDS}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, mimeType: FOLDER, parents: [dir] }) })).json()
         return json({ ...shape(c), root: await root() })
       }
+      case 'rmdir': {
+        // vai pra lixeira do Drive (volta em até 30 dias); só pasta filha direta, nunca atalho nem Backups
+        const dir = await walk(b.path)
+        if (typeof b.id !== 'string' || !ID.test(b.id)) throw new Http(400, 'Pasta inválida.')
+        const f = await (await g(`/files/${b.id}?fields=name,mimeType,parents`)).json()
+        if (f.mimeType !== FOLDER || !(f.parents ?? []).includes(dir)) throw new Http(403, 'Pasta fora deste lugar.')
+        if (dir === await root() && f.name === 'Backups') throw new Http(403, 'A pasta Backups não pode ser apagada.')
+        if (!eu.is_admin) {
+          const c = await (await g(`/files?q=${q(`'${b.id}' in parents and trashed = false`)}&pageSize=1&fields=files(id)`)).json()
+          if (c.files?.length) throw new Http(403, 'Só o adm apaga pasta com arquivos. Esvazie ou peça pro adm.')
+        }
+        await g(`/files/${b.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ trashed: true }) })
+        return json({ ok: true })
+      }
       case 'upload': {
         // sessão de envio: o navegador manda o arquivo direto pro Google, sem passar por aqui
         const dir = await walk(b.path)
