@@ -5,7 +5,7 @@ do $$ declare f int := 1; s int; begin
       select min(x) into s from generate_series(0, 3) x where not exists (select 1 from public.depts where floor = f and slot = x);
       exit when s is not null or f >= 20; f := f + 1;
     end loop;
-    insert into public.depts (id, name, color, floor, slot, tipo) values ('cassino', 'Cassino', '#7A1F3D', f, coalesce(s, 0));
+    insert into public.depts (id, name, color, floor, slot, tipo) values ('cassino', 'Cassino', '#7A1F3D', f, coalesce(s, 0), 'cassino');
   end if;
 end $$;
 
