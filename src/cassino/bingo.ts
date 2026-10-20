@@ -95,7 +95,7 @@ export class BingoDemo {
     for (const r of rs) {
       if (r.estado === 'aberta' && r.inicio <= now) {
         const gente = new Set(r.cartelas.map(c => c.u))
-        if (gente.size < 2) {
+        if (gente.size < 1) {
           r.cartelas.filter(c => c.u === this.cx.me && !c.gratis).forEach(c => this.cx.lanca(CARTELA, 'bingo', 'r:' + c.id))
           r.estado = 'cancelada'
           continue

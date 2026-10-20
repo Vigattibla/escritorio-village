@@ -23,3 +23,12 @@ Escritório virtual da equipe Village Resort, estilo Gather + Trello: cada pesso
 - IA (resumo do dia, sugestões de tarefas).
 - Reuniões dentro do escritório (sala com vídeo/áudio por proximidade).
 - Importação automática de calendário e afins: a IA lê o calendário/arquivo, interpreta e cria eventos e tarefas.
+
+## Jogos — atualização 20/10/2026
+- Teto aprovado para implementar: 60 cafezinhos por pessoa/dia somando os desafios de todos os jogos.
+- Planta sem sala de reunião, lateral incorporada ao salão; arcade, sinuca/cartas e cassino organizados com circulação livre.
+- Sala do gerente e bingo preservados; novos jogos e recompensa ficam com o responsável pelos jogos.
+
+
+- Bingo deve iniciar com uma pessoa (uma ou mais cartelas); rodada sem participantes continua cancelada. Mover o bingo para outra sala é proposta pendente.
+

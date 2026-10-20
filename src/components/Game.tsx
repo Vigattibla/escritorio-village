@@ -39,9 +39,9 @@ const deskIdx = (p: Profile, r: Room) => {
   if (p.desk >= 0 && p.desk < MAX_DESKS && hasDesk(r, p.desk)) return p.desk
   return deskIds(r).find(i => i !== BOSS_DESK) ?? 0
 }
-/** o andar é só do setor aberto: em cima a sala dele, cozinha e banheiro; embaixo a sala do gerente (ou a de reunião), jogos e bingo.
+/** o andar é só do setor aberto: em cima a sala dele, cozinha e banheiro; embaixo a gerência opcional, jogos e bingo.
  *  Pra crescer: entra um cômodo novo de comodos.ts na lista. */
-const ANDAR = (gerente: boolean, cassino: boolean): Kind[] => ['dept', 'cozinha', 'banheiro', ...(cassino ? ['cassino' as const] : []), gerente ? 'gerente' : 'reuniao', 'jogos', 'bingo']
+const ANDAR = (gerente: boolean, cassino: boolean): Kind[] => ['dept', 'cozinha', 'banheiro', ...(cassino ? ['cassino' as const] : []), ...(gerente ? ['gerente' as const] : []), 'jogos', 'bingo']
 let floorSeen: unknown[] = []
 /** dá pra passar pela porta: vaga nunca, cômodos sempre, sala do setor/gerente pela regra da porta */
 const enterable = (r: Room | undefined, s: State = getState()) => !!r && r.kind !== 'vaga' && (!r.dept || canEnter(r.dept, s))
@@ -473,10 +473,10 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
             if (w.prop && tnow > w.propAte) w.prop = undefined
             if (tnow > w.until) {
               // sorteia um cômodo e um lugar livre nele; quem está há muito tempo sentado vai buscar café
-              const rs = getRooms().filter(r => comodoOf(r.kind)?.spots.length)
+              const rs = getRooms().filter(r => r.spots.length)
               const cafe = tnow - w.sentou > 100e3 && Math.random() < 0.6
-              const r = cafe ? rs.find(x => x.kind === 'cozinha') : rs[Math.floor(Math.random() * rs.length)], c = r && comodoOf(r.kind)
-              const free = c ? c.spots.filter(x => !busySpots.has(x) && (!cafe || x.act === 'Tomando um café')) : []
+              const r = cafe ? rs.find(x => x.kind === 'cozinha') : rs[Math.floor(Math.random() * rs.length)]
+              const free = r ? r.spots.filter(x => !busySpots.has(x) && (!cafe || x.act === 'Tomando um café')) : []
               const sp = free[Math.floor(Math.random() * free.length)]
               const route = sp && r && findPath(o.x, o.y, r.ox + sp.x, r.oy + sp.y)
               if (route) {

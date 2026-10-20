@@ -5,11 +5,12 @@ import { BASE, BOOKS, BOSS_DESK, box, disc, frame, MAX_DESKS, MH, MW, OUT, PAPER
 const r = (c: C2D, col: string, x: number, y: number, w: number, h: number) => { c.fillStyle = col; c.fillRect(x, y, w, h) }
 const blink = (t: number, ms: number, k = 0) => Math.floor(t / ms + k) % 2 === 0
 // ---------------- pisos ----------------
-export type Piso = 'madeira' | 'ceramica' | 'carpete' | 'grama' | 'areia' | 'tijolo' | 'xadrez' | 'azulejo'
+export type Piso = 'madeira' | 'ceramica' | 'carpete' | 'carpete-vinho' | 'grama' | 'areia' | 'tijolo' | 'xadrez' | 'azulejo'
 export const PISOS: Record<Piso, { nome: string; draw: (c: C2D, x: number, y: number) => void }> = {
   madeira: { nome: 'Madeira', draw: wood },
   ceramica: { nome: 'Cerâmica', draw: tiles },
   carpete: { nome: 'Carpete', draw: (c, x, y) => { r(c, '#9aa06a', x, y, T, T); for (const [a, b] of [[3, 3], [11, 7], [6, 12]]) r(c, '#a8ae79', x + a, y + b, 1, 1) } },
+  'carpete-vinho': { nome: 'Carpete vinho', draw: (c, x, y) => { r(c, '#4a2332', x, y, T, T); r(c, '#633244', x + 3, y + 5, 1, 1); r(c, '#633244', x + 11, y + 12, 1, 1) } },
   grama: { nome: 'Grama', draw: (c, x, y) => { r(c, '#6fb35a', x, y, T, T); for (const [a, b] of [[2, 3], [9, 1], [13, 8], [5, 10], [10, 13]]) { r(c, '#5a9e48', x + a, y + b, 1, 2); r(c, '#86c76e', x + a + 1, y + b, 1, 1) } } },
   areia: { nome: 'Areia', draw: (c, x, y) => { r(c, '#ecd7a4', x, y, T, T); for (const [a, b] of [[3, 2], [12, 5], [7, 9], [1, 13], [14, 14]]) r(c, '#d8c088', x + a, y + b, 1, 1) } },
   tijolo: { nome: 'Tijolinho', draw: (c, x, y) => { r(c, '#d9a58c', x, y, T, T); for (let k = 0; k < 4; k++) { const o = k % 2 ? 4 : 0; for (let b = -1; b < 2; b++) r(c, k % 3 ? '#b5654a' : '#a85a40', x + o + b * 8 + 1, y + k * 4 + 1, 7, 3) } r(c, '#d9a58c', x - 1, y, 1, T) } },
@@ -341,6 +342,22 @@ export const KINDS: Record<string, Kind> = {
     },
   },
   // ---- Gamer (sala de jogos) ----
+  'placa-arcade': { nome: 'Placa Arcade', tema: 'Gamer', w: 4, h: 1, camada: 'parede', draw: (c, x) => {
+    box(c, '#242533', x + 2, 6, 58, 18); r(c, '#5ff2ff', x + 3, 7, 56, 1)
+    c.save(); c.fillStyle = '#d3faff'; c.font = 'bold 9px monospace'; c.textAlign = 'center'; c.fillText('ARCADE', x + 31, 19); c.restore()
+  } },
+  'placa-mesas': { nome: 'Placa Sinuca e cartas', tema: 'Gamer', w: 5, h: 1, camada: 'parede', draw: (c, x) => {
+    box(c, '#26382f', x + 2, 6, 74, 18); r(c, '#d6b775', x + 3, 7, 72, 1)
+    c.save(); c.fillStyle = '#fff0cb'; c.font = 'bold 7px monospace'; c.textAlign = 'center'; c.fillText('SINUCA / CARTAS', x + 39, 18); c.restore()
+  } },
+  'mesa-social': { nome: 'Mesa de jogos de cartas', tema: 'Gamer', w: 4, h: 2, draw: (c, x, y) => {
+    box(c, '#6e4529', x + 1, y + 1, 62, 25); r(c, '#275f54', x + 4, y + 4, 56, 18)
+    r(c, '#3e8070', x + 4, y + 4, 56, 1); r(c, '#492f24', x + 2, y + 25, 60, 4)
+    for (const a of [8, 52]) r(c, OUT, x + a, y + 29, 3, 3)
+    for (const [a, b, color] of [[12, 9, '#d95059'], [22, 12, '#f0be53'], [34, 9, '#538fbd'], [44, 12, '#67ac7a']] as const) {
+      box(c, '#fff5de', x + a, y + b, 6, 8); r(c, color, x + a + 1, y + b + 1, 4, 6)
+    }
+  } },
   'sinuca': {
     nome: 'Mesa de sinuca', tema: 'Gamer', w: 4, h: 2, draw: (c, x, y) => {
       const w = 4 * T, h = 2 * T

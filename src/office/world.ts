@@ -1,8 +1,8 @@
 import { BOSS_DESK, MH, MW, OUT, rect, SHADOW, T, WALL, WALL_HI, type C2D } from './base'
 import { exitX, glassDoorX, glassStrip, glassWall } from './andar'
 import { drawArquivo, drawDecor, drawFloor, drawNotebook, MESA, mesaExtra, type DeskLook } from './props'
-import { defaultDesk, deskFrom, deskSides, dimOf, isDesk, kd, parseComodo, renderRoom, solidGrid, type Desk, type Obj, type Sala } from './sala'
-import { COMODOS, comodoOf, type Kind } from './comodos'
+import { defaultDesk, deskFrom, deskSides, dimOf, isDesk, kd, parseComodo, renderRoom, solidGrid, type Desk, type Obj, type Piso, type Sala } from './sala'
+import { comodoOf, montaJogos, spotsJogos, type Kind, type Spot } from './comodos'
 import type { JogoCassino } from '../cassino/regras'
 
 export * from './base'
@@ -41,6 +41,7 @@ export interface Room {
   solid: boolean[][]
   /** sala de vendas: mesas coladas viram bancada com telefone */
   baia: boolean
+  spots: Spot[]
   deskTile: (number | null)[][]
 }
 
@@ -61,16 +62,17 @@ export function emptySala(w = MW, h = MH): Sala {
   return { piso: Array.from({ length: h }, () => Array.from({ length: w }, () => 'madeira' as const)), div: Array.from({ length: h }, () => Array<boolean>(w).fill(false)), objs: [] }
 }
 
-/** monta o andar: specs[k] = sala do slot k; a primeira metade fica em cima do corredor, a outra embaixo */
+/** Cada tipo mantém o seu lado do corredor, mesmo sem a antiga sala de reunião. */
 export function setFloor(specs: { kind: Kind; dept?: string | null; sala: Sala; baia?: boolean }[]) {
-  const n = Math.max(1, Math.ceil(specs.length / 2))
-  const rows = [specs.slice(0, n), specs.slice(n)].map(row => row.map(p => ({ ...p })))
+  const top = (p: typeof specs[number]) => p.kind === 'dept' || !!comodoOf(p.kind)?.top
+  const rows = [specs.filter(top), specs.filter(p => !top(p))].map(row => row.map(p => ({ ...p })))
   const width = (row: typeof rows[0]) => row.reduce((a, p) => a + dimOf(p.sala).w, 0)
   FW = Math.max(...rows.map(width))
-  // fileira mais curta: a sala vazia do fim estica até fechar a largura
+  // A sobra lateral vira salão de jogos, sem esticar o bingo.
   for (const row of rows) {
-    const last = row[row.length - 1], falta = FW - width(row)
-    if (last?.kind === 'vaga' && falta > 0) { const { w, h } = dimOf(last.sala); last.sala = emptySala(w + falta, h) }
+    const last = row.find(p => p.kind === 'jogos') ?? row[row.length - 1], falta = FW - width(row)
+    if (last?.kind === 'jogos' && falta > 0) last.sala = salaJogos(last.sala, false, dimOf(last.sala).w + falta)
+    else if (last?.kind === 'vaga' && falta > 0) { const { w, h } = dimOf(last.sala); last.sala = emptySala(w + falta, h) }
     else if (last && falta > 0) last.sala = { ...last.sala, piso: last.sala.piso.map(l => [...l, ...Array(falta).fill(l[l.length - 1])]), div: last.sala.div.map(l => [...l, ...Array<boolean>(falta).fill(false)]) }
   }
   rooms = rows.flatMap((row, ri) => {
@@ -80,7 +82,7 @@ export function setFloor(specs: { kind: Kind; dept?: string | null; sala: Sala; 
       x += w
       const deskTile = Array.from({ length: h }, () => Array<number | null>(w).fill(null))
       for (const o of sala.objs) if (isDesk(o.k) && o.d !== undefined) for (let k = 0; k < kd(o).w; k++) deskTile[o.y][o.x + k] = o.d
-      return { slot: ri * n + i, kind, id: kind === 'dept' ? dept : null, dept, sala, ox, oy: top ? HY0 - h : HY1 + 1, w, h, top, door: top ? exitX(sala) : glassDoorX(sala), solid: solidGrid(sala), baia, deskTile }
+      return { slot: (ri ? rows[0].length : 0) + i, kind, id: kind === 'dept' ? dept : null, dept, sala, ox, oy: top ? HY0 - h : HY1 + 1, w, h, top, door: top ? exitX(sala) : glassDoorX(sala), solid: solidGrid(sala), baia, deskTile, spots: kind === 'jogos' ? spotsJogos(w) : comodoOf(kind)?.spots ?? [] }
     })
   })
   // nada do corredor pode ficar na frente de uma porta
@@ -246,6 +248,7 @@ type Maq = { jogo?: Jogo; cassino?: JogoCassino; act: string }
 const MAQUINAS: Record<string, Maq> = {
   fliperama: { jogo: 'cobrinha', act: 'No fliperama' }, pebolim: { jogo: 'penalti', act: 'No pebolim' }, 'mesa-jantar': { jogo: 'memoria', act: 'Jogo de tabuleiro' },
   console: { jogo: 'reflexo', act: 'No videogame' }, 'tapete-gamer': { jogo: 'reflexo', act: 'No videogame' },
+  'mesa-social': { jogo: 'memoria', act: 'Jogo de tabuleiro' },
   'caca-niquel': { cassino: 'caca', act: 'No caça-níquel' }, 'mesa-roleta': { cassino: 'roleta', act: 'Na roleta' }, 'mesa-cartas': { cassino: 'blackjack', act: 'No blackjack' },
   'totem-crash': { cassino: 'crash', act: 'No crash' }, 'totem-minas': { cassino: 'minas', act: 'Nas minas' }, 'caixa-fichas': { cassino: 'caca', act: 'No caça-níquel' },
 }
@@ -259,8 +262,26 @@ export function elevadorAt(gx: number, gy: number) {
 export const elevadorSpot = () => ({ x: 2 * T, y: (HY0 + 1) * T, tx: 1, ty: HY0 + 1 })
 
 /** sala de jogos do andar: a arrumada (rooms 'jogos-<setor>') ou a original; com o gerente do cassino no andar, ganha a mesa dele */
-export function salaJogos(data: unknown, gerente: boolean): Sala {
-  const s = parseComodo(data, COMODOS.jogos.sala())
+export function salaJogos(data: unknown, gerente: boolean, largura = 44): Sala {
+  const old = data as Sala | undefined
+  const oldW = Array.isArray(old?.piso?.[0]) ? old.piso[0].length : 0
+  // Uma sala ampliada e salva não pode voltar ao tamanho mínimo ao reabrir.
+  if (oldW <= 128) largura = Math.max(largura, oldW)
+  const base = montaJogos(largura)
+  let s = parseComodo(data, base)
+  // Amplia layouts salvos sem apagar os móveis nem gravar no banco.
+  if (oldW >= 28 && oldW < largura && old?.piso.length === 16) {
+    const fallback = emptySala(oldW, 16), saved = parseComodo(data, fallback)
+    if (saved === fallback) return base
+    const delta = largura - oldW, corte = oldW - 14
+    s = {
+      piso: saved.piso.map(l => [...l.slice(0, corte), ...Array<Piso>(delta).fill('madeira'), ...l.slice(corte)]),
+      div: saved.div.map(l => [...l.slice(0, corte), ...Array<boolean>(delta).fill(false), ...l.slice(corte)]),
+      objs: saved.objs.map(o => ({ ...o, x: o.x >= corte ? o.x + delta : o.x })),
+    }
+    // O modelo de fábrica ganha também as ilhas da área ampliada.
+    if (oldW === 44 && JSON.stringify(old?.objs) === JSON.stringify(montaJogos().objs)) s = base
+  }
   // a mesa do gerente do cassino agora fica na sala dele (gerência do cassino); some daqui se ficou salva
   return gerente ? { ...s, objs: s.objs.filter(o => o.d !== BOSS_DESK) } : s
 }
@@ -271,9 +292,11 @@ export function jogoAt(gx: number, gy: number) {
     for (const o of r.sala.objs) {
       const m = MAQUINAS[o.k], d = kd(o)
       if (!m || !d || gx < r.ox + o.x || gx >= r.ox + o.x + d.w || gy < r.oy + o.y - (d.up ?? 0) || gy >= r.oy + o.y + d.h) continue
-      const sp = (comodoOf('jogos')?.spots ?? []).filter(s => s.act === m.act)
+      const sp = r.spots.filter(s => s.act === m.act)
+        .filter(s => Math.hypot(s.x - o.x, s.y - o.y) <= Math.max(d.w, d.h) + 1 && walkable(r.ox + s.x, r.oy + s.y))
         .sort((a, b) => Math.hypot(a.x - o.x, a.y - o.y) - Math.hypot(b.x - o.x, b.y - o.y))[0]
-      return { jogo: m.jogo, cassino: m.cassino, tx: r.ox + (sp?.x ?? o.x), ty: r.oy + (sp?.y ?? o.y + d.h) }
+      const target = sp ? { tx: r.ox + sp.x, ty: r.oy + sp.y } : near(r.ox + o.x, r.oy + o.y + d.h)
+      return target ? { jogo: m.jogo, cassino: m.cassino, ...target } : null
     }
   }
   return null

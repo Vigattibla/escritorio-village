@@ -77,7 +77,7 @@ export default function Bingo({ onClose }: { onClose: () => void }) {
 
   const status = !b ? 'Abrindo o salão…'
     : !palco ? `Próxima rodada às ${hora(prox!.inicio)}`
-    : palco.estado === 'cancelada' ? 'Rodada cancelada: precisa de pelo menos 2 pessoas (cartelas devolvidas)'
+    : palco.estado === 'cancelada' ? 'Rodada cancelada. As cartelas pagas foram devolvidas.'
     : palco.cheia ? 'BINGO! Rodada encerrada'
     : bolas.length === 0 ? 'O globo está girando…'
     : `Bola ${bolas.length} de 75`
@@ -146,7 +146,7 @@ export default function Bingo({ onClose }: { onClose: () => void }) {
                 <button className="btn primary" disabled={busy || !b || minhasProx.length >= MAX_CARTELAS || saldo < CARTELA} onClick={() => void compra(false)}>Comprar cartela · ☕ {CARTELA}</button>
                 {b?.gratis && <button className="btn soft" disabled={busy || minhasProx.length >= MAX_CARTELAS} onClick={() => void compra(true)}>🎁 Cartela grátis do dia</button>}
               </div>
-              <p className="bg-mini">Você tem {minhasProx.length} de {MAX_CARTELAS} cartelas pra próxima.{(prox?.jogadores ?? 0) < 2 && ' Precisa de pelo menos 2 pessoas, chama alguém!'}</p>
+              <p className="bg-mini">Você tem {minhasProx.length} de {MAX_CARTELAS} cartelas pra próxima. A rodada acontece mesmo com uma pessoa.</p>
               {erro && <p className="cs-erro">{erro}</p>}
               {minhasProx.length > 0 && <div className="bg-cartelas mini">{minhasProx.map(c => <CartelaV key={c.id} c={c} saiu={new Set()} />)}</div>}
             </div>

@@ -41,6 +41,55 @@ function monta(piso: Piso, w: number, h: number, itens: [string, number, number,
 
 const S = (x: number, y: number, dir: Dir, act: string, a: number, b: number, some?: boolean, extra?: Partial<Spot>): Spot => ({ x, y, dir, act, ms: [a * 1000, b * 1000], ...(some ? { some } : {}), ...extra })
 
+/** Salão aberto: arcade à esquerda, mesas sociais no centro e cassino à direita. */
+export function montaJogos(w = 44): Sala {
+  const dx = w - 44
+  const s = monta('madeira', w, 16, [
+    ['placa-arcade', 3, 0], ['placa-mesas', 15, 0], ['letreiro-cassino', w - 12, 0],
+    ['tapete-gamer', 2, 4], ['tv-grande', 7, 0], ['console', 7, 3],
+    ['pufe', 7, 5], ['pufe', 9, 5], ['sofa', 2, 6],
+    ['fliperama', 2, 3], ['fliperama', 4, 3], ['pebolim', 6, 10],
+    ['sinuca', 14, 5], ['sinuca', 14, 10],
+    ['mesa-social', 23, 5], ['mesa-social', 23, 10],
+    ['cadeira-reuniao', 23, 4], ['cadeira-reuniao', 26, 4],
+    ['cadeira-reuniao', 23, 7], ['cadeira-reuniao', 26, 7],
+    ['cadeira-reuniao', 23, 9], ['cadeira-reuniao', 26, 9],
+    ['cadeira-reuniao', 23, 12], ['cadeira-reuniao', 26, 12],
+    ['tapete-cassino', w - 14, 5],
+    ['caca-niquel', w - 11, 3], ['caca-niquel', w - 9, 3], ['caca-niquel', w - 7, 3],
+    ['mesa-roleta', w - 12, 6], ['mesa-cartas', w - 12, 10],
+    ['totem-crash', w - 3, 6], ['totem-minas', w - 3, 10],
+    ['caixa-fichas', w - 7, 13], ['maquina-refri', 9, 13],
+    ['planta', 1, 12], ['planta', 11, 3], ['planta', w - 2, 13],
+    ...(dx >= 10 ? [
+      ['sinuca', 30, 5], ['mesa-social', 30, 10],
+      ['cadeira-reuniao', 30, 9], ['cadeira-reuniao', 33, 12],
+      ['placa-mesas', 29, 0],
+    ] as [string, number, number][] : []),
+  ])
+  // Materiais delimitam as áreas; a faixa de entrada e os eixos ficam livres.
+  for (let y = 2; y < 15; y++) for (let x = 1; x < w - 1; x++) {
+    if (x <= 10) s.piso[y][x] = 'carpete'
+    if (x >= w - 15) s.piso[y][x] = 'carpete-vinho'
+    if (y <= 3 || y === 8 || y === 14) s.piso[y][x] = 'madeira'
+  }
+  return s
+}
+
+export function spotsJogos(w = 44): Spot[] {
+  return [
+    S(2, 4, 'up', 'No fliperama', 30, 90), S(4, 4, 'up', 'No fliperama', 30, 90),
+    S(7, 4, 'up', 'No videogame', 60, 200), S(8, 4, 'up', 'No videogame', 60, 200),
+    S(7, 9, 'down', 'No pebolim', 40, 120), S(7, 11, 'up', 'No pebolim', 40, 120),
+    S(13, 5, 'right', 'Jogando sinuca', 60, 180), S(18, 11, 'left', 'Jogando sinuca', 60, 180),
+    S(24, 7, 'up', 'Jogo de tabuleiro', 60, 180), S(24, 12, 'up', 'Jogo de tabuleiro', 60, 180),
+    S(w - 11, 4, 'up', 'No caça-níquel', 30, 90), S(w - 7, 4, 'up', 'No caça-níquel', 30, 90),
+    S(w - 13, 6, 'right', 'Na roleta', 40, 120), S(w - 8, 7, 'left', 'Na roleta', 40, 120),
+    S(w - 11, 12, 'up', 'No blackjack', 40, 120),
+    S(w - 3, 7, 'up', 'No crash', 20, 60), S(w - 3, 11, 'up', 'Nas minas', 20, 60),
+  ]
+}
+
 /** onde fica o desentupidor, no banheiro (ponto de passagem da cena do vaso entupido; não é sorteado) */
 export const DESENTUPIDOR: Spot = S(12, 3, 'up', 'Cadê o desentupidor?', 2, 3, false, { leva: 'desentupidor' })
 
@@ -80,32 +129,8 @@ export const COMODOS: Record<Exclude<Kind, 'dept' | 'vaga'>, Comodo> = {
   },
   jogos: {
     nome: 'Sala de jogos', cor: '#8e5bd6', top: false,
-    // esquerda: videogame, pebolim, sinuca, tabuleiro e fliperamas; direita: o cassino; meio livre pra porta (café é na cozinha)
-    sala: () => monta('carpete', 28, 16, [
-      // parede de vidro: nada de móvel alto embaixo da decoração; porta fica no meio (13-14)
-      ['tv-grande', 2, 0], ['letreiro-cassino', 18, 0],
-      ['tapete-gamer', 1, 3], ['console', 2, 2], ['pufe', 4, 4], ['sofa', 1, 6],
-      ['estante', 8, 2], ['pebolim', 8, 5],
-      ['sinuca', 3, 9], ['mesa-jantar', 8, 10], ['cadeira-reuniao', 8, 12], ['cadeira-reuniao', 11, 12],
-      ['fliperama', 2, 13], ['fliperama', 4, 13],
-      ['tapete-cassino', 17, 5],
-      ['caca-niquel', 23, 2], ['caca-niquel', 24, 2], ['caca-niquel', 25, 2],
-      ['mesa-roleta', 19, 6], ['mesa-cartas', 19, 10], ['totem-crash', 26, 6], ['totem-minas', 26, 9],
-      ['caixa-fichas', 22, 13], ['maquina-refri', 26, 13],
-      ['planta', 1, 11], ['planta', 16, 14],
-    ]),
-    spots: [
-      S(2, 4, 'up', 'No videogame', 60, 200), S(3, 4, 'up', 'No videogame', 60, 200),
-      S(9, 3, 'up', 'Escolhendo um jogo', 15, 40),
-      S(9, 4, 'down', 'No pebolim', 40, 120), S(9, 6, 'up', 'No pebolim', 40, 120),
-      S(2, 9, 'right', 'Jogando sinuca', 60, 180), S(7, 10, 'left', 'Jogando sinuca', 60, 180),
-      S(9, 9, 'down', 'Jogo de tabuleiro', 60, 180), S(10, 12, 'up', 'Jogo de tabuleiro', 60, 180),
-      S(2, 14, 'up', 'No fliperama', 30, 90), S(4, 14, 'up', 'No fliperama', 30, 90),
-      S(23, 3, 'up', 'No caça-níquel', 30, 90), S(25, 3, 'up', 'No caça-níquel', 30, 90),
-      S(18, 6, 'right', 'Na roleta', 40, 120), S(23, 7, 'left', 'Na roleta', 40, 120), S(21, 8, 'up', 'Na roleta', 40, 120),
-      S(19, 12, 'up', 'No blackjack', 40, 120), S(21, 12, 'up', 'No blackjack', 40, 120),
-      S(26, 7, 'up', 'No crash', 20, 60), S(26, 10, 'up', 'Nas minas', 20, 60),
-    ],
+    sala: () => montaJogos(),
+    spots: spotsJogos(),
   },
   bingo: {
     nome: 'Salão de Bingo', cor: '#d6457f', top: false,
