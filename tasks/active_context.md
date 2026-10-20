@@ -287,3 +287,90 @@ Pendente: push (precisa da migration 202610080900_v4_agenda_metas.sql e do secre
 ## 20/10 — Continuação cassino (Codex; sem commit/push)
 - Clique em porta aberta agora aponta para o interior do cômodo (Game.tsx), evitando terminar na soleira. Execução via Vite SSR: 110 verificações de rotas/portas/assento passaram; `npx tsc -b` passou; oxlint de Game.tsx sem erros (aviso preexistente de Fast Refresh).
 - Pendente: conferência visual demo-bruno/demo-ana e Dudu sentado (nenhum navegador disponível). Ideia de Rei do mês/impeachment registrada só como proposta em tasks/handoff-gpt-cassino.md. Nenhuma publicação/migration/commit realizada. Vault externo sem permissão de escrita nesta sessão.
+
+## 20/10 — Expansão dos jogos solicitada pelo usuário
+- Outra pessoa/agente ficará responsável pelo cassino e jogos em geral; coordenar arquivos antes de implementar. Esta rodada registra briefing, sem alterar jogos.
+- Pedido: desafios diários em cada jogo, com cafezinhos como recompensa diária.
+- Pedido: adicionar sinuca 8-ball (bola 8), jogos cooperativos e versus, incluindo jogos de cartas e UNO ou semelhante.
+- Proposta técnica para quem implementar: objetivos e progresso por pessoa/jogo/dia; conclusão e crédito validados no servidor; recompensa única e idempotente por desafio; mesma interface Backend para demo e Supabase.
+- Proposta de produto: mostrar objetivo, progresso e recompensa no jogo; aproveitar a Sala de jogos existente. Competitivos devem lidar com turno, abandono e reconexão; cooperativos devem registrar contribuição individual.
+- Pendências: valor dos prêmios, teto diário, horário/fuso de renovação, objetivos de cada jogo, prioridade dos novos jogos e regras das salas multiplayer. Não tratar propostas como regras aprovadas.
+- Critérios propostos: atualizar a página ou repetir requisição não duplica prêmio; dia novo renova desafios; placar/recompensa não aceitam resultado arbitrário do cliente; partidas multiplayer mantêm estado consistente entre participantes.
+- Status: briefing preparado; implementação pendente com responsável pelos jogos.
+
+### 20/10 — Proposta de teto e organização da sala
+- Usuário sugeriu máximo de 60 cafezinhos em desafios diários e pediu organizar melhor a sala de jogos.
+- Recomendação pendente de confirmação: teto global de 60 por pessoa/dia somando todos os jogos; desafios por jogo continuam disponíveis, mas crédito respeita o saldo diário restante. Prêmios e quantidade de desafios ainda não definidos.
+- Direção proposta: desafios do dia com progresso 0/60; catálogo por modo Solo, Versus e Cooperativo, com filtro de cartas/sinuca/cassino; salas multiplayer mostram participantes e vagas. Cassino tem identificação própria por envolver apostas.
+- Pergunta enviada: reorganizar espaço físico de móveis/máquinas, painel de jogos ou ambos. Nenhuma UI ou regra econômica alterada.
+
+## 20/10 — Salão ampliado (local, sem commit/push)
+- Usuário aprovou teto global proposto de 60 cafezinhos por pessoa/dia para desafios; implementação econômica continua com responsável pelos jogos.
+- Pedido executado na planta: retirar reunião e usar a lateral no salão. Game.tsx remove reunião da composição; world.ts mantém cada cômodo no lado correto do corredor e entrega a sobra ao salão, sem aumentar o bingo.
+- Salão padrão 44x16 (antes 28x16); com gerência do cassino e sem sala do gerente do setor chega a 58x16. Gerências e bingo preservados.
+- Áreas: arcade à esquerda; sinuca e mesas sociais no centro; cassino vinho à direita, máquinas nas bordas e corredores livres. Novos móveis/placas e piso em sala.ts; montagem em comodos.ts.
+- Sinucas são móveis: 8-ball, UNO, coop/versus e desafios NÃO foram implementados nesta rodada. Mesa social abre Memória existente até integração do outro responsável.
+- Layouts salvos são ampliados em memória, preservando objetos; sem gravação automática no banco. Layout já personalizado mantém arrumação. Voltar ao original no editor aplica a nova organização e mantém a largura atual.
+- Corrigido alvo de interação do caixa/móveis: personagem para junto ao objeto, em tile livre. Spots acompanham largura do salão.
+- Verificação: build passou; 503 verificações via módulos reais/Vite SSR (quatro combinações, portas, caminhos, sobreposições, máquinas e reabertura de layout); oxlint sem erros, avisos preexistentes; detector Impeccable sem achados.
+- Prévia desktop inspecionada nos tamanhos 44 e 58. Celular não validado: comando de viewport travou e extensão perdeu conexão com a aba; não declarar QA móvel concluído.
+- Prévia e verificador temporários ignorados pelo Git: .cassino.local/preview.html e verificar.mjs. Dev local 127.0.0.1:5180.
+- Pesquisa: https://qasiknow.com/casino-design-layout/ e https://www.designgroup.net.au/layout-of-casino-games/ — agrupamento de máquinas, mesas centrais, visibilidade e circulação.
+- Arquivos desta rodada: src/office/comodos.ts, sala.ts, world.ts; src/components/Game.tsx e SalaEditor.tsx. Widget.tsx, turmeo.css e função drive de outras sessões preservados.
+- Próximo: revisão humana da prévia, QA móvel e confirmação antes de push/publicação (AGENTS.md). Nenhuma migration ou publicação realizada.
+
+## 20/10 — Publicado: salão ampliado + bingo solo
+- Autorização explícita do usuário: push/publicação; em seguida pediu bingo com uma pessoa. Possível mudança de sala ficou como proposta.
+- Commit 9049a7f enviado para origin/main. Publicação GitHub Pages concluída com sucesso: https://github.com/Vigattibla/escritorio-village/actions/runs/39497708474 (jobs migrate/functions/build/deploy passaram).
+- Site: https://vigattibla.github.io/escritorio-village/ — HTTP 200; bundle publicado main-DekCqSNL.js contém a sala nova (placa-mesas/carpete-vinho) e o texto de bingo solo.
+- Migration 202610291400_bingo_solo.sql: mínimo passa de duas para uma pessoa; demo acompanha e texto corrigido. Mesmos prêmios, preços, horário e idempotência. Sem cartelas cancela. Não houve aposta nem compra de cartela em conta real nesta validação.
+- Validação: 503 verificações da planta e 23 do bingo; build em worktree isolado do commit exato passou. Primeiro teste de bingo precisou normalizar CRLF e respeitar arredondamento já existente nas múltiplas cartelas; produto não alterou cálculo de prêmio.
+- Bingo continua no salão próprio atual. Novos jogos, coop/versus, 8-ball/UNO e desafios ainda com o outro responsável; teto de desafios de 60 é requisito, não implementação desta rodada.
+- Limite conhecido: QA móvel da planta não foi concluído por timeout da extensão (desktop conferido anteriormente).
+- Mudanças alheias de Widget.tsx, turmeo.css e acervo ficaram fora do commit. Worktree de verificação em .cassino.local/publicacao-9049a7f (ignorado); sem alterações posteriores de código nesta rodada.
+
+## 20/10 — Correção após usuário reportar sala vazia
+- Causa comprovada por leitura de rooms/jogos-marketing: planta salva 28x16 com 28 objetos. Código anterior inseria faixa central vazia, deixando móveis nos extremos; prévia anterior havia usado modelo novo.
+- Corrigido em c39d02c: remontar legado no modelo novo preservando ids, estante e mesa extra; largura final calculada antes da adaptação. Nenhum dado de produção escrito.
+- 184 verificações com planta salva real e render visual passaram; tsc, oxlint e build isolado passaram. Teste permanente scripts/verificar-sala-jogos.mjs agora obrigatório no workflow Pages.
+- Push autorizado pela sessão realizado; aguardando confirmação do deployment. Artefatos de diagnóstico/preview em .cassino.local (ignorados).
+
+
+## 20/10 — Correção publicada (c39d02c)
+- GitHub Pages concluído: https://github.com/Vigattibla/escritorio-village/actions/runs/39500380999 . Teste permanente da planta salva, build e deploy passaram.
+- Site HTTP 200 com bundle main-1MyrHmlb.js. Código de remontagem legado->mesa-social e bingo solo confirmados no bundle publicado.
+- Sala jogos-marketing de produção foi consultada somente em leitura (28x16, 28 objetos); arrumação antiga ficava nas extremidades após alargamento. Corrigido o adaptador e cálculo antecipado da largura. Dados originais do banco permanecem intactos.
+- Validado visualmente o renderer com a planta salva real; 184 verificações cobrem larguras 44/58, acesso aos jogos, sem sobreposição, duas mesas blackjack, estante e reabertura. Teste é executado no CI antes do build.
+- Lição repetida registrada: validar layout com estado salvo real, não apenas modelo novo. Mudanças alheias preservadas. Usuário pode recarregar o site para obter a correção.
+
+## 20/10 — Jogos executáveis solicitados + Claude
+- Usuário cobrou jogos reais e correção de placar; pediu base por Codex e Claude só para finalizar, com mínimo de gasto.
+- Base: catálogo seis jogos, mesa de sinuca/cartas conectada, botão Jogar visível em qualquer sala e acesso direto na conta cassino; motor de cartas puro e cálculo de ranking com melhor resultado por jogo/mês/setor, ignorando partidas locais.
+- Claude CLI Sonnet com esforço baixo e tarefa limitada a 4 arquivos concluiu física/regras de sinuca, UI de sinuca, UI de cartas e CSS. Uso estimado informado: USD 0.7278618; sem segunda chamada.
+- Modos novos: sinuca 8-ball versus local (duas pessoas no mesmo dispositivo), cartas estilo UNO versus computador. Não é multiplayer online; sem cafezinhos/ranking global para resultados locais. Desafios diários continuam não implementados.
+- Correções adicionais: respostas de rodada anterior não sobrescrevem nova pontuação; largura do texto dos pontos no painel limitada ao espaço; cartas contam avanço da mão humana, não do bot.
+- Verificação em andamento: 45 regras/physics/ranking e 189 da planta passaram, TypeScript passou; conferência de jogadas reais no navegador em andamento.
+
+
+- Conferência concluída: sinuca deu tacada e resolveu troca de turno; cartas jogou coringa, escolheu verde, contou 10 pontos da mão humana e bot respondeu. Fluxo completo na demo: login -> Escritório -> Jogar -> Sinuca abriu dentro do app real.
+- Celular 390px: janela/controles medidos; ajuste b2a0f15 mantém modal acima da navegação (z=110) e força ocupa largura da mesa. Ambos commits enviados; CI de 8cf732d passou, aguardando último deploy b2a0f15.
+
+
+## 20/10 — Publicados os jogos executáveis
+- Commits 8cf732d e b2a0f15 no ar. Workflow final https://github.com/Vigattibla/escritorio-village/actions/runs/39503401243 concluído com sucesso (testes/build/deploy).
+- Site HTTP 200; main-B1K2zr-R.js contém sinuca real (Tacada), cartas (escolha de cor) e bingo solo; main-D1PAeSip.css contém correções móveis.
+- Uso: Escritório -> Jogar (botão visível no canvas) -> Sinuca 8-ball ou Cartas. Conta cassino também ganha entrada Jogos; mesas físicas conectadas. Sinuca é VS local no mesmo dispositivo; cartas é VS bot. Coop/multiplayer online e desafios diários de até 60 cafezinhos não entregues nesta etapa.
+- Placar: guarda de sessão para ignorar respostas antigas, melhor resultado único por jogo/mês/setor, resultados locais separados de ranking/cafezinhos; pontos do painel cabem no visor.
+- Claude encerrou quatro arquivos por uma única chamada limitada: física/regras, Sinuca.tsx, Cartas.tsx, mesas.css; custo estimado relatado USD 0.7278618. Codex fez motor de cartas, catálogo, integração, revisão e ajustes finais.
+- 45 verificações de física/cartas/ranking + 189 da planta, TypeScript e CI passaram. No navegador: tacada/troca de turno, coringa/cor, resposta do bot e pontuação; fluxo de entrada pelo app completo conferido. Em 390px, modal acima da navegação e força na largura da mesa confirmados.
+- Mudanças alheias em Widget/CSS/acervo preservadas. Nenhuma nova migration nesta etapa.
+
+## 20/10 — Multiplayer e bots (validação)
+- Pedido: sinuca/UNO com colegas em aparelhos distintos, bots e baralho; usuário autorizou terminar e publicar.
+- Entregue no código: três jogos online de duas contas; Mau-Mau 52 cartas; bot geométrico de sinuca e bots locais de cartas, sem IA paga por jogada. Regras puras compartilhadas entre demo e edge; dados privados só via função autenticada, sem acesso direto/realtime da tabela.
+- Claude CLI finalizou somente migration/edge; uma chamada Sonnet low com limite USD 2, custo estimado relatado USD 0.316093. Codex fez protocolo, bots, clientes, UI, testes e revisão do endpoint/SQL.
+- Validação local: 189 da planta, 45 das regras/placar, teste de partidas multiplayer/privacidade/cartas conservadas, 33 do handler HTTP (auth/CAS/privacidade), tsc/build e Deno check passaram. Detector de UI sem achados. Oxlint sem erros, com avisos React no canvas/efeitos.
+- Teste HTTP inicialmente falhou porque o mock selecionava linhas antes do await de leitura do PATCH; corrigida atomicidade do mock e teste passou. Nenhuma alteração do protocolo para ocultar a falha.
+- Navegador: bot da sinuca respondeu; duas contas UNO jogaram e retomaram a mesa após atualização; baralho jogou e bot respondeu, layout 390px conferido. Extensão apresentou timeouts e uma aba stale, recuperada em nova aba.
+- Desafios diários de até 60 cafezinhos seguem pendentes; placar mensal continua isolado das mesas e protegido contra respostas antigas.
+- Publicação em andamento; preservar alterações alheias de Widget, turmeo.css e acervo.

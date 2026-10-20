@@ -1,10 +1,13 @@
 export type JogoClassico = 'cobrinha' | 'penalti' | 'memoria' | 'reflexo'
-export type Jogo = JogoClassico | 'sinuca' | 'cartas'
-export interface JogoProps { partida: string; onPts: (n: number) => void; onFim: (n: number) => void; onErro: (msg: string) => void }
-export const treinoDe = (j: Jogo) => j === 'sinuca' || j === 'cartas'
+import type { AcaoMesa, MesaVista } from '../../supabase/functions/_shared/jogos/mesa.ts'
+export type Jogo = JogoClassico | 'sinuca' | 'cartas' | 'baralho'
+export interface MesaRede { mesa: MesaVista; ocupado: boolean; acao: (acao: AcaoMesa) => Promise<void> }
+export interface JogoProps { partida: string; onPts: (n: number) => void; onFim: (n: number) => void; onErro: (msg: string) => void; bot?: boolean; baralho?: boolean; rede?: MesaRede }
+export const treinoDe = (j: Jogo) => j === 'sinuca' || j === 'cartas' || j === 'baralho'
 export const JOGOS: { id: Jogo; nome: string; onde: string; dica: string }[] = [
-  { id: 'sinuca', nome: 'Sinuca 8-ball', onde: 'Mesa de sinuca', dica: 'Duas pessoas no mesmo aparelho. Encaçape seu grupo e deixe a bola 8 por último.' },
-  { id: 'cartas', nome: 'Cartas', onde: 'Mesa de cartas', dica: 'Estilo UNO, contra o computador. Combine cor ou valor; vence quem zerar a mão.' },
+  { id: 'sinuca', nome: 'Sinuca 8-ball', onde: 'Mesa de sinuca', dica: 'Contra bot, com outra pessoa online ou no mesmo aparelho. Deixe a bola 8 por último.' },
+  { id: 'cartas', nome: 'UNO', onde: 'Mesa de cartas', dica: 'Combine cor ou valor. Contra bot ou outra pessoa online.' },
+  { id: 'baralho', nome: 'Baralho', onde: 'Mau-Mau · 52 cartas', dica: 'Combine naipe ou valor. Ás e valete pulam, 7 compra duas, dama muda o naipe.' },
   { id: 'cobrinha', nome: 'Cobrinha', onde: 'Fliperama', dica: 'Setas, WASD ou arraste. Pegue o café e não bata.' },
   { id: 'penalti', nome: 'Pênalti', onde: 'Pebolim', dica: 'Espaço ou clique pra chutar. Mire longe do goleiro: 10 cobranças.' },
   { id: 'memoria', nome: 'Memória', onde: 'Mesa de jogos', dica: 'Ache os 8 pares. Menos erros e menos tempo valem mais.' },

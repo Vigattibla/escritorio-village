@@ -32,3 +32,16 @@ Escritório virtual da equipe Village Resort, estilo Gather + Trello: cada pesso
 
 - Bingo deve iniciar com uma pessoa (uma ou mais cartelas); rodada sem participantes continua cancelada. Mover o bingo para outra sala é proposta pendente.
 
+
+## Base executável dos jogos — 20/10
+- Sinuca 8-ball: duas pessoas no mesmo aparelho, com mira, força, física, grupos e bola 8.
+- Cartas estilo UNO: humano versus computador, ações e escolha de cor.
+- Entrada visível por Escritório -> Jogar e conta do cassino; mesas abrem os jogos respectivos.
+- Resultados locais não dão cafezinhos nem alteram ranking mensal; multiplayer online, coop e desafios diários até 60 cafezinhos seguem pendentes.
+
+
+## 20/10 — Sinuca, UNO e baralho com pessoas e bots
+- Sinuca 8-ball e UNO: partidas online para duas contas, cada pessoa no próprio aparelho, e modo contra bot. Sinuca mantém opção no mesmo aparelho.
+- Baralho: Mau-Mau com 52 cartas/quatro naipes, cinco cartas iniciais, contra bot ou outra conta online; regras resumidas na tela.
+- Mesas persistidas no servidor, validação de turno/versão, cálculo de tacadas no servidor, projeção privada das mãos, retomada e saída. Sem aposta ou recompensa nesta etapa.
+- Desafios diários com teto total de 60 cafezinhos continuam pendentes.

@@ -119,3 +119,18 @@ Conta do cassino nunca acessa coisa crítica. Sem service_role. Não criar conta
 - 45 verificações de física/cartas/ranking e 189 da sala salva passaram; TypeScript passou; detector sem achados; warnings de lint não bloqueantes. Ambos verificadores de jogo executados no CI antes da publicação.
 - Desafios diários até 60 cafezinhos e multiplayer online continuam pendentes; não anunciar como implementados.
 
+
+## 20/10 — Publicados os jogos executáveis
+- Commits 8cf732d e b2a0f15 no ar. Workflow final https://github.com/Vigattibla/escritorio-village/actions/runs/39503401243 concluído com sucesso (testes/build/deploy).
+- Site HTTP 200; main-B1K2zr-R.js contém sinuca real (Tacada), cartas (escolha de cor) e bingo solo; main-D1PAeSip.css contém correções móveis.
+- Uso: Escritório -> Jogar (botão visível no canvas) -> Sinuca 8-ball ou Cartas. Conta cassino também ganha entrada Jogos; mesas físicas conectadas. Sinuca é VS local no mesmo dispositivo; cartas é VS bot. Coop/multiplayer online e desafios diários de até 60 cafezinhos não entregues nesta etapa.
+- Placar: guarda de sessão para ignorar respostas antigas, melhor resultado único por jogo/mês/setor, resultados locais separados de ranking/cafezinhos; pontos do painel cabem no visor.
+- Claude encerrou quatro arquivos por uma única chamada limitada: física/regras, Sinuca.tsx, Cartas.tsx, mesas.css; custo estimado relatado USD 0.7278618. Codex fez motor de cartas, catálogo, integração, revisão e ajustes finais.
+- 45 verificações de física/cartas/ranking + 189 da planta, TypeScript e CI passaram. No navegador: tacada/troca de turno, coringa/cor, resposta do bot e pontuação; fluxo de entrada pelo app completo conferido. Em 390px, modal acima da navegação e força na largura da mesa confirmados.
+- Mudanças alheias em Widget/CSS/acervo preservadas. Nenhuma nova migration nesta etapa.
+
+## 20/10 — Evolução online/bots
+- Nova etapa substitui a limitação local acima: sinuca/UNO/Mau-Mau com duas contas online, retomada e saída; os três têm bot local. Sinuca mantém revezamento no aparelho.
+- Estado e versão validados na edge, mãos privadas, sinuca calculada no servidor, CAS contra duplicação. Interface Backend implementada em demo e Supabase. Migration mesas_online e função mesas publicadas junto com o cliente pelo CI.
+- Claude finalizou apenas SQL/endpoint (estimativa USD 0.316093); Codex fez base, UI, regras/bots e verificações.
+- Desafios diários de até 60 cafezinhos continuam pendentes; sem recompensas automáticas nas mesas.

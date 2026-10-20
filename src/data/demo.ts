@@ -1,3 +1,5 @@
+import { acaoMesa, criarMesa, entrarMesa, resumoMesa, sairMesa, tipoMesa, visaoMesa } from '../../supabase/functions/_shared/jogos/mesa.ts'
+import type { MesaFn, MesaPedido, MesaRegistro, MesaResposta } from '../../supabase/functions/_shared/jogos/mesa.ts'
 import { toEmail, validUser } from './login'
 import { dayKey } from '../game/xp'
 import { deptOf, outranks, rankOf } from '../game/ranks'
@@ -683,6 +685,34 @@ export class DemoBackend implements Backend {
 
   /** sala de jogos da demo: mesmo jogo do SQL, sem teto; quem grava o recorde é o app */
   private partidas = new Map<string, { cartas: number[]; t0: number; pend: number | null; achadas: number[]; erros: number }>()
+  async mesas(fn: MesaFn, pedido: MesaPedido = {}): Promise<MesaResposta> {
+    const opera = () => this.mesaOnline(fn, pedido)
+    return navigator.locks ? navigator.locks.request('ev:mesas-online', opera) : opera()
+  }
+  private mesaOnline(fn: MesaFn, p: MesaPedido): MesaResposta {
+    const user = sessionStorage.getItem(K.session)
+    if (!user) throw new Error('Entre novamente.')
+    const key = 'ev:mesas-online', rs = read<MesaRegistro[]>(key, [])
+    if (fn === 'listar') return { mesas: rs.filter(r => (!p.jogo || p.jogo === r.jogo) && ((r.dono === user || r.convidado === user) && r.estado !== 'fim' || (r.estado === 'espera' || r.dono === user || r.convidado === user) && Date.parse(r.atualizado) > Date.now() - 6 * 3600e3)).slice(-50).reverse().map(resumoMesa) }
+    if (fn === 'criar') {
+      if (!tipoMesa(p.jogo)) throw new Error('Escolha um jogo.')
+      const old = rs.find(r => r.dono === user && r.jogo === p.jogo && r.estado === 'espera')
+      if (old) return { mesa: visaoMesa(old, user) }
+      if (rs.filter(r => r.dono === user && r.estado !== 'fim').length >= 3) throw new Error('Você já tem três mesas abertas. Retome ou saia de uma delas.')
+      const r = criarMesa(crypto.randomUUID(), p.jogo, user)
+      write(key, [...rs.slice(-99), r]); return { mesa: visaoMesa(r, user) }
+    }
+    const i = rs.findIndex(r => r.id === p.id), old = rs[i]
+    if (!old) throw new Error('Mesa não encontrada.')
+    if (fn === 'estado') return { mesa: visaoMesa(old, user) }
+    let next: MesaRegistro
+    if (fn === 'entrar') next = entrarMesa(old, user)
+    else if (fn === 'sair') next = sairMesa(old, user)
+    else if (fn === 'acao' && p.acao) next = acaoMesa(old, user, p.versao ?? -1, p.acao)
+    else throw new Error('Ação inválida.')
+    rs[i] = next; write(key, rs); return { mesa: visaoMesa(next, user) }
+  }
+
   async jogos(fn: 'iniciar' | 'fim' | 'virar', a: Record<string, unknown>): Promise<JogoRes> {
     if (fn === 'iniciar') {
       this.vigia()

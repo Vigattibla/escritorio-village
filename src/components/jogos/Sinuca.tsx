@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { JogoProps } from '../../jogos/catalogo'
 import type { Bola, Contexto, Grupo } from '../../jogos/sinuca'
-import { A, CACAPAS, L, MAX_V, R, avancar, emMovimento, grupoDe, montarMesa, pontoLivre, resolverTacada } from '../../jogos/sinuca'
+import { A, CACAPAS, L, MAX_V, R, avancar, emMovimento, grupoDe, montarMesa, pontoLivre, resolverTacada, tacadaBot } from '../../jogos/sinuca'
 import './mesas.css'
 
 const CW = 880, CH = 480, M = 40
@@ -61,12 +61,13 @@ function desenhar(cv: HTMLCanvasElement, j: Jogo, ang: number, pot: number) {
   c.restore()
 }
 
-export default function Sinuca({ onPts, onFim }: JogoProps) {
+export default function Sinuca({ onPts, onFim, rede, bot = false }: JogoProps) {
   const J = useRef<Jogo | null>(null)
   if (!J.current) J.current = novoJogo()
   const cv = useRef<HTMLCanvasElement>(null)
   const raf = useRef(0)
   const ultimoFrame = useRef(0)
+  const versaoVista = useRef(-1)
   const vivo = useRef(true)
   const fimEnviado = useRef(false)
   const [ang, setAng] = useState(0)
@@ -80,6 +81,12 @@ export default function Sinuca({ onPts, onFim }: JogoProps) {
 
   const resolver = useCallback(() => {
     const j = J.current!
+    const canonico = rede?.mesa.sinuca
+    if (canonico) {
+      j.bolas = canonico.bolas.map(b => ({ ...b })); j.vez = canonico.vez; j.grupos = [...canonico.grupos]; j.fim = canonico.vencedor !== null; j.movendo = false
+      onPts(j.bolas.filter(b => b.fora && b.id > 0).length)
+      setUi(instantaneo(j, canonico.aviso, canonico.vencedor)); setMovendo(false); redesenhar(); return
+    }
     const res = resolverTacada(j.vez, j.grupos, j.ctx, j.antes)
     j.grupos = res.grupos
     const br = j.bolas[0]
@@ -93,7 +100,7 @@ export default function Sinuca({ onPts, onFim }: JogoProps) {
       setUi(instantaneo(j, res.aviso))
     }
     setMovendo(false)
-  }, [onPts])
+  }, [onPts, rede, redesenhar])
 
   const quadro = useCallback(() => {
     const j = J.current!
@@ -116,16 +123,43 @@ export default function Sinuca({ onPts, onFim }: JogoProps) {
 
   useEffect(() => {
     vivo.current = true
-    return () => { vivo.current = false; cancelAnimationFrame(raf.current) }
+    return () => { vivo.current = false; versaoVista.current = -1; cancelAnimationFrame(raf.current) }
   }, [])
   useEffect(() => { redesenhar() }, [ang, pot, ui, redesenhar])
+  const versao = rede?.mesa.versao
+  useEffect(() => {
+    const server = rede?.mesa.sinuca
+    if (!server || versao === undefined || versaoVista.current >= versao) return
+    versaoVista.current = versao
+    cancelAnimationFrame(raf.current)
+    const j = J.current!, shot = server.ultima
+    j.grupos = [...server.grupos]; j.fim = false; j.ctx = { encacapadas: [], primeiro: null }; j.passos = 0
+    if (shot && versao >= 2) {
+      j.bolas = shot.antes.map(b => ({ ...b })); j.vez = shot.vez
+      j.antes = j.bolas.filter(b => !b.fora && b.id > 0).map(b => b.id)
+      const br = j.bolas[0], v = shot.forca / 100 * MAX_V
+      br.vx = Math.cos(shot.angulo) * v; br.vy = Math.sin(shot.angulo) * v
+      j.movendo = true; ultimoFrame.current = performance.now(); setMovendo(true)
+      setUi(instantaneo(j, 'Tacada recebida. Bolas em movimento…'))
+      raf.current = requestAnimationFrame(quadro)
+    } else {
+      j.bolas = server.bolas.map(b => ({ ...b })); j.vez = server.vez; j.movendo = false; j.fim = server.vencedor !== null
+      setMovendo(false); setUi(instantaneo(j, server.aviso, server.vencedor)); redesenhar()
+    }
+  }, [versao])
 
-  const tacada = () => {
+
+  const tacada = (angulo = ang, forca = pot, automatica = false) => {
     const j = J.current!
-    if (j.movendo || j.fim) return
-    const v = (Math.max(5, pot) / 100) * MAX_V
+    if (j.movendo || j.fim || (bot && j.vez === 1 && !automatica)) return
+    if (rede) {
+      if (rede.ocupado || rede.mesa.eu !== j.vez) return
+      void rede.acao({ tipo: 'tacada', angulo: Math.atan2(Math.sin(angulo), Math.cos(angulo)), forca })
+      return
+    }
+    const v = (Math.max(5, forca) / 100) * MAX_V
     const br = j.bolas[0]
-    br.vx = Math.cos(ang) * v; br.vy = Math.sin(ang) * v
+    br.vx = Math.cos(angulo) * v; br.vy = Math.sin(angulo) * v
     j.ctx = { encacapadas: [], primeiro: null }
     j.antes = j.bolas.filter(b => !b.fora && b.id > 0).map(b => b.id)
     j.movendo = true; j.passos = 0
@@ -136,9 +170,18 @@ export default function Sinuca({ onPts, onFim }: JogoProps) {
     raf.current = requestAnimationFrame(quadro)
   }
 
+  useEffect(() => {
+    if (!bot || rede || ui.vez !== 1 || movendo || ui.vencedor !== null) return
+    const timer = setTimeout(() => {
+      const j = J.current!, t = tacadaBot(j.bolas, j.grupos[1])
+      setAng(t.angulo); setPot(Math.round(t.forca)); tacada(t.angulo, t.forca, true)
+    }, 700)
+    return () => clearTimeout(timer)
+  }, [bot, ui.vez, ui.vencedor, movendo])
+
   const mirar = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const j = J.current!
-    if (j.movendo || j.fim) return
+    if (j.movendo || j.fim || (rede && (rede.ocupado || rede.mesa.eu !== j.vez)) || (bot && j.vez === 1)) return
     if (e.pointerType !== 'mouse' && e.type === 'pointermove' && e.buttons === 0) return
     const r = e.currentTarget.getBoundingClientRect()
     const px = ((e.clientX - r.left) / r.width) * CW - M, py = ((e.clientY - r.top) / r.height) * CH - M
@@ -166,14 +209,14 @@ export default function Sinuca({ onPts, onFim }: JogoProps) {
   }
 
   const nomeGrupo = (g: Grupo | null) => (g ? (g === 'lisas' ? 'Lisas (1 a 7)' : 'Listradas (9 a 15)') : 'Grupo livre')
-  const bloqueado = movendo || ui.vencedor !== null
+  const bloqueado = movendo || ui.vencedor !== null || !!rede?.ocupado || !!(rede && rede.mesa.eu !== ui.vez) || (bot && ui.vez === 1)
 
   return (
     <div className="mesa-raiz">
       <div className="mesa-hud">
         {[0, 1].map(i => (
           <div key={i} className={'mesa-jog' + (ui.vez === i && ui.vencedor === null ? ' mesa-ativo' : '')}>
-            <b>Jogador {i + 1}{ui.vez === i && ui.vencedor === null ? ' (vez)' : ''}</b>
+            <b>{bot && i === 1 ? 'Bot' : `Jogador ${i + 1}`}{ui.vez === i && ui.vencedor === null ? ' (vez)' : ''}</b>
             {nomeGrupo(ui.grupos[i])}: {ui.grupos[i] ? `${ui.rest[i as 0 | 1]} restantes` : '7 restantes'}
           </div>
         ))}
@@ -194,7 +237,7 @@ export default function Sinuca({ onPts, onFim }: JogoProps) {
           <input type="range" min={5} max={100} step={1} value={pot} disabled={bloqueado} onChange={e => setPot(Number(e.target.value))} aria-label="Força da tacada" />
           <span>{pot}</span>
         </label>
-        <button type="button" className="mesa-btn mesa-forte" disabled={bloqueado} onClick={tacada}>Tacada</button>
+        <button type="button" className="mesa-btn mesa-forte" disabled={bloqueado} onClick={() => tacada()}>Tacada</button>
       </div>
       <p className="mesa-dica">Toque ou arraste na mesa para mirar. Teclado: setas e espaço (Shift = mira fina).</p>
       {ui.vencedor !== null && (

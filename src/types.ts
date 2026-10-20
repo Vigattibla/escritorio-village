@@ -1,3 +1,4 @@
+import type { MesaFn, MesaPedido, MesaResposta } from '../supabase/functions/_shared/jogos/mesa.ts'
 import type { Escolha, JogoCassino, Rodada } from './cassino/regras'
 import type { Bolao } from './cassino/bolao'
 import type { Bingo } from './cassino/bingo'
@@ -419,6 +420,7 @@ export interface Backend {
   setCassino(id: string, on: boolean): Promise<void>
   /** sala de jogos: a partida nasce no servidor, que confere o tempo e o teto (a Memória é jogada lá) */
   jogos(fn: 'iniciar' | 'fim' | 'virar', args: Record<string, unknown>): Promise<JogoRes>
+  mesas(fn: MesaFn, pedido?: MesaPedido): Promise<MesaResposta>
   /** bolão: estado da semana (e sorteia a que fechou), compra de bilhete e troca de cafezinho por latinha */
   bolaoEstado(): Promise<Bolao>
   /** poderes: sorteia a semana (se faltar), paga mesada/coringa do dia e devolve os da última semana */

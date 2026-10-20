@@ -7,6 +7,9 @@ import type { PhName } from './ph'
 import MiniAvatar from './MiniAvatar'
 import { Fundo } from './Fundo'
 import { JOGOS, rankingJogos, treinoDe } from '../jogos/catalogo'
+import type { JogoProps } from '../jogos/catalogo'
+import type { TipoMesa } from '../../supabase/functions/_shared/jogos/mesa.ts'
+import MesaOnline from './jogos/MesaOnline'
 import Sinuca from './jogos/Sinuca'
 import Cartas from './jogos/Cartas'
 import '../novos-jogos.css'
@@ -27,7 +30,7 @@ function salvar(jogo: Jogo, pontos: number) {
   return pontos > 0 && pontos > (old?.pontos ?? 0)
 }
 
-interface GameProps { partida: string; onPts: (n: number) => void; onFim: (n: number, r?: JogoRes) => void; onErro: (msg: string) => void }
+interface GameProps extends JogoProps { partida: string; onPts: (n: number) => void; onFim: (n: number, r?: JogoRes) => void; onErro: (msg: string) => void }
 const W = 288
 const rnd = (n: number) => Math.floor(Math.random() * n)
 /** posição do clique em pixels do jogo (o canvas é esticado no CSS) */
@@ -268,10 +271,12 @@ function Reflexo({ onPts, onFim }: GameProps) {
   return <canvas ref={ref} width={W} height={W} className="jg-cv cross" aria-label="Reflexo" />
 }
 
-const TELAS: Record<Jogo, (p: GameProps) => React.ReactElement> = { cobrinha: Cobrinha, penalti: Penalti, memoria: Memoria, reflexo: Reflexo, sinuca: Sinuca, cartas: Cartas }
+const Baralho = (props: GameProps) => <Cartas {...props} baralho />
+const TELAS: Record<Jogo, (p: GameProps) => React.ReactElement> = { cobrinha: Cobrinha, penalti: Penalti, memoria: Memoria, reflexo: Reflexo, sinuca: Sinuca, cartas: Cartas, baralho: Baralho }
 
 export default function Jogos({ inicio, onClose }: { inicio: Jogo; onClose: () => void }) {
   const [jogo, setJogo] = useState<Jogo>(inicio)
+  const [modo, setModo] = useState<'bot' | 'local' | 'online'>('bot')
   const etapa = useRef(0)
   const treino = treinoDe(jogo)
   useEffect(() => () => { etapa.current++ }, [])
@@ -298,7 +303,7 @@ export default function Jogos({ inicio, onClose }: { inicio: Jogo; onClose: () =
     return () => window.removeEventListener('keydown', k)
   }, [onClose])
 
-  const troca = (j: Jogo) => { etapa.current++; setAbrindo(false); setJogo(j); setFase('pronto'); setAviso(''); setPts(0); setRodada(r => r + 1) }
+  const troca = (j: Jogo) => { etapa.current++; setAbrindo(false); setModo('bot'); setJogo(j); setFase('pronto'); setAviso(''); setPts(0); setRodada(r => r + 1) }
   // a partida nasce no servidor (relógio e cartas ficam lá)
   const joga = async () => {
     if (abrindo) return
@@ -346,19 +351,25 @@ export default function Jogos({ inicio, onClose }: { inicio: Jogo; onClose: () =
         </div>
         <div className="jg-body">
           <div className="jg-play">
-            <div className="jg-score"><b>{pts}</b><span>{treino ? 'placar da partida local' : 'pontos'}</span><span className="grow" />{!treino && <span className="jg-best"><Ph n="star" size={14} fill /> seu recorde: {meu}</span>}</div>
+            <div className="jg-score"><b>{pts}</b><span>{treino ? 'pontos da partida' : 'pontos'}</span><span className="grow" />{!treino && <span className="jg-best"><Ph n="star" size={14} fill /> seu recorde: {meu}</span>}</div>
             <div className={"jg-stage" + (treino ? " jg-stage-local" : "")}>
               {fase === 'pronto' ? (
                 <div className="jg-over">
                   <small>{info.onde}</small>
                   <b>{info.nome}</b>
                   <p>{info.dica}</p>
+                  {treino && <div className="mesa-modos" role="group" aria-label="Modo de jogo">
+                    <button className="btn soft sm" aria-pressed={modo === 'bot'} onClick={() => setModo('bot')}>Contra bot</button>
+                    <button className="btn soft sm" aria-pressed={modo === 'online'} onClick={() => setModo('online')}>Com pessoas online</button>
+                    {jogo === 'sinuca' && <button className="btn soft sm" aria-pressed={modo === 'local'} onClick={() => setModo('local')}>Mesmo aparelho</button>}
+                  </div>}
+
                   {aviso && <p className="jg-aviso" role="alert">{aviso}</p>}
                   <button className="btn" onClick={joga} disabled={abrindo}><Ph n="play" size={16} fill /> {abrindo ? 'Abrindo…' : 'Jogar'}</button>
                 </div>
               ) : (
                 <>
-                  <Tela key={rodada} partida={partida} onPts={marca} onFim={fim} onErro={erro} />
+                  {treino && modo === 'online' ? <MesaOnline key={rodada} jogo={jogo as TipoMesa} partida={partida} onPts={marca} onFim={fim} onErro={erro} /> : <Tela key={rodada} partida={partida} onPts={marca} onFim={fim} onErro={erro} bot={modo === 'bot'} />}
                   {fase === 'fim' && (
                     <div className="jg-over dim">
                       {rec && <span className="jg-rec"><Ph n="trophy" size={16} fill /> Novo recorde do mês</span>}
@@ -372,7 +383,7 @@ export default function Jogos({ inicio, onClose }: { inicio: Jogo; onClose: () =
             </div>
           </div>
           <aside className="jg-rank">
-            {treino ? <><h3>{info.nome}</h3><p>{info.dica}</p><p>{jogo === 'sinuca' ? 'Versus local: duas pessoas revezam no mesmo aparelho.' : 'Versus computador: sua mão fica visível, a do adversário fica fechada.'}</p><small className="jg-note">Partida local, sem aposta. Pontuação separada do ranking mensal e dos cafezinhos.</small></> : <>
+            {treino ? <><h3>{info.nome}</h3><p>{info.dica}</p><p>{modo === 'online' ? 'Cada pessoa joga no seu aparelho. Crie uma mesa ou entre na de um colega.' : modo === 'bot' ? 'Você joga contra o computador, sem precisar esperar outra pessoa.' : 'Duas pessoas revezam no mesmo aparelho.'}</p><small className="jg-note">Sem aposta. Pontuação da partida separada do ranking mensal e dos cafezinhos.</small></> : <>
 
             <div className="jg-rh"><Ph n="trophy" size={18} /> <b>Ranking de {mesNome(mes)}</b></div>
             <div className="jg-seg">

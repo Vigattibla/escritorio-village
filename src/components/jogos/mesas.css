@@ -47,6 +47,17 @@
 .mesa-escolha { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; align-items: center; padding: 8px; border-radius: 10px; background: #0008 }
 .mesa-cor { width: 44px; height: 44px; border-radius: 50%; border: 3px solid #fff; cursor: pointer; padding: 0 }
 .mesa-cor:focus-visible { outline: 3px solid #f5c518; outline-offset: 2px }
+.mesa-modos { display:flex; flex-wrap:wrap; justify-content:center; gap:8px; margin:12px 0 }
+.mesa-modos button[aria-pressed="true"] { background:#26324f; color:#fff }
+.mesa-online { padding:12px; min-height:420px }
+.mesa-online h3 { color:#fff; margin:0 }
+.mesa-lista { list-style:none; padding:0; display:grid; gap:10px }
+.mesa-lista li,.mesa-online-top { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px }
+.mesa-lista li { padding:10px; background:#ffffff12; border:1px solid #ffffff30; border-radius:8px }
+.mesa-baralho .mesa-carta { background:#fff9e9; color:#15223a; display:flex; flex-direction:column }
+.mesa-baralho .mesa-carta small { font-size:22px }
+.mesa-baralho .mesa-c-vermelho,.mesa-baralho .mesa-c-amarelo { color:#b42132 }
+.mesa-online .mesa-online-top { font-size:12px; line-height:1.5; border-bottom:1px solid #ffffff30; padding-bottom:8px }
 .mesa-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 99px; background: #0007 }
 .mesa-chip i { width: 14px; height: 14px; border-radius: 50%; border: 2px solid #fff; display: inline-block }
 

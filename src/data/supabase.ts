@@ -1,3 +1,4 @@
+import type { MesaFn, MesaPedido, MesaResposta } from '../../supabase/functions/_shared/jogos/mesa.ts'
 import { createClient, type RealtimeChannel, type SupabaseClient } from '@supabase/supabase-js'
 import { slugUser, toEmail } from './login'
 import type { CoffeeLine, JogoRes, Wallet, RowTable, Rows, AccountEdit, AiContext, AiProposal, AiStage, Backend, Handlers, Message, Parceria, Poder, Pos, Profile, CassinoPainel, Torneio, Project, Requisicao, Snapshot, Task, TaskNote } from '../types'
@@ -290,6 +291,18 @@ export class SupabaseBackend implements Backend {
     await this.rpc<null>('cassino_presente', { p_para: para, p_valor: valor, p_item: item, p_rotulo: rotulo, p_nota: nota })
   }
   async setCassino(id: string, on: boolean) { await this.rpc<null>('admin_set_cassino', { target: id, sim: on }) }
+
+  async mesas(fn: MesaFn, pedido: MesaPedido = {}): Promise<MesaResposta> {
+    const abort = new AbortController(), timer = setTimeout(() => abort.abort(), 15000)
+    const { data, error } = await this.sb.functions.invoke('mesas', { body: { fn, ...pedido }, signal: abort.signal }).finally(() => clearTimeout(timer))
+    if (error) {
+      let message = error.message
+      try { if (error.context instanceof Response) message = (await error.context.json()).error ?? message } catch { /* mantém mensagem de conexão */ }
+      throw new Error(message)
+    }
+    if (data?.error) throw new Error(data.error)
+    return data as MesaResposta
+  }
 
   async jogos(fn: 'iniciar' | 'fim' | 'virar', args: Record<string, unknown>) {
     const { data, error } = await this.sb.rpc('jogos_' + fn, args)
