@@ -103,3 +103,19 @@ Conta do cassino nunca acessa coisa crítica. Sem service_role. Não criar conta
 - 184 verificações passaram com planta legada real, incluindo distribuição, objetos personalizados, sobreposições, acesso e reabertura. Prévia renderizada dessa planta inspecionada.
 - Regressão permanente em scripts/verificar-sala-jogos.mjs (somente configuração de móveis, sem dados de usuários); GitHub Pages passa a executá-la antes do build.
 
+
+## 20/10 — Correção publicada (c39d02c)
+- GitHub Pages concluído: https://github.com/Vigattibla/escritorio-village/actions/runs/39500380999 . Teste permanente da planta salva, build e deploy passaram.
+- Site HTTP 200 com bundle main-1MyrHmlb.js. Código de remontagem legado->mesa-social e bingo solo confirmados no bundle publicado.
+- Sala jogos-marketing de produção foi consultada somente em leitura (28x16, 28 objetos); arrumação antiga ficava nas extremidades após alargamento. Corrigido o adaptador e cálculo antecipado da largura. Dados originais do banco permanecem intactos.
+- Validado visualmente o renderer com a planta salva real; 184 verificações cobrem larguras 44/58, acesso aos jogos, sem sobreposição, duas mesas blackjack, estante e reabertura. Teste é executado no CI antes do build.
+- Lição repetida registrada: validar layout com estado salvo real, não apenas modelo novo. Mudanças alheias preservadas. Usuário pode recarregar o site para obter a correção.
+
+## Jogos executáveis e placar — 20/10
+- Usuário pediu base por Codex e Claude só para concluir com mínimo de gasto. Claude Sonnet/baixo esforço concluiu quatro arquivos por CLI; uso estimado relatado USD 0.7278618 (não é comprovante de cobrança).
+- Entregue: sinuca 8-ball para duas pessoas no mesmo aparelho, com física/grupos/faltas/bola 8; cartas estilo UNO vs computador, com ações/coringas/compra. Sem multiplayer online nem coop nesta rodada. Jogos locais sem recompensa/placar mensal.
+- Base Codex: catálogo, motor puro de cartas, integração das mesas/canvas, botão Jogar visível e atalho na conta cassino. Placar mensal usa só melhor resultado por jogo/mês/setor; respostas de partidas antigas são ignoradas. Texto dos pontos no painel limitado à largura do visor.
+- Conferência: fluxo real da demo Escritório -> Jogar -> Sinuca abriu; tacada e troca de turno conferidas no componente integrado; cartas/coringa/cor escolhida/resposta do bot e pontos humanos conferidos. Física usa tempo decorrido para não prender turno em taxa de quadros baixa.
+- 45 verificações de física/cartas/ranking e 189 da sala salva passaram; TypeScript passou; detector sem achados; warnings de lint não bloqueantes. Ambos verificadores de jogo executados no CI antes da publicação.
+- Desafios diários até 60 cafezinhos e multiplayer online continuam pendentes; não anunciar como implementados.
+

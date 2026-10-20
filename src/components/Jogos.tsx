@@ -6,14 +6,13 @@ import { Ph } from './Icon'
 import type { PhName } from './ph'
 import MiniAvatar from './MiniAvatar'
 import { Fundo } from './Fundo'
+import { JOGOS, rankingJogos, treinoDe } from '../jogos/catalogo'
+import Sinuca from './jogos/Sinuca'
+import Cartas from './jogos/Cartas'
+import '../novos-jogos.css'
 
 /** os jogos da sala de jogos (o móvel que abre cada um está em world.ts) */
-const JOGOS: { id: Jogo; nome: string; onde: string; dica: string }[] = [
-  { id: 'cobrinha', nome: 'Cobrinha', onde: 'Fliperama', dica: 'Setas, WASD ou arraste. Pegue o café e não bata.' },
-  { id: 'penalti', nome: 'Pênalti', onde: 'Pebolim', dica: 'Espaço ou clique pra chutar. Mire longe do goleiro: 10 cobranças.' },
-  { id: 'memoria', nome: 'Memória', onde: 'Mesa de jogos', dica: 'Ache os 8 pares. Menos erros e menos tempo valem mais.' },
-  { id: 'reflexo', nome: 'Reflexo', onde: 'Videogame', dica: 'Clique nos alvos por 30 segundos. Clique no vazio tira ponto.' },
-]
+
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro']
 const mesAgora = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}` }
 const mesNome = (m: string) => MESES[Number(m.slice(5)) - 1] ?? m
@@ -269,10 +268,13 @@ function Reflexo({ onPts, onFim }: GameProps) {
   return <canvas ref={ref} width={W} height={W} className="jg-cv cross" aria-label="Reflexo" />
 }
 
-const TELAS: Record<Jogo, (p: GameProps) => React.ReactElement> = { cobrinha: Cobrinha, penalti: Penalti, memoria: Memoria, reflexo: Reflexo }
+const TELAS: Record<Jogo, (p: GameProps) => React.ReactElement> = { cobrinha: Cobrinha, penalti: Penalti, memoria: Memoria, reflexo: Reflexo, sinuca: Sinuca, cartas: Cartas }
 
 export default function Jogos({ inicio, onClose }: { inicio: Jogo; onClose: () => void }) {
   const [jogo, setJogo] = useState<Jogo>(inicio)
+  const etapa = useRef(0)
+  const treino = treinoDe(jogo)
+  useEffect(() => () => { etapa.current++ }, [])
   const [fase, setFase] = useState<'pronto' | 'jogando' | 'fim'>('pronto')
   const [rodada, setRodada] = useState(0)
   const [pts, setPts] = useState(0)
@@ -296,41 +298,45 @@ export default function Jogos({ inicio, onClose }: { inicio: Jogo; onClose: () =
     return () => window.removeEventListener('keydown', k)
   }, [onClose])
 
-  const troca = (j: Jogo) => { setJogo(j); setFase('pronto'); setAviso(''); setPts(0); setRodada(r => r + 1) }
+  const troca = (j: Jogo) => { etapa.current++; setAbrindo(false); setJogo(j); setFase('pronto'); setAviso(''); setPts(0); setRodada(r => r + 1) }
   // a partida nasce no servidor (relógio e cartas ficam lá)
   const joga = async () => {
     if (abrindo) return
+    const token = ++etapa.current
     setAbrindo(true); setAviso('')
+    if (treino) { setPartida('local'); setPts(0); setRec(false); setFase('jogando'); setRodada(n => n + 1); setAbrindo(false); return }
     try {
       const r = await jogos('iniciar', { p_jogo: jogo })
+      if (token !== etapa.current) return
       setPartida(r.id ?? ''); setPts(0); setRec(false); setFase('jogando'); setRodada(n => n + 1)
-    } catch (e) { setAviso(e instanceof Error ? e.message : String(e)) } finally { setAbrindo(false) }
+    } catch (e) { if (token === etapa.current) setAviso(e instanceof Error ? e.message : String(e)) } finally { if (token === etapa.current) setAbrindo(false) }
   }
-  const erro = useCallback((msg: string) => { setAviso(msg); setFase('fim') }, [])
+  const versao = etapa.current
+  const marca = useCallback((n: number) => { if (versao === etapa.current) setPts(n) }, [versao])
+  const erro = useCallback((msg: string) => { if (versao === etapa.current) { setAviso(msg); setFase('fim') } }, [versao])
   const fim = useCallback(async (n: number, pronto?: JogoRes) => {
+    const token = versao
+    if (token !== etapa.current) return
     setPts(n); setFase('fim')
+    if (treinoDe(jogo)) return
     try {
       const r = pronto ?? await jogos('fim', { p_id: partida, p_pontos: n })
+      if (token !== etapa.current) return
       setPts(r.pontos ?? 0)
       setRec(r.local ? salvar(jogo, r.pontos ?? 0) : !!r.recorde)
       if (r.valeu === false) setAviso('Essa partida não valeu: pontuação fora do possível.')
-    } catch (e) { setAviso(e instanceof Error ? e.message : String(e)) }
-  }, [jogo, partida])
+    } catch (e) { if (token === etapa.current) setAviso(e instanceof Error ? e.message : String(e)) }
+  }, [jogo, partida, versao])
 
   // ranking do setor do andar no mês: recorde de cada um no jogo, ou a soma dos recordes dos 4 jogos
   const ranking = useMemo(() => {
-    const por = new Map<string, number>()
-    for (const r of Object.values(linhas)) {
-      if (r.mes !== mes || r.dept !== dept || (aba === 'jogo' && r.jogo !== jogo)) continue
-      por.set(r.user_id, (por.get(r.user_id) ?? 0) + r.pontos)
-    }
-    return [...por].filter(([, n]) => n > 0).sort((a, b) => b[1] - a[1])
+    return rankingJogos(Object.values(linhas), mes, dept, aba === 'jogo' ? jogo : undefined)
   }, [linhas, mes, dept, aba, jogo])
   const meu = meId ? linhas[`${meId}:${jogo}:${mes}`]?.pontos ?? 0 : 0
 
   return (
     <Fundo className="modal-bg" onMouseDown={e => e.target === e.currentTarget && onClose()}>
-      <section className="jan jg" role="dialog" aria-label="Sala de jogos">
+      <section className={"jan jg" + (treino ? " jg-treino" : "")} role="dialog" aria-label="Sala de jogos">
         <div className="jg-bar">
           <div className="jg-tabs" role="tablist">
             {JOGOS.map(j => <button key={j.id} role="tab" aria-selected={j.id === jogo} className={j.id === jogo ? 'on' : ''} onClick={() => troca(j.id)}>{j.nome}</button>)}
@@ -340,8 +346,8 @@ export default function Jogos({ inicio, onClose }: { inicio: Jogo; onClose: () =
         </div>
         <div className="jg-body">
           <div className="jg-play">
-            <div className="jg-score"><b>{pts}</b><span>pontos</span><span className="grow" /><span className="jg-best"><Ph n="star" size={14} fill /> seu recorde: {meu}</span></div>
-            <div className="jg-stage">
+            <div className="jg-score"><b>{pts}</b><span>{treino ? 'placar da partida local' : 'pontos'}</span><span className="grow" />{!treino && <span className="jg-best"><Ph n="star" size={14} fill /> seu recorde: {meu}</span>}</div>
+            <div className={"jg-stage" + (treino ? " jg-stage-local" : "")}>
               {fase === 'pronto' ? (
                 <div className="jg-over">
                   <small>{info.onde}</small>
@@ -352,7 +358,7 @@ export default function Jogos({ inicio, onClose }: { inicio: Jogo; onClose: () =
                 </div>
               ) : (
                 <>
-                  <Tela key={rodada} partida={partida} onPts={setPts} onFim={fim} onErro={erro} />
+                  <Tela key={rodada} partida={partida} onPts={marca} onFim={fim} onErro={erro} />
                   {fase === 'fim' && (
                     <div className="jg-over dim">
                       {rec && <span className="jg-rec"><Ph n="trophy" size={16} fill /> Novo recorde do mês</span>}
@@ -366,6 +372,8 @@ export default function Jogos({ inicio, onClose }: { inicio: Jogo; onClose: () =
             </div>
           </div>
           <aside className="jg-rank">
+            {treino ? <><h3>{info.nome}</h3><p>{info.dica}</p><p>{jogo === 'sinuca' ? 'Versus local: duas pessoas revezam no mesmo aparelho.' : 'Versus computador: sua mão fica visível, a do adversário fica fechada.'}</p><small className="jg-note">Partida local, sem aposta. Pontuação separada do ranking mensal e dos cafezinhos.</small></> : <>
+
             <div className="jg-rh"><Ph n="trophy" size={18} /> <b>Ranking de {mesNome(mes)}</b></div>
             <div className="jg-seg">
               <button className={aba === 'jogo' ? 'on' : ''} onClick={() => setAba('jogo')}>{info.nome}</button>
@@ -387,6 +395,7 @@ export default function Jogos({ inicio, onClose }: { inicio: Jogo; onClose: () =
               </ol>
             )}
             <small className="jg-note">{aba === 'geral' ? 'Soma do recorde de cada um nos 4 jogos.' : 'Vale o melhor resultado de cada um no mês.'} Zera todo mês.</small>
+            </>}
           </aside>
         </div>
       </section>

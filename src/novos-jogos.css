@@ -1,0 +1,9 @@
+.game-launcher{position:absolute;right:14px;bottom:14px;display:flex;gap:6px;z-index:3;flex-wrap:wrap;max-width:calc(100% - 28px)}
+.game-launcher .btn{box-shadow:0 2px 8px #18223b26}
+.jg-treino{max-width:1000px}
+.jg-treino .jg-play{min-width:0;flex:1}
+.jg-stage-local{max-width:640px;aspect-ratio:auto;min-height:420px;overflow:auto}
+.jg-stage-local>.jg-over{min-height:420px}
+.jg-treino .jg-rank{max-width:240px}
+.jg-treino .jg-rank p{line-height:1.55;font-size:14px}
+@media(max-width:640px){.jg-treino .jg-body{display:flex;flex-direction:column}.jg-treino .jg-rank{max-width:none;width:100%}.jg-stage-local{min-height:400px}.jg-tabs button{padding:7px 9px}.game-launcher{bottom:48px}}

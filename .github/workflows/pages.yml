@@ -41,6 +41,7 @@ jobs:
         with: { node-version: 22, cache: npm }
       - run: npm ci
       - run: node scripts/verificar-sala-jogos.mjs
+      - run: node scripts/verificar-mesas.mjs
       - run: npm run build
         env:
           VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}

@@ -105,6 +105,7 @@ export default function ContaCassino() {
       </section> : view === 'loja' ? <section className="cc-loja"><Loja /></section> :
       <main className="cc-main">
         <section className="cc-jogos">
+          <button className="cc-card" onClick={() => setUi({ jogo: 'sinuca' })}><b>Jogos</b><small>Sinuca 8-ball, cartas, cobrinha, pênalti, memória e reflexo</small></button>
           <button className="cc-card cassino" onClick={() => setAberto('cassino')}><span>🎲</span><b>Cassino</b><small>Caça-níquel, roleta, blackjack, crash e minas</small></button>
           <button className="cc-card bingo" onClick={() => setAberto('bingo')}><span>🎱</span><b>Salão de Bingo</b><small>Cartelas e sorteio com todo mundo</small></button>
         </section>

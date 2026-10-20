@@ -701,7 +701,7 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
             ctx.fillStyle = '#101014'; ctx.textAlign = 'left'; ctx.font = `${k ? 600 : 800} ${Math.round(3 * z)}px Inter, sans-serif`
             ctx.fillText(s.profiles[p.id]?.name.split(' ')[0] ?? 'Alguém', sx(9.5), sy(cy), 28 * z)
             ctx.fillStyle = '#EDE6D8'; roundRect(ctx, sx(39), sy(cy - 3), Math.round(15 * z), Math.round(6 * z), z); ctx.fill()
-            ctx.fillStyle = '#26324F'; ctx.textAlign = 'center'; ctx.font = `800 ${Math.round(2.8 * z)}px Inter, sans-serif`; ctx.fillText(`${p.pts} pts`, sx(46.5), sy(cy) + 0.5)
+            ctx.fillStyle = '#26324F'; ctx.textAlign = 'center'; ctx.font = `800 ${Math.round(2.8 * z)}px Inter, sans-serif`; ctx.fillText(`${p.pts} pts`, sx(46.5), sy(cy) + 0.5, 13 * z)
           })
           continue
         }
@@ -852,6 +852,11 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
     <div className={'game' + (cine ? ' cine' : '')} ref={wrap}>
       <canvas ref={cv} />
       {!cine && <>
+      <div className="game-launcher" aria-label="Abrir jogos">
+        <button className="btn sm" onClick={() => setUi({ jogo: 'sinuca' })}>Jogar</button>
+        <button className="btn soft sm" onClick={() => setUi({ cassino: true })}>Cassino</button>
+        <button className="btn soft sm" onClick={() => setUi({ bingo: true })}>Bingo</button>
+      </div>
       {hp && hover && (
         <div className="game-tip" style={{ left: hover.sx + 14, top: hover.sy + 10, ['--c' as string]: s.rows.depts[deptOf(hp)]?.color ?? '#0B235D' }}>
           <div className="gt-head">

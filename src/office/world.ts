@@ -4,6 +4,7 @@ import { drawArquivo, drawDecor, drawFloor, drawNotebook, MESA, mesaExtra, type 
 import { check, defaultDesk, deskFrom, deskSides, dimOf, isDesk, kd, parseComodo, renderRoom, solidGrid, type Desk, type Obj, type Piso, type Sala } from './sala'
 import { comodoOf, montaJogos, spotsJogos, type Kind, type Spot } from './comodos'
 import type { JogoCassino } from '../cassino/regras'
+import type { Jogo } from '../jogos/catalogo'
 
 export * from './base'
 
@@ -243,12 +244,12 @@ export function painelAt(gx: number, gy: number) {
   return null
 }
 /** jogos da sala de jogos: o móvel que abre cada um e o balão de onde o boneco joga (cassino abre o jogo de aposta) */
-export type Jogo = 'cobrinha' | 'penalti' | 'memoria' | 'reflexo'
+export type { Jogo } from '../jogos/catalogo'
 type Maq = { jogo?: Jogo; cassino?: JogoCassino; act: string }
 const MAQUINAS: Record<string, Maq> = {
   fliperama: { jogo: 'cobrinha', act: 'No fliperama' }, pebolim: { jogo: 'penalti', act: 'No pebolim' }, 'mesa-jantar': { jogo: 'memoria', act: 'Jogo de tabuleiro' },
   console: { jogo: 'reflexo', act: 'No videogame' }, 'tapete-gamer': { jogo: 'reflexo', act: 'No videogame' },
-  'mesa-social': { jogo: 'memoria', act: 'Jogo de tabuleiro' },
+  'mesa-social': { jogo: 'cartas', act: 'Jogo de tabuleiro' }, sinuca: { jogo: 'sinuca', act: 'Jogando sinuca' },
   'caca-niquel': { cassino: 'caca', act: 'No caça-níquel' }, 'mesa-roleta': { cassino: 'roleta', act: 'Na roleta' }, 'mesa-cartas': { cassino: 'blackjack', act: 'No blackjack' },
   'totem-crash': { cassino: 'crash', act: 'No crash' }, 'totem-minas': { cassino: 'minas', act: 'Nas minas' }, 'caixa-fichas': { cassino: 'caca', act: 'No caça-níquel' },
 }
