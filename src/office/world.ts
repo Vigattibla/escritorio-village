@@ -55,7 +55,7 @@ export const getRooms = () => rooms
 export const roomOfId = (id: string) => rooms.find(r => r.id === id)
 export const roomOfKind = (k: Kind) => rooms.find(r => r.kind === k)
 /** sala com mesa de trabalho (do setor ou do gerente) */
-export const workRoom = (r: Room | undefined): r is Room => r?.kind === 'dept' || r?.kind === 'gerente'
+export const workRoom = (r: Room | undefined): r is Room => r?.kind === 'dept' || r?.kind === 'gerente' || r?.kind === 'cassino'
 
 export function emptySala(w = MW, h = MH): Sala {
   return { piso: Array.from({ length: h }, () => Array.from({ length: w }, () => 'madeira' as const)), div: Array.from({ length: h }, () => Array<boolean>(w).fill(false)), objs: [] }
@@ -261,8 +261,8 @@ export const elevadorSpot = () => ({ x: 2 * T, y: (HY0 + 1) * T, tx: 1, ty: HY0 
 /** sala de jogos do andar: a arrumada (rooms 'jogos-<setor>') ou a original; com o gerente do cassino no andar, ganha a mesa dele */
 export function salaJogos(data: unknown, gerente: boolean): Sala {
   const s = parseComodo(data, COMODOS.jogos.sala())
-  if (!gerente || s.objs.some(o => o.d === BOSS_DESK)) return s
-  return { ...s, objs: [...s.objs, { id: Math.max(0, ...s.objs.map(o => o.id)) + 1, k: 'mesa-chefe', x: 19, y: 3, d: BOSS_DESK }] }
+  // a mesa do gerente do cassino agora fica na sala dele (gerência do cassino); some daqui se ficou salva
+  return gerente ? { ...s, objs: s.objs.filter(o => o.d !== BOSS_DESK) } : s
 }
 
 export function jogoAt(gx: number, gy: number) {

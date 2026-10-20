@@ -286,6 +286,9 @@ export class SupabaseBackend implements Backend {
   async torneioCriar(jogo: Torneio['jogo'], premio: number, horas: number) { await this.rpc<null>('cassino_torneio_criar', { p_jogo: jogo, p_premio: premio, p_horas: horas }) }
   async torneioCancelar(id: string) { await this.rpc<null>('cassino_torneio_cancelar', { tid: id }) }
   async cassinoTaxa(taxa: number) { await this.rpc<null>('cassino_taxa', { p_taxa: taxa }) }
+  async cassinoPresente(para: string, valor: number, item: string | null, rotulo: string, nota: string) {
+    await this.rpc<null>('cassino_presente', { p_para: para, p_valor: valor, p_item: item, p_rotulo: rotulo, p_nota: nota })
+  }
   async setCassino(id: string, on: boolean) { await this.rpc<null>('admin_set_cassino', { target: id, sim: on }) }
 
   async jogos(fn: 'iniciar' | 'fim' | 'virar', args: Record<string, unknown>) {

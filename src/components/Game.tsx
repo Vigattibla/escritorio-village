@@ -41,7 +41,7 @@ const deskIdx = (p: Profile, r: Room) => {
 }
 /** o andar é só do setor aberto: em cima a sala dele, cozinha e banheiro; embaixo a sala do gerente (ou a de reunião), jogos e bingo.
  *  Pra crescer: entra um cômodo novo de comodos.ts na lista. */
-const ANDAR = (gerente: boolean): Kind[] => ['dept', 'cozinha', 'banheiro', gerente ? 'gerente' : 'reuniao', 'jogos', 'bingo']
+const ANDAR = (gerente: boolean, cassino: boolean): Kind[] => ['dept', 'cozinha', 'banheiro', ...(cassino ? ['cassino' as const] : []), gerente ? 'gerente' : 'reuniao', 'jogos', 'bingo']
 let floorSeen: unknown[] = []
 /** dá pra passar pela porta: vaga nunca, cômodos sempre, sala do setor/gerente pela regra da porta */
 const enterable = (r: Room | undefined, s: State = getState()) => !!r && r.kind !== 'vaga' && (!r.dept || canEnter(r.dept, s))
@@ -54,7 +54,7 @@ export function syncFloor() {
     const mine = parseSala(data?.data, !!d?.vendas, mod)
     // com sala própria, a mesa do gerente (e o tapete dela) sai da sala do setor
     const dept = ger ? { ...mine, objs: mine.objs.filter(o => o.d !== BOSS_DESK && o.k !== 'tapete-chefe') } : mine
-    setFloor(ANDAR(ger).map(k => (k === 'dept' ? { kind: k, dept: id, sala: dept, baia: !!d?.vendas } : k === 'vaga' ? { kind: k, sala: emptySala(16) } : k === 'jogos' ? { kind: k, dept: null, sala: salaJogos(jg?.data, cassino) } : { kind: k, dept: k === 'gerente' ? id : null, sala: COMODOS[k].sala() })))
+    setFloor(ANDAR(ger, cassino).map(k => (k === 'dept' ? { kind: k, dept: id, sala: dept, baia: !!d?.vendas } : k === 'vaga' ? { kind: k, sala: emptySala(16) } : k === 'jogos' ? { kind: k, dept: null, sala: salaJogos(jg?.data, cassino) } : { kind: k, dept: k === 'gerente' ? id : null, sala: COMODOS[k].sala() })))
   }
   setPassable(getRooms().map(r => enterable(r, s)))
 }
@@ -62,8 +62,8 @@ export function syncFloor() {
 function homeRoom(p: Profile | undefined) {
   const s = getState()
   if (!p || deptOf(p) !== s.sala) return undefined
-  // gerente do cassino: mesa dele na sala de jogos do andar
-  if (p.cassino) return roomOfKind('jogos')
+  // gerente do cassino: mesa dele na gerência do cassino, no andar do setor
+  if (p.cassino) return roomOfKind('cassino')
   const g = roomOfKind('gerente')
   return g && managerOf(s.profiles, s.sala)?.id === p.id ? g : roomOfKind('dept')
 }
@@ -270,6 +270,10 @@ export default function Game({ cine = false, focus = null }: { cine?: boolean; f
           if (p) { path = p; jobs.delete(meId) }
           return
         }
+        const dest = inside(getRooms()[k])
+        const p = findPath(meS.x, meS.y, Math.floor(dest.x / T), Math.floor(dest.y / T))
+        if (p) { path = p; jobs.delete(meId) }
+        return
       }
       const p = findPath(meS.x, meS.y, tx, ty)
       if (p) { path = p; jobs.delete(meId) }

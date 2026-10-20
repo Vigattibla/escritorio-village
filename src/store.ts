@@ -1205,6 +1205,10 @@ export const cassinoPainel = () => backend.cassinoPainel()
 export async function torneioCriar(jogo: Torneio['jogo'], premio: number, horas: number) { await backend.torneioCriar(jogo, premio, horas); await refreshWallet() }
 export const torneioCancelar = (id: string) => backend.torneioCancelar(id)
 export const cassinoTaxa = (taxa: number) => backend.cassinoTaxa(taxa)
+export async function cassinoPresente(para: string, valor: number, item: string | null, nota: string) {
+  await backend.cassinoPresente(para, valor, item, item ? itemName(item) : '', nota)
+  await refreshWallet()
+}
 export async function setCassino(id: string, on: boolean) {
   await backend.setCassino(id, on)
   ingest(await backend.loadAll())

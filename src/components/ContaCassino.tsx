@@ -12,7 +12,8 @@ import { Bell, Toast } from './Avisos'
 import FloatChat from './FloatChat'
 import { Ph } from './Icon'
 import { confirmar } from './Dialogo'
-import { cassinoPainel, cassinoTaxa, primeiroNome, refreshWallet, setUi, signOut, torneioCriar, useStore } from '../store'
+import { ITEMS } from '../shop/catalog'
+import { cassinoPainel, cassinoPresente, cassinoTaxa, primeiroNome, refreshWallet, setUi, signOut, torneioCriar, useStore } from '../store'
 import type { CassinoPainel, Torneio } from '../types'
 
 // conta "só cassino": joga, cuida do imposto da casa e marca torneios (tudo com teto no servidor)
@@ -39,6 +40,15 @@ export default function ContaCassino() {
   const [premio, setPremio] = useState(30)
   const [horas, setHoras] = useState(3)
   const [busy, setBusy] = useState(false)
+  // presente: cafezinho ou item da loja pra alguém do escritório
+  const gente = useStore(s => s.profiles)
+  const pessoas = Object.values(gente).filter(x => !x.cassino && x.id !== eu?.id).sort((a, b) => a.name.localeCompare(b.name))
+  const [para, setPara] = useState('')
+  const [tipo, setTipo] = useState<'cafe' | 'item'>('cafe')
+  const [valor, setValor] = useState(10)
+  const [item, setItem] = useState('')
+  const [nota, setNota] = useState('')
+  const [deu, setDeu] = useState('')
 
   const carrega = useCallback(async () => {
     try { const r = await cassinoPainel(); setP(r); setTaxa(r.taxa) } catch (e) { setErro((e as Error).message) }
@@ -60,6 +70,19 @@ export default function ContaCassino() {
     if (ok) await faz(() => torneioCriar(jogo, premio, horas))
   }
 
+  const hoje = new Date().toDateString()
+  const dadosHoje = (wallet?.log ?? []).filter(l => l.reason === 'presente' && l.amount < 0 && new Date(l.created_at).toDateString() === hoje)
+  const sobra = Math.max(0, 90 - dadosHoje.reduce((n, l) => n - l.amount, 0)), presentesHoje = dadosHoje.length
+  const custo = tipo === 'cafe' ? valor : ITEMS.find(i => i.id === item)?.price ?? 0
+  const darPresente = async () => {
+    const quem = gente[para]
+    if (!quem || !custo) return
+    const oque = tipo === 'cafe' ? `${valor} ☕` : ITEMS.find(i => i.id === item)?.name ?? 'o item'
+    const ok = await confirmar(`Dar ${oque} pra ${quem.name}?`, { text: `Sai do seu saldo (${custo} ☕). O aviso aparece no canal geral.`, ok: 'Dar presente', ic: 'gift' })
+    if (!ok) return
+    setDeu('')
+    await faz(async () => { await cassinoPresente(para, valor, tipo === 'item' ? item : null, nota); setDeu(`Presente entregue pra ${quem.name}.`); setNota('') })
+  }
   const c = p?.casa
   const t = p?.torneio
   const saldo = wallet?.balance ?? 0
@@ -69,7 +92,7 @@ export default function ContaCassino() {
         <span className="cc-logo">🎰</span>
         <div className="grow"><b>{eu?.name ?? 'Cassino'}</b><small>Gerente do cassino</small></div>
         {view !== 'painel' && <button className="btn ghost sm" onClick={() => { setView('painel'); setArrumando(false) }}>Painel</button>}
-        {view !== 'sala' && <button className="btn ghost sm" onClick={() => { setView('sala'); setArrumando(false) }}>🎰 Sala de jogos</button>}
+        {view !== 'sala' && <button className="btn ghost sm" onClick={() => { setView('sala'); setArrumando(false) }}>🎰 Andar</button>}
         {view !== 'loja' && <button className="btn ghost sm" onClick={() => { setView('loja'); setArrumando(false) }}>👕 Loja</button>}
         <Bell />
         <span className="cs-saldo"><Ph n="coffee" size={16} fill /> <b>{wallet ? saldo : '…'}</b></span>
@@ -78,7 +101,7 @@ export default function ContaCassino() {
 
       {sala ? <section className="cc-sala">
         {arrumando ? <SalaEditor comodo onClose={() => setArrumando(false)} /> : <div className="game-wrap"><Game />
-          <button className="btn primary sm game-edit" onClick={() => setArrumando(true)}>🪚 Arrumar sala</button></div>}
+          <button className="btn primary sm game-edit" onClick={() => setArrumando(true)}>🪚 Arrumar sala de jogos</button></div>}
       </section> : view === 'loja' ? <section className="cc-loja"><Loja /></section> :
       <main className="cc-main">
         <section className="cc-jogos">
@@ -124,6 +147,28 @@ export default function ContaCassino() {
             <small>Últimos torneios</small>
             {p.historico.map(h => <div key={h.id}><span className="grow">{JOGO[h.jogo]} · {h.premio} ☕</span><b>{h.estado === 'pago' && h.vencedor ? primeiroNome(h.vencedor) : h.estado === 'cancelado' ? 'cancelado' : 'devolvido'}</b></div>)}
           </div>}
+        </section>
+
+        <section className="cc-box">
+          <h2><Ph n="gift" size={18} /> Presente</h2>
+          {presentesHoje >= 3 || sobra < 1 ? <small className="jg-note">Já foram os presentes de hoje. Amanhã tem mais.</small> : <div className="cc-form">
+            <label>Pra quem<select value={para} onChange={e => { setPara(e.target.value); setDeu('') }}>
+              <option value="">Escolha…</option>
+              {pessoas.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}
+            </select></label>
+            <label>O quê<select value={tipo} onChange={e => setTipo(e.target.value as 'cafe' | 'item')}>
+              <option value="cafe">Cafezinhos</option><option value="item">Item da loja</option>
+            </select></label>
+            {tipo === 'cafe' ? <label>Quantos (☕)<input type="number" min={1} max={Math.min(30, sobra)} value={valor} onChange={e => setValor(Math.max(1, Math.min(30, sobra, Math.round(Number(e.target.value) || 1))))} /></label>
+              : <label>Item<select value={item} onChange={e => setItem(e.target.value)}>
+                <option value="">Escolha…</option>
+                {ITEMS.filter(i => i.price <= sobra).map(i => <option key={i.id} value={i.id}>{i.name} · {i.price} ☕</option>)}
+              </select></label>}
+            <label className="cc-nota">Recado (opcional)<input maxLength={80} value={nota} onChange={e => setNota(e.target.value)} placeholder="Parabéns pela semana!" /></label>
+            <button className="btn primary" disabled={busy || !para || !custo || custo > sobra || saldo < custo} onClick={darPresente}>{saldo < custo ? 'Saldo curto' : 'Dar presente'}</button>
+          </div>}
+          {deu && <small className="jg-note">✓ {deu}</small>}
+          <small className="jg-note">Sai do seu saldo. Até 3 presentes e 90 ☕ por dia (sobram {sobra} ☕ hoje). Cafezinho: de 1 a 30 por vez.</small>
         </section>
       </main>}
 

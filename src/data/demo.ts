@@ -608,6 +608,30 @@ export class DemoBackend implements Backend {
     if (cfg.mudou === hoje) throw new Error('O imposto só muda uma vez por dia. Amanhã dá pra trocar de novo.')
     write(CS.cfg, { taxa, mudou: hoje })
   }
+  async cassinoPresente(para: string, valor: number, item: string | null, rotulo: string, nota: string) {
+    const all = read<Record<string, Profile>>(K.prof, {}), me = all[sessionStorage.getItem(K.session) ?? '']
+    if (!me?.cassino) throw new Error('Só o gerente do cassino dá presente.')
+    const quem = all[para]
+    if (!quem || quem.id === me.id) throw new Error('Escolha outra pessoa.')
+    if (quem.cassino) throw new Error('Essa pessoa não está no escritório.')
+    let v = valor
+    if (item) {
+      if (!ITEM[item]) throw new Error('Esse item não está no Almoxarifado.')
+      if (read<CoffeeLine[]>('ev:coffee:' + para, []).some(l => l.reason === 'compra' && l.ref === item)) throw new Error(`${quem.name} já tem esse item.`)
+      v = ITEM[item].price
+    } else if (!Number.isInteger(v) || v < 1 || v > 30) throw new Error('O presente vai de 1 a 30 cafezinhos.')
+    const log = this.coffee(), hoje = localDay(new Date().toISOString())
+    const dados = log.filter(l => l.reason === 'presente' && l.amount < 0 && localDay(l.created_at) === hoje), dado = -dados.reduce((n, l) => n + l.amount, 0)
+    if (dados.length >= 3) throw new Error('Já foram 3 presentes hoje. Amanhã tem mais.')
+    if (dado + v > 90) throw new Error(`O teto é 90 cafezinhos de presente por dia: sobram ${Math.max(0, 90 - dado)} hoje.`)
+    const bal = log.reduce((n, l) => n + l.amount, 0)
+    if (bal < v) throw new Error(`O presente sai do seu saldo: faltam ${v - bal} cafezinhos.`)
+    const id = crypto.randomUUID()
+    this.lanca(me.id, -v, 'presente', `p:${id}:${para}`)
+    if (item) this.lanca(para, 0, 'compra', item); else this.lanca(para, v, 'presente', 'r:' + id)
+    const n = nota.trim().slice(0, 80)
+    await this.sendMessage({ id: crypto.randomUUID(), channel: 'geral', sender_id: me.id, body: `🎁 Presente do cassino pra ${quem.name}: ${item ? rotulo || 'um item do Almoxarifado' : v + ' ☕'}${n ? ` — “${n}”` : ''}`, created_at: new Date().toISOString() } as Message)
+  }
   async torneioCriar(jogo: Torneio['jogo'], premio: number, horas: number) {
     const me = read<Record<string, Profile>>(K.prof, {})[sessionStorage.getItem(K.session) ?? '']
     if (!me?.cassino) throw new Error('Só a conta do cassino cria torneio.')

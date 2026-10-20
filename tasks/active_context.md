@@ -283,3 +283,7 @@ Pendente: push (precisa da migration 202610080900_v4_agenda_metas.sql e do secre
 - c573b85: celular — Mais (☰) ganha "Abas do setor" (quem pode mexer) e "Salas do andar" (dev+chefe); vazamentos laterais corrigidos (Poderes usava .pd = mesma classe do Pedidos → .pdr; X do recado). Varredura 375px nos 10 setores do demo: sem rolagem lateral, sem undefined/NaN, sem erro no console.
 - 12bb88c: Sala de jogos mais limpa (sem canto de café, que é da cozinha; sem neon/dardos; 2 fliperamas, 3 caça-níqueis). Pendente de decisão: reagrupar setores reais entre andares (mexe em dado de produção) e salas antigas com layout salvo não pegam modelo novo.
 - 07706f1 (19/10): apagar pasta do Drive — lixeira no card da pasta (Arquivos) e na pasta da tarefa; função drive rmdir: só filha direta, Backups protegida, pasta com arquivos só adm; vai pra lixeira (30 dias).
+
+## 20/10 — Continuação cassino (Codex; sem commit/push)
+- Clique em porta aberta agora aponta para o interior do cômodo (Game.tsx), evitando terminar na soleira. Execução via Vite SSR: 110 verificações de rotas/portas/assento passaram; `npx tsc -b` passou; oxlint de Game.tsx sem erros (aviso preexistente de Fast Refresh).
+- Pendente: conferência visual demo-bruno/demo-ana e Dudu sentado (nenhum navegador disponível). Ideia de Rei do mês/impeachment registrada só como proposta em tasks/handoff-gpt-cassino.md. Nenhuma publicação/migration/commit realizada. Vault externo sem permissão de escrita nesta sessão.

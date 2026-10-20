@@ -79,7 +79,8 @@ const when = (iso: string) => {
 }
 
 function why(l: CoffeeLine, goalTitle: (id: string) => string | undefined) {
-  if (l.reason === 'compra') return l.amount === 0 ? `Ganhou ${itemName(l.ref)} no bolão` : `Comprou ${itemName(l.ref)}`
+  if (l.reason === 'compra') return l.amount === 0 ? `Ganhou ${itemName(l.ref)}` : `Comprou ${itemName(l.ref)}`
+  if (l.reason === 'presente') return l.amount < 0 ? 'Presente que você deu' : 'Presente do cassino'
   if (l.reason === 'dia') return 'Bateu o ponto'
   if (l.reason === 'boasvindas') return 'Boas-vindas ao escritório'
   if (l.reason === 'aposta' || l.reason === 'premio' || l.reason === 'bilhete' || l.reason === 'bolao' || l.reason === 'troca') return REASON[l.reason]

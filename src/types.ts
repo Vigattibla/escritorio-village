@@ -26,7 +26,7 @@ export interface Avatar {
 }
 
 /** cafezinhos: extrato só da própria pessoa; itens comprados = linhas 'compra' */
-export interface CoffeeLine { amount: number; reason: 'dia' | 'boasvindas' | 'fase' | 'meta' | 'compra' | 'aposta' | 'premio' | 'bilhete' | 'bolao' | 'troca' | 'bingo' | 'poder' | 'coringa' | 'mesada' | 'casa' | 'torneio'; ref: string; created_at: string }
+export interface CoffeeLine { amount: number; reason: 'dia' | 'boasvindas' | 'fase' | 'meta' | 'compra' | 'aposta' | 'premio' | 'bilhete' | 'bolao' | 'troca' | 'bingo' | 'poder' | 'coringa' | 'mesada' | 'casa' | 'torneio' | 'presente'; ref: string; created_at: string }
 export interface Wallet { balance: number; owned: string[]; log: CoffeeLine[]; latinhas: number }
 
 export interface Profile {
@@ -413,6 +413,8 @@ export interface Backend {
   torneioCancelar(id: string): Promise<void>
   /** só a conta do cassino: imposto de 0 a 15%, muda 1x por dia */
   cassinoTaxa(taxa: number): Promise<void>
+  /** só a conta do cassino: presente de 1 a 30 ☕ ou um item do Almoxarifado; 3 e 90 ☕ por dia */
+  cassinoPresente(para: string, valor: number, item: string | null, rotulo: string, nota: string): Promise<void>
   /** só o adm: marca/desmarca a conta do cassino */
   setCassino(id: string, on: boolean): Promise<void>
   /** sala de jogos: a partida nasce no servidor, que confere o tempo e o teto (a Memória é jogada lá) */

@@ -33,5 +33,5 @@ export function payouts(g: Goal, value: number, base: number): { i: number; amou
 export const REASON: Record<CoffeeLine['reason'], string> = {
   dia: 'Dia de trabalho', boasvindas: 'Boas-vindas', fase: 'Fase da meta', meta: 'Meta batida', compra: 'Compra', aposta: 'Aposta no cassino', premio: 'Prêmio no cassino',
   bilhete: 'Bilhete do bolão', bolao: 'Prêmio do bolão', troca: 'Troca por latinha', bingo: 'Bingo', poder: 'Mesada (poder)', coringa: 'Coringa: bilhete grátis',
-  mesada: 'Mesada do cassino', casa: 'Imposto da casa', torneio: 'Torneio do cassino',
+  mesada: 'Mesada do cassino', casa: 'Imposto da casa', torneio: 'Torneio do cassino', presente: 'Presente do cassino',
 }

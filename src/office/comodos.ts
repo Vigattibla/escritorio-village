@@ -4,7 +4,7 @@ import type { Dir } from '../types'
 import type { Prop } from './vida'
 
 /** o que cada sala do andar é: o setor, a sala do gerente, os cômodos de uso comum e a sala ainda vazia */
-export type Kind = 'dept' | 'gerente' | 'reuniao' | 'cozinha' | 'jogos' | 'bingo' | 'banheiro' | 'vaga'
+export type Kind = 'dept' | 'gerente' | 'cassino' | 'reuniao' | 'cozinha' | 'jogos' | 'bingo' | 'banheiro' | 'vaga'
 /** cômodo que é de todo mundo do andar (sempre aberto) */
 export const COMUM = new Set<Kind>(['cozinha', 'jogos', 'bingo', 'banheiro'])
 
@@ -135,6 +135,17 @@ export const COMODOS: Record<Exclude<Kind, 'dept' | 'vaga'>, Comodo> = {
       ['estante', 2, 11], ['arquivo', 12, 11], ['sofa', 10, 10],
       ['planta', 1, 2], ['planta', 14, 11],
       ['janela', 3, 0], ['quadro-branco', 7, 0], ['relogio', 11, 0], ['janela', 12, 0],
+    ]),
+    spots: [],
+  },
+  cassino: {
+    // setor do gerente do cassino: só ele trabalha aqui (entra no andar quando a conta do cassino é do setor)
+    nome: 'Gerência do cassino', cor: '#8e5bd6', top: true,
+    sala: () => monta('carpete', 14, 14, [
+      ['letreiro-cassino', 4, 0], ['relogio', 11, 0],
+      ['tapete-cassino', 3, 5], ['mesa-chefe', 5, 7, BOSS_DESK], ['cadeira-reuniao', 5, 9], ['cadeira-reuniao', 7, 9],
+      ['caca-niquel', 1, 2], ['caca-niquel', 12, 2],
+      ['arquivo', 11, 11], ['planta', 1, 11], ['planta', 12, 12],
     ]),
     spots: [],
   },
