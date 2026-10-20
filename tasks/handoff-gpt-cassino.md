@@ -86,3 +86,20 @@ Conta do cassino nunca acessa coisa crítica. Sem service_role. Não criar conta
 - Mover o bingo para outra sala foi levantado como possibilidade; posição atual preservada até definição.
 - Subir apenas salão + bingo; mudanças de Widget, CSS e acervo de outras sessões ficam fora.
 
+
+## 20/10 — Publicado: salão ampliado + bingo solo
+- Autorização explícita do usuário: push/publicação; em seguida pediu bingo com uma pessoa. Possível mudança de sala ficou como proposta.
+- Commit 9049a7f enviado para origin/main. Publicação GitHub Pages concluída com sucesso: https://github.com/Vigattibla/escritorio-village/actions/runs/39497708474 (jobs migrate/functions/build/deploy passaram).
+- Site: https://vigattibla.github.io/escritorio-village/ — HTTP 200; bundle publicado main-DekCqSNL.js contém a sala nova (placa-mesas/carpete-vinho) e o texto de bingo solo.
+- Migration 202610291400_bingo_solo.sql: mínimo passa de duas para uma pessoa; demo acompanha e texto corrigido. Mesmos prêmios, preços, horário e idempotência. Sem cartelas cancela. Não houve aposta nem compra de cartela em conta real nesta validação.
+- Validação: 503 verificações da planta e 23 do bingo; build em worktree isolado do commit exato passou. Primeiro teste de bingo precisou normalizar CRLF e respeitar arredondamento já existente nas múltiplas cartelas; produto não alterou cálculo de prêmio.
+- Bingo continua no salão próprio atual. Novos jogos, coop/versus, 8-ball/UNO e desafios ainda com o outro responsável; teto de desafios de 60 é requisito, não implementação desta rodada.
+- Limite conhecido: QA móvel da planta não foi concluído por timeout da extensão (desktop conferido anteriormente).
+- Mudanças alheias de Widget.tsx, turmeo.css e acervo ficaram fora do commit. Worktree de verificação em .cassino.local/publicacao-9049a7f (ignorado); sem alterações posteriores de código nesta rodada.
+
+## Correção da sala salva — 20/10
+- Usuário reportou salão vazio após 9049a7f. Consulta somente de leitura confirmou jogos-marketing salvo em 28x16 com 28 objetos; migração anterior inseria vazio central e mantinha jogos nos cantos. Prévia anterior tinha conferido modelo de fábrica, não a planta salva: falha de validação reconhecida.
+- world.ts remonta planta legada no novo modelo, reaproveita ids, preserva estante e segunda mesa de blackjack; registro do banco não é alterado. Game.tsx calcula largura final (44/58) antes de adaptar.
+- 184 verificações passaram com planta legada real, incluindo distribuição, objetos personalizados, sobreposições, acesso e reabertura. Prévia renderizada dessa planta inspecionada.
+- Regressão permanente em scripts/verificar-sala-jogos.mjs (somente configuração de móveis, sem dados de usuários); GitHub Pages passa a executá-la antes do build.
+

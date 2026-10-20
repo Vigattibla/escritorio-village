@@ -1,7 +1,7 @@
 import { BOSS_DESK, MH, MW, OUT, rect, SHADOW, T, WALL, WALL_HI, type C2D } from './base'
 import { exitX, glassDoorX, glassStrip, glassWall } from './andar'
 import { drawArquivo, drawDecor, drawFloor, drawNotebook, MESA, mesaExtra, type DeskLook } from './props'
-import { defaultDesk, deskFrom, deskSides, dimOf, isDesk, kd, parseComodo, renderRoom, solidGrid, type Desk, type Obj, type Piso, type Sala } from './sala'
+import { check, defaultDesk, deskFrom, deskSides, dimOf, isDesk, kd, parseComodo, renderRoom, solidGrid, type Desk, type Obj, type Piso, type Sala } from './sala'
 import { comodoOf, montaJogos, spotsJogos, type Kind, type Spot } from './comodos'
 import type { JogoCassino } from '../cassino/regras'
 
@@ -269,6 +269,32 @@ export function salaJogos(data: unknown, gerente: boolean, largura = 44): Sala {
   if (oldW <= 128) largura = Math.max(largura, oldW)
   const base = montaJogos(largura)
   let s = parseComodo(data, base)
+  // A planta de 28 tiles precisa ser remontada, não apenas ganhar um vazio central.
+  // O registro original permanece intacto; reaproveitamos ids e móveis adicionais.
+  if (oldW === 28 && old?.piso.length === 16) {
+    const fallback = emptySala(oldW, 16), saved = parseComodo(data, fallback)
+    if (saved === fallback) return base
+    const used = new Set<number>()
+    let nextId = Math.max(0, ...saved.objs.map(o => o.id)) + 1
+    s = { ...base, objs: base.objs.map(o => {
+      const prev = saved.objs.find(p => !used.has(p.id) && (p.k === o.k || (o.k === 'mesa-social' && p.k === 'mesa-jantar')))
+      if (prev) { used.add(prev.id); return { ...prev, k: o.k, x: o.x, y: o.y } }
+      return { ...o, id: nextId++ }
+    }) }
+    for (const extra of saved.objs.filter(o => !used.has(o.id) && o.d !== BOSS_DESK)) {
+      const k = kd(extra), right = k.tema === 'Cassino'
+      const candidates: Obj[] = []
+      for (let y = 4; y < 14; y++) for (let x = 1; x < largura - 1; x++) {
+        if (!k.camada && ((y <= 8 && y + k.h > 8) || (x < 13 && x + k.w > 11) || (x < 23 && x + k.w > 19) || (x < largura - 14 && x + k.w > largura - 16))) continue
+        candidates.push({ ...extra, x, y: k.camada === 'parede' ? 0 : y })
+      }
+      const tx = right ? largura - 7 : 2, ty = right ? 10 : 12
+      candidates.sort((a, b) => Math.abs(a.x - tx) + Math.abs(a.y - ty) - Math.abs(b.x - tx) - Math.abs(b.y - ty))
+      const placed = candidates.find(o => !check(s, o, () => null))
+      if (placed) s.objs.push(placed)
+    }
+    return s
+  }
   // Amplia layouts salvos sem apagar os móveis nem gravar no banco.
   if (oldW >= 28 && oldW < largura && old?.piso.length === 16) {
     const fallback = emptySala(oldW, 16), saved = parseComodo(data, fallback)
