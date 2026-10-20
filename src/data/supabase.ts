@@ -268,6 +268,13 @@ export class SupabaseBackend implements Backend {
     return (data ?? []) as CoffeeLine[]
   }
 
+  async jogosDesafios(): Promise<CoffeeLine[]> {
+    const hoje = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date())
+    const { data, error } = await this.sb.from('coffee_log').select('amount,reason,ref,created_at').eq('reason', 'desafio').like('ref', `${hoje}:%`)
+    if (error) throw pt(error)
+    return (data ?? []) as CoffeeLine[]
+  }
+
   async buyItem(item: string) {
     const { error } = await this.sb.rpc('buy_item', { item })
     if (error) throw pt(error)

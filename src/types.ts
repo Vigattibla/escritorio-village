@@ -27,7 +27,7 @@ export interface Avatar {
 }
 
 /** cafezinhos: extrato só da própria pessoa; itens comprados = linhas 'compra' */
-export interface CoffeeLine { amount: number; reason: 'dia' | 'boasvindas' | 'fase' | 'meta' | 'compra' | 'aposta' | 'premio' | 'bilhete' | 'bolao' | 'troca' | 'bingo' | 'poder' | 'coringa' | 'mesada' | 'casa' | 'torneio' | 'presente'; ref: string; created_at: string }
+export interface CoffeeLine { amount: number; reason: 'dia' | 'boasvindas' | 'fase' | 'meta' | 'compra' | 'aposta' | 'premio' | 'bilhete' | 'bolao' | 'troca' | 'bingo' | 'poder' | 'coringa' | 'mesada' | 'casa' | 'torneio' | 'presente' | 'desafio'; ref: string; created_at: string }
 export interface Wallet { balance: number; owned: string[]; log: CoffeeLine[]; latinhas: number }
 
 export interface Profile {
@@ -226,7 +226,7 @@ export interface Rede { id: 'linkedin'; nome: string; autor: string; modo: 'pess
 /** fila de publicação: uma por tarefa (id = tarefa) */
 export interface Postagem { id: string; rede: string; quando: string; estado: 'agendado' | 'publicando' | 'publicado' | 'erro'; urn: string | null; link: string | null; erro: string | null; tentativas: number; aprovado_por: string | null; em: string }
 /** resposta das RPCs da sala de jogos; local = demo (a pontuação é gravada pelo app) */
-export interface JogoRes { id?: string; pontos?: number; recorde?: boolean; valeu?: boolean; pos?: number; f?: number; outra?: number; par?: boolean; erros?: number; fim?: boolean; seg?: number; local?: boolean }
+export interface JogoRes { id?: string; pontos?: number; recorde?: boolean; valeu?: boolean; pos?: number; f?: number; outra?: number; par?: boolean; erros?: number; fim?: boolean; seg?: number; local?: boolean; desafio?: boolean }
 /** um setor acompanha a Agenda/Plano/Publicações de outro (de = quem pediu, para = dono) */
 export type ParModulo = 'agenda' | 'plano' | 'redes'
 export interface Parceria { id: string; de: string; para: string; modulo: ParModulo; status: 'pendente' | 'aceito' | 'recusado'; por: string | null; decidido_por: string | null; created_at: string }
@@ -400,6 +400,7 @@ export interface Backend {
   wallet(): Promise<Wallet>
   /** credita o cafezinho do dia e as metas batidas que faltam; devolve o que entrou agora */
   claimCoffee(): Promise<CoffeeLine[]>
+  jogosDesafios(): Promise<CoffeeLine[]>
   buyItem(id: string): Promise<void>
   /** cassino: o servidor sorteia, guarda cartas/minas e paga */
   cassinoJogar(jogo: JogoCassino, aposta: number, e: Escolha): Promise<Rodada>

@@ -7,5 +7,9 @@
 .jg-stage-local>.jg-over{min-height:420px}
 .jg-treino .jg-rank{max-width:240px}
 .jg-treino .jg-rank p{line-height:1.55;font-size:14px}
+.jg-desafios{display:grid;gap:7px;padding:11px;margin:0 0 14px;border:1px solid #e7dcc8;border-radius:12px;background:#fffaf1;color:#26304a;font-size:12px}
+.jg-desafio-top,.jg-desafio{display:grid;grid-template-columns:1fr auto auto;gap:7px;align-items:center}
+.jg-desafio-top{font-size:14px}.jg-desafio-top strong,.jg-desafio b{white-space:nowrap}.jg-desafio span:nth-child(2){color:#6c7180}.jg-desafio-lista{display:grid;gap:5px}
+.jg-desafios>small{line-height:1.4;color:#747987}
 @media(max-width:640px){.jg-treino .jg-body{display:flex;flex-direction:column}.jg-treino .jg-rank{max-width:none;width:100%}.jg-stage-local{min-height:400px}.jg-tabs button{padding:7px 9px}.game-launcher{bottom:48px}}
 @media(max-width:420px){.jg-treino .mesa-forca{flex-basis:100%}}

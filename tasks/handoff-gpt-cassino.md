@@ -134,3 +134,8 @@ Conta do cassino nunca acessa coisa crítica. Sem service_role. Não criar conta
 - Estado e versão validados na edge, mãos privadas, sinuca calculada no servidor, CAS contra duplicação. Interface Backend implementada em demo e Supabase. Migration mesas_online e função mesas publicadas junto com o cliente pelo CI.
 - Claude finalizou apenas SQL/endpoint (estimativa USD 0.316093); Codex fez base, UI, regras/bots e verificações.
 - Desafios diários de até 60 cafezinhos continuam pendentes; sem recompensas automáticas nas mesas.
+
+## 20/10 — Desafios diários de jogos
+- Painel lista um objetivo diário para cada jogo. 6 cafezinhos para os quatro clássicos, 12 ao vencer sinuca/UNO/Mau-Mau online; limite total 60 por dia no horário de São Paulo.
+- Backend limita e grava recompensas sem duplicação. Clássicos exigem pontos validados; mesas novas exigem vitória. Abandono e bots/local não contam nas três modalidades online.
+- Build passou. Migration e frontend aguardam publicação. Sem testes executados nesta etapa.

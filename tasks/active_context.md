@@ -374,3 +374,9 @@ Pendente: push (precisa da migration 202610080900_v4_agenda_metas.sql e do secre
 - Navegador: bot da sinuca respondeu; duas contas UNO jogaram e retomaram a mesa após atualização; baralho jogou e bot respondeu, layout 390px conferido. Extensão apresentou timeouts e uma aba stale, recuperada em nova aba.
 - Desafios diários de até 60 cafezinhos seguem pendentes; placar mensal continua isolado das mesas e protegido contra respostas antigas.
 - Publicação em andamento; preservar alterações alheias de Widget, turmeo.css e acervo.
+
+## 20/10 — Desafios diários de jogos implementados
+- Uma missão em cada um dos sete jogos. Os quatro clássicos pagam 6 cafezinhos com pontuação positiva; sinuca, UNO e Mau-Mau pagam 12 ao vencedor de uma partida online normal. Abandono e bot/local não pagam nos três novos.
+- Total exato de 60 por perfil/dia, fuso America/Sao_Paulo. Extrato idempotente por dia/jogo; triggers chamam função restrita; cliente não escolhe valor nem credita saldo. Demo aplica mesmo teto.
+- Painel de desafios lista objetivos, valores e total recebido. Saldo atualiza após concluir.
+- npm run build passou. Próximo: publicar migration e frontend; preservar mudanças alheias de Widget, Turmeo e Drive. Nenhum teste executado nesta etapa.

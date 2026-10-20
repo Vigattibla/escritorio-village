@@ -45,3 +45,8 @@ Escritório virtual da equipe Village Resort, estilo Gather + Trello: cada pesso
 - Baralho: Mau-Mau com 52 cartas/quatro naipes, cinco cartas iniciais, contra bot ou outra conta online; regras resumidas na tela.
 - Mesas persistidas no servidor, validação de turno/versão, cálculo de tacadas no servidor, projeção privada das mãos, retomada e saída. Sem aposta ou recompensa nesta etapa.
 - Desafios diários com teto total de 60 cafezinhos continuam pendentes.
+
+## Desafios diários nos jogos — 20/10
+- Definição executada: um desafio diário em cada um dos sete jogos; 6 cafezinhos por jogo clássico e 12 por vitória online em sinuca, UNO e Mau-Mau. Soma máxima: 60 por pessoa/dia, fuso de São Paulo.
+- Jogos clássicos só pagam pontuação positiva validada pelas funções de partida. Jogos online pagam só ao vencedor; abandono não conta. Bot/local em sinuca, UNO e baralho não paga desafio.
+- Crédito é idempotente por pessoa, dia e jogo, inserido no extrato por função protegida; demo implementa o mesmo limite. Painel diário mostra sete objetivos, valores e total recebido.

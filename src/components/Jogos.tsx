@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { getState, jogos, myDept, putRow, run, useStore } from '../store'
+import { getState, jogos, jogosDesafios, myDept, putRow, refreshWallet, run, useStore } from '../store'
 import type { JogoRes } from '../types'
 import type { Jogo } from '../office/world'
 import { Ph } from './Icon'
@@ -19,6 +19,8 @@ import '../novos-jogos.css'
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro']
 const mesAgora = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}` }
 const mesNome = (m: string) => MESES[Number(m.slice(5)) - 1] ?? m
+const RECOMPENSA: Record<Jogo, number> = { cobrinha: 6, penalti: 6, memoria: 6, reflexo: 6, sinuca: 12, cartas: 12, baralho: 12 }
+const OBJETIVO: Partial<Record<Jogo,string>> = { cobrinha: 'Pegue um café', penalti: 'Faça um gol', memoria: 'Ache todos os pares', reflexo: 'Faça pontos na rodada' }
 
 /** só na demo: grava a partida aqui (no banco quem grava é o servidor) */
 function salvar(jogo: Jogo, pontos: number) {
@@ -288,10 +290,15 @@ export default function Jogos({ inicio, onClose }: { inicio: Jogo; onClose: () =
   const [partida, setPartida] = useState('')
   const [aviso, setAviso] = useState('')
   const [abrindo, setAbrindo] = useState(false)
+  const [desafios, setDesafios] = useState<{ ref: string; amount: number }[]>([])
   const meId = useStore(s => s.meId)
   const dept = useStore(s => s.sala)
   const linhas = useStore(s => s.rows.jogos_pontos)
   const profiles = useStore(s => s.profiles)
+  const atualizarDesafios = useCallback(async () => {
+    try { setDesafios((await jogosDesafios()).map(x => ({ ref: x.ref, amount: x.amount }))) } catch { /* mantém último estado disponível */ }
+  }, [])
+  useEffect(() => { void atualizarDesafios(); const timer = setInterval(() => void atualizarDesafios(), 20000); return () => clearInterval(timer) }, [atualizarDesafios])
   const mes = mesAgora()
   const info = JOGOS.find(j => j.id === jogo)!
   const Tela = TELAS[jogo]
@@ -323,13 +330,14 @@ export default function Jogos({ inicio, onClose }: { inicio: Jogo; onClose: () =
     const token = versao
     if (token !== etapa.current) return
     setPts(n); setFase('fim')
-    if (treinoDe(jogo)) return
+    if (treinoDe(jogo)) { void atualizarDesafios().then(() => refreshWallet()); return }
     try {
       const r = pronto ?? await jogos('fim', { p_id: partida, p_pontos: n })
       if (token !== etapa.current) return
       setPts(r.pontos ?? 0)
       setRec(r.local ? salvar(jogo, r.pontos ?? 0) : !!r.recorde)
       if (r.valeu === false) setAviso('Essa partida não valeu: pontuação fora do possível.')
+      await atualizarDesafios(); await refreshWallet()
     } catch (e) { if (token === etapa.current) setAviso(e instanceof Error ? e.message : String(e)) }
   }, [jogo, partida, versao])
 
@@ -383,7 +391,15 @@ export default function Jogos({ inicio, onClose }: { inicio: Jogo; onClose: () =
             </div>
           </div>
           <aside className="jg-rank">
-            {treino ? <><h3>{info.nome}</h3><p>{info.dica}</p><p>{modo === 'online' ? 'Cada pessoa joga no seu aparelho. Crie uma mesa ou entre na de um colega.' : modo === 'bot' ? 'Você joga contra o computador, sem precisar esperar outra pessoa.' : 'Duas pessoas revezam no mesmo aparelho.'}</p><small className="jg-note">Sem aposta. Pontuação da partida separada do ranking mensal e dos cafezinhos.</small></> : <>
+            <section className="jg-desafios" aria-label="Desafios diários">
+              <div className="jg-desafio-top"><b>Desafios de hoje</b><strong>{desafios.reduce((n,x) => n+x.amount,0)}/60 ☕</strong></div>
+              <div className="jg-desafio-lista">{JOGOS.map(j => {
+                const feito = desafios.some(x => x.ref.endsWith(':' + j.id))
+                return <div className="jg-desafio" key={j.id}><span>{j.nome}</span><span>{feito ? '✓ concluído' : OBJETIVO[j.id] ?? 'Vença uma partida online'}</span><b>{feito ? 'feito' : `+${RECOMPENSA[j.id]} ☕`}</b></div>
+              })}</div>
+              <small>Até 60 cafezinhos no total por dia. Sinuca, UNO e baralho contam só em vitórias online; bots não contam.</small>
+            </section>
+            {treino ? <><h3>{info.nome}</h3><p>{info.dica}</p><p>{modo === 'online' ? 'Cada pessoa joga no seu aparelho. Crie uma mesa ou entre na de um colega.' : modo === 'bot' ? 'Você joga contra o computador, sem precisar esperar outra pessoa.' : 'Duas pessoas revezam no mesmo aparelho.'}</p><small className="jg-note">Sem aposta. Pontos da partida não entram no ranking mensal. Desafios podem render até 60 cafezinhos por dia.</small></> : <>
 
             <div className="jg-rh"><Ph n="trophy" size={18} /> <b>Ranking de {mesNome(mes)}</b></div>
             <div className="jg-seg">

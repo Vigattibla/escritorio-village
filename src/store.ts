@@ -1184,6 +1184,7 @@ export async function refreshWallet() {
 function coffeeText(l: CoffeeLine) {
   if (l.reason === 'boasvindas') return `🎁 +${l.amount} cafezinhos de boas-vindas! Já dá pra comprar algo no Almoxarifado.`
   if (l.reason === 'dia') return `☕ +${l.amount} cafezinhos — bom dia! Você bateu o ponto.`
+  if (l.reason === 'desafio') return `🎮 Desafio diário concluído: +${l.amount} cafezinhos!`
   const g = state.rows.goals[l.ref.split(':')[1]]
   if (l.reason === 'meta') return `🎯 Meta batida${g ? `: “${g.title}”` : ''}! +${l.amount} cafezinhos.`
   return `🎯 ${REASON.fase}${g ? ` “${g.title}”` : ''} alcançada! +${l.amount} cafezinhos.`
@@ -1312,6 +1313,7 @@ export async function apostar(fn: (b: Backend) => Promise<Rodada | null>) {
 
 /** sala de jogos: partida e pontuação passam pelo servidor */
 export const jogos = (fn: 'iniciar' | 'fim' | 'virar', args: Record<string, unknown> = {}) => vigiado(backend.jogos(fn, args))
+export const jogosDesafios = () => backend.jogosDesafios()
 
 /** vigia dos jogos: erro marcado pelo servidor vira o aviso de bloqueio (e fecha as mesas) */
 async function vigiado<T>(p: Promise<T>): Promise<T> {

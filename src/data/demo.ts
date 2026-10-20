@@ -513,6 +513,21 @@ export class DemoBackend implements Backend {
     return out
   }
 
+  async jogosDesafios(): Promise<CoffeeLine[]> {
+    const hoje = localDay(new Date().toISOString())
+    return this.coffee().filter(l => l.reason === 'desafio' && l.ref.startsWith(hoje + ':'))
+  }
+
+  private creditarDesafio(user: string, jogo: string): CoffeeLine | null {
+    if (!['cobrinha','penalti','memoria','reflexo','sinuca','cartas','baralho'].includes(jogo)) return null
+    const dia = localDay(new Date().toISOString()), ref = `${dia}:${jogo}`, k = 'ev:coffee:' + user, log = read<CoffeeLine[]>(k, [])
+    if (log.some(l => l.reason === 'desafio' && l.ref === ref)) return null
+    const total = log.filter(l => l.reason === 'desafio' && l.ref.startsWith(dia + ':')).reduce((n,l) => n + l.amount, 0)
+    if (total >= 60) return null
+    const out: CoffeeLine[] = [], premio = ['cobrinha','penalti','memoria','reflexo'].includes(jogo) ? 6 : 12
+    this.credit(log, Math.min(premio,60-total), 'desafio', ref, out); write(k,log); return out[0] ?? null
+  }
+
   async buyItem(id: string) {
     const me = sessionStorage.getItem(K.session)
     const it = ITEM[id]
@@ -684,7 +699,7 @@ export class DemoBackend implements Backend {
   async cassinoEstado(jogo: JogoCassino) { return this.mesa().estado(jogo) }
 
   /** sala de jogos da demo: mesmo jogo do SQL, sem teto; quem grava o recorde é o app */
-  private partidas = new Map<string, { cartas: number[]; t0: number; pend: number | null; achadas: number[]; erros: number }>()
+  private partidas = new Map<string, { jogo: string; cartas: number[]; t0: number; pend: number | null; achadas: number[]; erros: number }>()
   async mesas(fn: MesaFn, pedido: MesaPedido = {}): Promise<MesaResposta> {
     const opera = () => this.mesaOnline(fn, pedido)
     return navigator.locks ? navigator.locks.request('ev:mesas-online', opera) : opera()
@@ -710,19 +725,24 @@ export class DemoBackend implements Backend {
     else if (fn === 'sair') next = sairMesa(old, user)
     else if (fn === 'acao' && p.acao) next = acaoMesa(old, user, p.versao ?? -1, p.acao)
     else throw new Error('Ação inválida.')
-    rs[i] = next; write(key, rs); return { mesa: visaoMesa(next, user) }
+    rs[i] = next; write(key, rs)
+    const vencedor = next.dados.cartas?.vencedor ?? next.dados.sinuca?.vencedor
+    if (fn === 'acao' && old.estado === 'jogando' && next.estado === 'fim' && vencedor !== null && vencedor !== undefined) {
+      this.creditarDesafio(vencedor === 0 ? next.dono : next.convidado ?? '', next.jogo)
+    }
+    return { mesa: visaoMesa(next, user) }
   }
 
   async jogos(fn: 'iniciar' | 'fim' | 'virar', a: Record<string, unknown>): Promise<JogoRes> {
     if (fn === 'iniciar') {
       this.vigia()
       const id = crypto.randomUUID()
-      this.partidas.set(id, { cartas: Array.from({ length: 16 }, (_, i) => i % 8).map(f => ({ f, k: Math.random() })).sort((x, y) => x.k - y.k).map(x => x.f), t0: 0, pend: null, achadas: [], erros: 0 })
+      this.partidas.set(id, { jogo: String(a.p_jogo), cartas: Array.from({ length: 16 }, (_, i) => i % 8).map(f => ({ f, k: Math.random() })).sort((x, y) => x.k - y.k).map(x => x.f), t0: 0, pend: null, achadas: [], erros: 0 })
       return { id }
     }
     const p = this.partidas.get(String(a.p_id))
     if (!p) throw new Error('Partida não encontrada.')
-    if (fn === 'fim') { this.partidas.delete(String(a.p_id)); return { pontos: Math.max(0, Math.round(Number(a.p_pontos) || 0)), valeu: true, local: true } }
+    if (fn === 'fim') { this.partidas.delete(String(a.p_id)); const pontos = Math.max(0, Math.round(Number(a.p_pontos) || 0)); const desafio = pontos > 0 ? this.creditarDesafio(sessionStorage.getItem(K.session) ?? '', p.jogo) : null; return { pontos, valeu: true, local: true, ...(desafio ? { desafio: true } : {}) } }
     const pos = Number(a.p_pos)
     if (!p.t0) p.t0 = Date.now()
     if (p.pend === null || p.pend === pos) { p.pend = pos; return { pos, f: p.cartas[pos], erros: p.erros } }
@@ -731,7 +751,8 @@ export class DemoBackend implements Backend {
     if (par) p.achadas.push(outra, pos); else p.erros++
     if (p.achadas.length < 16) return { pos, f: p.cartas[pos], outra, par, erros: p.erros }
     const seg = Math.floor((Date.now() - p.t0) / 1000)
-    return { pos, f: p.cartas[pos], outra, par, erros: p.erros, fim: true, seg, pontos: Math.max(100, 1000 - p.erros * 30 - seg * 5), local: true }
+    const pontos = Math.max(100, 1000 - p.erros * 30 - seg * 5), desafio = this.creditarDesafio(sessionStorage.getItem(K.session) ?? '', p.jogo)
+    return { pos, f: p.cartas[pos], outra, par, erros: p.erros, fim: true, seg, pontos, local: true, ...(desafio ? { desafio: true } : {}) }
   }
 
   /** bolão da demo: o resto do time entra com bilhetes fixos por semana */
